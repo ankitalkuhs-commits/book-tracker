@@ -1,0 +1,15 @@
+Restart the project 
+
+1. Open Windows power shell. Go to folder - C:\Users\sonal\Documents\projects\book-tracker
+2. Activate the venv - .\venv\Scripts\Activate.ps1
+3. Then enter this command -> uvicorn app.main:app --reload
+
+
+4. Go to the swagger - http://127.0.0.1:8000/docs  for any testing, else you can directly use the frontend as well.
+
+5. Activate the front end by following steps - 
+	a. Open Windows power shell. Go to folder - C:\Users\sonal\Documents\projects\book-tracker\book-tracker-frontend
+	b. Run the dev environment -> npm run dev
+	c. go to http://localhost:5173/
+
+
