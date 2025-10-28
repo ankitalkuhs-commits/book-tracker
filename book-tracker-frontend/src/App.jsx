@@ -22,15 +22,24 @@ This single-file contains a compact UI with: Signup, Login, Book List, Add Book,
 
 */
 
+// Import required tools from React to build our app
 import React, { useEffect, useState } from "react";
 
+// The address where our backend server is running
+// This is where all our data is stored and processed
 const BACKEND = "http://127.0.0.1:8000";
 
+// Helper function to handle user authentication
+// When a user logs in, we store their login token and use it for future requests
+// This is like showing your ID card to prove you're allowed to access certain features
 function authHeaders() {
   const token = localStorage.getItem("bt_token");
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
+// Helper function to make it easier to talk to our backend server
+// This is like a standardized way to send messages to and receive responses from the server
+// It handles both successful responses and errors in a consistent way
 function useFetch(endpoint, opts = {}) {
   const url = BACKEND + endpoint;
   return fetch(url, opts).then(async (res) => {
@@ -39,15 +48,19 @@ function useFetch(endpoint, opts = {}) {
   });
 }
 
+// Main App Component - This is the heart of our application
+// It manages all the main features and coordinates between different parts of the app
 export default function App() {
-  const [route, setRoute] = useState("books");
-  const [user, setUser] = useState(null);
-  const [books, setBooks] = useState([]);
-  const [library, setLibrary] = useState([]);
-  const [feed, setFeed] = useState([]);
-  const [msg, setMsg] = useState(null);
+  // These are like variables that can change and update what we see on screen
+  const [route, setRoute] = useState("books");     // Which page we're currently viewing
+  const [user, setUser] = useState(null);          // Information about the logged-in user
+  const [books, setBooks] = useState([]);          // List of all books in the system
+  const [library, setLibrary] = useState([]);      // User's personal book collection
+  const [feed, setFeed] = useState([]);           // Social feed showing updates from other users
+  const [msg, setMsg] = useState(null);           // Messages to show to the user (like notifications)
 
-  // Define which messages should auto-dismiss
+  // List of success messages that should disappear automatically after a few seconds
+  // This helps keep the interface clean and uncluttered
   const autoDismissMessages = [
     "Logged in",
     "Signed up",
@@ -56,95 +69,137 @@ export default function App() {
     "Followed!"
   ];
 
-  // Clear message after 5 seconds only for success messages
+  // Automatically hide success messages after 5 seconds
+  // This keeps the interface clean by removing temporary notifications
   useEffect(() => {
     if (msg && autoDismissMessages.includes(msg)) {
       const timer = setTimeout(() => {
         setMsg(null);
       }, 5000);
+      // Clean up the timer if the component is unmounted
       return () => clearTimeout(timer);
     }
   }, [msg]);
 
-  // Load initial user state
+  // Check if user was previously logged in when app starts
+  // If we find a login token, we consider the user as logged in
   useEffect(() => {
     const token = localStorage.getItem("bt_token");
     if (token) {
-      // best-effort: decode email from token (not strict). We'll just call /auth/me if available but backend may not have it.
       setUser({});
     }
   }, []);
 
-  // Set up polling interval for feed updates
+  // Auto-refresh system to keep all data up to date
+  // This automatically updates the current page's content every 10 seconds
   useEffect(() => {
-    // Clear any previous messages when changing routes
+    // Clear old messages when changing pages
     setMsg(null);
 
-    // Load data based on the current route
-    switch (route) {
-      case "books":
-        loadBooks();
-        break;
-      case "library":
-        loadLibrary();
-        break;
-      case "feed":
-        loadFeed();
-        // Set up polling for feed updates
-        const feedInterval = setInterval(() => {
-          if (route === "feed") {
-            loadFeed();
-          }
-        }, 10000); // Poll every 10 seconds
-        return () => clearInterval(feedInterval);
-        break;
-      // Add other routes as needed
-    }
+    // Function to load data based on which page we're viewing
+    const loadCurrentRoute = () => {
+      switch (route) {
+        case "books":
+          loadBooks();    // Refresh the book list
+          break;
+        case "library":
+          loadLibrary();  // Refresh user's personal library
+          break;
+        case "feed":
+          loadFeed();     // Refresh social feed
+          break;
+        case "profile":
+          // Profile updates itself when needed
+          break;
+      }
+    };
+
+    // Load data immediately when page changes
+    loadCurrentRoute();
+
+    // Set up automatic refresh every 10 seconds
+    const refreshInterval = setInterval(loadCurrentRoute, 10000);
+
+    // Clean up the refresh timer when changing pages
+    return () => clearInterval(refreshInterval);
   }, [route]);
 
+  // Function to load the list of all books from the server
+  // This gets called when viewing the main books page and during auto-refresh
   async function loadBooks() {
     const r = await useFetch("/books/");
     if (r.ok) setBooks(r.data);
   }
 
+  // Function to load the user's personal library
+  // This includes books they're reading, want to read, or have finished
   async function loadLibrary() {
     const r = await useFetch("/userbooks", { headers: { ...authHeaders() } });
     if (r.ok) setLibrary(r.data);
     else if (r.status === 401) setMsg("Please login to view your library");
   }
 
+  // Function to load the social feed
+  // This shows updates from other users like new books, notes, and reading progress
   async function loadFeed() {
     const r = await useFetch("/notes/feed", { headers: { ...authHeaders() } });
     if (r.ok) setFeed(r.data);
     else if (r.status === 401) setMsg("Please login to view feed");
   }
 
+  // Function to handle user logout
+  // Removes the login token and clears user data from the app
   function logout() {
     localStorage.removeItem("bt_token");
     setUser(null);
     setMsg("Logged out");
   }
 
+  // The main layout of our application
   return (
     <div style={styles.app}>
+      {/* Top navigation bar with links */}
       <Header user={user} onRoute={setRoute} onLogout={logout} route={route} />
+      
       <div style={styles.container}>
+        {/* Sidebar with quick filters and navigation options */}
         <Sidebar route={route} onRoute={setRoute} />
+        
+        {/* Main content area */}
         <main style={styles.main}>
+          {/* Show any active messages/notifications */}
           {msg && <div style={styles.alert}>{msg}</div>}
 
+          {/* Sign up form - shown when route is "signup" */}
           {route === "signup" && (
-            <AuthForm type="signup" onSuccess={(token, u) => { localStorage.setItem("bt_token", token); setUser(u); setRoute("books"); setMsg("Signed up"); }} />
+            <AuthForm 
+              type="signup" 
+              onSuccess={(token, u) => { 
+                localStorage.setItem("bt_token", token); // Save login token
+                setUser(u);                             // Set user info
+                setRoute("books");                      // Go to books page
+                setMsg("Signed up");                    // Show success message
+              }} 
+            />
           )}
 
+          {/* Login form - shown when route is "login" */}
           {route === "login" && (
-            <AuthForm type="login" onSuccess={(token, u) => { localStorage.setItem("bt_token", token); setUser(u); setRoute("books"); setMsg("Logged in"); }} />
+            <AuthForm 
+              type="login" 
+              onSuccess={(token, u) => { 
+                localStorage.setItem("bt_token", token); // Save login token
+                setUser(u);                             // Set user info
+                setRoute("books");                      // Go to books page
+                setMsg("Logged in");                    // Show success message
+              }} 
+            />
           )}
 
           {route === "books" && (
             <div>
               <h2>All Books</h2>
-              <BookList books={books} onRefresh={loadBooks} />
+              <BookList books={books} />
               <AddBook onAdded={() => { loadBooks(); setMsg("Book added"); }} />
             </div>
           )}
@@ -152,7 +207,6 @@ export default function App() {
           {route === "library" && (
             <div>
               <h2>My Library</h2>
-              <button onClick={loadLibrary} style={styles.btn}>Refresh</button>
               <UserLibrary items={library} onRefresh={loadLibrary} setMsg={setMsg} />
             </div>
           )}
@@ -178,43 +232,50 @@ export default function App() {
   );
 }
 
+// Profile Component - Shows and manages user profile information
+// This component handles displaying and editing user details, reading stats, and social info
 function Profile({ setMsg }) {
-  const [profile, setProfile] = useState(null);
-  const [isEditing, setIsEditing] = useState(false);
-  const [name, setName] = useState("");
-  const [bio, setBio] = useState("");
+  // Store profile data and form states
+  const [profile, setProfile] = useState(null);        // Full profile data
+  const [isEditing, setIsEditing] = useState(false);   // Whether we're in edit mode
+  const [name, setName] = useState("");                // Name input field
+  const [bio, setBio] = useState("");                  // Bio input field
 
+  // Load profile data when the component first appears
   useEffect(() => {
     loadProfile();
   }, []);
 
+  // Function to fetch the user's profile from the server
   async function loadProfile() {
     const r = await useFetch('/profile/me', {
       headers: { ...authHeaders() }
     });
     if (r.ok) {
-      setProfile(r.data);
-      setName(r.data.name);
-      setBio(r.data.bio || '');
+      setProfile(r.data);                // Store the full profile
+      setName(r.data.name);             // Set the name field
+      setBio(r.data.bio || '');         // Set the bio field (use empty string if no bio)
     }
   }
 
+  // Function to save profile changes
+  // This runs when the edit form is submitted
   async function updateProfile(e) {
-    e.preventDefault();
+    e.preventDefault();  // Prevent the form from submitting normally
     const r = await useFetch('/profile/me', {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
         ...authHeaders()
       },
-      body: JSON.stringify({ name, bio })
+      body: JSON.stringify({ name, bio })  // Send updated name and bio to server
     });
     if (r.ok) {
-      setProfile(r.data);
-      setMsg('Profile updated successfully');
-      setIsEditing(false);
+      setProfile(r.data);                     // Update displayed profile
+      setMsg('Profile updated successfully');  // Show success message
+      setIsEditing(false);                    // Exit edit mode
     } else {
-      setMsg('Error updating profile');
+      setMsg('Error updating profile');        // Show error message
     }
   }
 
@@ -307,8 +368,11 @@ function Profile({ setMsg }) {
   );
 }
 
+// Header Component - The top navigation bar of our application
+// Shows the app title and navigation buttons, changes based on whether user is logged in
 function Header({ user, onRoute, onLogout, route }) {
-  // Function to determine button style based on route
+  // Helper function to style the navigation buttons
+  // Makes the current page's button look different (highlighted)
   const getLinkStyle = (buttonRoute) => ({
     ...styles.link,
     ...(route === buttonRoute ? styles.activeLink : {})
@@ -316,18 +380,26 @@ function Header({ user, onRoute, onLogout, route }) {
 
   return (
     <header style={styles.header}>
+      {/* App title - clicking it takes you to the books page */}
       <h1 style={{cursor:'pointer'}} onClick={() => onRoute('books')}>Book Tracker</h1>
+      
+      {/* Navigation menu */}
       <nav>
+        {/* Main navigation buttons - always visible */}
         <button style={getLinkStyle('books')} onClick={() => onRoute('books')}>Books</button>
         <button style={getLinkStyle('library')} onClick={() => onRoute('library')}>My Library</button>
         <button style={getLinkStyle('feed')} onClick={() => onRoute('feed')}>Feed</button>
         <button style={getLinkStyle('follow')} onClick={() => onRoute('follow')}>Follow</button>
+        
+        {/* Show different buttons based on login status */}
         {!localStorage.getItem('bt_token') ? (
+          // Show these buttons when user is NOT logged in
           <>
             <button style={getLinkStyle('login')} onClick={() => onRoute('login')}>Login</button>
             <button style={getLinkStyle('signup')} onClick={() => onRoute('signup')}>Signup</button>
           </>
         ) : (
+          // Show these buttons when user IS logged in
           <>
             <button style={getLinkStyle('profile')} onClick={() => onRoute('profile')}>Profile</button>
             <button style={styles.link} onClick={onLogout}>Logout</button>
@@ -338,11 +410,19 @@ function Header({ user, onRoute, onLogout, route }) {
   );
 }
 
+// Sidebar Component - Shows quick filters for the current page
+// Changes the filter options based on which page you're viewing
 function Sidebar({ route }) {
   return (
     <aside style={styles.sidebar}>
+      {/* Sidebar title */}
       <h3 style={{margin: '0 0 12px 0', fontSize: '1.1em', color: '#4a5568'}}>Quick Filters</h3>
+      
+      {/* Decorative line */}
       <div style={{borderBottom: '1px solid #eee', marginBottom: '12px'}}></div>
+      
+      {/* Show different filter options for each page */}
+      {/* Main Books Page Filters */}
       {route === 'books' && (
         <ul style={{listStyle:'none', padding:0}}>
           <li><button style={styles.filterBtn}>All</button></li>
@@ -350,6 +430,8 @@ function Sidebar({ route }) {
           <li><button style={styles.filterBtn}>Most Popular</button></li>
         </ul>
       )}
+
+      {/* My Library Page Filters */}
       {route === 'library' && (
         <ul style={{listStyle:'none', padding:0}}>
           <li><button style={styles.filterBtn}>All Books</button></li>
@@ -358,6 +440,8 @@ function Sidebar({ route }) {
           <li><button style={styles.filterBtn}>To Read</button></li>
         </ul>
       )}
+
+      {/* Social Feed Page Filters */}
       {route === 'feed' && (
         <ul style={{listStyle:'none', padding:0}}>
           <li><button style={styles.filterBtn}>All Updates</button></li>
@@ -370,12 +454,21 @@ function Sidebar({ route }) {
   );
 }
 
-function BookList({ books = [], onRefresh }) {
+// BookList Component - Displays the list of all books in the system
+// Shows books in a grid with pagination (showing a few books per page)
+function BookList({ books = [] }) {
+  // Keep track of which page of books we're viewing
   const [currentPage, setCurrentPage] = useState(1);
+  
+  // Calculate how many pages we need to show all books
   const totalPages = Math.ceil(books.length / ITEMS_PER_PAGE);
+  
+  // Calculate which books to show on the current page
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
   const displayedBooks = books.slice(startIndex, startIndex + ITEMS_PER_PAGE);
 
+  // Function to handle page changes
+  // Also scrolls to top when changing pages for better user experience
   function changePage(pageNum) {
     setCurrentPage(pageNum);
     window.scrollTo(0, 0);
@@ -383,8 +476,7 @@ function BookList({ books = [], onRefresh }) {
 
   return (
     <div>
-      <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16}}>
-        <button onClick={onRefresh} style={styles.btn}>Reload</button>
+      <div style={{display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginBottom: 16}}>
         <div style={{color: '#666'}}>
           Showing {startIndex + 1}-{Math.min(startIndex + ITEMS_PER_PAGE, books.length)} of {books.length} books
         </div>
@@ -487,19 +579,24 @@ function BookList({ books = [], onRefresh }) {
   );
 }
 
+// AddBook Component - Form to add new books to the system
+// Includes Google Books search integration for easy book adding
 function AddBook({ onAdded }) {
-  const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [selectedBook, setSelectedBook] = useState(null);
-  const [title, setTitle] = useState("");
-  const [author, setAuthor] = useState("");
-  const [isbn, setIsbn] = useState("");
-  const [desc, setDesc] = useState("");
-  const [totalPages, setTotalPages] = useState("");
-  const [publisher, setPublisher] = useState("");
-  const [publishedDate, setPublishedDate] = useState("");
-  const [coverUrl, setCoverUrl] = useState("");
+  // Search-related states
+  const [searchQuery, setSearchQuery] = useState("");        // What user is searching for
+  const [searchResults, setSearchResults] = useState([]);    // Results from Google Books
+  const [loading, setLoading] = useState(false);            // Whether search is in progress
+  const [selectedBook, setSelectedBook] = useState(null);    // Book chosen from search results
+
+  // Form field states for book details
+  const [title, setTitle] = useState("");                   // Book title
+  const [author, setAuthor] = useState("");                 // Book author(s)
+  const [isbn, setIsbn] = useState("");                     // ISBN number
+  const [desc, setDesc] = useState("");                     // Book description
+  const [totalPages, setTotalPages] = useState("");         // Number of pages
+  const [publisher, setPublisher] = useState("");           // Publisher name
+  const [publishedDate, setPublishedDate] = useState("");   // Publication date
+  const [coverUrl, setCoverUrl] = useState("");             // Book cover image URL
 
   async function searchBooks(query) {
     if (!query) return;
@@ -643,18 +740,35 @@ function AddBook({ onAdded }) {
   );
 }
 
+// AuthForm Component - Handles both login and signup
+// This is a flexible form that changes based on whether user is logging in or signing up
 function AuthForm({ type='login', onSuccess }){
-  const [name,setName] = useState('');
-  const [email,setEmail] = useState('');
-  const [password,setPassword] = useState('');
+  // Form field states
+  const [name,setName] = useState('');       // Only used for signup
+  const [email,setEmail] = useState('');     // Used for both login and signup
+  const [password,setPassword] = useState(''); // Used for both login and signup
 
+  // Handle form submission for both login and signup
   async function submit(e){
-    e.preventDefault();
+    e.preventDefault(); // Prevent normal form submission
+    
+    // Choose the right endpoint and data based on whether it's login or signup
     const endpoint = type === 'signup' ? '/auth/signup' : '/auth/login';
     const body = type === 'signup' ? {name, email, password} : {email, password};
-    const res = await fetch(BACKEND + endpoint, {method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify(body)});
+    
+    // Send request to server
+    const res = await fetch(BACKEND + endpoint, {
+      method:'POST', 
+      headers:{ 'Content-Type':'application/json' }, 
+      body: JSON.stringify(body)
+    });
+    
     const data = await res.json();
-    if(res.ok){ onSuccess(data.access_token, data.user); } else { alert('Error: '+(data.detail||JSON.stringify(data))); }
+    if(res.ok){ 
+      onSuccess(data.access_token, data.user); // Handle successful login/signup
+    } else { 
+      alert('Error: '+(data.detail||JSON.stringify(data))); // Show error message
+    }
   }
 
   return (
@@ -668,17 +782,24 @@ function AuthForm({ type='login', onSuccess }){
   );
 }
 
-function UserLibrary({ items = [], onRefresh, setMsg }){
+// UserLibrary Component - Shows the user's personal book collection
+// Displays books they're reading, want to read, or have finished, along with notes
+function UserLibrary({ items = [], setMsg }){
+  // Track which book's notes are being shown
   const [expandedBookId, setExpandedBookId] = useState(null);
+  
+  // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
   const totalPages = Math.ceil(items.length / ITEMS_PER_PAGE);
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
   const displayedItems = items.slice(startIndex, startIndex + ITEMS_PER_PAGE);
 
+  // Handle page changes in the library
+  // Also closes any expanded notes section for cleaner navigation
   function changePage(pageNum) {
     setCurrentPage(pageNum);
     setExpandedBookId(null); // Close any expanded notes when changing pages
-    window.scrollTo(0, 0);
+    window.scrollTo(0, 0);   // Scroll back to top of page
   }
 
   async function addNote(userbook_id){
@@ -719,8 +840,7 @@ function UserLibrary({ items = [], onRefresh, setMsg }){
 
   return (
     <div>
-      <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16}}>
-        <button onClick={onRefresh} style={styles.btn}>Refresh</button>
+      <div style={{display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginBottom: 16}}>
         <div style={{color: '#666'}}>
           Showing {startIndex + 1}-{Math.min(startIndex + ITEMS_PER_PAGE, items.length)} of {items.length} books
         </div>
@@ -950,19 +1070,26 @@ function BookNotes({ userbook_id, onRefresh, setMsg }) {
   );
 }
 
+// CreatePost Component - Form for creating new posts in the feed
+// Allows users to share thoughts about books with optional images and emojis
 function CreatePost({ onPost }) {
-  const [text, setText] = useState('');
-  const [image, setImage] = useState(null);
-  const [imagePreview, setImagePreview] = useState(null);
-  const [isQuote, setIsQuote] = useState(false);
-  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+  // Post content states
+  const [text, setText] = useState('');                    // The main post text
+  const [image, setImage] = useState(null);                // Selected image file
+  const [imagePreview, setImagePreview] = useState(null);  // Preview of selected image
+  const [isQuote, setIsQuote] = useState(false);          // Whether post is a quote
+  
+  // UI interaction states
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false); // Show/hide emoji picker
+  const [loading, setLoading] = useState(false);                  // Loading state during post
+  const [error, setError] = useState(null);                       // Error messages
 
+  // Handle image selection and preview
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      setImage(file);
+      setImage(file);  // Store the file for uploading
+      // Create a preview URL for the selected image
       const reader = new FileReader();
       reader.onloadend = () => {
         setImagePreview(reader.result);
@@ -1170,12 +1297,19 @@ function CreatePost({ onPost }) {
   );
 }
 
+// Feed Component - Shows the social feed of book-related posts
+// Displays updates from users, including notes and reading progress
 function Feed({ items = [] }){
+  // Keep track of which page we're viewing
   const [currentPage, setCurrentPage] = useState(1);
-  // Sort items by created_at in descending order (latest first)
+  
+  // Sort all posts by date, newest first
+  // This ensures users always see the latest updates at the top
   const sortedItems = [...items].sort((a, b) => 
     new Date(b.created_at) - new Date(a.created_at)
   );
+  
+  // Calculate pagination
   const totalPages = Math.ceil(sortedItems.length / ITEMS_PER_PAGE);
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
   const displayedItems = sortedItems.slice(startIndex, startIndex + ITEMS_PER_PAGE);
@@ -1276,16 +1410,23 @@ function FollowPanel({ onMessage }){
   );
 }
 
-// Utility function to truncate text
+// Helper function to shorten long text
+// Used for book descriptions and long posts to keep the UI clean
+// For example: "This is a very long text..." instead of showing the full text
 function truncateText(text, maxLength = 100) {
-  if (!text) return '';
-  if (text.length <= maxLength) return text;
-  return text.slice(0, maxLength).trim() + '...';
+  if (!text) return '';                              // Handle empty text
+  if (text.length <= maxLength) return text;         // Text is short enough, show all
+  return text.slice(0, maxLength).trim() + '...';    // Text is too long, cut it and add ...
 }
 
-const ITEMS_PER_PAGE = 6; // Number of items to show per page
+// How many items (books, posts, etc.) to show per page
+// This helps keep pages loading fast and prevents endless scrolling
+const ITEMS_PER_PAGE = 6;
 
+// Styles object - Contains all the visual styling for the app
+// This defines how everything looks: colors, spacing, layout, etc.
 const styles = {
+  // Main app container style - Sets the overall look and feel
   app: { fontFamily: 'Segoe UI, Roboto, system-ui, sans-serif', minHeight:'100vh', background:'#f6f7fb' },
   postCreator: {
     background: '#fff',
