@@ -1,7 +1,8 @@
 # app/models.py
 """
 Models for BookPulse (SQLModel).
-This version matches your existing DB which uses `password_hash`.
+- Uses SQLModel (a thin wrapper over SQLAlchemy) to define tables.
+- Keep relationships simple and clear for CRUD operations.
 """
 
 from typing import Optional, List
@@ -12,11 +13,9 @@ from sqlmodel import Field, Relationship, SQLModel
 class User(SQLModel, table=True):
     """Application user."""
     id: Optional[int] = Field(default=None, primary_key=True)
-    # DB uses column name 'name' and 'email' already; keep them
+    email: str = Field(sa_column_kwargs={"unique": True, "nullable": False}, index=True)
     name: Optional[str] = None
-    email: str = Field(index=True, nullable=False)
-    # Use the same column name as existing DB:
-    password_hash: str = Field(nullable=False)
+    hashed_password: str = Field(nullable=False)
     bio: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
@@ -26,23 +25,20 @@ class User(SQLModel, table=True):
 
 
 class Book(SQLModel, table=True):
-    """Global book record."""
+    """Global book record. One book row represents a title/edition we have metadata for."""
     id: Optional[int] = Field(default=None, primary_key=True)
     title: str = Field(nullable=False)
     author: Optional[str] = None
-    isbn: Optional[str] = None
-    cover_url: Optional[str] = None
-    tags: Optional[str] = None
     description: Optional[str] = None
+    format: Optional[str] = None  # e.g., 'Kindle', 'Owned', 'Borrowed', 'Audiobook'
     total_pages: Optional[int] = None
-    publisher: Optional[str] = None
-    published_date: Optional[str] = None
-    format: Optional[str] = None
-    pages_source: Optional[str] = None
-    created_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
+    pages_source: Optional[str] = None  # e.g., 'openlibrary', 'googlebooks', 'user'
+    cover_url: Optional[str] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
 
     # Relationships
     userbooks: List["UserBook"] = Relationship(back_populates="book")
+    # Optionally: notes can reference book indirectly via UserBook, so no direct notes Relationship here.
 
 
 class UserBook(SQLModel, table=True):
@@ -52,10 +48,7 @@ class UserBook(SQLModel, table=True):
     book_id: int = Field(foreign_key="book.id", index=True)
     status: str = Field(default="to-read")  # 'to-read' | 'reading' | 'finished'
     current_page: Optional[int] = None
-    rating: Optional[int] = None
-    private_notes: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: Optional[datetime] = None
 
     # Relationships
     user: Optional[User] = Relationship(back_populates="userbooks")
@@ -69,7 +62,7 @@ class Note(SQLModel, table=True):
     userbook_id: Optional[int] = Field(default=None, foreign_key="userbook.id", index=True)
     user_id: int = Field(foreign_key="user.id", index=True)
     text: Optional[str] = None
-    emotion: Optional[str] = None
+    emotion: Optional[str] = None  # e.g., 'joy', 'sad', 'inspired', 'calm'
     is_public: bool = Field(default=True)
     created_at: datetime = Field(default_factory=datetime.utcnow)
 

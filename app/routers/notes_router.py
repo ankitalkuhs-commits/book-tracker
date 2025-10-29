@@ -1,85 +1,101 @@
 # app/routers/notes_router.py
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
+from typing import Optional, List
 from pydantic import BaseModel
-from sqlmodel import Session, select
-from ..database import get_session
-from ..deps import get_current_user
-from .. import models, crud
+from sqlmodel import Session
+from ..deps import get_db, get_current_user
+from .. import crud, models
 
 router = APIRouter(prefix="/notes", tags=["notes"])
 
-class NoteIn(BaseModel):
-    userbook_id: int
-    text: str
-    is_public: bool = False
 
-class NoteUpdate(BaseModel):
-    text: str
+class NoteCreateSchema(BaseModel):
+    """
+    Request body schema for creating a note.
+    Fields are optional to keep it flexible for quick posts.
+    """
+    text: Optional[str] = None
+    emotion: Optional[str] = None
+    userbook_id: Optional[int] = None
+    is_public: Optional[bool] = True
+
+
+class NoteOutSchema(BaseModel):
+    id: int
+    text: Optional[str]
+    emotion: Optional[str]
     is_public: bool
+    created_at: Optional[str]
+    user: Optional[dict] = None
+    book: Optional[dict] = None
 
-@router.post("", response_model=models.Note)
-def create_note(payload: NoteIn, db: Session = Depends(get_session), user = Depends(get_current_user)):
-    # verify userbook belongs to user
-    ub = db.get(models.UserBook, payload.userbook_id)
-    if not ub or ub.user_id != user.id:
-        raise HTTPException(status_code=404, detail="UserBook not found or not yours")
-    # create note
-    note = crud.create_note(db, userbook_id=payload.userbook_id, user_id=user.id, text=payload.text, is_public=payload.is_public)
-    return note
+    class Config:
+        orm_mode = True
 
-@router.get("/feed")
-def feed(db: Session = Depends(get_session), user = Depends(get_current_user)):
-    # get notes from followed users + own notes
-    followed_notes = crud.get_feed_notes(db, user.id)
-    own_notes = db.exec(
-        select(models.Note)
-        .join(models.UserBook)
-        .where(models.UserBook.user_id == user.id)
-    ).all()
-    all_notes = {note.id: note for note in followed_notes + own_notes}  # merge unique
-    return list(all_notes.values())
 
-@router.get("/book/{userbook_id}")
-def get_book_notes(userbook_id: int, db: Session = Depends(get_session), user = Depends(get_current_user)):
-    """Get all notes for a specific book in user's library."""
-    # verify userbook belongs to user or notes are public
-    ub = db.get(models.UserBook, userbook_id)
-    if not ub:
-        raise HTTPException(status_code=404, detail="UserBook not found")
-    
-    # if it's user's book, get all notes, otherwise only public notes
-    query = select(models.Note).where(models.Note.userbook_id == userbook_id)
-    if ub.user_id != user.id:
-        query = query.where(models.Note.is_public == True)
-    
-    notes = db.exec(query.order_by(models.Note.created_at.desc())).all()
-    return notes
+@router.post("/", response_model=NoteOutSchema, status_code=status.HTTP_201_CREATED)
+def create_note(payload: NoteCreateSchema, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    text = payload.text
+    emotion = payload.emotion
+    userbook_id = payload.userbook_id
+    is_public = payload.is_public if payload.is_public is not None else True
 
-@router.put("/{note_id}", response_model=models.Note)
-def update_note(note_id: int, payload: NoteUpdate, db: Session = Depends(get_session), user = Depends(get_current_user)):
-    """Update an existing note."""
-    note = db.get(models.Note, note_id)
-    if not note:
-        raise HTTPException(status_code=404, detail="Note not found")
-    if note.user_id != user.id:
-        raise HTTPException(status_code=403, detail="Not your note")
-    
-    note.text = payload.text
-    note.is_public = payload.is_public
-    db.add(note)
-    db.commit()
-    db.refresh(note)
-    return note
+    # if userbook_id provided, ensure it belongs to current_user
+    if userbook_id:
+        ub = crud.get_userbook(db, userbook_id=userbook_id)
+        if not ub or ub.user_id != current_user.id:
+            raise HTTPException(status_code=400, detail="Invalid userbook_id")
 
-@router.delete("/{note_id}")
-def delete_note(note_id: int, db: Session = Depends(get_session), user = Depends(get_current_user)):
-    """Delete a note."""
-    note = db.get(models.Note, note_id)
-    if not note:
-        raise HTTPException(status_code=404, detail="Note not found")
-    if note.user_id != user.id:
-        raise HTTPException(status_code=403, detail="Not your note")
-    
-    db.delete(note)
-    db.commit()
-    return {"message": "Note deleted successfully"}
+    note = crud.create_note(db, user_id=current_user.id, text=text, emotion=emotion, userbook_id=userbook_id, is_public=is_public)
+
+    # Build response shape (include basic user and book info for convenience)
+    book = note.userbook.book if note.userbook else None
+    user = note.user
+    out = {
+        "id": note.id,
+        "text": note.text,
+        "emotion": note.emotion,
+        "is_public": note.is_public,
+        "created_at": note.created_at.isoformat() if note.created_at else None,
+        "user": {"id": user.id, "name": user.name} if user else None,
+        "book": {"id": book.id, "title": book.title, "author": book.author} if book else None
+    }
+    return out
+
+
+@router.get("/feed", status_code=status.HTTP_200_OK, response_model=List[NoteOutSchema])
+def get_feed(limit: int = 50, db: Session = Depends(get_db)):
+    notes = crud.get_notes_feed(db, limit=limit)
+    result = []
+    for n in notes:
+        book = n.userbook.book if n.userbook else None
+        user = n.user
+        result.append({
+            "id": n.id,
+            "text": n.text,
+            "emotion": n.emotion,
+            "is_public": n.is_public,
+            "created_at": n.created_at.isoformat() if n.created_at else None,
+            "user": {"id": user.id, "name": user.name} if user else None,
+            "book": {"id": book.id, "title": book.title, "author": book.author} if book else None
+        })
+    return result
+
+
+@router.get("/me", status_code=status.HTTP_200_OK, response_model=List[NoteOutSchema])
+def get_my_notes(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    notes = crud.get_notes_for_user(db, user_id=current_user.id)
+    out = []
+    for n in notes:
+        book = n.userbook.book if n.userbook else None
+        user = n.user
+        out.append({
+            "id": n.id,
+            "text": n.text,
+            "emotion": n.emotion,
+            "is_public": n.is_public,
+            "created_at": n.created_at.isoformat() if n.created_at else None,
+            "user": {"id": user.id, "name": user.name} if user else None,
+            "book": {"id": book.id, "title": book.title, "author": book.author} if book else None
+        })
+    return out

@@ -1,0 +1,495 @@
+// src/App.jsx
+import React, { useEffect, useState } from "react";
+
+/*
+  Single-file React frontend for Book Tracker (MVP)
+  - Paste this file into src/App.jsx
+  - Run dev server (vite): npm run dev
+  - Backend expected at http://127.0.0.1:8000
+*/
+
+const BACKEND = "http://127.0.0.1:8000";
+const ITEMS_PER_PAGE = 6;
+
+function authHeaders() {
+  const token = localStorage.getItem("bt_token");
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
+async function apiFetch(path, opts = {}) {
+  const url = BACKEND + path;
+  const merged = {
+    credentials: "same-origin",
+    headers: { ...opts.headers },
+    ...opts,
+  };
+  try {
+    const res = await fetch(url, merged);
+    const text = await res.text();
+    let data;
+    try {
+      data = text ? JSON.parse(text) : null;
+    } catch (e) {
+      data = text;
+    }
+    return { ok: res.ok, status: res.status, data };
+  } catch (err) {
+    return { ok: false, status: 0, err };
+  }
+}
+
+export default function App() {
+  const [route, setRoute] = useState("books");
+  const [user, setUser] = useState(null);
+  const [books, setBooks] = useState([]);
+  const [library, setLibrary] = useState([]);
+  const [feed, setFeed] = useState([]);
+  const [msg, setMsg] = useState(null);
+
+  const autoDismissMessages = ["Logged in", "Signed up", "Book added", "Note added", "Followed!", "Added to library"];
+
+  useEffect(() => {
+    if (msg && autoDismissMessages.includes(msg)) {
+      const t = setTimeout(() => setMsg(null), 4000);
+      return () => clearTimeout(t);
+    }
+  }, [msg]);
+
+  useEffect(() => {
+    const token = localStorage.getItem("bt_token");
+    if (token) setUser({}); // indicates logged in — you can fetch profile later
+  }, []);
+
+  useEffect(() => {
+    setMsg(null);
+    const loadCurrent = () => {
+      switch (route) {
+        case "books":
+          loadBooks();
+          break;
+        case "library":
+          loadLibrary();
+          break;
+        case "feed":
+          loadFeed();
+          break;
+        case "profile":
+          // optional: load profile
+          break;
+        default:
+          loadBooks();
+      }
+    };
+    loadCurrent();
+    const iv = setInterval(loadCurrent, 10000);
+    return () => clearInterval(iv);
+  }, [route]);
+
+  async function loadBooks() {
+    const r = await apiFetch("/books/");
+    if (r.ok) setBooks(Array.isArray(r.data) ? r.data : []);
+    else console.warn("Failed loading books", r);
+  }
+
+  async function loadLibrary() {
+    const r = await apiFetch("/userbooks/", { headers: { ...authHeaders() } });
+    if (r.ok) setLibrary(Array.isArray(r.data) ? r.data : []);
+    else if (r.status === 401) setMsg("Please login to view your library");
+    else setLibrary([]);
+  }
+
+  async function loadFeed() {
+    const r = await apiFetch("/notes/feed", { headers: { ...authHeaders() } });
+    if (r.ok) setFeed(Array.isArray(r.data) ? r.data : []);
+    else if (r.status === 401) setMsg("Please login to view feed");
+    else setFeed([]);
+  }
+
+  function logout() {
+    localStorage.removeItem("bt_token");
+    setUser(null);
+    setMsg("Logged out");
+    setRoute("books");
+  }
+
+  // add book to library (POST /userbooks/)
+  async function addToLibrary(bookId, status = "to-read", current_page = 0) {
+    const token = localStorage.getItem("bt_token");
+    if (!token) { alert("Please login"); return; }
+    const r = await apiFetch("/userbooks/", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify({ book_id: bookId, status, current_page }),
+    });
+    if (r.ok) {
+      setMsg("Added to library");
+      await loadLibrary();
+    } else {
+      console.error("Add to library failed", r);
+      setMsg(r.data?.detail || "Failed to add to library");
+    }
+  }
+
+  return (
+    <div style={styles.app}>
+      <Header user={user} onRoute={setRoute} onLogout={logout} route={route} />
+      <div style={styles.container}>
+        <Sidebar route={route} />
+        <main style={styles.main}>
+          {msg && <div style={styles.alert}>{msg}</div>}
+
+          {route === "signup" && (
+            <AuthForm type="signup" onSuccess={(token, u) => { localStorage.setItem("bt_token", token); setUser(u || {}); setRoute("books"); setMsg("Signed up"); }} />
+          )}
+          {route === "login" && (
+            <AuthForm type="login" onSuccess={(token, u) => { localStorage.setItem("bt_token", token); setUser(u || {}); setRoute("books"); setMsg("Logged in"); }} />
+          )}
+
+          {route === "books" && (
+            <>
+              <h2>All Books</h2>
+              <BookList books={books} onAddToLibrary={addToLibrary} />
+              <AddBook onAdded={() => { loadBooks(); setMsg("Book added"); }} />
+            </>
+          )}
+
+          {route === "library" && (
+            <>
+              <h2>My Library</h2>
+              <UserLibrary items={library} onRefresh={loadLibrary} setMsg={setMsg} />
+            </>
+          )}
+
+          {route === "feed" && (
+            <>
+              <h2>Feed</h2>
+              <Feed items={feed} />
+            </>
+          )}
+
+          {route === "follow" && <FollowPanel onMessage={setMsg} />}
+
+          {route === "profile" && <Profile setMsg={setMsg} />}
+        </main>
+      </div>
+    </div>
+  );
+}
+
+/* ---------------- Components ---------------- */
+
+function Header({ user, onRoute, onLogout, route }) {
+  const getLinkStyle = (rt) => ({ ...styles.link, ...(route === rt ? styles.activeLink : {}) });
+
+  return (
+    <header style={styles.header}>
+      <h1 style={{ cursor: "pointer", margin: 0 }} onClick={() => onRoute("books")}>BookPulse</h1>
+      <nav>
+        <button style={getLinkStyle("books")} onClick={() => onRoute("books")}>Books</button>
+        <button style={getLinkStyle("library")} onClick={() => onRoute("library")}>My Library</button>
+        <button style={getLinkStyle("feed")} onClick={() => onRoute("feed")}>Feed</button>
+        <button style={getLinkStyle("follow")} onClick={() => onRoute("follow")}>Follow</button>
+        {!localStorage.getItem("bt_token") ? (
+          <>
+            <button style={getLinkStyle("login")} onClick={() => onRoute("login")}>Login</button>
+            <button style={getLinkStyle("signup")} onClick={() => onRoute("signup")}>Signup</button>
+          </>
+        ) : (
+          <>
+            <button style={getLinkStyle("profile")} onClick={() => onRoute("profile")}>Profile</button>
+            <button style={styles.link} onClick={onLogout}>Logout</button>
+          </>
+        )}
+      </nav>
+    </header>
+  );
+}
+
+function Sidebar({ route }) {
+  return (
+    <aside style={styles.sidebar}>
+      <h3 style={{ margin: "0 0 12px 0" }}>Quick Filters</h3>
+      <div style={{ borderBottom: "1px solid #eee", marginBottom: 12 }} />
+      {route === "books" && (
+        <ul style={{ listStyle: "none", padding: 0 }}>
+          <li><button style={styles.filterBtn}>All</button></li>
+          <li><button style={styles.filterBtn}>Recently Added</button></li>
+        </ul>
+      )}
+      {route === "library" && (
+        <ul style={{ listStyle: "none", padding: 0 }}>
+          <li><button style={styles.filterBtn}>All Books</button></li>
+          <li><button style={styles.filterBtn}>Currently Reading</button></li>
+        </ul>
+      )}
+      {route === "feed" && (
+        <ul style={{ listStyle: "none", padding: 0 }}>
+          <li><button style={styles.filterBtn}>All Updates</button></li>
+        </ul>
+      )}
+    </aside>
+  );
+}
+
+function BookList({ books = [], onAddToLibrary }) {
+  const [page, setPage] = useState(1);
+  const totalPages = Math.max(1, Math.ceil(books.length / ITEMS_PER_PAGE));
+  const start = (page - 1) * ITEMS_PER_PAGE;
+  const shown = books.slice(start, start + ITEMS_PER_PAGE);
+
+  function changePage(p) { setPage(p); window.scrollTo(0, 0); }
+
+  return (
+    <div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(260px,1fr))", gap: 16 }}>
+        {shown.map(b => (
+          <div key={b.id} style={styles.card}>
+            <div style={{ display: "flex", gap: 12 }}>
+              {b.cover_url ? <img src={b.cover_url} alt={b.title} style={{ width: 80, height: 120, objectFit: "cover" }} /> : <div style={{ width: 80, height: 120, background: "#eee" }} />}
+              <div style={{ flex: 1 }}>
+                <h3 style={{ margin: "0 0 8px 0" }}>{b.title}</h3>
+                <div style={{ color: "#555", marginBottom: 8 }}>{b.author || "Unknown author"}</div>
+                {b.description && <div style={{ color: "#666", fontSize: "0.9em" }}>{truncateText(b.description, 150)}</div>}
+                {b.total_pages && <div style={{ color: "#666", fontSize: "0.85em", marginTop: 8 }}>Pages: {b.total_pages}</div>}
+              </div>
+            </div>
+            <div style={{ marginTop: 12 }}>
+              <button style={styles.btn} onClick={() => onAddToLibrary && onAddToLibrary(b.id)}>Add to Library</button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div style={{ marginTop: 16, display: "flex", gap: 8, justifyContent: "center" }}>
+        {Array.from({ length: totalPages }).map((_, i) => (
+          <button key={i} onClick={() => changePage(i + 1)} style={{ padding: "6px 10px", background: page === i + 1 ? "#2b6cb0" : "#fff", color: page === i + 1 ? "#fff" : "#333", border: "1px solid #ddd", borderRadius: 6 }}>{i + 1}</button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function AddBook({ onAdded }) {
+  const [title, setTitle] = useState("");
+  const [author, setAuthor] = useState("");
+  const [pages, setPages] = useState("");
+
+  async function submit(e) {
+    e.preventDefault();
+    const r = await apiFetch("/books/", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify({ title, author, total_pages: pages ? Number(pages) : undefined }),
+    });
+    if (r.ok) {
+      setTitle(""); setAuthor(""); setPages("");
+      onAdded && onAdded();
+    } else {
+      alert("Failed adding book: " + (r.data?.detail || r.status));
+    }
+  }
+
+  return (
+    <form onSubmit={submit} style={{ marginTop: 20, maxWidth: 700 }}>
+      <h3>Add a Book</h3>
+      <div style={{ display: "grid", gap: 8 }}>
+        <input placeholder="Title" value={title} onChange={e => setTitle(e.target.value)} required style={styles.input} />
+        <input placeholder="Author" value={author} onChange={e => setAuthor(e.target.value)} style={styles.input} />
+        <input placeholder="Total pages (optional)" value={pages} onChange={e => setPages(e.target.value)} style={styles.input} />
+        <button style={styles.btn}>Add Book</button>
+      </div>
+    </form>
+  );
+}
+
+function UserLibrary({ items = [], onRefresh, setMsg }) {
+  // items expected shape: [{ id, user_id, book_id, status, current_page, book: { id, title, ... } }, ...]
+  if (!Array.isArray(items)) return <div>Loading...</div>;
+  if (items.length === 0) return <div>No books in your library yet.</div>;
+
+  return (
+    <div style={{ display: "grid", gap: 12 }}>
+      {items.map(u => {
+        const b = u.book || {}; // safe guard
+        return (
+          <div key={u.id} style={styles.card}>
+            <div style={{ display: "flex", gap: 12 }}>
+              {b.cover_url ? <img src={b.cover_url} alt={b.title} style={{ width: 80, height: 120, objectFit: "cover" }} /> : <div style={{ width: 80, height: 120, background: "#eee" }} />}
+              <div style={{ flex: 1 }}>
+                <h3 style={{ margin: "0 0 8px 0" }}>{b.title || "Unknown title"}</h3>
+                <div style={{ color: "#555" }}>{b.author || "Unknown author"}</div>
+                <div style={{ marginTop: 8, color: "#666" }}>Status: {u.status || "unknown"}</div>
+                <div style={{ color: "#666" }}>Page: {u.current_page ?? 0}</div>
+              </div>
+            </div>
+            <div style={{ marginTop: 12 }}>
+              <button style={styles.smallBtn} onClick={async () => {
+                // example: mark as finished
+                const r = await apiFetch(`/userbooks/${u.id}`, {
+                  method: "PUT",
+                  headers: { "Content-Type": "application/json", ...authHeaders() },
+                  body: JSON.stringify({ status: "finished", current_page: b.total_pages || u.current_page }),
+                });
+                if (r.ok) { setMsg("Updated"); onRefresh && onRefresh(); }
+                else setMsg("Failed update");
+              }}>Mark as Finished</button>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function Feed({ items = [] }) {
+  if (!items.length) return <div>No public notes yet.</div>;
+  return (
+    <div style={{ display: "grid", gap: 12 }}>
+      {items.map(n => (
+        <div key={n.id || Math.random()} style={styles.card}>
+          <div style={{ fontWeight: 600 }}>{n.user_name || n.user?.name || "Someone"}</div>
+          <div style={{ color: "#666", marginTop: 6 }}>{n.text}</div>
+          {n.emotion && <div style={{ marginTop: 8, color: "#2b6cb0" }}>Feeling: {n.emotion}</div>}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function FollowPanel({ onMessage }) {
+  const [email, setEmail] = useState("");
+  async function follow() {
+    if (!email) return;
+    const r = await apiFetch("/follow/", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify({ followed_email: email }),
+    });
+    if (r.ok) onMessage("Followed!");
+    else onMessage("Follow failed");
+    setEmail("");
+  }
+  return (
+    <div style={{ maxWidth: 600 }}>
+      <h3>Follow someone</h3>
+      <div style={{ display: "flex", gap: 8 }}>
+        <input placeholder="Enter their email" value={email} onChange={e => setEmail(e.target.value)} style={styles.input} />
+        <button style={styles.btn} onClick={follow}>Follow</button>
+      </div>
+    </div>
+  );
+}
+
+function AuthForm({ type = "login", onSuccess }) {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+
+  async function submit(e) {
+    e.preventDefault();
+    const path = type === "signup" ? "/auth/signup" : "/auth/login";
+    const r = await apiFetch(path, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password, name: (type === "signup") ? email.split("@")[0] : undefined }),
+    });
+    if (r.ok) {
+      // for login the response likely contains access_token
+      const token = r.data?.access_token || r.data?.token || r.data;
+      onSuccess && onSuccess(token, r.data?.user || null);
+    } else {
+      alert("Auth failed: " + (r.data?.detail || r.status));
+    }
+  }
+
+  return (
+    <form onSubmit={submit} style={{ maxWidth: 520 }}>
+      <h3 style={{ marginTop: 0 }}>{type === "signup" ? "Sign up" : "Login"}</h3>
+      <input placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} required style={styles.input} />
+      <input placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} required type="password" style={styles.input} />
+      <button style={styles.btn}>{type === "signup" ? "Sign up" : "Login"}</button>
+    </form>
+  );
+}
+
+function Profile({ setMsg }) {
+  const [profile, setProfile] = useState(null);
+  const [editing, setEditing] = useState(false);
+  const [name, setName] = useState("");
+  const [bio, setBio] = useState("");
+
+  useEffect(() => { load(); }, []);
+
+  async function load() {
+    const r = await apiFetch("/profile/me", { headers: { ...authHeaders() } });
+    if (r.ok) {
+      setProfile(r.data);
+      setName(r.data?.name || "");
+      setBio(r.data?.bio || "");
+    }
+  }
+
+  async function save(e) {
+    e.preventDefault();
+    const r = await apiFetch("/profile/me", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify({ name, bio }),
+    });
+    if (r.ok) { setProfile(r.data); setEditing(false); setMsg("Profile updated"); }
+    else setMsg("Update failed");
+  }
+
+  if (!profile) return <div>Loading profile...</div>;
+
+  return (
+    <div style={{ maxWidth: 800 }}>
+      <div style={styles.card}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div>
+            <h2 style={{ margin: 0 }}>{profile.name}</h2>
+            <div style={{ color: "#666" }}>{profile.email}</div>
+          </div>
+          <button style={styles.smallBtn} onClick={() => setEditing(!editing)}>{editing ? "Cancel" : "Edit"}</button>
+        </div>
+
+        {editing ? (
+          <form onSubmit={save} style={{ marginTop: 12 }}>
+            <input value={name} onChange={e => setName(e.target.value)} style={styles.input} />
+            <textarea value={bio} onChange={e => setBio(e.target.value)} style={styles.textarea} />
+            <button style={styles.btn}>Save</button>
+          </form>
+        ) : (
+          <div style={{ marginTop: 12 }}>
+            <p style={{ color: "#4a5568" }}>{profile.bio || <em>No bio yet</em>}</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ---------------- Helpers & Styles ---------------- */
+
+function truncateText(text = "", max = 100) {
+  if (text.length <= max) return text;
+  return text.slice(0, max - 1) + "…";
+}
+
+const styles = {
+  app: { fontFamily: "'Inter', system-ui, sans-serif", minHeight: "100vh", background: "#f7fafc" },
+  header: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 24px", background: "#fff", borderBottom: "1px solid #edf2f7" },
+  container: { display: "grid", gridTemplateColumns: "220px 1fr", gap: 24, padding: 24 },
+  main: { background: "transparent", padding: "0 8px" },
+  sidebar: { background: "#fff", border: "1px solid #edf2f7", padding: 16, borderRadius: 8, height: "fit-content" },
+  card: { background: "#fff", borderRadius: 10, padding: 16, boxShadow: "0 1px 2px rgba(0,0,0,0.03)", border: "1px solid #edf2f7" },
+  link: { marginLeft: 8, padding: "8px 10px", borderRadius: 6, background: "transparent", border: "none", cursor: "pointer" },
+  activeLink: { background: "#e6f2ff", color: "#1e3a8a" },
+  btn: { background: "#2b6cb0", color: "#fff", padding: "8px 12px", borderRadius: 8, border: "none", cursor: "pointer" },
+  smallBtn: { background: "#edf2f7", color: "#2b6cb0", padding: "6px 8px", borderRadius: 6, border: "none", cursor: "pointer" },
+  input: { padding: 8, borderRadius: 6, border: "1px solid #e2e8f0", width: "100%", boxSizing: "border-box" },
+  textarea: { padding: 8, borderRadius: 6, border: "1px solid #e2e8f0", width: "100%", minHeight: 100, boxSizing: "border-box" },
+  filterBtn: { padding: "6px 8px", border: "none", background: "#f1f5f9", borderRadius: 6, width: "100%", textAlign: "left", marginBottom: 6 },
+  alert: { background: "#e6fffa", color: "#065f46", padding: 10, borderRadius: 6, marginBottom: 12 }
+};
+
+export { BACKEND };
