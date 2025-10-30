@@ -4,8 +4,87 @@ from typing import Optional
 from sqlmodel import Session, select
 from ..deps import get_db, get_current_user
 from .. import crud, models
+from typing import List
+from ..models import UserBook, Book   # adjust import path if different
+from datetime import datetime
+from pydantic import BaseModel
+from app.models import UserBookProgress
+from app.database import get_db
+from sqlalchemy.orm import Session
+
 
 router = APIRouter(prefix="/userbooks", tags=["userbooks"])
+
+
+class UpdatePagePayload(BaseModel):
+    current_page: int
+
+
+@router.put("/{userbook_id}/progress")
+def update_progress(userbook_id: int, data: UserBookProgress, db: Session = Depends(get_db)):
+    userbook = db.get(UserBook, userbook_id)
+    if not userbook:
+        raise HTTPException(status_code=404, detail="UserBook not found")
+
+    # ✅ Update the current page
+    userbook.current_page = data.current_page or 0
+
+    # ✅ Fetch total pages if the book exists
+    book = db.get(Book, userbook.book_id) if userbook.book_id else None
+    total_pages = book.total_pages if book and book.total_pages else None
+
+    # ✅ Auto-update status based on current progress
+    if userbook.current_page <= 0:
+        userbook.status = "to-read"
+
+    elif total_pages:
+        if userbook.current_page >= total_pages:
+            userbook.current_page = total_pages
+            userbook.status = "finished"
+        else:
+            userbook.status = "reading"
+
+    else:
+        # If we don’t have total_pages but user started reading
+        userbook.status = "reading"
+
+    # ✅ Always update timestamp
+    userbook.updated_at = datetime.utcnow()
+
+    db.add(userbook)
+    db.commit()
+    db.refresh(userbook)
+
+    return userbook
+
+@router.post("/{userbook_id}/finish", status_code=200)
+def mark_userbook_finished(userbook_id: int, db: Session = Depends(get_db)):
+    """
+    Mark a user's book as finished.
+    If the Book has total_pages set, set userbook.current_page to total_pages.
+    Always set status='finished' and update updated_at.
+    """
+    ub = db.get(UserBook, userbook_id)
+    if not ub:
+        raise HTTPException(status_code=404, detail="UserBook not found")
+
+    # Try to fetch the book to read total_pages (may be None)
+    book = db.get(Book, ub.book_id) if ub.book_id else None
+    total_pages = getattr(book, "total_pages", None)
+
+    # If we know total pages, set current_page to that number
+    if total_pages:
+        ub.current_page = total_pages
+    # otherwise leave current_page as-is (or optionally set to 0 or keep current)
+
+    ub.status = "finished"
+    ub.updated_at = datetime.utcnow()
+
+    db.add(ub)
+    db.commit()
+    db.refresh(ub)
+
+    return {"ok": True, "userbook": ub}
 
 
 @router.post("/", status_code=status.HTTP_201_CREATED)
@@ -30,10 +109,36 @@ def add_userbook(payload: dict, db: Session = Depends(get_db), current_user: mod
     return {"status": "ok", "userbook": ub}
 
 
-@router.get("/", status_code=status.HTTP_200_OK)
-def list_userbooks(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    ubs = crud.get_userbooks_for_user(db, user_id=current_user.id)
-    return ubs
+@router.get("/", response_model=List[dict])
+def list_userbooks(db: Session = Depends(get_db), current_user = Depends(get_current_user)):
+    # fetch userbooks for current user
+    userbooks = db.exec(select(UserBook).where(UserBook.user_id == current_user.id)).all()
+
+    results = []
+    for ub in userbooks:
+        book = db.get(Book, ub.book_id)
+        results.append({
+            "id": ub.id,
+            "user_id": ub.user_id,
+            "book_id": ub.book_id,
+            "status": ub.status,
+            "current_page": ub.current_page,
+            "rating": ub.rating,
+            "private_notes": ub.private_notes,
+            "created_at": ub.created_at,
+            "updated_at": ub.updated_at,
+            # embed book details (or null)
+            "book": {
+                "id": book.id,
+                "title": book.title,
+                "author": book.author,
+                "description": book.description,
+                "total_pages": book.total_pages,
+                "cover_url": book.cover_url,
+                "pages_source": getattr(book, "pages_source", None)
+            } if book else None
+        })
+    return results
 
 
 @router.patch("/{userbook_id}", status_code=status.HTTP_200_OK)

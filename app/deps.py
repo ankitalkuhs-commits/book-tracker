@@ -10,14 +10,28 @@ from . import crud, auth
 bearer_scheme = HTTPBearer(auto_error=False)
 
 
-def get_db() -> Generator:
-    """
-    Provide a DB session dependency.
-    If database.get_session() is a generator (yields a session), forward it with 'yield from'.
-    This avoids incorrectly using 'with get_session() as session' when get_session is a generator.
-    """
+#def get_db() -> Generator:
+ #   """
+ #   Provide a DB session dependency.
+ #   If database.get_session() is a generator (yields a session), forward it with 'yield from'.
+ #   This avoids incorrectly using 'with get_session() as session' when get_session is a generator.
+ #   """
     # If get_session is a generator that yields a Session, this will yield the session correctly.
-    yield from get_session()
+#   yield from get_session()
+
+
+# app/deps.py
+from typing import Optional
+from .database import get_db  # <- import the generator
+
+# Example dependency using get_db (do NOT 'yield from' a contextmanager)
+def get_current_user(
+    db: Session = Depends(get_db),
+    token: str = Depends(...),  # whatever your auth dependency is
+) -> Optional[dict]:
+    # your logic to resolve token -> user
+    ...
+
 
 
 def _extract_token(credentials: Optional[HTTPAuthorizationCredentials]) -> Optional[str]:

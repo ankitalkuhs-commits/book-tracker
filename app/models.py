@@ -84,3 +84,10 @@ class Follow(SQLModel, table=True):
     follower_id: int = Field(foreign_key="user.id", index=True)
     followed_id: int = Field(foreign_key="user.id", index=True)
     created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+from typing import Optional
+from sqlmodel import SQLModel
+
+class UserBookProgress(SQLModel):
+    current_page : Optional[int] = 0
