@@ -9,16 +9,30 @@ def migrate_database():
     cursor = conn.cursor()
     
     try:
-        # Check if columns exist and add them if they don't
+        # Check if columns exist in 'book' table and add them if they don't
         cursor.execute("PRAGMA table_info(book)")
-        columns = {row[1] for row in cursor.fetchall()}
+        book_columns = {row[1] for row in cursor.fetchall()}
         
-        if 'total_pages' not in columns:
+        if 'total_pages' not in book_columns:
             cursor.execute("ALTER TABLE book ADD COLUMN total_pages INTEGER")
-        if 'publisher' not in columns:
+            print("✅ Added 'total_pages' to book table")
+        if 'publisher' not in book_columns:
             cursor.execute("ALTER TABLE book ADD COLUMN publisher VARCHAR")
-        if 'published_date' not in columns:
+            print("✅ Added 'publisher' to book table")
+        if 'published_date' not in book_columns:
             cursor.execute("ALTER TABLE book ADD COLUMN published_date VARCHAR")
+            print("✅ Added 'published_date' to book table")
+        
+        # Check if columns exist in 'note' table and add them if they don't
+        cursor.execute("PRAGMA table_info(note)")
+        note_columns = {row[1] for row in cursor.fetchall()}
+        
+        if 'page_number' not in note_columns:
+            cursor.execute("ALTER TABLE note ADD COLUMN page_number INTEGER")
+            print("✅ Added 'page_number' to note table")
+        if 'chapter' not in note_columns:
+            cursor.execute("ALTER TABLE note ADD COLUMN chapter VARCHAR")
+            print("✅ Added 'chapter' to note table")
         
         conn.commit()
         print("Database migration successful!")

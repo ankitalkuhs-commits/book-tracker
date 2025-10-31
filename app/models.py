@@ -7,6 +7,18 @@ This version matches your existing DB which uses `password_hash`.
 from typing import Optional, List
 from datetime import datetime
 from sqlmodel import Field, Relationship, SQLModel
+from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey
+from sqlalchemy.sql import func
+from .database import Base
+
+class Journal(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    entry_id: int = Field(foreign_key="userbook.id")   # Fixed: userbook not userbooks
+    user_id: int = Field(foreign_key="user.id")  # Fixed: user not users
+    timestamp: Optional[datetime] = Field(default=None)
+    feeling: Optional[str] = None
+    text: str
+
 
 
 class User(SQLModel, table=True):
@@ -70,6 +82,10 @@ class Note(SQLModel, table=True):
     user_id: int = Field(foreign_key="user.id", index=True)
     text: Optional[str] = None
     emotion: Optional[str] = None
+    page_number: Optional[int] = None  # New: track which page the note is about
+    chapter: Optional[str] = None  # New: track which chapter the note is about
+    image_url: Optional[str] = None  # New: store uploaded image URL
+    quote: Optional[str] = None  # New: store book quotes
     is_public: bool = Field(default=True)
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
@@ -83,6 +99,23 @@ class Follow(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     follower_id: int = Field(foreign_key="user.id", index=True)
     followed_id: int = Field(foreign_key="user.id", index=True)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class Like(SQLModel, table=True):
+    """Like on a note/post."""
+    id: Optional[int] = Field(default=None, primary_key=True)
+    note_id: int = Field(foreign_key="note.id", index=True)
+    user_id: int = Field(foreign_key="user.id", index=True)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class Comment(SQLModel, table=True):
+    """Comment on a note/post."""
+    id: Optional[int] = Field(default=None, primary_key=True)
+    note_id: int = Field(foreign_key="note.id", index=True)
+    user_id: int = Field(foreign_key="user.id", index=True)
+    text: str = Field(nullable=False)
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 

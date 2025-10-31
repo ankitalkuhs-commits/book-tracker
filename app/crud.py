@@ -96,8 +96,20 @@ def update_userbook(db: Session, userbook: models.UserBook, **fields) -> models.
 # -------- Notes helpers (posts) --------
 def create_note(db: Session, *, user_id: int, text: Optional[str] = None,
                 emotion: Optional[str] = None, userbook_id: Optional[int] = None,
-                is_public: bool = True) -> models.Note:
-    note = models.Note(user_id=user_id, text=text, emotion=emotion, userbook_id=userbook_id, is_public=is_public)
+                is_public: bool = True, page_number: Optional[int] = None,
+                chapter: Optional[str] = None, image_url: Optional[str] = None,
+                quote: Optional[str] = None) -> models.Note:
+    note = models.Note(
+        user_id=user_id,
+        text=text,
+        emotion=emotion,
+        userbook_id=userbook_id,
+        is_public=is_public,
+        page_number=page_number,
+        chapter=chapter,
+        image_url=image_url,
+        quote=quote
+    )
     db.add(note)
     db.commit()
     db.refresh(note)

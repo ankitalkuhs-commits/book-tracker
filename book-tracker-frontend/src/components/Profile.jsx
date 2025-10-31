@@ -22,32 +22,35 @@ export default function Profile({ setMsg }) {
 
   async function load() {
     setLoading(true);
-    const r = await apiFetch("/profile/me", { headers: { ...authHeaders() } });
-    setLoading(false);
-    if (r.ok) {
-      setProfile(r.data);
-      setName(r.data?.name || "");
-      setBio(r.data?.bio || "");
-    } else {
+    try {
+      const data = await apiFetch("/profile/me");
+      setProfile(data);
+      setName(data?.name || "");
+      setBio(data?.bio || "");
+    } catch (error) {
+      console.error('Error loading profile:', error);
       setMsg?.("Unable to load profile");
+    } finally {
+      setLoading(false);
     }
   }
 
   async function save(e) {
     e.preventDefault();
     setLoading(true);
-    const r = await apiFetch("/profile/me", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json", ...authHeaders() },
-      body: JSON.stringify({ name, bio }),
-    });
-    setLoading(false);
-    if (r.ok) {
-      setProfile(r.data);
+    try {
+      const data = await apiFetch("/profile/me", {
+        method: "PUT",
+        body: JSON.stringify({ name, bio }),
+      });
+      setProfile(data);
       setEditing(false);
       setMsg?.("Profile updated");
-    } else {
+    } catch (error) {
+      console.error('Error saving profile:', error);
       setMsg?.("Update failed");
+    } finally {
+      setLoading(false);
     }
   }
 

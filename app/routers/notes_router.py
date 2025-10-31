@@ -1,12 +1,22 @@
 # app/routers/notes_router.py
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from typing import Optional, List
 from pydantic import BaseModel
 from sqlmodel import Session
 from ..deps import get_db, get_current_user
 from .. import crud, models
+import os
+import uuid
+from pathlib import Path
 
 router = APIRouter(prefix="/notes", tags=["notes"])
+
+
+def format_timestamp(dt):
+    """Format datetime to ISO string with UTC timezone indicator"""
+    if dt:
+        return dt.isoformat() + 'Z'  # Add Z to indicate UTC
+    return None
 
 
 class NoteCreateSchema(BaseModel):
@@ -16,6 +26,10 @@ class NoteCreateSchema(BaseModel):
     """
     text: Optional[str] = None
     emotion: Optional[str] = None
+    page_number: Optional[int] = None  # New field
+    chapter: Optional[str] = None  # New field
+    image_url: Optional[str] = None  # New field for image URL
+    quote: Optional[str] = None  # New field for book quotes
     userbook_id: Optional[int] = None
     is_public: Optional[bool] = True
 
@@ -24,8 +38,15 @@ class NoteOutSchema(BaseModel):
     id: int
     text: Optional[str]
     emotion: Optional[str]
+    page_number: Optional[int] = None  # New field
+    chapter: Optional[str] = None  # New field
+    image_url: Optional[str] = None  # New field
+    quote: Optional[str] = None  # New field
     is_public: bool
     created_at: Optional[str]
+    likes_count: Optional[int] = 0  # New field
+    comments_count: Optional[int] = 0  # New field
+    user_has_liked: Optional[bool] = False  # New field
     user: Optional[dict] = None
     book: Optional[dict] = None
 
@@ -33,10 +54,46 @@ class NoteOutSchema(BaseModel):
         orm_mode = True
 
 
+@router.post("/upload-image", status_code=status.HTTP_201_CREATED)
+async def upload_image(
+    file: UploadFile = File(...),
+    current_user: models.User = Depends(get_current_user)
+):
+    """Upload an image for a note/post"""
+    # Validate file type
+    if not file.content_type.startswith('image/'):
+        raise HTTPException(status_code=400, detail="File must be an image")
+    
+    # Create uploads directory if it doesn't exist
+    uploads_dir = Path("uploads/notes")
+    uploads_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Generate unique filename
+    file_extension = os.path.splitext(file.filename)[1]
+    unique_filename = f"{uuid.uuid4()}{file_extension}"
+    file_path = uploads_dir / unique_filename
+    
+    # Save file
+    try:
+        contents = await file.read()
+        with open(file_path, "wb") as f:
+            f.write(contents)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to upload image: {str(e)}")
+    
+    # Return the URL path (relative to server)
+    image_url = f"/uploads/notes/{unique_filename}"
+    return {"image_url": image_url}
+
+
 @router.post("/", response_model=NoteOutSchema, status_code=status.HTTP_201_CREATED)
 def create_note(payload: NoteCreateSchema, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     text = payload.text
     emotion = payload.emotion
+    page_number = payload.page_number
+    chapter = payload.chapter
+    image_url = payload.image_url
+    quote = payload.quote
     userbook_id = payload.userbook_id
     is_public = payload.is_public if payload.is_public is not None else True
 
@@ -46,7 +103,18 @@ def create_note(payload: NoteCreateSchema, db: Session = Depends(get_db), curren
         if not ub or ub.user_id != current_user.id:
             raise HTTPException(status_code=400, detail="Invalid userbook_id")
 
-    note = crud.create_note(db, user_id=current_user.id, text=text, emotion=emotion, userbook_id=userbook_id, is_public=is_public)
+    note = crud.create_note(
+        db, 
+        user_id=current_user.id, 
+        text=text, 
+        emotion=emotion, 
+        userbook_id=userbook_id, 
+        is_public=is_public,
+        page_number=page_number,
+        chapter=chapter,
+        image_url=image_url,
+        quote=quote
+    )
 
     # Build response shape (include basic user and book info for convenience)
     book = note.userbook.book if note.userbook else None
@@ -55,8 +123,12 @@ def create_note(payload: NoteCreateSchema, db: Session = Depends(get_db), curren
         "id": note.id,
         "text": note.text,
         "emotion": note.emotion,
+        "page_number": note.page_number,
+        "chapter": note.chapter,
+        "image_url": note.image_url,
+        "quote": note.quote,
         "is_public": note.is_public,
-        "created_at": note.created_at.isoformat() if note.created_at else None,
+        "created_at": format_timestamp(note.created_at),
         "user": {"id": user.id, "name": user.name} if user else None,
         "book": {"id": book.id, "title": book.title, "author": book.author} if book else None
     }
@@ -64,18 +136,44 @@ def create_note(payload: NoteCreateSchema, db: Session = Depends(get_db), curren
 
 
 @router.get("/feed", status_code=status.HTTP_200_OK, response_model=List[NoteOutSchema])
-def get_feed(limit: int = 50, db: Session = Depends(get_db)):
+def get_feed(limit: int = 50, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    from sqlmodel import select, func
     notes = crud.get_notes_feed(db, limit=limit)
     result = []
     for n in notes:
         book = n.userbook.book if n.userbook else None
         user = n.user
+        
+        # Count likes
+        likes_count = db.exec(
+            select(func.count(models.Like.id)).where(models.Like.note_id == n.id)
+        ).one()
+        
+        # Count comments
+        comments_count = db.exec(
+            select(func.count(models.Comment.id)).where(models.Comment.note_id == n.id)
+        ).one()
+        
+        # Check if current user has liked
+        user_has_liked = db.exec(
+            select(models.Like)
+            .where(models.Like.note_id == n.id)
+            .where(models.Like.user_id == current_user.id)
+        ).first() is not None
+        
         result.append({
             "id": n.id,
             "text": n.text,
             "emotion": n.emotion,
+            "page_number": n.page_number,
+            "chapter": n.chapter,
+            "image_url": n.image_url,
+            "quote": n.quote,
             "is_public": n.is_public,
-            "created_at": n.created_at.isoformat() if n.created_at else None,
+            "created_at": format_timestamp(n.created_at),
+            "likes_count": likes_count,
+            "comments_count": comments_count,
+            "user_has_liked": user_has_liked,
             "user": {"id": user.id, "name": user.name} if user else None,
             "book": {"id": book.id, "title": book.title, "author": book.author} if book else None
         })
@@ -93,8 +191,52 @@ def get_my_notes(db: Session = Depends(get_db), current_user: models.User = Depe
             "id": n.id,
             "text": n.text,
             "emotion": n.emotion,
+            "page_number": n.page_number,
+            "chapter": n.chapter,
+            "image_url": n.image_url,
+            "quote": n.quote,
             "is_public": n.is_public,
-            "created_at": n.created_at.isoformat() if n.created_at else None,
+            "created_at": format_timestamp(n.created_at),
+            "user": {"id": user.id, "name": user.name} if user else None,
+            "book": {"id": book.id, "title": book.title, "author": book.author} if book else None
+        })
+    return out
+
+
+@router.get("/userbook/{userbook_id}", status_code=status.HTTP_200_OK, response_model=List[NoteOutSchema])
+def get_notes_for_userbook(
+    userbook_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """Get all notes for a specific book in the user's library"""
+    # Verify userbook belongs to current user
+    ub = crud.get_userbook(db, userbook_id=userbook_id)
+    if not ub or ub.user_id != current_user.id:
+        raise HTTPException(status_code=404, detail="UserBook not found")
+    
+    # Get notes for this userbook, ordered by created_at descending (newest first)
+    from sqlmodel import select
+    notes = db.exec(
+        select(models.Note)
+        .where(models.Note.userbook_id == userbook_id)
+        .order_by(models.Note.created_at.desc())
+    ).all()
+    
+    out = []
+    for n in notes:
+        book = n.userbook.book if n.userbook else None
+        user = n.user
+        out.append({
+            "id": n.id,
+            "text": n.text,
+            "emotion": n.emotion,
+            "page_number": n.page_number,
+            "chapter": n.chapter,
+            "image_url": n.image_url,
+            "quote": n.quote,
+            "is_public": n.is_public,
+            "created_at": format_timestamp(n.created_at),
             "user": {"id": user.id, "name": user.name} if user else None,
             "book": {"id": book.id, "title": book.title, "author": book.author} if book else None
         })

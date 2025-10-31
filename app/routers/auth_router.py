@@ -33,7 +33,7 @@ def signup(payload: SignupIn, db: Session = Depends(get_session)):
     if existing:
         raise HTTPException(status_code=400, detail="Email already registered")
     hashed = auth.hash_password(payload.password)
-    user = crud.create_user(db, payload.name, payload.email, hashed)
+    user = crud.create_user(db, name=payload.name, email=payload.email, password_hash=hashed)
     token = auth.create_access_token({"sub": user.email})
     return {"access_token": token, "user": {"id": user.id, "name": user.name, "email": user.email}}
 

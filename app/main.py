@@ -2,8 +2,10 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer
+from fastapi.staticfiles import StaticFiles
+from pathlib import Path
 from .database import init_db
-from .routers import auth_router, books_router, userbooks_router, notes_router, follow_router, profile_router
+from .routers import auth_router, books_router, userbooks_router, notes_router, follow_router, profile_router, googlebooks_router, likes_comments
 
 # ---------------------
 # Step 1: define FastAPI app with security scheme for Swagger
@@ -29,7 +31,18 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 # ---------------------
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "http://localhost:5173",
+        "http://localhost:5174",
+        "http://localhost:5175",
+        "http://localhost:5176",
+        "http://localhost:5177",
+        "http://127.0.0.1:5173",
+        "http://127.0.0.1:5174",
+        "http://127.0.0.1:5175",
+        "http://127.0.0.1:5176",
+        "http://127.0.0.1:5177",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -44,6 +57,16 @@ app.include_router(userbooks_router.router)
 app.include_router(notes_router.router)
 app.include_router(follow_router.router)
 app.include_router(profile_router.router)
+app.include_router(googlebooks_router.router)
+app.include_router(likes_comments.router)
+
+# ---------------------
+# Step 4.5: Mount static files for uploads
+# ---------------------
+# Create uploads directory if it doesn't exist
+uploads_path = Path("uploads")
+uploads_path.mkdir(exist_ok=True)
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 # ---------------------
 # Step 5: Initialize DB on startup

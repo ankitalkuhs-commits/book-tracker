@@ -1,11 +1,130 @@
 # app/routers/books_router.py
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import select, Session
-from app.models import Book
+from app.models import Book, UserBook, User
 from app.database import get_db
+from app.deps import get_current_user
 from datetime import datetime
+from pydantic import BaseModel
+from typing import Optional
 
 router = APIRouter(prefix="/books", tags=["Books"])
+
+
+class AddBookFromGooglePayload(BaseModel):
+    """Payload for adding a book from Google Books API"""
+    title: str
+    author: Optional[str] = None
+    isbn: Optional[str] = None
+    cover_url: Optional[str] = None
+    description: Optional[str] = None
+    total_pages: Optional[int] = None
+    publisher: Optional[str] = None
+    published_date: Optional[str] = None
+    status: str = "to-be-read"  # Default status when adding a book
+    current_page: int = 0
+
+
+# --- POST: Add book from Google Books to user's library ---
+@router.post("/add-to-library")
+def add_book_to_library(
+    payload: AddBookFromGooglePayload,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Add a book from Google Books API to the user's library.
+    - Checks if book exists in Book table by ISBN (avoids duplicates)
+    - Creates UserBook entry linking user to the book
+    - Returns error if book already in user's library
+    """
+    book = None
+    
+    # Step 1: Check if book already exists in Book table by ISBN
+    if payload.isbn:
+        book = db.exec(select(Book).where(Book.isbn == payload.isbn)).first()
+    
+    # Step 2: If book doesn't exist, create it
+    if not book:
+        book = Book(
+            title=payload.title,
+            author=payload.author or "Unknown Author",
+            isbn=payload.isbn,
+            cover_url=payload.cover_url,
+            description=payload.description,
+            total_pages=payload.total_pages,
+            publisher=payload.publisher,
+            published_date=payload.published_date,
+            created_at=datetime.utcnow(),
+        )
+        db.add(book)
+        db.commit()
+        db.refresh(book)
+    
+    # Step 3: Check if user already has this book in their library
+    existing_userbook = db.exec(
+        select(UserBook).where(
+            UserBook.user_id == current_user.id,
+            UserBook.book_id == book.id
+        )
+    ).first()
+    
+    if existing_userbook:
+        # Map status to tab name for user-friendly message
+        status_map = {
+            "to-be-read": "Want to Read",
+            "currently-reading": "Currently Reading",
+            "finished": "Finished"
+        }
+        tab_name = status_map.get(existing_userbook.status, existing_userbook.status)
+        
+        raise HTTPException(
+            status_code=400,
+            detail=f"This book is already in your library in the '{tab_name}' tab."
+        )
+    
+    # Step 4: Create UserBook entry
+    userbook = UserBook(
+        user_id=current_user.id,
+        book_id=book.id,
+        status=payload.status,
+        current_page=payload.current_page,
+        created_at=datetime.utcnow(),
+        updated_at=datetime.utcnow(),
+    )
+    db.add(userbook)
+    db.commit()
+    db.refresh(userbook)
+    
+    return {
+        "message": "Book added to your library successfully",
+        "book": {
+            "id": book.id,
+            "title": book.title,
+            "author": book.author,
+            "cover_url": book.cover_url,
+            "total_pages": book.total_pages,
+        },
+        "userbook": {
+            "id": userbook.id,
+            "status": userbook.status,
+            "current_page": userbook.current_page,
+        }
+    }
+
+
+class AddBookFromGooglePayload(BaseModel):
+    """Payload for adding a book from Google Books API"""
+    title: str
+    author: Optional[str] = None
+    isbn: Optional[str] = None
+    cover_url: Optional[str] = None
+    description: Optional[str] = None
+    total_pages: Optional[int] = None
+    publisher: Optional[str] = None
+    published_date: Optional[str] = None
+    status: str = "to-be-read"  # Default status when adding a book
+    current_page: int = 0
 
 
 # --- GET all books ---

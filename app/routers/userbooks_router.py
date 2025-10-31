@@ -35,18 +35,18 @@ def update_progress(userbook_id: int, data: UserBookProgress, db: Session = Depe
 
     # ✅ Auto-update status based on current progress
     if userbook.current_page <= 0:
-        userbook.status = "to-read"
+        userbook.status = "to-be-read"
 
     elif total_pages:
         if userbook.current_page >= total_pages:
             userbook.current_page = total_pages
             userbook.status = "finished"
         else:
-            userbook.status = "reading"
+            userbook.status = "currently-reading"
 
     else:
-        # If we don’t have total_pages but user started reading
-        userbook.status = "reading"
+        # If we don't have total_pages but user started reading
+        userbook.status = "currently-reading"
 
     # ✅ Always update timestamp
     userbook.updated_at = datetime.utcnow()
@@ -91,7 +91,7 @@ def mark_userbook_finished(userbook_id: int, db: Session = Depends(get_db)):
 def add_userbook(payload: dict, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     """
     Add a book to the current user's library.
-    Expected payload: { "book_id": int, "status": "reading"|"to-read"|"finished", "current_page": int (optional) }
+    Expected payload: { "book_id": int, "status": "currently-reading"|"to-be-read"|"finished", "current_page": int (optional) }
     """
     book_id = payload.get("book_id")
     if not book_id:
@@ -103,7 +103,7 @@ def add_userbook(payload: dict, db: Session = Depends(get_db), current_user: mod
         raise HTTPException(status_code=404, detail="Book not found")
 
     # create userbook
-    status_val = payload.get("status", "to-read")
+    status_val = payload.get("status", "to-be-read")
     current_page = payload.get("current_page")
     ub = crud.create_userbook(db, user_id=current_user.id, book_id=book_id, status=status_val, current_page=current_page)
     return {"status": "ok", "userbook": ub}

@@ -6,12 +6,18 @@ export default function Header({ user, onRoute, onLogout, route }) {
   const getLinkStyle = (rt) => ({ ...styles.link, ...(route === rt ? styles.activeLink : {}) });
   return (
     <header style={styles.header}>
-      <h1 style={{ cursor: "pointer", margin: 0 }} onClick={() => onRoute("books")}>BookPulse</h1>
+      <h1 style={{ cursor: "pointer", margin: 0 }} onClick={() => onRoute("home")}>BookPulse</h1>
       <nav>
+        {/* Main BookPulse Pages */}
+        <button style={getLinkStyle("home")} onClick={()=>onRoute("home")}>🏠 Home</button>
+        <button style={getLinkStyle("my-library")} onClick={()=>onRoute("my-library")}>📚 My Library</button>
+
+        {/* Legacy Pages (for testing) */}
         <button style={getLinkStyle("books")} onClick={() => onRoute("books")}>Books</button>
-        <button style={getLinkStyle("library")} onClick={() => onRoute("library")}>My Library</button>
+        <button style={getLinkStyle("library")} onClick={() => onRoute("library")}>Old Library</button>
         <button style={getLinkStyle("feed")} onClick={() => onRoute("feed")}>Feed</button>
         <button style={getLinkStyle("follow")} onClick={() => onRoute("follow")}>Follow</button>
+        
         {!localStorage.getItem("bt_token") ? (
           <>
             <button style={getLinkStyle("login")} onClick={() => onRoute("login")}>Login</button>

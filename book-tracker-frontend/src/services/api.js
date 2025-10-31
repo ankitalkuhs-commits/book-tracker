@@ -8,18 +8,32 @@ export function authHeaders() {
 
 export async function apiFetch(path, opts = {}) {
   const url = BACKEND + path;
+  
+  // Check if body is FormData - if so, don't set Content-Type (browser will set it with boundary)
+  const isFormData = opts.body instanceof FormData;
+  
   const merged = {
-    credentials: "same-origin",
-    headers: { ...opts.headers },
     ...opts,
+    headers: {
+      ...(isFormData ? {} : { "Content-Type": "application/json" }),
+      ...authHeaders(),
+      ...(opts.headers || {}),
+    },
   };
-  try {
-    const res = await fetch(url, merged);
-    const text = await res.text();
-    let data;
-    try { data = text ? JSON.parse(text) : null; } catch(e){ data = text; }
-    return { ok: res.ok, status: res.status, data };
-  } catch (err) {
-    return { ok: false, status: 0, err };
+  
+  const res = await fetch(url, merged);
+  const text = await res.text();
+  let data;
+  try { 
+    data = text ? JSON.parse(text) : null; 
+  } catch(e) { 
+    data = text; 
   }
+  
+  if (!res.ok) {
+    const errorMsg = (data && data.detail) || `HTTP ${res.status}: ${res.statusText}`;
+    throw new Error(errorMsg);
+  }
+  
+  return data;
 }

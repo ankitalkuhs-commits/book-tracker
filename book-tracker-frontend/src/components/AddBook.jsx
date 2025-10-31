@@ -51,12 +51,12 @@ export default function AddBook({ onAdded }) {
   }
 
   async function addBook(b) {
-    const r = await apiFetch("/books/", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", ...authHeaders() },
-      body: JSON.stringify(b),
-    });
-    if (r.ok) {
+    try {
+      await apiFetch("/books/", {
+        method: "POST",
+        body: JSON.stringify(b),
+      });
+      
       onAdded && onAdded();
       setQuery("");
       setResults([]);
@@ -68,7 +68,8 @@ export default function AddBook({ onAdded }) {
         isbn: "",
         description: "",
       });
-    } else {
+    } catch (error) {
+      console.error('Error adding book:', error);
       alert("Failed to add book");
     }
   }

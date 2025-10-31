@@ -51,27 +51,18 @@ export default function UserLibrary({ items = [], onRefresh, setMsg }) {
 
     setLoading(id, true);
     try {
-      const res = await apiFetch(`/userbooks/${id}/progress`, {
+      await apiFetch(`/userbooks/${id}/progress`, {
         method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          ...authHeaders(),
-        },
         body: JSON.stringify({ current_page: val }),
       });
 
-      if (res.ok) {
-        setMsg("Progress updated");
-        setEditing(null);
-        setPageInput("");
-        onRefresh && onRefresh();
-      } else {
-        setMsg("Failed to update");
-        console.error("Failed:", res);
-      }
-    } catch (err) {
-      console.error(err);
-      setMsg("Network error");
+      setMsg("Progress updated");
+      setEditing(null);
+      setPageInput("");
+      onRefresh && onRefresh();
+    } catch (error) {
+      console.error('Error updating progress:', error);
+      setMsg("Failed to update");
     } finally {
       setLoading(id, false);
     }
@@ -82,24 +73,15 @@ export default function UserLibrary({ items = [], onRefresh, setMsg }) {
     const id = u.id;
     setLoading(id, true);
     try {
-      const res = await apiFetch(`/userbooks/${id}/finish`, {
+      await apiFetch(`/userbooks/${id}/finish`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...authHeaders(),
-        },
       });
 
-      if (res.ok) {
-        setMsg("Marked as finished");
-        onRefresh && onRefresh();
-      } else {
-        setMsg("Failed to mark finished");
-        console.error("Failed:", res);
-      }
-    } catch (err) {
-      console.error(err);
-      setMsg("Network error");
+      setMsg("Marked as finished");
+      onRefresh && onRefresh();
+    } catch (error) {
+      console.error('Error marking as finished:', error);
+      setMsg("Failed to mark finished");
     } finally {
       setLoading(id, false);
     }

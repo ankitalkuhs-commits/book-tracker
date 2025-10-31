@@ -16,26 +16,38 @@ export default function AuthForm({ type = "login", onSuccess }) {
 
   async function submit(e) {
     e.preventDefault();
+    
+    // Validation for signup
+    if (type === "signup") {
+      if (password.length < 8) {
+        alert("Password must be at least 8 characters long");
+        return;
+      }
+      if (password.length > 128) {
+        alert("Password must be less than 128 characters");
+        return;
+      }
+    }
+    
     setBusy(true);
     const path = type === "signup" ? "/auth/signup" : "/auth/login";
     // For signup we send a name as well (simple default)
     const body = type === "signup" ? { email, password, name: email.split("@")[0] } : { email, password };
 
-    const r = await apiFetch(path, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-    setBusy(false);
+    try {
+      const data = await apiFetch(path, {
+        method: "POST",
+        body: JSON.stringify(body),
+      });
 
-    if (r.ok) {
       // common token shapes: { access_token: "...", token: "...", ...}
-      const token = r.data?.access_token || r.data?.token || r.data;
-      const user = r.data?.user || null;
+      const token = data?.access_token || data?.token || data;
+      const user = data?.user || null;
       onSuccess && onSuccess(token, user);
-    } else {
-      const msg = r.data?.detail || r.data || `Auth failed (${r.status})`;
-      alert(msg);
+    } catch (error) {
+      alert(error.message || `Auth failed`);
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -55,8 +67,15 @@ export default function AuthForm({ type = "login", onSuccess }) {
         onChange={(e) => setPassword(e.target.value)}
         required
         type="password"
+        minLength={type === "signup" ? 8 : undefined}
+        maxLength={type === "signup" ? 128 : undefined}
         style={styles.input}
       />
+      {type === "signup" && password.length > 0 && password.length < 8 && (
+        <div style={{ color: "red", fontSize: "0.875rem", marginTop: "-0.5rem", marginBottom: "0.5rem" }}>
+          Password must be at least 8 characters
+        </div>
+      )}
       <button style={styles.btn} disabled={busy}>
         {busy ? (type === "signup" ? "Signing up..." : "Logging in...") : (type === "signup" ? "Sign up" : "Login")}
       </button>

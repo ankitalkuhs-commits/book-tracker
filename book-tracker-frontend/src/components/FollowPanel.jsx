@@ -18,17 +18,19 @@ export default function FollowPanel({ onMessage }) {
       return;
     }
     setBusy(true);
-    const r = await apiFetch("/follow/", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", ...authHeaders() },
-      body: JSON.stringify({ followed_email: email }),
-    });
-    setBusy(false);
-    if (r.ok) {
+    try {
+      await apiFetch("/follow/", {
+        method: "POST",
+        body: JSON.stringify({ followed_email: email }),
+      });
+      
       onMessage?.("Followed!");
       setEmail("");
-    } else {
-      onMessage?.(r.data?.detail || "Follow failed");
+    } catch (error) {
+      console.error('Error following:', error);
+      onMessage?.(error.message || "Follow failed");
+    } finally {
+      setBusy(false);
     }
   }
 
