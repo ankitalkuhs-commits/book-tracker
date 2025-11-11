@@ -36,10 +36,13 @@ def hash_password(password: str) -> str:
     """
     Hash a password safely:
     1) pre-hash with SHA-256 (hex string, length 64)
-    2) bcrypt-hash that hex string via passlib
+    2) truncate to 72 bytes (bcrypt limit)
+    3) bcrypt-hash that hex string via passlib
     """
     pre_hashed = _sha256_hex(password)
-    return pwd_context.hash(pre_hashed)
+    # Truncate to 72 bytes to avoid bcrypt error on Python 3.13+
+    truncated = pre_hashed[:72]
+    return pwd_context.hash(truncated)
 
 
 def verify_password(plain: str, hashed: str) -> bool:
@@ -47,7 +50,9 @@ def verify_password(plain: str, hashed: str) -> bool:
     Verify a plain password against stored bcrypt-hash of SHA-256(plain).
     """
     pre_hashed = _sha256_hex(plain)
-    return pwd_context.verify(pre_hashed, hashed)
+    # Truncate to 72 bytes to match hash_password behavior
+    truncated = pre_hashed[:72]
+    return pwd_context.verify(truncated, hashed)
 
 
 # -----------------------
