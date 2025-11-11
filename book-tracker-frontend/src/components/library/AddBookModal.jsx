@@ -51,7 +51,7 @@ export default function AddBookModal({ isOpen, onClose, onBookAdded }) {
         publisher: book.publisher,
         published_date: book.published_date,
         status: selectedTab,
-        current_page: 0,
+        current_page: selectedTab === 'finished' ? (book.total_pages || 0) : 0,
         format: bookFormat,
         ownership_status: ownershipStatus,
         borrowed_from: ownershipStatus === 'borrowed' ? borrowedFrom : null,
