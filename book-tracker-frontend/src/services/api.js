@@ -26,7 +26,7 @@ export async function apiFetch(path, opts = {}) {
   let data;
   try { 
     data = text ? JSON.parse(text) : null; 
-  } catch(e) { 
+  } catch {
     data = text; 
   }
   

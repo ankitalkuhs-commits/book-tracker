@@ -21,8 +21,12 @@ class AddBookFromGooglePayload(BaseModel):
     total_pages: Optional[int] = None
     publisher: Optional[str] = None
     published_date: Optional[str] = None
-    status: str = "to-be-read"  # Default status when adding a book
+    status: str = "to-read"  # Default status when adding a book (reading|to-read|finished)
     current_page: int = 0
+    format: str = "hardcover"  # Book format (hardcover|paperback|ebook|kindle|pdf|audiobook)
+    ownership_status: str = "owned"  # Ownership status (owned|borrowed|loaned)
+    borrowed_from: Optional[str] = None  # Person's name if borrowed
+    loaned_to: Optional[str] = None  # Person's name if loaned
 
 
 # --- POST: Add book from Google Books to user's library ---
@@ -72,8 +76,8 @@ def add_book_to_library(
     if existing_userbook:
         # Map status to tab name for user-friendly message
         status_map = {
-            "to-be-read": "Want to Read",
-            "currently-reading": "Currently Reading",
+            "to-read": "Want to Read",
+            "reading": "Currently Reading",
             "finished": "Finished"
         }
         tab_name = status_map.get(existing_userbook.status, existing_userbook.status)
@@ -89,6 +93,10 @@ def add_book_to_library(
         book_id=book.id,
         status=payload.status,
         current_page=payload.current_page,
+        format=payload.format,
+        ownership_status=payload.ownership_status,
+        borrowed_from=payload.borrowed_from,
+        loaned_to=payload.loaned_to,
         created_at=datetime.utcnow(),
         updated_at=datetime.utcnow(),
     )
@@ -111,20 +119,6 @@ def add_book_to_library(
             "current_page": userbook.current_page,
         }
     }
-
-
-class AddBookFromGooglePayload(BaseModel):
-    """Payload for adding a book from Google Books API"""
-    title: str
-    author: Optional[str] = None
-    isbn: Optional[str] = None
-    cover_url: Optional[str] = None
-    description: Optional[str] = None
-    total_pages: Optional[int] = None
-    publisher: Optional[str] = None
-    published_date: Optional[str] = None
-    status: str = "to-be-read"  # Default status when adding a book
-    current_page: int = 0
 
 
 # --- GET all books ---

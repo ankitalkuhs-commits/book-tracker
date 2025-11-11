@@ -26,6 +26,7 @@ class User(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     # DB uses column name 'name' and 'email' already; keep them
     name: Optional[str] = None
+    username: Optional[str] = Field(default=None, index=True, unique=True)
     email: str = Field(index=True, nullable=False)
     # Use the same column name as existing DB:
     password_hash: str = Field(nullable=False)
@@ -66,6 +67,13 @@ class UserBook(SQLModel, table=True):
     current_page: Optional[int] = None
     rating: Optional[int] = None
     private_notes: Optional[str] = None
+    
+    # Book format and ownership fields
+    format: str = Field(default="hardcover")  # 'hardcover' | 'paperback' | 'ebook' | 'kindle' | 'pdf' | 'audiobook'
+    ownership_status: str = Field(default="owned")  # 'owned' | 'borrowed' | 'loaned'
+    borrowed_from: Optional[str] = None  # Person's name if borrowed
+    loaned_to: Optional[str] = None  # Person's name if loaned
+    
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: Optional[datetime] = None
 

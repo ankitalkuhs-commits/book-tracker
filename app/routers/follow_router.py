@@ -20,9 +20,22 @@ def follow_user(followed_id: int, db: Session = Depends(get_session), user = Dep
     ).first()
     if existing:
         raise HTTPException(status_code=400, detail="Already following")
+    
+    # Check if they follow you (for mutual status)
+    follows_you = db.exec(
+        select(models.Follow).where(
+            models.Follow.follower_id == followed_id,
+            models.Follow.followed_id == user.id
+        )
+    ).first()
+    
     follow = models.Follow(follower_id=user.id, followed_id=followed_id)
     db.add(follow); db.commit()
-    return {"detail": "followed"}
+    return {
+        "detail": "followed",
+        "is_following": True,
+        "is_mutual": follows_you is not None
+    }
 
 @router.delete("/{followed_id}")
 def unfollow_user(followed_id: int, db: Session = Depends(get_session), user = Depends(get_current_user)):
@@ -35,7 +48,10 @@ def unfollow_user(followed_id: int, db: Session = Depends(get_session), user = D
     if not follow:
         raise HTTPException(status_code=404, detail="Not following")
     db.delete(follow); db.commit()
-    return {"detail": "unfollowed"}
+    return {
+        "detail": "unfollowed",
+        "is_following": False
+    }
 
 @router.get("/following")
 def list_following(db: Session = Depends(get_session), user = Depends(get_current_user)):

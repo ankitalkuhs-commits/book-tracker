@@ -9,7 +9,7 @@
 import React, { useEffect, useState } from "react";
 import BookJournalModal from "../components/bookpulse/BookJournalModal";
 import WeeklyPulse from "../components/bookpulse/WeeklyPulse";
-import { apiFetch, authHeaders } from "../services/api";
+import { apiFetch } from "../services/api";
 
 export default function BPLibrary() {
   const [items, setItems] = useState([]);
@@ -21,7 +21,6 @@ export default function BPLibrary() {
 
   useEffect(() => {
     loadLibrary();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function loadLibrary() {
@@ -75,7 +74,7 @@ export default function BPLibrary() {
   async function markFinished(entry) {
     try {
       const payload = { status: "finished", current_page: entry.total_pages || entry.current_page };
-      const data = await apiFetch(`/userbooks/${entry.id}/`, {
+      await apiFetch(`/userbooks/${entry.id}/`, {
         method: "PATCH",
         body: JSON.stringify(payload),
       });

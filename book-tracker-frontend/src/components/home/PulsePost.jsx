@@ -4,7 +4,7 @@ import { BACKEND, apiFetch } from '../../services/api';
 
 export default function PulsePost({ post }) {
   const [likes, setLikes] = useState(post.likes_count || 0);
-  const [comments, setComments] = useState(post.comments_count || 0);
+  const [comments] = useState(post.comments_count || 0);
   const [liked, setLiked] = useState(post.user_has_liked || false);
   const [isLiking, setIsLiking] = useState(false);
 
@@ -97,144 +97,80 @@ export default function PulsePost({ post }) {
           {/* User header */}
           <div className="post-header">
             <span className="post-username">{post.user?.name || 'Anonymous'}</span>
-            <span style={{ color: '#9CA3AF' }}>felt</span>
+            <span className="post-meta">felt</span>
             {post.emotion && (
               <span
+                className="emotion-btn selected"
                 style={{
-                  padding: '0.25rem 0.75rem',
                   backgroundColor: emotionData.color,
                   color: emotionData.textColor,
-                  borderRadius: '12px',
-                  fontSize: '0.875rem',
-                  fontWeight: '500',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '0.25rem'
                 }}
               >
                 {emotionData.emoji} {post.emotion}
               </span>
             )}
-            <span style={{ color: '#9CA3AF' }}>reading</span>
+            <span className="post-meta">reading</span>
           </div>
 
           {/* Book info */}
           {post.userbook?.book && (
-            <div style={{ marginTop: '0.25rem', fontSize: '0.875rem', fontStyle: 'italic', color: '#6B7280' }}>
+            <div className="post-book-info">
               {post.userbook.book.title}
             </div>
           )}
 
           {/* Post text/quote */}
           {post.text && (
-            <div className="post-text" style={{ marginTop: '1rem' }}>
+            <div className="post-text">
               {post.text}
             </div>
           )}
 
           {/* Quote section */}
           {post.quote && (
-            <div style={{ 
-              marginTop: '1rem',
-              padding: '1rem 1.25rem',
-              background: 'linear-gradient(135deg, #F9FAFB 0%, #F3F4F6 100%)',
-              borderLeft: '4px solid #6366F1',
-              borderRadius: '8px',
-              position: 'relative'
-            }}>
-              <div style={{ 
-                position: 'absolute',
-                top: '-8px',
-                left: '12px',
-                fontSize: '2rem',
-                color: '#6366F1',
-                lineHeight: 1
-              }}>
-                "
-              </div>
-              <p style={{ 
-                margin: 0,
-                fontStyle: 'italic',
-                color: '#374151',
-                fontSize: '0.95rem',
-                lineHeight: '1.6',
-                paddingTop: '0.5rem'
-              }}>
+            <div className="post-quote">
+              <span className="post-quote-icon">"</span>
+              <p className="post-quote-text">
                 {post.quote}
               </p>
-              <div style={{ 
-                position: 'absolute',
-                bottom: '-8px',
-                right: '12px',
-                fontSize: '2rem',
-                color: '#6366F1',
-                lineHeight: 1
-              }}>
-                "
-              </div>
+              <span className="post-quote-icon" style={{ float: 'right' }}>"</span>
             </div>
           )}
 
           {/* Image if available */}
           {post.image_url && (
-            <div style={{ marginTop: '1rem', borderRadius: '8px', overflow: 'hidden' }}>
+            <div className="post-image">
               <img 
                 src={`${BACKEND}${post.image_url}`} 
-                alt="Post" 
-                style={{ width: '100%', maxHeight: '384px', objectFit: 'cover' }} 
+                alt="Post"
               />
             </div>
           )}
 
           {/* Actions (likes, comments) */}
-          <div style={{ 
-            marginTop: '1rem', 
-            paddingTop: '0.75rem',
-            borderTop: '1px solid #E5E7EB',
-            display: 'flex',
-            gap: '1.5rem',
-            alignItems: 'center'
-          }}>
+          <div className="post-actions">
             <button
               onClick={handleLike}
               disabled={isLiking}
+              className="post-action-button"
               style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-                background: 'none',
-                border: 'none',
-                cursor: isLiking ? 'wait' : 'pointer',
                 color: liked ? '#EF4444' : '#6B7280',
-                fontSize: '0.875rem',
-                padding: 0,
-                opacity: isLiking ? 0.5 : 1
+                opacity: isLiking ? 0.5 : 1,
+                cursor: isLiking ? 'wait' : 'pointer'
               }}
             >
-              <span style={{ fontSize: '1.25rem' }}>{liked ? '❤️' : '🤍'}</span>
+              <span className="post-action-icon">{liked ? '❤️' : '🤍'}</span>
               <span>{likes}</span>
             </button>
 
-            <button
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                color: '#6B7280',
-                fontSize: '0.875rem',
-                padding: 0
-              }}
-            >
-              <span style={{ fontSize: '1.25rem' }}>💬</span>
+            <button className="post-action-button">
+              <span className="post-action-icon">💬</span>
               <span>{comments}</span>
             </button>
           </div>
 
           {/* Timestamp */}
-          <div className="post-timestamp" style={{ marginTop: '0.75rem' }}>
+          <div className="post-timestamp">
             {formatTimestamp(post.created_at)}
           </div>
         </div>

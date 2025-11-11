@@ -1,130 +1,114 @@
 // HomeSidebar - Shows what friends are reading and community highlights
 import React, { useEffect, useState } from 'react';
+import UserSearchModal from './UserSearchModal';
+import { apiFetch } from '../../services/api';
 
 export default function HomeSidebar() {
   const [friendsReading, setFriendsReading] = useState([]);
   const [topBooks, setTopBooks] = useState([]);
   const [topReaders, setTopReaders] = useState([]);
+  const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
 
-  // Mock data for now - will integrate with API later
+  // Load friends feed from API
   useEffect(() => {
-    // Sample friends reading
-    setFriendsReading([
-      { user: 'Sarah', book: 'Project Hail Mary', author: 'Andy Weir', initial: 'S' },
-      { user: 'Marcus', book: 'The Invisible Life of Addie LaRue', author: 'V.E. Schwab', initial: 'M' },
-      { user: 'Emma', book: 'Tomorrow, and Tomorrow, and Tomorrow', author: 'Gabrielle Zevin', initial: 'E' },
-    ]);
-
-    // Sample top books with emotions and emojis
+    loadFriendsFeed();
+    // Keep mock data for community highlights
     setTopBooks([
       { title: 'The Song of Achilles', emoji: '😢', color: '#DDD6FE' },
       { title: 'Circe', emoji: '🌟', color: '#BBF7D0' },
       { title: 'Atomic Habits', emoji: '🌟', color: '#BBF7D0' },
     ]);
-
-    // Sample top readers
     setTopReaders([
       { username: '@marcoreads', initial: 'M' },
       { username: '@bookish_jane', initial: 'J' },
     ]);
   }, []);
 
+  const loadFriendsFeed = async () => {
+    try {
+      const data = await apiFetch('/notes/friends-feed?limit=5');
+      // Transform API data to match component format
+      const transformed = (data || []).map(post => ({
+        user: post.user?.name || post.user?.username || 'Unknown',
+        book: post.book?.title || 'Reading',
+        author: post.book?.author || '',
+        initial: (post.user?.name || post.user?.username || '?').charAt(0).toUpperCase(),
+        isMutual: post.user?.is_mutual || false
+      }));
+      setFriendsReading(transformed);
+    } catch (error) {
+      console.error('Error loading friends feed:', error);
+    }
+  };
+
   return (
     <div>
+      {/* User Search Modal */}
+      <UserSearchModal
+        isOpen={isSearchModalOpen}
+        onClose={() => setIsSearchModalOpen(false)}
+      />
+
       {/* What Friends Are Reading */}
       <div className="sidebar-widget">
-        <h3 className="widget-title" style={{ fontSize: '1.5rem', fontWeight: '700', color: '#1F2937' }}>
-          What Friends Are Reading
-        </h3>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', marginTop: '1.5rem' }}>
-          {friendsReading.map((item, idx) => (
-            <div key={idx} style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
-              {/* Avatar */}
-              <div style={{
-                width: '48px',
-                height: '48px',
-                backgroundColor: '#E5E7EB',
-                borderRadius: '50%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '1.25rem',
-                fontWeight: '600',
-                color: '#4B5563',
-                flexShrink: 0
-              }}>
-                {item.initial}
-              </div>
-              
-              {/* Content */}
-              <div style={{ flex: 1 }}>
-                <p style={{ fontSize: '0.875rem', color: '#4B5563', marginBottom: '0.25rem' }}>
-                  <span style={{ fontWeight: '600', color: '#1F2937' }}>{item.user}</span>
-                  {' '}is reading
-                </p>
-                <p style={{ fontSize: '1rem', fontWeight: '600', color: '#1F2937', fontStyle: 'italic', marginBottom: '0.25rem' }}>
-                  {item.book}
-                </p>
-                <p style={{ fontSize: '0.875rem', color: '#9CA3AF' }}>
-                  {item.author}
-                </p>
-              </div>
-            </div>
-          ))}
+        <div className="sidebar-header">
+          <h3 className="widget-title">What Friends Are Reading</h3>
+          <button onClick={() => setIsSearchModalOpen(true)} className="btn btn-primary">
+            <span>👥</span>
+            Find Friends
+          </button>
         </div>
+        
+        {friendsReading.length === 0 ? (
+          <div className="empty-state">
+            <p className="empty-state-title">No friends yet!</p>
+            <p className="empty-state-subtitle">Search and follow readers to see what they're reading</p>
+          </div>
+        ) : (
+          <div className="friend-list">
+            {friendsReading.map((item, idx) => (
+              <div key={idx} className="friend-item">
+                <div className={`friend-avatar ${item.isMutual ? 'mutual' : ''}`}>
+                  {item.initial}
+                </div>
+                
+                <div className="friend-content">
+                  <p className="friend-meta">
+                    <span className="friend-name">{item.user}</span>
+                    {item.isMutual && (
+                      <span className="badge badge-purple">Mutual</span>
+                    )}
+                    {' '}is reading
+                  </p>
+                  <p className="friend-book">{item.book}</p>
+                  {item.author && (
+                    <p className="friend-author">{item.author}</p>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Community Highlights */}
       <div className="sidebar-widget">
-        <h3 className="widget-title" style={{ fontSize: '1.5rem', fontWeight: '700', color: '#1F2937' }}>
-          Community Highlights
-        </h3>
+        <h3 className="widget-title">Community Highlights</h3>
 
         {/* Top Emotional Books */}
-        <div style={{ marginTop: '1.5rem' }}>
-          <h4 style={{ 
-            fontSize: '0.875rem', 
-            fontWeight: '600', 
-            color: '#1F2937',
-            marginBottom: '1rem',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem'
-          }}>
-            <span style={{ fontSize: '1.25rem' }}>🏆</span>
+        <div className="highlight-section">
+          <h4 className="highlight-header">
+            <span className="highlight-icon">🏆</span>
             Top Emotional Books
           </h4>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+          <div className="highlight-list">
             {topBooks.map((book, idx) => (
-              <div
-                key={idx}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  padding: '0.5rem',
-                  borderRadius: '6px',
-                  transition: 'background 0.2s'
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flex: 1 }}>
-                  <span style={{ fontSize: '0.875rem', fontWeight: '600', color: '#6B7280', minWidth: '24px' }}>
-                    {idx + 1}.
-                  </span>
-                  <span style={{ fontSize: '0.875rem', color: '#1F2937', fontStyle: 'italic' }}>
-                    {book.title}
-                  </span>
+              <div key={idx} className="highlight-item">
+                <div className="highlight-item-content">
+                  <span className="highlight-rank">{idx + 1}.</span>
+                  <span className="highlight-title">{book.title}</span>
                 </div>
-                <span
-                  style={{
-                    padding: '0.375rem 0.75rem',
-                    backgroundColor: book.color,
-                    borderRadius: '16px',
-                    fontSize: '1rem',
-                    flexShrink: 0,
-                    marginLeft: '0.5rem'
-                  }}
-                >
+                <span className="highlight-emoji" style={{ backgroundColor: book.color }}>
                   {book.emoji}
                 </span>
               </div>
@@ -133,51 +117,16 @@ export default function HomeSidebar() {
         </div>
 
         {/* Most Expressive Readers */}
-        <div style={{ marginTop: '2rem' }}>
-          <h4 style={{ 
-            fontSize: '0.875rem', 
-            fontWeight: '600', 
-            color: '#1F2937',
-            marginBottom: '1rem',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem'
-          }}>
-            <span style={{ fontSize: '1.25rem' }}>✨</span>
+        <div className="highlight-section section-gap">
+          <h4 className="highlight-header">
+            <span className="highlight-icon">✨</span>
             Most Expressive Readers
           </h4>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+          <div className="highlight-list">
             {topReaders.map((reader, idx) => (
-              <div
-                key={idx}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.75rem',
-                  padding: '0.5rem',
-                  borderRadius: '6px',
-                  transition: 'background 0.2s'
-                }}
-              >
-                {/* Avatar */}
-                <div style={{
-                  width: '40px',
-                  height: '40px',
-                  backgroundColor: '#E5E7EB',
-                  borderRadius: '50%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '1rem',
-                  fontWeight: '600',
-                  color: '#4B5563',
-                  flexShrink: 0
-                }}>
-                  {reader.initial}
-                </div>
-                <span style={{ fontSize: '0.875rem', color: '#1F2937', fontWeight: '500' }}>
-                  {reader.username}
-                </span>
+              <div key={idx} className="reader-item">
+                <div className="reader-avatar">{reader.initial}</div>
+                <span className="reader-username">{reader.username}</span>
               </div>
             ))}
           </div>

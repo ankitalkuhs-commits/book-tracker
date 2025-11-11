@@ -6,7 +6,11 @@ export default function AddBookModal({ isOpen, onClose, onBookAdded }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
-  const [selectedTab, setSelectedTab] = useState('to-be-read');
+  const [selectedTab, setSelectedTab] = useState('to-read');
+  const [bookFormat, setBookFormat] = useState('hardcover');
+  const [ownershipStatus, setOwnershipStatus] = useState('owned');
+  const [borrowedFrom, setBorrowedFrom] = useState('');
+  const [loanedTo, setLoanedTo] = useState('');
 
   const handleSearch = async () => {
     if (!searchQuery.trim() || searchQuery.length < 2) {
@@ -48,6 +52,10 @@ export default function AddBookModal({ isOpen, onClose, onBookAdded }) {
         published_date: book.published_date,
         status: selectedTab,
         current_page: 0,
+        format: bookFormat,
+        ownership_status: ownershipStatus,
+        borrowed_from: ownershipStatus === 'borrowed' ? borrowedFrom : null,
+        loaned_to: ownershipStatus === 'loaned' ? loanedTo : null,
       };
 
       const data = await apiFetch('/books/add-to-library', {
@@ -183,7 +191,7 @@ export default function AddBookModal({ isOpen, onClose, onBookAdded }) {
               Add to:
             </span>
             <button
-              onClick={() => setSelectedTab('currently-reading')}
+              onClick={() => setSelectedTab('reading')}
               style={{
                 padding: '0.5rem 1rem',
                 border: '1px solid #D1D5DB',
@@ -191,14 +199,14 @@ export default function AddBookModal({ isOpen, onClose, onBookAdded }) {
                 fontSize: '0.875rem',
                 fontWeight: '500',
                 cursor: 'pointer',
-                backgroundColor: selectedTab === 'currently-reading' ? '#3B82F6' : 'white',
-                color: selectedTab === 'currently-reading' ? 'white' : '#374151',
+                backgroundColor: selectedTab === 'reading' ? '#3B82F6' : 'white',
+                color: selectedTab === 'reading' ? 'white' : '#374151',
               }}
             >
               Currently Reading
             </button>
             <button
-              onClick={() => setSelectedTab('to-be-read')}
+              onClick={() => setSelectedTab('to-read')}
               style={{
                 padding: '0.5rem 1rem',
                 border: '1px solid #D1D5DB',
@@ -206,8 +214,8 @@ export default function AddBookModal({ isOpen, onClose, onBookAdded }) {
                 fontSize: '0.875rem',
                 fontWeight: '500',
                 cursor: 'pointer',
-                backgroundColor: selectedTab === 'to-be-read' ? '#3B82F6' : 'white',
-                color: selectedTab === 'to-be-read' ? 'white' : '#374151',
+                backgroundColor: selectedTab === 'to-read' ? '#3B82F6' : 'white',
+                color: selectedTab === 'to-read' ? 'white' : '#374151',
               }}
             >
               Want to Read
@@ -227,6 +235,109 @@ export default function AddBookModal({ isOpen, onClose, onBookAdded }) {
             >
               Finished
             </button>
+          </div>
+
+          {/* Format and Ownership Section */}
+          <div style={{ marginTop: '1rem' }}>
+            <div style={{ display: 'flex', gap: '1rem', marginBottom: '0.75rem' }}>
+              <div style={{ flex: 1 }}>
+                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', color: '#374151', marginBottom: '0.375rem' }}>
+                  Format
+                </label>
+                <select 
+                  value={bookFormat} 
+                  onChange={(e) => setBookFormat(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '0.5rem 0.75rem',
+                    border: '1px solid #D1D5DB',
+                    borderRadius: '6px',
+                    fontSize: '0.875rem',
+                    outline: 'none',
+                    cursor: 'pointer',
+                  }}
+                >
+                  <option value="hardcover">Hardcover</option>
+                  <option value="paperback">Paperback</option>
+                  <option value="ebook">eBook</option>
+                  <option value="kindle">Kindle</option>
+                  <option value="pdf">PDF</option>
+                  <option value="audiobook">Audiobook</option>
+                </select>
+              </div>
+
+              <div style={{ flex: 1 }}>
+                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', color: '#374151', marginBottom: '0.375rem' }}>
+                  Ownership
+                </label>
+                <select 
+                  value={ownershipStatus} 
+                  onChange={(e) => {
+                    setOwnershipStatus(e.target.value);
+                    setBorrowedFrom('');
+                    setLoanedTo('');
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '0.5rem 0.75rem',
+                    border: '1px solid #D1D5DB',
+                    borderRadius: '6px',
+                    fontSize: '0.875rem',
+                    outline: 'none',
+                    cursor: 'pointer',
+                  }}
+                >
+                  <option value="owned">Owned / In Library</option>
+                  <option value="borrowed">Borrowed</option>
+                  <option value="loaned">Loaned</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Conditional fields for borrowed/loaned */}
+            {ownershipStatus === 'borrowed' && (
+              <div style={{ marginBottom: '0.75rem' }}>
+                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', color: '#374151', marginBottom: '0.375rem' }}>
+                  Borrowed From
+                </label>
+                <input
+                  type="text"
+                  placeholder="Enter person's name"
+                  value={borrowedFrom}
+                  onChange={(e) => setBorrowedFrom(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '0.5rem 0.75rem',
+                    border: '1px solid #D1D5DB',
+                    borderRadius: '6px',
+                    fontSize: '0.875rem',
+                    outline: 'none',
+                  }}
+                />
+              </div>
+            )}
+
+            {ownershipStatus === 'loaned' && (
+              <div style={{ marginBottom: '0.75rem' }}>
+                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', color: '#374151', marginBottom: '0.375rem' }}>
+                  Loaned To
+                </label>
+                <input
+                  type="text"
+                  placeholder="Enter person's name"
+                  value={loanedTo}
+                  onChange={(e) => setLoanedTo(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '0.5rem 0.75rem',
+                    border: '1px solid #D1D5DB',
+                    borderRadius: '6px',
+                    fontSize: '0.875rem',
+                    outline: 'none',
+                  }}
+                />
+              </div>
+            )}
           </div>
         </div>
 

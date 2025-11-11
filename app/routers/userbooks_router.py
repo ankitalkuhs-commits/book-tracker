@@ -35,18 +35,18 @@ def update_progress(userbook_id: int, data: UserBookProgress, db: Session = Depe
 
     # ✅ Auto-update status based on current progress
     if userbook.current_page <= 0:
-        userbook.status = "to-be-read"
+        userbook.status = "to-read"
 
     elif total_pages:
         if userbook.current_page >= total_pages:
             userbook.current_page = total_pages
             userbook.status = "finished"
         else:
-            userbook.status = "currently-reading"
+            userbook.status = "reading"
 
     else:
         # If we don't have total_pages but user started reading
-        userbook.status = "currently-reading"
+        userbook.status = "reading"
 
     # ✅ Always update timestamp
     userbook.updated_at = datetime.utcnow()
@@ -91,7 +91,15 @@ def mark_userbook_finished(userbook_id: int, db: Session = Depends(get_db)):
 def add_userbook(payload: dict, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     """
     Add a book to the current user's library.
-    Expected payload: { "book_id": int, "status": "currently-reading"|"to-be-read"|"finished", "current_page": int (optional) }
+    Expected payload: { 
+        "book_id": int, 
+        "status": "reading"|"to-read"|"finished", 
+        "current_page": int (optional),
+        "format": "hardcover"|"paperback"|"ebook"|"kindle"|"pdf"|"audiobook" (optional, default: "hardcover"),
+        "ownership_status": "owned"|"borrowed"|"loaned" (optional, default: "owned"),
+        "borrowed_from": str (optional),
+        "loaned_to": str (optional)
+    }
     """
     book_id = payload.get("book_id")
     if not book_id:
@@ -102,10 +110,25 @@ def add_userbook(payload: dict, db: Session = Depends(get_db), current_user: mod
     if not book:
         raise HTTPException(status_code=404, detail="Book not found")
 
-    # create userbook
-    status_val = payload.get("status", "to-be-read")
+    # create userbook with new fields
+    status_val = payload.get("status", "to-read")
     current_page = payload.get("current_page")
-    ub = crud.create_userbook(db, user_id=current_user.id, book_id=book_id, status=status_val, current_page=current_page)
+    book_format = payload.get("format", "hardcover")
+    ownership_status = payload.get("ownership_status", "owned")
+    borrowed_from = payload.get("borrowed_from")
+    loaned_to = payload.get("loaned_to")
+    
+    ub = crud.create_userbook(
+        db, 
+        user_id=current_user.id, 
+        book_id=book_id, 
+        status=status_val, 
+        current_page=current_page,
+        format=book_format,
+        ownership_status=ownership_status,
+        borrowed_from=borrowed_from,
+        loaned_to=loaned_to
+    )
     return {"status": "ok", "userbook": ub}
 
 
@@ -125,6 +148,10 @@ def list_userbooks(db: Session = Depends(get_db), current_user = Depends(get_cur
             "current_page": ub.current_page,
             "rating": ub.rating,
             "private_notes": ub.private_notes,
+            "format": ub.format,
+            "ownership_status": ub.ownership_status,
+            "borrowed_from": ub.borrowed_from,
+            "loaned_to": ub.loaned_to,
             "created_at": ub.created_at,
             "updated_at": ub.updated_at,
             # embed book details (or null)
@@ -147,7 +174,7 @@ def patch_userbook(userbook_id: int, payload: dict, db: Session = Depends(get_db
     if not ub or ub.user_id != current_user.id:
         raise HTTPException(status_code=404, detail="UserBook not found")
 
-    allowed = {"status", "current_page", "rating", "private_notes"}
+    allowed = {"status", "current_page", "rating", "private_notes", "format", "ownership_status", "borrowed_from", "loaned_to"}
     update_fields = {k: v for k, v in payload.items() if k in allowed}
     if not update_fields:
         raise HTTPException(status_code=400, detail="No valid fields to update")

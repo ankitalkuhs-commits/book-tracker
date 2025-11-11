@@ -2,7 +2,7 @@
 import React from "react";
 import { styles } from "../styles";
 
-export default function Header({ user, onRoute, onLogout, route }) {
+export default function Header({ onRoute, onLogout, route }) {
   const getLinkStyle = (rt) => ({ ...styles.link, ...(route === rt ? styles.activeLink : {}) });
   return (
     <header style={styles.header}>

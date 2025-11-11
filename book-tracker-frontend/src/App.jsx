@@ -89,7 +89,7 @@ export default function App(){
 
   function logout(){ localStorage.removeItem("bt_token"); setUser(null); setRoute("home"); setMsg("Logged out"); }
 
-  const isModernPage = route === "home" || route === "my-library" || route === "profile";
+  const isModernPage = route === "home" || route === "my-library" || route === "profile" || route === "login" || route === "signup";
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -107,6 +107,18 @@ export default function App(){
           <Profile setMsg={setMsg} />
         </div>
       )}
+      {route==="signup" && (
+        <div style={{ maxWidth: '500px', margin: '4rem auto', padding: '2rem' }}>
+          {msg && <div style={{ padding: '1rem', marginBottom: '1rem', backgroundColor: '#e0f2fe', color: '#0369a1', borderRadius: '0.5rem' }}>{msg}</div>}
+          <AuthForm type="signup" onSuccess={(token,u)=>{ localStorage.setItem("bt_token", token); setUser(u||{}); setRoute("home"); setMsg("Signed up"); }} />
+        </div>
+      )}
+      {route==="login" && (
+        <div style={{ maxWidth: '500px', margin: '4rem auto', padding: '2rem' }}>
+          {msg && <div style={{ padding: '1rem', marginBottom: '1rem', backgroundColor: '#e0f2fe', color: '#0369a1', borderRadius: '0.5rem' }}>{msg}</div>}
+          <AuthForm type="login" onSuccess={(token,u)=>{ localStorage.setItem("bt_token", token); setUser(u||{}); setRoute("home"); setMsg("Logged in"); }} />
+        </div>
+      )}
       
       {/* Legacy routes with old layout */}
       {!isModernPage && (
@@ -114,8 +126,6 @@ export default function App(){
           <Sidebar route={route} />
           <main style={styles.main}>
             {msg && <div style={styles.alert}>{msg}</div>}
-            {route==="signup" && <AuthForm type="signup" onSuccess={(token,u)=>{ localStorage.setItem("bt_token", token); setUser(u||{}); setRoute("home"); setMsg("Signed up"); }} />}
-            {route==="login" && <AuthForm type="login" onSuccess={(token,u)=>{ localStorage.setItem("bt_token", token); setUser(u||{}); setRoute("home"); setMsg("Logged in"); }} />}
             
             {route==="books" && <>
               <h2>All Books</h2>

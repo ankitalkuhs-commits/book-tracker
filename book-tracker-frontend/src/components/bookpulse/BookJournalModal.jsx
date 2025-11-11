@@ -1,6 +1,6 @@
 // src/components/bookpulse/BookJournalModal.jsx
 import React, { useState } from "react";
-import { apiFetch, authHeaders } from "../../services/api";
+import { apiFetch } from "../../services/api";
 
 export default function BookJournalModal({ entry, onClose, onSave }) {
   const [feeling, setFeeling] = useState("");
@@ -40,107 +40,49 @@ export default function BookJournalModal({ entry, onClose, onSave }) {
   }
 
   return (
-    <div
-      style={{
-        position: "fixed",
-        inset: 0,
-        background: "rgba(0,0,0,0.35)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        zIndex: 50,
-      }}
-    >
-      <div
-        style={{
-          width: 560,
-          background: "white",
-          borderRadius: 8,
-          padding: 20,
-          boxShadow: "0 4px 10px rgba(0,0,0,0.1)",
-        }}
-      >
-        <h3 style={{ marginTop: 0, marginBottom: 10 }}>
-          Add note for — <span style={{ fontWeight: 600 }}>{entry.title}</span>
-        </h3>
+    <div className="modal-overlay">
+      <div className="modal-content" style={{ width: '560px' }}>
+        <div className="modal-header">
+          <h3 className="modal-title">
+            Add note for — <span style={{ fontWeight: 600 }}>{entry.title}</span>
+          </h3>
+        </div>
 
-        {error && (
-          <div
-            style={{
-              background: "#fee2e2",
-              color: "#b91c1c",
-              padding: "6px 10px",
-              borderRadius: 6,
-              marginBottom: 10,
-              fontSize: 13,
-            }}
-          >
-            {error}
+        <div className="modal-body">
+          {error && (
+            <div className="form-error">{error}</div>
+          )}
+
+          <div className="form-group">
+            <input
+              type="text"
+              placeholder="Feeling (optional)"
+              value={feeling}
+              onChange={(e) => setFeeling(e.target.value)}
+              className="form-input"
+            />
           </div>
-        )}
 
-        <input
-          type="text"
-          placeholder="Feeling (optional)"
-          value={feeling}
-          onChange={(e) => setFeeling(e.target.value)}
-          style={{
-            width: "100%",
-            padding: 8,
-            borderRadius: 6,
-            border: "1px solid #ddd",
-            marginBottom: 10,
-            fontSize: 14,
-          }}
-        />
+          <div className="form-group">
+            <textarea
+              rows="6"
+              placeholder="Add a timestamped note or journal..."
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              className="form-textarea"
+            />
+          </div>
+        </div>
 
-        <textarea
-          rows="6"
-          placeholder="Add a timestamped note or journal..."
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          style={{
-            width: "100%",
-            padding: 8,
-            borderRadius: 6,
-            border: "1px solid #ddd",
-            fontSize: 14,
-          }}
-        />
-
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "flex-end",
-            gap: 8,
-            marginTop: 14,
-          }}
-        >
-          <button
-            onClick={onClose}
-            disabled={loading}
-            style={{
-              padding: "8px 12px",
-              background: "#f3f4f6",
-              borderRadius: 6,
-              border: "none",
-              cursor: "pointer",
-            }}
-          >
+        <div className="modal-footer">
+          <button onClick={onClose} disabled={loading} className="btn btn-secondary">
             Cancel
           </button>
           <button
             onClick={handleSubmit}
             disabled={loading}
-            style={{
-              padding: "8px 12px",
-              background: "#2563eb",
-              color: "white",
-              borderRadius: 6,
-              border: "none",
-              cursor: "pointer",
-              opacity: loading ? 0.7 : 1,
-            }}
+            className="btn btn-primary"
+            style={{ opacity: loading ? 0.7 : 1 }}
           >
             {loading ? "Saving..." : "Save Note"}
           </button>

@@ -68,9 +68,7 @@ export default function CommunityPulseFeed() {
 
   return (
     <div>
-      <h2 style={{ fontSize: '1.875rem', fontWeight: '700', color: '#1F2937', marginBottom: '1.5rem' }}>
-        Community Pulse
-      </h2>
+      <h2 className="section-title">Community Pulse</h2>
       <div>
         {posts.map((post) => (
           <PulsePost key={post.id} post={post} />

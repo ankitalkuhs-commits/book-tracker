@@ -17,27 +17,27 @@ export default function WeeklyPulseChart() {
   const maxPages = Math.max(...weekData.map((d) => d.pages), 1);
 
   return (
-    <div className="bg-white rounded-lg shadow-md p-6">
-      <h3 className="text-lg font-semibold text-gray-800 mb-4">Your Weekly Pulse</h3>
+    <>
+      <h3 className="widget-title">Your Weekly Pulse</h3>
       
-      <div className="flex items-end justify-between space-x-2 h-48">
+      <div className="chart-container">
         {weekData.map((data, idx) => {
-          const height = (data.pages / maxPages) * 100;
+          const height = (data.pages / maxPages) * 160; // 160px max height
           return (
-            <div key={idx} className="flex-1 flex flex-col items-center">
+            <div key={idx} className="chart-bar-wrapper">
               {/* Bar */}
-              <div className="w-full flex flex-col justify-end h-40 mb-2">
+              <div className="chart-bar-container">
                 <div
-                  className="w-full bg-gradient-to-t from-blue-500 to-purple-600 rounded-t transition-all hover:shadow-lg"
-                  style={{ height: `${height}%`, minHeight: data.pages > 0 ? '8px' : '0' }}
+                  className="chart-bar"
+                  style={{ height: `${height}px` }}
                   title={`${data.pages} pages`}
                 ></div>
               </div>
               
               {/* Label */}
-              <div className="text-center">
-                <p className="text-xs font-semibold text-gray-600">{data.day}</p>
-                <p className="text-xs text-gray-400">{data.pages}p</p>
+              <div className="chart-label">
+                <p className="chart-day">{data.day}</p>
+                <p className="chart-value">{data.pages}p</p>
               </div>
             </div>
           );
@@ -45,14 +45,12 @@ export default function WeeklyPulseChart() {
       </div>
 
       {/* Summary */}
-      <div className="mt-6 pt-4 border-t border-gray-200 text-center">
-        <p className="text-sm text-gray-600">
-          Total this week:{' '}
-          <span className="font-bold text-blue-600">
-            {weekData.reduce((sum, d) => sum + d.pages, 0)} pages
-          </span>
-        </p>
+      <div className="chart-summary">
+        Total this week:{' '}
+        <span className="chart-summary-value">
+          {weekData.reduce((sum, d) => sum + d.pages, 0)} pages
+        </span>
       </div>
-    </div>
+    </>
   );
 }

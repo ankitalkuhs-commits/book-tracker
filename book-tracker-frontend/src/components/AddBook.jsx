@@ -1,6 +1,6 @@
 // src/components/AddBook.jsx
 import React, { useState } from "react";
-import { apiFetch, authHeaders } from "../services/api";
+import { apiFetch } from "../services/api";
 import { styles } from "../styles";
 
 const GOOGLE_BOOKS_URL = "https://www.googleapis.com/books/v1/volumes?q=";

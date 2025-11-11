@@ -1,6 +1,6 @@
 // src/components/Profile.jsx
 import React, { useEffect, useState } from "react";
-import { apiFetch, authHeaders } from "../services/api";
+import { apiFetch } from "../services/api";
 import { styles } from "../styles";
 
 /*

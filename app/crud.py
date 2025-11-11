@@ -54,7 +54,9 @@ def get_book(db: Session, book_id: int) -> Optional[models.Book]:
 
 
 # -------- UserBook helpers (user library) --------
-def create_userbook(db: Session, user_id: int, book_id: int, status: str, current_page: int = 0):
+def create_userbook(db: Session, user_id: int, book_id: int, status: str, current_page: int = 0,
+                   format: str = "hardcover", ownership_status: str = "owned",
+                   borrowed_from: Optional[str] = None, loaned_to: Optional[str] = None):
     """
     Create a new UserBook entry with both created_at and updated_at timestamps.
     Prevents SQLite NOT NULL constraint failure.
@@ -65,6 +67,10 @@ def create_userbook(db: Session, user_id: int, book_id: int, status: str, curren
         book_id=book_id,
         status=status,
         current_page=current_page,
+        format=format,
+        ownership_status=ownership_status,
+        borrowed_from=borrowed_from,
+        loaned_to=loaned_to,
         created_at=now,
         updated_at=now  # ✅ ensure updated_at is never NULL
     )

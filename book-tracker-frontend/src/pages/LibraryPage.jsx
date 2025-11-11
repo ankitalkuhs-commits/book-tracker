@@ -8,16 +8,19 @@ import BookDetailModal from '../components/library/BookDetailModal';
 import { apiFetch } from '../services/api';
 
 export default function LibraryPage() {
-  const [activeTab, setActiveTab] = useState('reading');
+  const [activeTab, setActiveTab] = useState('all');
   const [library, setLibrary] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAddBookModal, setShowAddBookModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedBook, setSelectedBook] = useState(null);
+  const [formatFilter, setFormatFilter] = useState('all');
+  const [ownershipFilter, setOwnershipFilter] = useState('all');
 
   const tabs = [
-    { id: 'reading', label: 'Currently Reading', status: 'currently-reading' },
-    { id: 'to-read', label: 'Want to Read', status: 'to-be-read' },
+    { id: 'all', label: 'All Books', status: null },
+    { id: 'reading', label: 'Currently Reading', status: 'reading' },
+    { id: 'to-read', label: 'Want to Read', status: 'to-read' },
     { id: 'finished', label: 'Finished', status: 'finished' },
   ];
 
@@ -28,6 +31,7 @@ export default function LibraryPage() {
       const token = localStorage.getItem('bt_token');
       if (!token) {
         alert('Please login to view your library');
+        setLoading(false);
         return;
       }
 
@@ -47,8 +51,22 @@ export default function LibraryPage() {
     loadLibrary();
   }, []);
 
-  // Filter books by active tab
-  const filteredBooks = library.filter((ub) => ub.status === tabs.find((t) => t.id === activeTab)?.status);
+  // Filter books by active tab, format, and ownership
+  const filteredBooks = library.filter((ub) => {
+    // Filter by status tab
+    if (activeTab !== 'all') {
+      const matchingTab = tabs.find((t) => t.id === activeTab);
+      if (ub.status !== matchingTab?.status) return false;
+    }
+    
+    // Filter by format
+    if (formatFilter !== 'all' && ub.format !== formatFilter) return false;
+    
+    // Filter by ownership
+    if (ownershipFilter !== 'all' && ub.ownership_status !== ownershipFilter) return false;
+    
+    return true;
+  });
 
   // Handle book added from AddBookModal
   const handleBookAdded = async (bookData) => {
@@ -58,7 +76,7 @@ export default function LibraryPage() {
   };
 
   // Handle opening book detail modal
-  const handleOpenDetail = (userbook, defaultTab = 'progress') => {
+  const handleOpenDetail = (userbook) => {
     setSelectedBook(userbook);
     setShowDetailModal(true);
   };
@@ -67,188 +85,191 @@ export default function LibraryPage() {
   const handleQuickAddNote = (userbook) => {
     setSelectedBook(userbook);
     setShowDetailModal(true);
-    // TODO: Set default tab to 'notes'
-  };
-
-  // Handle update progress
-  const handleUpdateProgress = async (userbookId, currentPage, percentage) => {
-    try {
-      const token = localStorage.getItem('bt_token');
-      if (!token) {
-        alert('Please login');
-        return;
-      }
-
-      const updatedUserbook = await apiFetch(`/userbooks/${userbookId}/progress`, {
-        method: 'PUT',
-        body: JSON.stringify({ current_page: currentPage }),
-      });
-      
-      // Update local state
-      setLibrary(library.map(ub => 
-        ub.id === userbookId ? { ...ub, ...updatedUserbook } : ub
-      ));
-      
-      setShowDetailModal(false);
-      alert('Progress updated successfully!');
-    } catch (error) {
-      console.error('Error updating progress:', error);
-      alert('Failed to update progress. Please try again.');
-    }
   };
 
   // Handle add note
   const handleAddNote = (bookId, note) => {
     console.log('Adding note:', bookId, note);
-    // TODO: Call API to add note
-    alert('Note added successfully!');
-  };
-
-  // Handle mark as finished
-  const handleMarkFinished = async (userbookId) => {
-    try {
-      const token = localStorage.getItem('bt_token');
-      if (!token) {
-        alert('Please login');
-        return;
-      }
-
-      const data = await apiFetch(`/userbooks/${userbookId}/finish`, {
-        method: 'POST',
-      });
-      
-      const updatedUserbook = data.userbook;
-      
-      // Update local state
-      setLibrary(library.map(ub => 
-        ub.id === userbookId ? { ...ub, ...updatedUserbook } : ub
-      ));
-      
-      setShowDetailModal(false);
-      alert('Book marked as finished!');
-    } catch (error) {
-      console.error('Error marking as finished:', error);
-      alert('Failed to mark as finished. Please try again.');
-    }
+    // Reload library after note is added to update any counts/stats
+    loadLibrary();
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 py-8">
+    <div className="page-container">
+      <div className="content-wrapper">
         {/* Page Header */}
-        <div className="mb-8 flex justify-between items-center">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-800 mb-2">My Library</h1>
-            <p className="text-gray-600">Track your reading journey and emotional connections</p>
-          </div>
+        <div style={{ marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h1 className="text-3xl font-bold text-gray-800">My Library</h1>
           <button
             onClick={() => setShowAddBookModal(true)}
-            style={{
-              padding: '0.75rem 1.5rem',
-              backgroundColor: '#3B82F6',
-              color: 'white',
-              border: 'none',
-              borderRadius: '8px',
-              fontSize: '1rem',
-              fontWeight: '600',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-              boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = '#2563EB';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = '#3B82F6';
-            }}
+            className="btn btn-primary"
           >
             + Add Book
           </button>
         </div>
 
-        {/* Tabs */}
-        <div className="bg-white rounded-lg shadow-md mb-6">
-          <div className="flex border-b border-gray-200">
-            {tabs.map((tab) => {
-              const count = library.filter((ub) => ub.status === tab.status).length;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`flex-1 px-6 py-4 text-sm font-semibold transition-colors ${
-                    activeTab === tab.id
-                      ? 'text-blue-600 border-b-2 border-blue-600'
-                      : 'text-gray-600 hover:text-gray-800'
-                  }`}
-                >
-                  {tab.label}
-                  <span className="ml-2 px-2 py-1 bg-gray-100 rounded-full text-xs">
-                    {count}
-                  </span>
-                </button>
-              );
-            })}
+        {/* Main Layout: Content + Sidebar */}
+        <div className="content-grid">
+          {/* Main Content Area */}
+          <div>
+            {/* Tabs */}
+            <div className="tabs-container">
+              <div className="tabs-header">
+                {tabs.map((tab) => {
+                  const count = tab.id === 'all' 
+                    ? library.length 
+                    : library.filter((ub) => ub.status === tab.status).length;
+                  return (
+                    <button
+                      key={tab.id}
+                      onClick={() => setActiveTab(tab.id)}
+                      className={`tab-button ${activeTab === tab.id ? 'active' : ''}`}
+                    >
+                      {tab.label}
+                      <span className="tab-count">{count}</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Filters */}
+              <div style={{ 
+                padding: '1rem 1.5rem', 
+                borderBottom: '1px solid #E5E7EB',
+                backgroundColor: '#F9FAFB',
+                display: 'flex',
+                gap: '1rem',
+                alignItems: 'center',
+                flexWrap: 'wrap'
+              }}>
+                <span style={{ fontSize: '0.875rem', fontWeight: '500', color: '#6B7280' }}>
+                  Filter by:
+                </span>
+                
+                <div style={{ display: 'flex', gap: '1rem', flex: 1, flexWrap: 'wrap' }}>
+                  <div style={{ minWidth: '150px' }}>
+                    <select 
+                      value={formatFilter} 
+                      onChange={(e) => setFormatFilter(e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: '0.5rem 0.75rem',
+                        border: '1px solid #D1D5DB',
+                        borderRadius: '6px',
+                        fontSize: '0.875rem',
+                        backgroundColor: 'white',
+                        cursor: 'pointer',
+                        outline: 'none',
+                      }}
+                    >
+                      <option value="all">All Formats</option>
+                      <option value="hardcover">Hardcover</option>
+                      <option value="paperback">Paperback</option>
+                      <option value="ebook">eBook</option>
+                      <option value="kindle">Kindle</option>
+                      <option value="pdf">PDF</option>
+                      <option value="audiobook">Audiobook</option>
+                    </select>
+                  </div>
+
+                  <div style={{ minWidth: '150px' }}>
+                    <select 
+                      value={ownershipFilter} 
+                      onChange={(e) => setOwnershipFilter(e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: '0.5rem 0.75rem',
+                        border: '1px solid #D1D5DB',
+                        borderRadius: '6px',
+                        fontSize: '0.875rem',
+                        backgroundColor: 'white',
+                        cursor: 'pointer',
+                        outline: 'none',
+                      }}
+                    >
+                      <option value="all">All Ownership</option>
+                      <option value="owned">Owned / In Library</option>
+                      <option value="borrowed">Borrowed</option>
+                      <option value="loaned">Loaned</option>
+                    </select>
+                  </div>
+
+                  {(formatFilter !== 'all' || ownershipFilter !== 'all') && (
+                    <button
+                      onClick={() => {
+                        setFormatFilter('all');
+                        setOwnershipFilter('all');
+                      }}
+                      style={{
+                        padding: '0.5rem 1rem',
+                        border: '1px solid #D1D5DB',
+                        borderRadius: '6px',
+                        fontSize: '0.875rem',
+                        backgroundColor: 'white',
+                        color: '#6B7280',
+                        cursor: 'pointer',
+                        fontWeight: '500',
+                      }}
+                    >
+                      Clear Filters
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Books List */}
+              <div className="p-6">
+                {loading ? (
+                  <div className="loading">
+                    <div className="spinner"></div>
+                    <p className="loading-text">Loading your library...</p>
+                  </div>
+                ) : filteredBooks.length === 0 ? (
+                  <div className="empty-state">
+                    <div className="empty-icon">📚</div>
+                    <h3 className="empty-title">No books in this category</h3>
+                    <p className="empty-text">
+                      {activeTab === 'all' && "Start building your library by adding books"}
+                      {activeTab === 'reading' && "Start reading a book to see it here"}
+                      {activeTab === 'to-read' && "Add books you want to read"}
+                      {activeTab === 'finished' && "Books you've completed will appear here"}
+                    </p>
+                    <button
+                      onClick={() => setShowAddBookModal(true)}
+                      className="btn btn-primary"
+                      style={{ marginTop: '1rem' }}
+                    >
+                      + Add Your First Book
+                    </button>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {filteredBooks.map((userbook) => (
+                      <BookCard 
+                        key={userbook.id} 
+                        userbook={userbook} 
+                        onOpenDetail={handleOpenDetail}
+                        onQuickAddNote={handleQuickAddNote}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
 
-          {/* Books List */}
-          <div className="p-6">
-            {loading ? (
-              <div className="text-center py-12">
-                <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
-                <p className="mt-4 text-gray-600">Loading your library...</p>
-              </div>
-            ) : filteredBooks.length === 0 ? (
-              <div className="text-center py-12">
-                <div className="text-6xl mb-4">📚</div>
-                <h3 className="text-xl font-semibold text-gray-700 mb-2">
-                  No books in this category
-                </h3>
-                <p className="text-gray-500 mb-4">
-                  {activeTab === 'reading' && "Start reading a book to see it here"}
-                  {activeTab === 'to-read' && "Add books you want to read"}
-                  {activeTab === 'finished' && "Books you've completed will appear here"}
-                </p>
-                <button
-                  onClick={() => setShowAddBookModal(true)}
-                  style={{
-                    padding: '0.75rem 1.5rem',
-                    backgroundColor: '#3B82F6',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '8px',
-                    fontSize: '0.875rem',
-                    fontWeight: '600',
-                    cursor: 'pointer',
-                  }}
-                >
-                  + Add Your First Book
-                </button>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {filteredBooks.map((userbook) => (
-                  <BookCard 
-                    key={userbook.id} 
-                    userbook={userbook} 
-                    onUpdate={loadLibrary}
-                    onOpenDetail={handleOpenDetail}
-                    onQuickAddNote={handleQuickAddNote}
-                  />
-                ))}
-              </div>
-            )}
+          {/* Sidebar */}
+          <div>
+            {/* Weekly Pulse Chart */}
+            <div className="sidebar-widget">
+              <WeeklyPulseChart />
+            </div>
+
+            {/* Reading Stats */}
+            <div className="sidebar-widget">
+              <ReadingStatsTable library={library} />
+            </div>
           </div>
-        </div>
-
-        {/* Stats Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Weekly Pulse Chart */}
-          <WeeklyPulseChart />
-
-          {/* Reading Stats */}
-          <ReadingStatsTable library={library} />
         </div>
       </div>
 
@@ -259,14 +280,17 @@ export default function LibraryPage() {
         onBookAdded={handleBookAdded}
       />
 
-      <BookDetailModal
-        isOpen={showDetailModal}
-        onClose={() => setShowDetailModal(false)}
-        book={selectedBook}
-        onUpdateProgress={handleUpdateProgress}
-        onAddNote={handleAddNote}
-        onMarkFinished={handleMarkFinished}
-      />
+      {showDetailModal && selectedBook && (
+        <BookDetailModal
+          book={selectedBook}
+          onClose={() => {
+            setShowDetailModal(false);
+            setSelectedBook(null);
+          }}
+          onUpdate={loadLibrary}
+          onAddNote={handleAddNote}
+        />
+      )}
     </div>
   );
 }

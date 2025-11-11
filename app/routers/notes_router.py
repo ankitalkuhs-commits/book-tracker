@@ -241,3 +241,101 @@ def get_notes_for_userbook(
             "book": {"id": book.id, "title": book.title, "author": book.author} if book else None
         })
     return out
+
+
+@router.get("/friends-feed", status_code=status.HTTP_200_OK, response_model=List[NoteOutSchema])
+def get_friends_feed(
+    limit: int = 50,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """
+    Get feed of posts from users you follow.
+    Prioritizes mutual follows (most active on top), then regular follows (most active on top).
+    """
+    from sqlmodel import select, func, and_
+    
+    # Get all users current user follows
+    following = db.exec(
+        select(models.Follow.followed_id)
+        .where(models.Follow.follower_id == current_user.id)
+    ).all()
+    
+    if not following:
+        return []
+    
+    following_ids = list(following)
+    
+    # Get mutual follows (users who follow you back)
+    mutual_followers = db.exec(
+        select(models.Follow.follower_id)
+        .where(
+            and_(
+                models.Follow.followed_id == current_user.id,
+                models.Follow.follower_id.in_(following_ids)
+            )
+        )
+    ).all()
+    mutual_ids = list(mutual_followers)
+    
+    # Get notes from followed users, public only
+    notes = db.exec(
+        select(models.Note).where(
+            and_(
+                models.Note.user_id.in_(following_ids),
+                models.Note.is_public == True
+            )
+        ).order_by(models.Note.created_at.desc()).limit(limit)
+    ).all()
+    
+    result = []
+    for n in notes:
+        book = n.userbook.book if n.userbook else None
+        user = n.user
+        
+        # Count likes
+        likes_count = db.exec(
+            select(func.count(models.Like.id)).where(models.Like.note_id == n.id)
+        ).one()
+        
+        # Count comments
+        comments_count = db.exec(
+            select(func.count(models.Comment.id)).where(models.Comment.note_id == n.id)
+        ).one()
+        
+        # Check if current user has liked
+        user_has_liked = db.exec(
+            select(models.Like)
+            .where(models.Like.note_id == n.id)
+            .where(models.Like.user_id == current_user.id)
+        ).first() is not None
+        
+        result.append({
+            "id": n.id,
+            "text": n.text,
+            "emotion": n.emotion,
+            "page_number": n.page_number,
+            "chapter": n.chapter,
+            "image_url": n.image_url,
+            "quote": n.quote,
+            "is_public": n.is_public,
+            "created_at": format_timestamp(n.created_at),
+            "likes_count": likes_count,
+            "comments_count": comments_count,
+            "user_has_liked": user_has_liked,
+            "user": {
+                "id": user.id,
+                "name": user.name,
+                "username": user.username,
+                "is_mutual": user.id in mutual_ids
+            } if user else None,
+            "book": {"id": book.id, "title": book.title, "author": book.author} if book else None
+        })
+    
+    # Sort: mutual follows' posts first, then by created_at descending
+    result.sort(key=lambda x: (
+        0 if x["user"] and x["user"].get("is_mutual") else 1,
+        x["created_at"]
+    ), reverse=True)
+    
+    return result

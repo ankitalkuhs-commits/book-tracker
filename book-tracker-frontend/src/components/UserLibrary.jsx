@@ -1,7 +1,7 @@
 // src/components/UserLibrary.jsx
 import React, { useState } from "react";
 import { styles } from "../styles";
-import { apiFetch, authHeaders } from "../services/api";
+import { apiFetch } from "../services/api";
 
 /**
  * UserLibrary component

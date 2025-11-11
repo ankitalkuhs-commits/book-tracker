@@ -45,39 +45,36 @@ export default function ReadingStatsTable({ library }) {
   ];
 
   return (
-    <div className="bg-white rounded-lg shadow-md p-6">
-      <h3 className="text-lg font-semibold text-gray-800 mb-4">Reading Stats</h3>
+    <>
+      <h3 className="widget-title">Reading Stats</h3>
       
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+      <div className="stats-grid">
         {statItems.map((item, idx) => (
-          <div
-            key={idx}
-            className="bg-gradient-to-br from-blue-50 to-purple-50 rounded-lg p-4 text-center hover:shadow-md transition-shadow"
-          >
-            <div className="text-3xl mb-2">{item.icon}</div>
-            <div className="text-2xl font-bold text-gray-800 mb-1">{item.value}</div>
-            <div className="text-xs text-gray-600 uppercase tracking-wide">{item.label}</div>
+          <div key={idx} className="stat-card">
+            <div className="stat-icon">{item.icon}</div>
+            <div className="stat-value">{item.value}</div>
+            <div className="stat-label">{item.label}</div>
           </div>
         ))}
       </div>
 
       {/* Additional insights */}
-      <div className="mt-6 pt-4 border-t border-gray-200">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-          <div className="flex items-center justify-between bg-gray-50 rounded p-3">
-            <span className="text-gray-600">Avg. Pages/Book</span>
-            <span className="font-semibold text-gray-800">
+      <div className="stats-insight">
+        <div className="insight-grid">
+          <div className="insight-item">
+            <span className="insight-label">Avg. Pages/Book</span>
+            <span className="insight-value">
               {stats.booksFinished > 0
                 ? Math.round(stats.pagesRead / stats.booksFinished)
                 : 0}
             </span>
           </div>
-          <div className="flex items-center justify-between bg-gray-50 rounded p-3">
-            <span className="text-gray-600">Reading Streak</span>
-            <span className="font-semibold text-gray-800">7 days 🔥</span>
+          <div className="insight-item">
+            <span className="insight-label">Reading Streak</span>
+            <span className="insight-value">7 days 🔥</span>
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }
