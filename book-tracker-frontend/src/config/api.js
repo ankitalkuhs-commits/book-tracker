@@ -1,7 +1,7 @@
 // API Configuration
 // Centralized API URL configuration to avoid hardcoding throughout the app
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
+const API_BASE_URL =import.meta.env.VITE_API_BASE_URL || 'https://book-tracker-backend-0hiz.onrender.com';
 
 export const API_ENDPOINTS = {
   // Auth

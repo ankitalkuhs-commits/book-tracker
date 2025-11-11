@@ -1,5 +1,6 @@
 // src/services/api.js
-export const BACKEND = "http://127.0.0.1:8000";
+// export const BACKEND = "http://127.0.0.1:8000";
+export const BACKEND =import.meta.env.VITE_API_BASE_URL || 'https://book-tracker-backend-0hiz.onrender.com';
 
 export function authHeaders() {
   const token = localStorage.getItem("bt_token");
