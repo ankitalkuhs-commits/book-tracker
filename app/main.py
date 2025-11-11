@@ -6,7 +6,7 @@ from fastapi.staticfiles import StaticFiles
 from pathlib import Path
 from .database import init_db
 from .routers import auth_router, books_router, userbooks_router, notes_router, follow_router, profile_router, googlebooks_router, likes_comments, users_router
-
+import os
 # ---------------------
 # Step 1: define FastAPI app with security scheme for Swagger
 # ---------------------
@@ -29,9 +29,14 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 # ---------------------
 # Step 3: Allow CORS (so frontends can talk to it)
 # ---------------------
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
+# Read comma-separated origins from env var (set this in Render)
+cors_env = os.getenv("CORS_ORIGINS", "")
+if cors_env:
+    # split by comma and strip whitespace
+    origins = [o.strip() for o in cors_env.split(",") if o.strip()]
+else:
+    # fallback during local dev
+    origins = [
         "http://localhost:5173",
         "http://localhost:5174",
         "http://localhost:5175",
@@ -42,7 +47,12 @@ app.add_middleware(
         "http://127.0.0.1:5175",
         "http://127.0.0.1:5176",
         "http://127.0.0.1:5177",
-    ],
+    ]
+
+app.add_middleware(
+    CORSMiddleware,
+    #allow_origins=origins,   # explicit list is safer than "*"
+    allow_origins=["*"], 
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
