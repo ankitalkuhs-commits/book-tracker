@@ -156,6 +156,11 @@ export default function BookDetailModal({ book, onClose, onUpdate, onAddNote }) 
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+        {/* Close Button - Top Right */}
+        <button onClick={onClose} className="modal-close-btn">
+          ×
+        </button>
+
         {/* Header */}
         <div className="book-detail-header">
           {/* Book Cover */}
@@ -164,10 +169,11 @@ export default function BookDetailModal({ book, onClose, onUpdate, onAddNote }) 
               <img
                 src={book.cover_url}
                 alt={book.title}
-                className="book-cover"
+                className="book-cover-detail"
+                style={{ width: '120px', height: 'auto', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}
               />
             ) : (
-              <div className="book-cover-placeholder">
+              <div className="book-cover-placeholder" style={{ width: '120px', height: '180px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#E5E7EB', borderRadius: '8px', fontSize: '3rem' }}>
                 📖
               </div>
             )}
@@ -193,11 +199,6 @@ export default function BookDetailModal({ book, onClose, onUpdate, onAddNote }) 
               </span>
             </div>
           </div>
-
-          {/* Close Button */}
-          <button onClick={onClose} className="close-btn">
-            ×
-          </button>
         </div>
 
         {/* Tabs */}

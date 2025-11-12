@@ -18,7 +18,7 @@ export default function LibraryPage() {
   const [ownershipFilter, setOwnershipFilter] = useState('all');
 
   const tabs = [
-    { id: 'all', label: 'All Books', status: null },
+    { id: 'all', label: 'All', status: null },
     { id: 'reading', label: 'Currently Reading', status: 'reading' },
     { id: 'to-read', label: 'Want to Read', status: 'to-read' },
     { id: 'finished', label: 'Finished', status: 'finished' },

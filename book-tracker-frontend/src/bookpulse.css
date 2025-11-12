@@ -2551,6 +2551,26 @@ body {
   margin-top: 1rem;
 }
 
+.modal-close-btn {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: none;
+  border: none;
+  font-size: 2rem;
+  cursor: pointer;
+  color: #6B7280;
+  padding: 0.25rem 0.5rem;
+  z-index: 10;
+  line-height: 1;
+  transition: all 0.2s;
+}
+
+.modal-close-btn:hover {
+  color: #374151;
+  transform: scale(1.1);
+}
+
 .close-btn {
   background: none;
   border: none;
