@@ -6,14 +6,28 @@ from sqlmodel import SQLModel, create_engine, Session
 # Path to your sqlite DB file (adjust if needed)
 BASE_DIR = os.path.dirname(os.path.dirname(__file__))  # points to project/app parent
 DB_PATH = os.path.join(BASE_DIR, "book_tracker.db")
-DATABASE_URL = f"sqlite:///{DB_PATH}"
 
-# create engine (check_same_thread=False important for SQLite + threaded dev server)
-engine = create_engine(
-    DATABASE_URL,
-    echo=True,  # helpful while debugging; set to False in production
-    connect_args={"check_same_thread": False},
+# Get DATABASE_URL from environment variable (for production) or use SQLite (for local dev)
+DATABASE_URL = os.getenv(
+    "DATABASE_URL",
+    f"sqlite:///{DB_PATH}"  # Default to SQLite for local development
 )
+
+
+# create engine
+# Only pass the sqlite-only connect_args when using SQLite.
+if DATABASE_URL.startswith("sqlite://"):
+    engine = create_engine(
+        DATABASE_URL,
+        echo=True,  # helpful while debugging; set to False in production
+        connect_args={"check_same_thread": False},
+    )
+else:
+    engine = create_engine(
+        DATABASE_URL,
+        echo=True,  # helpful while debugging; set to False in production
+    )
+
 
 # Provide a Base symbol for compatibility with modules that import `Base`
 # (some code expects `Base` like from SQLAlchemy declarative_base()).
