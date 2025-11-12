@@ -34,8 +34,8 @@ export default function ModernHeader({ user, onRoute, onLogout, route }) {
               onClick={() => onRoute(item.id)}
               className={`nav-button ${route === item.id ? 'active' : ''}`}
             >
-              <span>{item.icon}</span>
-              <span>{item.label}</span>
+              <span className="icon">{item.icon}</span>
+              <span className="label">{item.label}</span>
             </button>
           ))}
         </nav>

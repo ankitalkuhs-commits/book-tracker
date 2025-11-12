@@ -2081,12 +2081,13 @@ body {
     font-size: 0.875rem;
   }
 
-  .nav-button span {
+  .nav-button .label {
     display: none;
   }
 
   .nav-button .icon {
     display: block;
+    font-size: 1.25rem;
   }
 
   .user-avatar {
@@ -2400,6 +2401,73 @@ body {
   /* Ensure text inputs are readable */
   input, textarea, select {
     font-size: 16px !important; /* Prevents zoom on iOS */
+  }
+
+  /* Weekly Pulse Chart Mobile */
+  .chart-container {
+    padding: 0.75rem;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  .chart-bar-wrapper {
+    flex: 0 0 auto;
+    min-width: 40px;
+  }
+
+  .chart-bar-container {
+    height: 120px;
+  }
+
+  .chart-day, .chart-value {
+    font-size: 0.75rem;
+  }
+
+  .chart-summary {
+    font-size: 0.875rem;
+    padding: 0.75rem;
+  }
+
+  /* Library Page Specific */
+  .library-page {
+    padding-bottom: 1rem;
+  }
+
+  .library-section {
+    margin-bottom: 1rem;
+  }
+
+  .weekly-pulse-section {
+    padding: 1rem;
+  }
+
+  .weekly-pulse-title {
+    font-size: 1.25rem;
+    margin-bottom: 1rem;
+  }
+
+  /* Book Detail Enhancements */
+  .book-detail-content {
+    max-height: calc(90vh - 60px);
+    overflow-y: auto;
+  }
+
+  .book-cover-large {
+    max-width: 100%;
+    height: auto;
+  }
+
+  /* Stats Cards Mobile */
+  .stats-container {
+    padding: 0.75rem;
+  }
+
+  .stat-value {
+    font-size: 1.5rem;
+  }
+
+  .stat-label {
+    font-size: 0.75rem;
   }
 }
 
