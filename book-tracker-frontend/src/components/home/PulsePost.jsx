@@ -40,22 +40,6 @@ export default function PulsePost({ post }) {
       .slice(0, 2);
   };
 
-  // Get emotion emoji and badge color
-  const getEmotionDisplay = (emotion) => {
-    const emotions = {
-      Calm: { emoji: '😌', color: '#E0F2FE', textColor: '#0C4A6E' },
-      Moved: { emoji: '😢', color: '#DBEAFE', textColor: '#1E3A8A' },
-      Inspired: { emoji: '🌟', color: '#FEF3C7', textColor: '#78350F' },
-      Happy: { emoji: '😊', color: '#DCFCE7', textColor: '#14532D' },
-      Thoughtful: { emoji: '🤔', color: '#F3E8FF', textColor: '#581C87' },
-      Surprised: { emoji: '😮', color: '#FFE4E6', textColor: '#881337' },
-      Hope: { emoji: '💡', color: '#FEF3C7', textColor: '#78350F' },
-    };
-    return emotions[emotion] || { emoji: '📖', color: '#E5E7EB', textColor: '#374151' };
-  };
-
-  const emotionData = getEmotionDisplay(post.emotion);
-
   const handleLike = async () => {
     if (isLiking) return; // Prevent double-clicks
     
@@ -97,19 +81,7 @@ export default function PulsePost({ post }) {
           {/* User header */}
           <div className="post-header">
             <span className="post-username">{post.user?.name || 'Anonymous'}</span>
-            <span className="post-meta">felt</span>
-            {post.emotion && (
-              <span
-                className="emotion-btn selected"
-                style={{
-                  backgroundColor: emotionData.color,
-                  color: emotionData.textColor,
-                }}
-              >
-                {emotionData.emoji} {post.emotion}
-              </span>
-            )}
-            <span className="post-meta">reading</span>
+            <span className="post-meta">shared this</span>
           </div>
 
           {/* Book info */}
