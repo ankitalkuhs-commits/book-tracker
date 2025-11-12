@@ -180,3 +180,20 @@ def patch_userbook(userbook_id: int, payload: dict, db: Session = Depends(get_db
         raise HTTPException(status_code=400, detail="No valid fields to update")
     ub = crud.update_userbook(db, ub, **update_fields)
     return {"status": "ok", "userbook": ub}
+
+
+@router.delete("/{userbook_id}", status_code=status.HTTP_200_OK)
+def delete_userbook(userbook_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    """
+    Delete a book from the user's library.
+    This will also delete all associated notes for this userbook.
+    """
+    ub = crud.get_userbook(db, userbook_id=userbook_id)
+    if not ub or ub.user_id != current_user.id:
+        raise HTTPException(status_code=404, detail="UserBook not found")
+    
+    # Delete the userbook (cascading deletes should handle notes if configured)
+    db.delete(ub)
+    db.commit()
+    
+    return {"status": "ok", "message": "Book removed from library successfully"}
