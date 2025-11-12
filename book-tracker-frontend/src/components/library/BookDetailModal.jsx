@@ -42,9 +42,10 @@ export default function BookDetailModal({ book, onClose, onUpdate, onAddNote }) 
     fetchNotes();
   }, [book]);
 
-  const completionPercentage = book.total_pages
-    ? Math.round((currentPage / book.total_pages) * 100)
-    : 0;
+  // Show 100% if status is 'finished', otherwise calculate progress
+  const completionPercentage = book.status === 'finished'
+    ? 100
+    : (book.total_pages ? Math.round((currentPage / book.total_pages) * 100) : 0);
 
   const handleUpdateProgress = async () => {
     try {

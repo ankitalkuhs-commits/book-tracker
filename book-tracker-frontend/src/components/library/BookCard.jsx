@@ -19,7 +19,10 @@ export default function BookCard({ userbook, onOpenDetail, onQuickAddNote }) {
   const book = userbook.book || {};
   const totalPages = book.total_pages || 0;
   const currentPage = userbook.current_page || 0;
-  const progress = totalPages > 0 ? Math.round((currentPage / totalPages) * 100) : 0;
+  // Show 100% if status is 'finished', otherwise calculate progress
+  const progress = userbook.status === 'finished' 
+    ? 100 
+    : (totalPages > 0 ? Math.round((currentPage / totalPages) * 100) : 0);
   const [topEmotions, setTopEmotions] = useState([]);
 
   // Fetch top emotions from notes
