@@ -108,6 +108,7 @@ export default function BookDetailModal({ book, onClose, onUpdate, onAddNote }) 
         page_number: notePage ? parseInt(notePage) : null,
         chapter: noteChapter || null,
         emotion: selectedEmotion?.label || null,
+        is_public: false, // Notes are personal and should not be shared to community
       };
 
       const newNote = {
