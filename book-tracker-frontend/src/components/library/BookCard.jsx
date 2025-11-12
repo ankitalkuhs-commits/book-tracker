@@ -169,6 +169,8 @@ export default function BookCard({ userbook, onOpenDetail, onQuickAddNote, onDel
             {progress}%
           </div>
 
+        </div>
+      </div>
           {/* Quick Actions */}
           <div className="quick-actions">
             <button
@@ -191,15 +193,7 @@ export default function BookCard({ userbook, onOpenDetail, onQuickAddNote, onDel
               🗑️ Remove
             </button>
           </div>
-        </div>
-      </div>
-
-      {/* Book Info Footer */}
-      {totalPages > 0 && (
-        <div className="book-footer">
-          <span>{currentPage} of {totalPages} pages</span>
-        </div>
-      )}
+      
     </div>
   );
 }
