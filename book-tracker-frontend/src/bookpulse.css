@@ -2245,7 +2245,7 @@ body {
     width: 95%;
     max-width: 95vw;
     max-height: 90vh;
-    margin: 1rem auto;
+    margin: 0; /* Let overlay padding handle spacing */
     border-radius: 12px;
   }
 
@@ -2784,10 +2784,12 @@ body {
   /* Better modal behavior on mobile */
   .modal-overlay {
     -webkit-overflow-scrolling: touch;
+    padding: 0 0.75rem; /* Ensure equal left/right spacing */
   }
 
   .modal-content {
     animation: slideUp 0.3s ease-out;
+    margin: 1rem 0; /* Remove auto to let overlay padding handle centering */
   }
 
   @keyframes slideUp {
