@@ -157,6 +157,12 @@ export default function BookCard({ userbook, onOpenDetail, onQuickAddNote, onDel
             <h3 className="book-author">{book.author}</h3>
           </div>
           
+          {/* Book Info Footer */}
+          {totalPages > 0 && (
+          <div className="book-footer">
+              <span>{currentPage} of {totalPages} pages</span>
+            </div>
+          )}
 
           {/* Progress Circle */}
           <div className={`progress-circle ${getProgressClass()}`}>
