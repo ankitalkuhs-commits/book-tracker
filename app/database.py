@@ -60,6 +60,5 @@ def get_db() -> Generator[Session, None, None]:
     finally:
         session.close()
 
-# initialize DB immediately on import (optional but convenient during dev)
-# If you prefer to control initialization explicitly, you can remove this call.
-init_db()
+# Note: init_db() is called explicitly via create_tables.py during deployment
+# Not calling it here to avoid duplicate initialization and SSL connection issues
