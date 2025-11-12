@@ -169,8 +169,6 @@ export default function BookCard({ userbook, onOpenDetail, onQuickAddNote, onDel
             {progress}%
           </div>
 
-        </div>
-      </div>
           {/* Quick Actions */}
           <div className="quick-actions">
             <button
@@ -193,6 +191,9 @@ export default function BookCard({ userbook, onOpenDetail, onQuickAddNote, onDel
               🗑️ Remove
             </button>
           </div>
+        </div>
+      </div>
+
       
     </div>
   );
