@@ -80,11 +80,9 @@ uploads_path.mkdir(exist_ok=True)
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 # ---------------------
-# Step 5: Initialize DB on startup
+# Note: DB initialization is handled by create_tables.py during deployment
+# No need to call init_db() here to avoid SSL connection issues with multiple workers
 # ---------------------
-@app.on_event("startup")
-def on_startup():
-    init_db()
 
 @app.get("/")
 def root():
