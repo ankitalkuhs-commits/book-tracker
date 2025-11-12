@@ -16,6 +16,7 @@ export default function LibraryPage() {
   const [selectedBook, setSelectedBook] = useState(null);
   const [formatFilter, setFormatFilter] = useState('all');
   const [ownershipFilter, setOwnershipFilter] = useState('all');
+  const [searchQuery, setSearchQuery] = useState('');
 
   const tabs = [
     { id: 'all', label: 'All', status: null },
@@ -51,7 +52,7 @@ export default function LibraryPage() {
     loadLibrary();
   }, []);
 
-  // Filter books by active tab, format, and ownership
+  // Filter books by active tab, format, ownership, and search query
   const filteredBooks = library.filter((ub) => {
     // Filter by status tab
     if (activeTab !== 'all') {
@@ -64,6 +65,14 @@ export default function LibraryPage() {
     
     // Filter by ownership
     if (ownershipFilter !== 'all' && ub.ownership_status !== ownershipFilter) return false;
+    
+    // Filter by search query (title or author)
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      const title = ub.book?.title?.toLowerCase() || '';
+      const author = ub.book?.author?.toLowerCase() || '';
+      if (!title.includes(query) && !author.includes(query)) return false;
+    }
     
     return true;
   });
@@ -92,6 +101,12 @@ export default function LibraryPage() {
     console.log('Adding note:', bookId, note);
     // Reload library after note is added to update any counts/stats
     loadLibrary();
+  };
+
+  // Handle book deletion
+  const handleDeleteBook = (userbookId) => {
+    // Remove book from local state immediately for responsive UI
+    setLibrary(prevLibrary => prevLibrary.filter(ub => ub.id !== userbookId));
   };
 
   return (
@@ -130,6 +145,31 @@ export default function LibraryPage() {
                     </button>
                   );
                 })}
+              </div>
+
+              {/* Search Box */}
+              <div style={{ 
+                padding: '1rem 1.5rem', 
+                borderBottom: '1px solid #E5E7EB',
+                backgroundColor: 'white'
+              }}>
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="🔍 Search books by title or author..."
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem 1rem',
+                    border: '1px solid #D1D5DB',
+                    borderRadius: '8px',
+                    fontSize: '0.9375rem',
+                    outline: 'none',
+                    transition: 'border-color 0.2s',
+                  }}
+                  onFocus={(e) => e.target.style.borderColor = '#3B82F6'}
+                  onBlur={(e) => e.target.style.borderColor = '#D1D5DB'}
+                />
               </div>
 
               {/* Filters */}
@@ -250,6 +290,7 @@ export default function LibraryPage() {
                         userbook={userbook} 
                         onOpenDetail={handleOpenDetail}
                         onQuickAddNote={handleQuickAddNote}
+                        onDelete={handleDeleteBook}
                       />
                     ))}
                   </div>

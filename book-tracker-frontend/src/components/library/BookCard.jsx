@@ -15,7 +15,7 @@ const EMOTION_COLORS = {
   'Inspiration': { emoji: '✨', bg: '#FEF3C7', text: '#D97706' },
 };
 
-export default function BookCard({ userbook, onOpenDetail, onQuickAddNote }) {
+export default function BookCard({ userbook, onOpenDetail, onQuickAddNote, onDelete }) {
   const book = userbook.book || {};
   const totalPages = book.total_pages || 0;
   const currentPage = userbook.current_page || 0;
@@ -24,6 +24,7 @@ export default function BookCard({ userbook, onOpenDetail, onQuickAddNote }) {
     ? 100 
     : (totalPages > 0 ? Math.round((currentPage / totalPages) * 100) : 0);
   const [topEmotions, setTopEmotions] = useState([]);
+  const [notesCount, setNotesCount] = useState(0);
 
   // Fetch top emotions from notes
   useEffect(() => {
@@ -31,6 +32,9 @@ export default function BookCard({ userbook, onOpenDetail, onQuickAddNote }) {
       try {
         const notes = await apiFetch(`/notes/userbook/${userbook.id}`);
         if (notes && notes.length > 0) {
+          // Store notes count
+          setNotesCount(notes.length);
+          
           // Count emotions
           const emotionCounts = {};
           notes.forEach(note => {
@@ -72,6 +76,31 @@ export default function BookCard({ userbook, onOpenDetail, onQuickAddNote }) {
     e.stopPropagation(); // Prevent card click
     if (onOpenDetail) {
       onOpenDetail(userbook, 'progress'); // Open with progress tab active
+    }
+  };
+
+  const handleRemoveBook = async (e) => {
+    e.stopPropagation(); // Prevent card click
+    
+    const confirmDelete = window.confirm(
+      `Are you sure you want to remove "${book.title}" from your library? This action cannot be undone.`
+    );
+    
+    if (!confirmDelete) return;
+    
+    try {
+      await apiFetch(`/userbooks/${userbook.id}`, {
+        method: 'DELETE',
+      });
+      
+      if (onDelete) {
+        onDelete(userbook.id);
+      }
+      
+      alert('Book removed from library successfully!');
+    } catch (error) {
+      console.error('Error removing book:', error);
+      alert('Failed to remove book. Please try again.');
     }
   };
 
@@ -146,7 +175,14 @@ export default function BookCard({ userbook, onOpenDetail, onQuickAddNote }) {
               onClick={handleQuickAddNote}
               className="quick-action-btn purple"
             >
-              📝 Note
+              📝 Note {notesCount > 0 && <span className="note-badge">{notesCount}</span>}
+            </button>
+            <button
+              onClick={handleRemoveBook}
+              className="quick-action-btn red"
+              title="Remove book from library"
+            >
+              🗑️ Remove
             </button>
           </div>
         </div>
