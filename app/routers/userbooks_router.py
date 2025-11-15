@@ -110,6 +110,20 @@ def add_userbook(payload: dict, db: Session = Depends(get_db), current_user: mod
     if not book:
         raise HTTPException(status_code=404, detail="Book not found")
 
+    # Check if user already has this book in their library
+    existing_userbook = db.exec(
+        select(UserBook).where(
+            UserBook.user_id == current_user.id,
+            UserBook.book_id == book_id
+        )
+    ).first()
+    
+    if existing_userbook:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"You already have '{book.title}' in your library"
+        )
+
     # create userbook with new fields
     status_val = payload.get("status", "to-read")
     current_page = payload.get("current_page")
