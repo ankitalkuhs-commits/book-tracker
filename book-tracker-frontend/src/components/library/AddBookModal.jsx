@@ -11,8 +11,6 @@ export default function AddBookModal({ isOpen, onClose, onBookAdded }) {
   const [ownershipStatus, setOwnershipStatus] = useState('owned');
   const [borrowedFrom, setBorrowedFrom] = useState('');
   const [loanedTo, setLoanedTo] = useState('');
-  const [successMessage, setSuccessMessage] = useState('');
-  const [booksAdded, setBooksAdded] = useState([]);
 
   const handleSearch = async () => {
     if (!searchQuery.trim() || searchQuery.length < 2) {
@@ -65,46 +63,22 @@ export default function AddBookModal({ isOpen, onClose, onBookAdded }) {
         body: JSON.stringify(payload),
       });
 
-      // Track added books
-      setBooksAdded(prev => [...prev, data]);
-
-      // Show success message
-      setSuccessMessage(`✓ "${book.title}" added!`);
-      setTimeout(() => setSuccessMessage(''), 3000);
-
-      // Reset form for next book
+      // Success!
+      alert(`"${book.title}" has been added to your library!`);
+      
+      if (onBookAdded) {
+        onBookAdded(data);
+      }
+      
+      // Reset and close
       setSearchQuery('');
       setSearchResults([]);
-      setSelectedTab('to-read');
-      setBookFormat('hardcover');
-      setOwnershipStatus('owned');
-      setBorrowedFrom('');
-      setLoanedTo('');
+      onClose();
     } catch (error) {
       console.error('Error adding book:', error);
       // Show the error message from backend (e.g., "Book already in library")
       alert(error.message || 'Failed to add book. Please try again.');
     }
-  };
-
-  const handleClose = () => {
-    // Notify parent of all added books when closing
-    if (booksAdded.length > 0 && onBookAdded) {
-      booksAdded.forEach(book => onBookAdded(book));
-    }
-    
-    // Reset all state
-    setSearchQuery('');
-    setSearchResults([]);
-    setSelectedTab('to-read');
-    setBookFormat('hardcover');
-    setOwnershipStatus('owned');
-    setBorrowedFrom('');
-    setLoanedTo('');
-    setSuccessMessage('');
-    setBooksAdded([]);
-    
-    onClose();
   };
 
   const handleKeyPress = (e) => {
@@ -118,7 +92,7 @@ export default function AddBookModal({ isOpen, onClose, onBookAdded }) {
   return (
     <div 
       className="modal-overlay"
-      onClick={handleClose}
+      onClick={onClose}
       style={{
         position: 'fixed',
         top: 0,
@@ -159,7 +133,7 @@ export default function AddBookModal({ isOpen, onClose, onBookAdded }) {
             Add a Book
           </h2>
           <button
-            onClick={handleClose}
+            onClick={onClose}
             style={{
               background: 'none',
               border: 'none',
@@ -172,25 +146,6 @@ export default function AddBookModal({ isOpen, onClose, onBookAdded }) {
             ×
           </button>
         </div>
-
-        {/* Success Toast */}
-        {successMessage && (
-          <div style={{
-            margin: '1rem 1.5rem 0',
-            padding: '0.75rem 1rem',
-            backgroundColor: '#D1FAE5',
-            border: '1px solid #10B981',
-            borderRadius: '8px',
-            color: '#065F46',
-            fontSize: '0.875rem',
-            fontWeight: '500',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem',
-          }}>
-            {successMessage}
-          </div>
-        )}
 
         {/* Search Bar */}
         <div style={{ padding: '1.5rem', borderBottom: '1px solid #E5E7EB' }}>
