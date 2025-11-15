@@ -2221,6 +2221,14 @@ body {
     display: none;
   }
 
+  .tabs-container {
+    margin-left: 0;
+    margin-right: 0;
+    border-radius: 8px;
+    max-width: 100%;
+    overflow: hidden;
+  }
+
   .tabs-header {
     overflow-x: auto;
     overflow-y: hidden;
