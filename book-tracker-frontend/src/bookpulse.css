@@ -2237,6 +2237,8 @@ body {
     font-size: 0.875rem;
     white-space: nowrap;
     flex-shrink: 0; /* Prevent tabs from shrinking */
+    flex-grow: 0; /* Don't grow to fill space */
+    flex-basis: auto; /* Use natural width */
   }
 
   /* Book Grid */
