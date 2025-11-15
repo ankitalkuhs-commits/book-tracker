@@ -2221,10 +2221,22 @@ body {
     display: none;
   }
 
+  .tabs-header {
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none; /* Firefox */
+  }
+
+  .tabs-header::-webkit-scrollbar {
+    display: none; /* Chrome, Safari */
+  }
+
   .tab-button {
     padding: 0.75rem 1rem;
     font-size: 0.875rem;
     white-space: nowrap;
+    flex-shrink: 0; /* Prevent tabs from shrinking */
   }
 
   /* Book Grid */
