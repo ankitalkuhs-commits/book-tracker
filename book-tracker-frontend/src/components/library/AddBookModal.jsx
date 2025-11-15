@@ -238,14 +238,14 @@ export default function AddBookModal({ isOpen, onClose, onBookAdded }) {
           </div>
 
           {/* Tab Selector */}
-          <div style={{ marginTop: '1rem', display: 'flex', gap: '0.5rem' }}>
-            <span style={{ fontSize: '0.875rem', color: '#6B7280', marginRight: '0.5rem', lineHeight: '2rem' }}>
+          <div style={{ marginTop: '1rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+            <span style={{ fontSize: '0.875rem', color: '#6B7280', lineHeight: '2rem', flexShrink: 0 }}>
               Add to:
             </span>
             <button
               onClick={() => setSelectedTab('reading')}
               style={{
-                padding: '0.5rem 1rem',
+                padding: '0.5rem 0.75rem',
                 border: '1px solid #D1D5DB',
                 borderRadius: '6px',
                 fontSize: '0.875rem',
@@ -253,6 +253,7 @@ export default function AddBookModal({ isOpen, onClose, onBookAdded }) {
                 cursor: 'pointer',
                 backgroundColor: selectedTab === 'reading' ? '#3B82F6' : 'white',
                 color: selectedTab === 'reading' ? 'white' : '#374151',
+                whiteSpace: 'nowrap',
               }}
             >
               Currently Reading
@@ -260,7 +261,7 @@ export default function AddBookModal({ isOpen, onClose, onBookAdded }) {
             <button
               onClick={() => setSelectedTab('to-read')}
               style={{
-                padding: '0.5rem 1rem',
+                padding: '0.5rem 0.75rem',
                 border: '1px solid #D1D5DB',
                 borderRadius: '6px',
                 fontSize: '0.875rem',
@@ -268,6 +269,7 @@ export default function AddBookModal({ isOpen, onClose, onBookAdded }) {
                 cursor: 'pointer',
                 backgroundColor: selectedTab === 'to-read' ? '#3B82F6' : 'white',
                 color: selectedTab === 'to-read' ? 'white' : '#374151',
+                whiteSpace: 'nowrap',
               }}
             >
               Want to Read
@@ -275,7 +277,7 @@ export default function AddBookModal({ isOpen, onClose, onBookAdded }) {
             <button
               onClick={() => setSelectedTab('finished')}
               style={{
-                padding: '0.5rem 1rem',
+                padding: '0.5rem 0.75rem',
                 border: '1px solid #D1D5DB',
                 borderRadius: '6px',
                 fontSize: '0.875rem',
@@ -283,6 +285,7 @@ export default function AddBookModal({ isOpen, onClose, onBookAdded }) {
                 cursor: 'pointer',
                 backgroundColor: selectedTab === 'finished' ? '#3B82F6' : 'white',
                 color: selectedTab === 'finished' ? 'white' : '#374151',
+                whiteSpace: 'nowrap',
               }}
             >
               Finished
