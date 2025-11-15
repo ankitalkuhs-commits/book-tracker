@@ -14,25 +14,31 @@ const EMOTIONS = [
   { label: 'Inspiration', emoji: '✨', color: '#FEF3C7', textColor: '#D97706' },
 ];
 
-export default function BookDetailModal({ book, onClose, onUpdate, onAddNote }) {
+export default function BookDetailModal({ book: userbook, onClose, onUpdate, onAddNote }) {
+  // Extract book details from nested structure
+  const book = userbook?.book || {};
+  const userbookId = userbook?.id;
+  const userbookStatus = userbook?.status;
+  const userbookCurrentPage = userbook?.current_page || 0;
+  
   const [activeTab, setActiveTab] = useState('progress');
-  const [currentPage, setCurrentPage] = useState(book?.current_page || 0);
+  const [currentPage, setCurrentPage] = useState(userbookCurrentPage);
   const [noteText, setNoteText] = useState('');
   const [notePage, setNotePage] = useState('');
   const [noteChapter, setNoteChapter] = useState('');
   const [selectedEmotion, setSelectedEmotion] = useState(null);
   const [notes, setNotes] = useState([]);
-  const [bookFormat, setBookFormat] = useState(book?.format || 'hardcover');
-  const [ownershipStatus, setOwnershipStatus] = useState(book?.ownership_status || 'owned');
-  const [borrowedFrom, setBorrowedFrom] = useState(book?.borrowed_from || '');
-  const [loanedTo, setLoanedTo] = useState(book?.loaned_to || '');
+  const [bookFormat, setBookFormat] = useState(userbook?.format || 'hardcover');
+  const [ownershipStatus, setOwnershipStatus] = useState(userbook?.ownership_status || 'owned');
+  const [borrowedFrom, setBorrowedFrom] = useState(userbook?.borrowed_from || '');
+  const [loanedTo, setLoanedTo] = useState(userbook?.loaned_to || '');
 
   useEffect(() => {
-    if (!book) return;
+    if (!userbook) return;
     
     const fetchNotes = async () => {
       try {
-        const data = await apiFetch(`/notes/userbook/${book.id}`);
+        const data = await apiFetch(`/notes/userbook/${userbookId}`);
         setNotes(data);
       } catch (error) {
         console.error('Error fetching notes:', error);
@@ -40,23 +46,23 @@ export default function BookDetailModal({ book, onClose, onUpdate, onAddNote }) 
     };
 
     fetchNotes();
-  }, [book]);
+  }, [userbook, userbookId]);
 
   // Show 100% if status is 'finished', otherwise calculate progress
-  const completionPercentage = book.status === 'finished'
+  const completionPercentage = userbookStatus === 'finished'
     ? 100
     : (book.total_pages ? Math.round((currentPage / book.total_pages) * 100) : 0);
 
   const handleUpdateProgress = async () => {
     try {
       // Update progress
-      await apiFetch(`/userbooks/${book.id}/progress`, {
+      await apiFetch(`/userbooks/${userbookId}/progress`, {
         method: 'PUT',
         body: JSON.stringify({ current_page: currentPage }),
       });
 
       // Update format and ownership
-      await apiFetch(`/userbooks/${book.id}`, {
+      await apiFetch(`/userbooks/${userbookId}`, {
         method: 'PATCH',
         body: JSON.stringify({
           format: bookFormat,
@@ -79,7 +85,7 @@ export default function BookDetailModal({ book, onClose, onUpdate, onAddNote }) 
 
   const handleMarkAsFinished = async () => {
     try {
-      await apiFetch(`/userbooks/${book.id}/finish`, {
+      await apiFetch(`/userbooks/${userbookId}/finish`, {
         method: 'POST',
       });
 
@@ -103,7 +109,7 @@ export default function BookDetailModal({ book, onClose, onUpdate, onAddNote }) 
 
     try {
       const payload = {
-        userbook_id: book.id,
+        userbook_id: userbookId,
         text: noteText,
         page_number: notePage ? parseInt(notePage) : null,
         chapter: noteChapter || null,
@@ -152,7 +158,7 @@ export default function BookDetailModal({ book, onClose, onUpdate, onAddNote }) 
            d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
   };
 
-  if (!book) return null;
+  if (!userbook) return null;
 
   return (
     <div className="modal-overlay" onClick={onClose}>
