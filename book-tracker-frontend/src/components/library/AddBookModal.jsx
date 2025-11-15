@@ -549,7 +549,7 @@ export default function AddBookModal({ isOpen, onClose, onBookAdded }) {
                       e.currentTarget.style.backgroundColor = '#10B981';
                     }}
                   >
-                    + Add Book
+                    Add
                   </button>
                 </div>
               </div>
