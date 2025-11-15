@@ -107,21 +107,9 @@ export default function PostComposer({ user, onPostCreated }) {
     }
   };
 
-  const getInitials = () => {
-    if (!user?.name) return 'U';
-    return user.name
-      .split(' ')
-      .map((n) => n[0])
-      .join('')
-      .toUpperCase()
-      .slice(0, 2);
-  };
-
   return (
     <div className="card">
       <div className="post-composer">
-        <div className="post-avatar">{getInitials()}</div>
-
         <div className="flex-1">
           {/* Text Input */}
           <textarea
