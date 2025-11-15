@@ -168,33 +168,31 @@ export default function BookCard({ userbook, onOpenDetail, onQuickAddNote, onDel
           <div className={`progress-circle ${getProgressClass()}`}>
             {progress}%
           </div>
-
-          {/* Quick Actions */}
-          <div className="quick-actions">
-            <button
-              onClick={handleQuickUpdateProgress}
-              className="quick-action-btn blue"
-            >
-              📊 Update
-            </button>
-            <button
-              onClick={handleQuickAddNote}
-              className="quick-action-btn purple"
-            >
-              📝 Note {notesCount > 0 && <span className="note-badge">{notesCount}</span>}
-            </button>
-            <button
-              onClick={handleRemoveBook}
-              className="quick-action-btn red"
-              title="Remove book from library"
-            >
-              🗑️ Remove
-            </button>
-          </div>
         </div>
       </div>
 
-      
+      {/* Quick Actions - Outside book-details for left alignment */}
+      <div className="quick-actions">
+        <button
+          onClick={handleQuickUpdateProgress}
+          className="quick-action-btn blue"
+        >
+          📊 Update
+        </button>
+        <button
+          onClick={handleQuickAddNote}
+          className="quick-action-btn purple"
+        >
+          📝 Note {notesCount > 0 && <span className="note-badge">{notesCount}</span>}
+        </button>
+        <button
+          onClick={handleRemoveBook}
+          className="quick-action-btn red"
+          title="Remove book from library"
+        >
+          🗑️ Remove
+        </button>
+      </div>
     </div>
   );
 }

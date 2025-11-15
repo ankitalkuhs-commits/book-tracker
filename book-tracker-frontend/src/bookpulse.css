@@ -414,12 +414,7 @@ body {
   min-width: 0;
 }
 
-.book-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: start;
-  margin-bottom: 0.5rem;
-}
+/* Remove duplicate book-header - consolidated below in BookCard section */
 
 .book-title {
   font-size: 1.125rem;
@@ -1778,7 +1773,7 @@ body {
 
 .book-header {
   margin-bottom: 0.75rem;
-  padding-right: 6.5rem; /* Increased to accommodate 3 emotion badges */
+  padding-right: 3.5rem; /* Reduced to show more title text */
   width: 100%;
 }
 
@@ -1838,7 +1833,7 @@ body {
 }
 
 .quick-actions {
-  margin-top: auto;
+  margin-top: 0.75rem;
   display: flex;
   gap: 0.5rem;
 }
