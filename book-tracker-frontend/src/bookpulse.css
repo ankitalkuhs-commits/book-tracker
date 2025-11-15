@@ -1738,6 +1738,7 @@ body {
 .book-card-content {
   display: flex;
   gap: 1rem;
+  margin-bottom: 0.75rem;
 }
 
 .book-cover-wrapper {
@@ -1833,9 +1834,10 @@ body {
 }
 
 .quick-actions {
-  margin-top: 0.75rem;
+  margin-top: 0;
   display: flex;
   gap: 0.5rem;
+  width: 100%;
 }
 
 .book-footer {
