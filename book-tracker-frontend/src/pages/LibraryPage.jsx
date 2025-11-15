@@ -173,7 +173,7 @@ export default function LibraryPage() {
               </div>
 
               {/* Filters */}
-              <div style={{ 
+              <div className="library-filters-container" style={{ 
                 padding: '1rem 1.5rem', 
                 borderBottom: '1px solid #E5E7EB',
                 backgroundColor: '#F9FAFB',
@@ -187,7 +187,7 @@ export default function LibraryPage() {
                 </span>
                 
                 <div style={{ display: 'flex', gap: '1rem', flex: 1, flexWrap: 'wrap' }}>
-                  <div style={{ minWidth: '150px' }}>
+                  <div className="filter-dropdown-wrapper" style={{ minWidth: '150px' }}>
                     <select 
                       value={formatFilter} 
                       onChange={(e) => setFormatFilter(e.target.value)}
@@ -212,7 +212,7 @@ export default function LibraryPage() {
                     </select>
                   </div>
 
-                  <div style={{ minWidth: '150px' }}>
+                  <div className="filter-dropdown-wrapper" style={{ minWidth: '150px' }}>
                     <select 
                       value={ownershipFilter} 
                       onChange={(e) => setOwnershipFilter(e.target.value)}
