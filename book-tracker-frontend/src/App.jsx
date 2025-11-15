@@ -1,5 +1,6 @@
 // src/App.jsx
 import React, { useEffect, useState } from "react";
+import { GoogleOAuthProvider } from '@react-oauth/google';
 import Header from "./components/Header";
 import ModernHeader from "./components/shared/ModernHeader";
 import Sidebar from "./components/Sidebar";
@@ -17,8 +18,10 @@ import BPLibrary from "./pages/BPLibrary";
 import HomePage from "./pages/HomePage";
 import LibraryPage from "./pages/LibraryPage";
 
+// TODO: Replace with your actual Google OAuth Client ID from Google Cloud Console
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || "YOUR_GOOGLE_CLIENT_ID_HERE";
 
-export default function App(){
+function AppContent(){
   const [route,setRoute] = useState("home");  // Changed default from "books" to "home"
   const [user,setUser] = useState(null);
   const [books,setBooks] = useState([]);
@@ -154,5 +157,13 @@ export default function App(){
         </div>
       )}
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
+      <AppContent />
+    </GoogleOAuthProvider>
   );
 }
