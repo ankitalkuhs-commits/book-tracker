@@ -2354,8 +2354,9 @@ body {
 
   /* Book Detail Modal */
   .book-detail-header {
-    flex-direction: column;
+    flex-direction: row;
     padding: 1rem;
+    gap: 1rem;
   }
 
   .book-info-title {
