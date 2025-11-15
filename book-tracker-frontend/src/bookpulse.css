@@ -2246,10 +2246,11 @@ body {
   }
 
   .tabs-header {
-    overflow-x: auto;
-    overflow-y: hidden;
+    overflow-x: visible; /* Allow all tabs to be visible */
+    overflow-y: visible;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none; /* Firefox */
+    flex-wrap: wrap; /* Allow tabs to wrap to next line */
   }
 
   .tabs-header::-webkit-scrollbar {
@@ -2257,12 +2258,15 @@ body {
   }
 
   .tab-button {
-    padding: 0.75rem 1rem;
-    font-size: 0.875rem;
-    white-space: nowrap;
-    flex-shrink: 0; /* Prevent tabs from shrinking */
-    flex-grow: 0; /* Don't grow to fill space */
-    flex-basis: auto; /* Use natural width */
+    padding: 0.5rem 0.75rem;
+    font-size: 0.8125rem;
+    white-space: normal; /* Allow text to wrap */
+    flex-shrink: 1; /* Allow tabs to shrink if needed */
+    flex-grow: 1; /* Allow tabs to grow to fill space */
+    flex-basis: 0; /* Start with equal basis */
+    min-width: 0; /* Allow shrinking below content size */
+    text-align: center;
+    line-height: 1.3; /* Tighter line height for wrapped text */
   }
 
   /* Book Grid */
