@@ -301,10 +301,10 @@ export default function LibraryPage() {
 
           {/* Sidebar */}
           <div>
-            {/* Weekly Pulse Chart */}
-            <div className="sidebar-widget">
+            {/* Weekly Pulse Chart - Hidden for now */}
+            {/* <div className="sidebar-widget">
               <WeeklyPulseChart />
-            </div>
+            </div> */}
 
             {/* Reading Stats */}
             <div className="sidebar-widget">
