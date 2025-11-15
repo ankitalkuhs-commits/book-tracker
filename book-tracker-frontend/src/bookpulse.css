@@ -1776,7 +1776,7 @@ body {
 
 .book-header {
   margin-bottom: 0.75rem;
-  padding-right: 3.5rem; /* Reduced to show more title text */
+  padding-right: 0.5rem; /* Reduced to show more title text */
   width: 100%;
 }
 
@@ -2635,19 +2635,26 @@ body {
   position: absolute;
   top: 1rem;
   right: 1rem;
-  background: none;
-  border: none;
-  font-size: 2rem;
+  background: white;
+  border: 1px solid #E5E7EB;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  font-size: 1.5rem;
   cursor: pointer;
   color: #6B7280;
-  padding: 0.25rem 0.5rem;
+  padding: 0;
   z-index: 10;
   line-height: 1;
   transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .modal-close-btn:hover {
   color: #374151;
+  background: #F3F4F6;
   transform: scale(1.1);
 }
 

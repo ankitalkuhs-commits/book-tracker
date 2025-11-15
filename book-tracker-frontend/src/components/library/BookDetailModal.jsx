@@ -174,7 +174,7 @@ export default function BookDetailModal({ book, onClose, onUpdate, onAddNote }) 
                 style={{ width: '120px', height: 'auto', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}
               />
             ) : (
-              <div className="book-cover-placeholder" style={{ width: '120px', height: '180px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#E5E7EB', borderRadius: '8px', fontSize: '3rem' }}>
+              <div className="book-cover-placeholder" style={{ width: '120px', height: '180px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg, #667EEA 0%, #764BA2 100%)', borderRadius: '8px', fontSize: '3rem' }}>
                 📖
               </div>
             )}
@@ -185,9 +185,6 @@ export default function BookDetailModal({ book, onClose, onUpdate, onAddNote }) 
             <h2 className="book-info-title">
               {book.title}
             </h2>
-            <p className="book-info-author">
-              {book.author}
-            </p>
             <div className="book-meta">
               {book.total_pages && <span>📄 {book.total_pages} pages</span>}
               {book.publisher && <span>📚 {book.publisher}</span>}
