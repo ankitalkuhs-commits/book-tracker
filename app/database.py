@@ -23,9 +23,14 @@ if DATABASE_URL.startswith("sqlite://"):
         connect_args={"check_same_thread": False},
     )
 else:
+    # PostgreSQL with connection pooling and SSL settings
     engine = create_engine(
         DATABASE_URL,
-        echo=True,  # helpful while debugging; set to False in production
+        echo=False,  # Set to False in production for cleaner logs
+        pool_pre_ping=True,  # Verify connections before using them
+        pool_recycle=300,  # Recycle connections after 5 minutes
+        pool_size=10,  # Connection pool size
+        max_overflow=20,  # Allow up to 20 extra connections beyond pool_size
     )
 
 

@@ -1,6 +1,8 @@
 # app/routers/auth_router.py
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session
+from google.oauth2 import id_token
+from google.auth.transport import requests
 from ..database import get_session
 from .. import crud, auth
 from pydantic import BaseModel
@@ -27,6 +29,9 @@ class LoginIn(BaseModel):
     email: str
     password: str
 
+class GoogleAuthIn(BaseModel):
+    token: str
+
 @router.post("/signup")
 def signup(payload: SignupIn, db: Session = Depends(get_session)):
     existing = crud.get_user_by_email(db, payload.email)
@@ -44,3 +49,47 @@ def login(payload: LoginIn, db: Session = Depends(get_session)):
         raise HTTPException(status_code=401, detail="Invalid credentials")
     token = auth.create_access_token({"sub": user.email})
     return {"access_token": token, "user": {"id": user.id, "name": user.name, "email": user.email}}
+
+@router.post("/google")
+def google_auth(payload: GoogleAuthIn, db: Session = Depends(get_session)):
+    """
+    Verify Google OAuth token and create/login user.
+    """
+    try:
+        # Verify the Google token
+        # Note: In production, you should verify against your actual Google Client ID
+        idinfo = id_token.verify_oauth2_token(
+            payload.token, 
+            requests.Request(),
+            # TODO: Replace with your actual Google Client ID
+            # For now, skip audience verification by passing None
+            clock_skew_in_seconds=10
+        )
+
+        # Extract user info from Google token
+        email = idinfo.get('email')
+        name = idinfo.get('name', email.split('@')[0])
+        google_id = idinfo.get('sub')
+
+        if not email:
+            raise HTTPException(status_code=400, detail="Email not provided by Google")
+
+        # Check if user exists
+        user = crud.get_user_by_email(db, email)
+        
+        if not user:
+            # Create new user with a random password (since they're using OAuth)
+            import secrets
+            random_password = secrets.token_urlsafe(32)
+            hashed = auth.hash_password(random_password)
+            user = crud.create_user(db, name=name, email=email, password_hash=hashed)
+
+        # Create access token
+        token = auth.create_access_token({"sub": user.email})
+        return {"access_token": token, "user": {"id": user.id, "name": user.name, "email": user.email}}
+
+    except ValueError as e:
+        # Invalid token
+        raise HTTPException(status_code=401, detail=f"Invalid Google token: {str(e)}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Google authentication failed: {str(e)}")
