@@ -1,5 +1,5 @@
 // AddBookModal - Search and add books from Google Books API
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { BACKEND, apiFetch } from '../../services/api';
 
 export default function AddBookModal({ isOpen, onClose, onBookAdded }) {
@@ -11,6 +11,23 @@ export default function AddBookModal({ isOpen, onClose, onBookAdded }) {
   const [ownershipStatus, setOwnershipStatus] = useState('owned');
   const [borrowedFrom, setBorrowedFrom] = useState('');
   const [loanedTo, setLoanedTo] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
+  const [booksAddedCount, setBooksAddedCount] = useState(0);
+
+  // Reset state when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setSearchQuery('');
+      setSearchResults([]);
+      setSelectedTab('to-read');
+      setBookFormat('hardcover');
+      setOwnershipStatus('owned');
+      setBorrowedFrom('');
+      setLoanedTo('');
+      setSuccessMessage('');
+      setBooksAddedCount(0);
+    }
+  }, [isOpen]);
 
   const handleSearch = async () => {
     if (!searchQuery.trim() || searchQuery.length < 2) {
@@ -63,22 +80,35 @@ export default function AddBookModal({ isOpen, onClose, onBookAdded }) {
         body: JSON.stringify(payload),
       });
 
-      // Success!
-      alert(`"${book.title}" has been added to your library!`);
+      // Show success message
+      setSuccessMessage(`✓ "${book.title}" added!`);
+      setBooksAddedCount(prev => prev + 1);
       
+      // Clear success message after 3 seconds
+      setTimeout(() => setSuccessMessage(''), 3000);
+
+      // Reset search and form for next book
+      setSearchQuery('');
+      setSearchResults([]);
+      
+      // Notify parent but don't close modal
       if (onBookAdded) {
         onBookAdded(data);
       }
-      
-      // Reset and close
-      setSearchQuery('');
-      setSearchResults([]);
-      onClose();
     } catch (error) {
       console.error('Error adding book:', error);
       // Show the error message from backend (e.g., "Book already in library")
       alert(error.message || 'Failed to add book. Please try again.');
     }
+  };
+
+  const handleClose = () => {
+    // Trigger refresh only if books were added
+    if (booksAddedCount > 0 && onBookAdded) {
+      // Signal to parent to refresh the full library
+      onBookAdded({ refresh: true });
+    }
+    onClose();
   };
 
   const handleKeyPress = (e) => {
@@ -92,7 +122,7 @@ export default function AddBookModal({ isOpen, onClose, onBookAdded }) {
   return (
     <div 
       className="modal-overlay"
-      onClick={onClose}
+      onClick={handleClose}
       style={{
         position: 'fixed',
         top: 0,
@@ -129,11 +159,18 @@ export default function AddBookModal({ isOpen, onClose, onBookAdded }) {
           justifyContent: 'space-between',
           alignItems: 'center',
         }}>
-          <h2 style={{ fontSize: '1.5rem', fontWeight: '700', color: '#1F2937', margin: 0 }}>
-            Add a Book
-          </h2>
+          <div>
+            <h2 style={{ fontSize: '1.5rem', fontWeight: '700', color: '#1F2937', margin: 0 }}>
+              Add Books
+            </h2>
+            {booksAddedCount > 0 && (
+              <p style={{ fontSize: '0.875rem', color: '#10B981', marginTop: '0.25rem' }}>
+                {booksAddedCount} book{booksAddedCount > 1 ? 's' : ''} added
+              </p>
+            )}
+          </div>
           <button
-            onClick={onClose}
+            onClick={handleClose}
             style={{
               background: 'none',
               border: 'none',
@@ -146,6 +183,22 @@ export default function AddBookModal({ isOpen, onClose, onBookAdded }) {
             ×
           </button>
         </div>
+
+        {/* Success Toast */}
+        {successMessage && (
+          <div style={{
+            margin: '1rem 1.5rem 0',
+            padding: '0.75rem 1rem',
+            backgroundColor: '#D1FAE5',
+            border: '1px solid #10B981',
+            borderRadius: '8px',
+            color: '#065F46',
+            fontSize: '0.875rem',
+            fontWeight: '500',
+          }}>
+            {successMessage}
+          </div>
+        )}
 
         {/* Search Bar */}
         <div style={{ padding: '1.5rem', borderBottom: '1px solid #E5E7EB' }}>
