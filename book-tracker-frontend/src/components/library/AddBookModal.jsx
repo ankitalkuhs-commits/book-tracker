@@ -87,9 +87,8 @@ export default function AddBookModal({ isOpen, onClose, onBookAdded }) {
       // Clear success message after 3 seconds
       setTimeout(() => setSuccessMessage(''), 3000);
 
-      // Reset search and form for next book
-      setSearchQuery('');
-      setSearchResults([]);
+      // Keep search query and results - user can manually clear if needed
+      // Don't reset anything - modal stays as-is
       
       // Notify parent but don't close modal
       if (onBookAdded) {
