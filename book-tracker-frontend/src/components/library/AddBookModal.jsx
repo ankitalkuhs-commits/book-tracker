@@ -13,6 +13,7 @@ export default function AddBookModal({ isOpen, onClose, onBookAdded }) {
   const [loanedTo, setLoanedTo] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [booksAddedCount, setBooksAddedCount] = useState(0);
+  const [addedBookIds, setAddedBookIds] = useState(new Set()); // Track added books
 
   // Reset state when modal opens
   useEffect(() => {
@@ -26,8 +27,16 @@ export default function AddBookModal({ isOpen, onClose, onBookAdded }) {
       setLoanedTo('');
       setSuccessMessage('');
       setBooksAddedCount(0);
+      setAddedBookIds(new Set());
     }
   }, [isOpen]);
+
+  // Clear results when search query is cleared
+  useEffect(() => {
+    if (searchQuery.trim() === '') {
+      setSearchResults([]);
+    }
+  }, [searchQuery]);
 
   const handleSearch = async () => {
     if (!searchQuery.trim() || searchQuery.length < 2) {
@@ -79,6 +88,9 @@ export default function AddBookModal({ isOpen, onClose, onBookAdded }) {
         method: 'POST',
         body: JSON.stringify(payload),
       });
+
+      // Mark book as added
+      setAddedBookIds(prev => new Set([...prev, book.google_id]));
 
       // Show success message
       setSuccessMessage(`✓ "${book.title}" added!`);
@@ -231,9 +243,17 @@ export default function AddBookModal({ isOpen, onClose, onBookAdded }) {
                 fontWeight: '600',
                 cursor: isSearching ? 'not-allowed' : 'pointer',
                 opacity: isSearching ? 0.6 : 1,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
               }}
             >
-              {isSearching ? 'Searching...' : 'Search'}
+              {isSearching ? 'Searching...' : (
+                <>
+                  <span style={{ fontSize: '1.2rem' }}>🔍</span>
+                  Search
+                </>
+              )}
             </button>
           </div>
 
@@ -534,25 +554,31 @@ export default function AddBookModal({ isOpen, onClose, onBookAdded }) {
                 <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center' }}>
                   <button
                     onClick={() => handleAddBook(book)}
+                    disabled={addedBookIds.has(book.google_id)}
                     style={{
                       padding: '0.5rem 1rem',
-                      backgroundColor: '#10B981',
+                      backgroundColor: addedBookIds.has(book.google_id) ? '#9CA3AF' : '#10B981',
                       color: 'white',
                       border: 'none',
                       borderRadius: '6px',
                       fontSize: '0.875rem',
                       fontWeight: '600',
-                      cursor: 'pointer',
+                      cursor: addedBookIds.has(book.google_id) ? 'not-allowed' : 'pointer',
                       whiteSpace: 'nowrap',
+                      opacity: addedBookIds.has(book.google_id) ? 0.7 : 1,
                     }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = '#059669';
+                      if (!addedBookIds.has(book.google_id)) {
+                        e.currentTarget.style.backgroundColor = '#059669';
+                      }
                     }}
                     onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = '#10B981';
+                      if (!addedBookIds.has(book.google_id)) {
+                        e.currentTarget.style.backgroundColor = '#10B981';
+                      }
                     }}
                   >
-                    Add
+                    {addedBookIds.has(book.google_id) ? '✓ Added' : '+ Add Book'}
                   </button>
                 </div>
               </div>
