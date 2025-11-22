@@ -29,7 +29,27 @@ function AppContent(){
   const [feed,setFeed] = useState([]);
   const [msg,setMsg] = useState(null);
 
-  useEffect(()=>{ if(localStorage.getItem("bt_token")) setUser({}); }, []);
+  useEffect(() => {
+    const token = localStorage.getItem("bt_token");
+    if (token) {
+      // Fetch current user data
+      loadCurrentUser();
+    }
+  }, []);
+
+  async function loadCurrentUser() {
+    try {
+      const userData = await apiFetch("/profile/me");
+      setUser(userData);
+    } catch (error) {
+      console.error('Error loading user:', error);
+      // If token is invalid, clear it
+      if (error.message.includes('401')) {
+        localStorage.removeItem("bt_token");
+        setUser(null);
+      }
+    }
+  }
 
   useEffect(()=> {
     setMsg(null);
@@ -113,13 +133,27 @@ function AppContent(){
       {route==="signup" && (
         <div style={{ maxWidth: '500px', margin: '4rem auto', padding: '2rem' }}>
           {msg && <div style={{ padding: '1rem', marginBottom: '1rem', backgroundColor: '#e0f2fe', color: '#0369a1', borderRadius: '0.5rem' }}>{msg}</div>}
-          <AuthForm type="signup" onSuccess={(token,u)=>{ localStorage.setItem("bt_token", token); setUser(u||{}); setRoute("home"); setMsg("Signed up"); }} />
+          <AuthForm type="signup" onSuccess={(token,u)=>{ 
+            localStorage.setItem("bt_token", token); 
+            setUser(u||{}); 
+            setRoute("home"); 
+            setMsg("Signed up");
+            // Fetch full user data
+            if (u) loadCurrentUser();
+          }} />
         </div>
       )}
       {route==="login" && (
         <div style={{ maxWidth: '500px', margin: '4rem auto', padding: '2rem' }}>
           {msg && <div style={{ padding: '1rem', marginBottom: '1rem', backgroundColor: '#e0f2fe', color: '#0369a1', borderRadius: '0.5rem' }}>{msg}</div>}
-          <AuthForm type="login" onSuccess={(token,u)=>{ localStorage.setItem("bt_token", token); setUser(u||{}); setRoute("home"); setMsg("Logged in"); }} />
+          <AuthForm type="login" onSuccess={(token,u)=>{ 
+            localStorage.setItem("bt_token", token); 
+            setUser(u||{}); 
+            setRoute("home"); 
+            setMsg("Logged in");
+            // Fetch full user data
+            if (u) loadCurrentUser();
+          }} />
         </div>
       )}
       

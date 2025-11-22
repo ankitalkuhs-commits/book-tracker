@@ -28,13 +28,24 @@ export default function HomeSidebar() {
     try {
       const data = await apiFetch('/userbooks/friends/currently-reading?limit=5');
       // Transform API data to match component format
-      const transformed = (data || []).map(item => ({
-        user: item.user?.name || item.user?.username || 'Unknown',
-        book: item.book?.title || 'Unknown Book',
-        author: item.book?.author || '',
-        initial: (item.user?.name || item.user?.username || '?').charAt(0).toUpperCase(),
-        isMutual: item.user?.is_mutual || false
-      }));
+      const transformed = (data || []).map(item => {
+        const name = item.user?.name || item.user?.username || 'Unknown';
+        // Get initials (first letter of first and last name)
+        const initials = name
+          .split(' ')
+          .map(n => n[0])
+          .join('')
+          .toUpperCase()
+          .slice(0, 2);
+        
+        return {
+          user: name,
+          book: item.book?.title || 'Unknown Book',
+          author: item.book?.author || '',
+          initial: initials,
+          isMutual: item.user?.is_mutual || false
+        };
+      });
       setFriendsReading(transformed);
     } catch (error) {
       console.error('Error loading friends feed:', error);
