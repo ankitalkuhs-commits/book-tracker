@@ -75,8 +75,8 @@ export default function Profile({ setMsg }) {
 
         {editing ? (
           <form onSubmit={save} style={{ marginTop: 12 }}>
-            <input value={name} onChange={(e) => setName(e.target.value)} style={styles.input} />
-            <textarea value={bio} onChange={(e) => setBio(e.target.value)} style={styles.textarea} />
+            <input value={name} onChange={(e) => setName(e.target.value)} style={styles.input} placeholder="Enter your name" />
+            <textarea value={bio} onChange={(e) => setBio(e.target.value)} style={styles.textarea} placeholder="Enter your bio here..." />
             <button style={styles.btn} disabled={loading}>{loading ? "Saving..." : "Save"}</button>
           </form>
         ) : (
