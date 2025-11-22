@@ -233,7 +233,7 @@ export default function AddBookModal({ isOpen, onClose, onBookAdded }) {
                 opacity: isSearching ? 0.6 : 1,
               }}
             >
-              {isSearching ? 'Searching...' : 'Search'}
+              {isSearching ? 'Searching...' : '🔍'}
             </button>
           </div>
 
