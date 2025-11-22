@@ -359,112 +359,94 @@ export default function LibraryPage() {
                           {/* Page Numbers */}
                           {(() => {
                             const pageNumbers = [];
-                            const showEllipsisStart = currentPage > 3;
-                            const showEllipsisEnd = currentPage < totalPages - 2;
-
-                            // Always show first page
-                            pageNumbers.push(
-                              <button
-                                key={1}
-                                onClick={() => setCurrentPage(1)}
-                                style={{
-                                  padding: '0.5rem 0.75rem',
-                                  border: '1px solid #D1D5DB',
-                                  borderRadius: '6px',
-                                  fontSize: '0.875rem',
-                                  backgroundColor: currentPage === 1 ? '#3B82F6' : 'white',
-                                  color: currentPage === 1 ? 'white' : '#374151',
-                                  cursor: 'pointer',
-                                  fontWeight: '500',
-                                  minWidth: '2.5rem'
-                                }}
-                              >
-                                1
-                              </button>
-                            );
-
-                            // Show ellipsis or page 2
-                            if (showEllipsisStart) {
-                              pageNumbers.push(
-                                <span key="ellipsis-start" style={{ color: '#9CA3AF', padding: '0 0.25rem' }}>...</span>
-                              );
-                            } else if (totalPages > 1) {
+                            
+                            // For small number of pages, show all
+                            if (totalPages <= 7) {
+                              for (let i = 1; i <= totalPages; i++) {
+                                pageNumbers.push(
+                                  <button
+                                    key={i}
+                                    onClick={() => setCurrentPage(i)}
+                                    style={{
+                                      padding: '0.5rem 0.75rem',
+                                      border: '1px solid #D1D5DB',
+                                      borderRadius: '6px',
+                                      fontSize: '0.875rem',
+                                      backgroundColor: currentPage === i ? '#3B82F6' : 'white',
+                                      color: currentPage === i ? 'white' : '#374151',
+                                      cursor: 'pointer',
+                                      fontWeight: '500',
+                                      minWidth: '2.5rem'
+                                    }}
+                                  >
+                                    {i}
+                                  </button>
+                                );
+                              }
+                            } else {
+                              // For large number of pages, show smart ellipsis
+                              // Always show first page
                               pageNumbers.push(
                                 <button
-                                  key={2}
-                                  onClick={() => setCurrentPage(2)}
+                                  key={1}
+                                  onClick={() => setCurrentPage(1)}
                                   style={{
                                     padding: '0.5rem 0.75rem',
                                     border: '1px solid #D1D5DB',
                                     borderRadius: '6px',
                                     fontSize: '0.875rem',
-                                    backgroundColor: currentPage === 2 ? '#3B82F6' : 'white',
-                                    color: currentPage === 2 ? 'white' : '#374151',
+                                    backgroundColor: currentPage === 1 ? '#3B82F6' : 'white',
+                                    color: currentPage === 1 ? 'white' : '#374151',
                                     cursor: 'pointer',
                                     fontWeight: '500',
                                     minWidth: '2.5rem'
                                   }}
                                 >
-                                  2
+                                  1
                                 </button>
                               );
-                            }
 
-                            // Show middle pages (current - 1, current, current + 1)
-                            for (let i = Math.max(2, currentPage - 1); i <= Math.min(totalPages - 1, currentPage + 1); i++) {
-                              if (i === 2 && !showEllipsisStart) continue; // Already shown
-                              if (i === totalPages - 1 && !showEllipsisEnd) continue; // Will be shown later
+                              // Show ellipsis or page 2
+                              if (currentPage > 3) {
+                                pageNumbers.push(
+                                  <span key="ellipsis-start" style={{ color: '#9CA3AF', padding: '0 0.25rem' }}>...</span>
+                                );
+                              }
+
+                              // Show pages around current page
+                              const startPage = Math.max(2, currentPage - 1);
+                              const endPage = Math.min(totalPages - 1, currentPage + 1);
                               
-                              pageNumbers.push(
-                                <button
-                                  key={i}
-                                  onClick={() => setCurrentPage(i)}
-                                  style={{
-                                    padding: '0.5rem 0.75rem',
-                                    border: '1px solid #D1D5DB',
-                                    borderRadius: '6px',
-                                    fontSize: '0.875rem',
-                                    backgroundColor: currentPage === i ? '#3B82F6' : 'white',
-                                    color: currentPage === i ? 'white' : '#374151',
-                                    cursor: 'pointer',
-                                    fontWeight: '500',
-                                    minWidth: '2.5rem'
-                                  }}
-                                >
-                                  {i}
-                                </button>
-                              );
-                            }
+                              for (let i = startPage; i <= endPage; i++) {
+                                pageNumbers.push(
+                                  <button
+                                    key={i}
+                                    onClick={() => setCurrentPage(i)}
+                                    style={{
+                                      padding: '0.5rem 0.75rem',
+                                      border: '1px solid #D1D5DB',
+                                      borderRadius: '6px',
+                                      fontSize: '0.875rem',
+                                      backgroundColor: currentPage === i ? '#3B82F6' : 'white',
+                                      color: currentPage === i ? 'white' : '#374151',
+                                      cursor: 'pointer',
+                                      fontWeight: '500',
+                                      minWidth: '2.5rem'
+                                    }}
+                                  >
+                                    {i}
+                                  </button>
+                                );
+                              }
 
-                            // Show ellipsis or second-to-last page
-                            if (showEllipsisEnd) {
-                              pageNumbers.push(
-                                <span key="ellipsis-end" style={{ color: '#9CA3AF', padding: '0 0.25rem' }}>...</span>
-                              );
-                            } else if (totalPages > 2) {
-                              pageNumbers.push(
-                                <button
-                                  key={totalPages - 1}
-                                  onClick={() => setCurrentPage(totalPages - 1)}
-                                  style={{
-                                    padding: '0.5rem 0.75rem',
-                                    border: '1px solid #D1D5DB',
-                                    borderRadius: '6px',
-                                    fontSize: '0.875rem',
-                                    backgroundColor: currentPage === totalPages - 1 ? '#3B82F6' : 'white',
-                                    color: currentPage === totalPages - 1 ? 'white' : '#374151',
-                                    cursor: 'pointer',
-                                    fontWeight: '500',
-                                    minWidth: '2.5rem'
-                                  }}
-                                >
-                                  {totalPages - 1}
-                                </button>
-                              );
-                            }
+                              // Show ellipsis before last page
+                              if (currentPage < totalPages - 2) {
+                                pageNumbers.push(
+                                  <span key="ellipsis-end" style={{ color: '#9CA3AF', padding: '0 0.25rem' }}>...</span>
+                                );
+                              }
 
-                            // Always show last page (if more than 1 page)
-                            if (totalPages > 1) {
+                              // Always show last page
                               pageNumbers.push(
                                 <button
                                   key={totalPages}
