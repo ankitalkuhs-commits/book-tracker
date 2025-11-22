@@ -1,6 +1,5 @@
 // ReadingStatsTable - Display user's reading statistics
 import React, { useEffect, useState } from 'react';
-import { apiFetch } from '../../services/api';
 
 export default function ReadingStatsTable({ library }) {
   const [stats, setStats] = useState({
@@ -25,28 +24,17 @@ export default function ReadingStatsTable({ library }) {
     
     const pagesRead = library.reduce((sum, ub) => sum + (ub.current_page || 0), 0);
 
-    // Fetch actual emotions count from notes with emotions
-    fetchEmotionsCount();
+    // Mock emotions count for now - will integrate with notes API later
+    const emotionsLogged = Math.floor(Math.random() * 200); // Placeholder
 
-    setStats(prev => ({
-      ...prev,
+    setStats({
       booksThisYear,
       currentlyReading,
+      emotionsLogged,
       pagesRead,
       booksFinished,
-    }));
+    });
   }, [library]);
-
-  const fetchEmotionsCount = async () => {
-    try {
-      const notes = await apiFetch('/notes/feed');
-      const emotionsCount = notes.filter(note => note.emotion && note.emotion.trim() !== '').length;
-      setStats(prev => ({ ...prev, emotionsLogged: emotionsCount }));
-    } catch (error) {
-      console.error('Error fetching emotions count:', error);
-      setStats(prev => ({ ...prev, emotionsLogged: 0 }));
-    }
-  };
 
   const statItems = [
     { label: 'Books This Year', value: stats.booksThisYear, icon: '📚' },

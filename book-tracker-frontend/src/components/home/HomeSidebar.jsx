@@ -30,8 +30,8 @@ export default function HomeSidebar() {
       // Transform API data to match component format
       const transformed = (data || []).map(post => ({
         user: post.user?.name || post.user?.username || 'Unknown',
-        book: post.userbook?.book?.title || post.book?.title || 'Unknown Book',
-        author: post.userbook?.book?.author || post.book?.author || '',
+        book: post.book?.title || 'Reading',
+        author: post.book?.author || '',
         initial: (post.user?.name || post.user?.username || '?').charAt(0).toUpperCase(),
         isMutual: post.user?.is_mutual || false
       }));
@@ -91,8 +91,7 @@ export default function HomeSidebar() {
         )}
       </div>
 
-      {/* Community Highlights - Temporarily hidden */}
-      {/* 
+      {/* Community Highlights */}
       <div className="sidebar-widget">
         <h3 className="widget-title">Community Highlights</h3>
 
@@ -133,7 +132,6 @@ export default function HomeSidebar() {
           </div>
         </div>
       </div>
-      */}
     </div>
   );
 }
