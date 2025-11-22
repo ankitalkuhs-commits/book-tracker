@@ -8,6 +8,15 @@ from .. import crud, models
 import os
 import uuid
 from pathlib import Path
+import cloudinary
+import cloudinary.uploader
+
+# Configure Cloudinary
+cloudinary.config(
+    cloud_name=os.getenv("CLOUDINARY_CLOUD_NAME"),
+    api_key=os.getenv("CLOUDINARY_API_KEY"),
+    api_secret=os.getenv("CLOUDINARY_API_SECRET")
+)
 
 router = APIRouter(prefix="/notes", tags=["notes"])
 
@@ -59,30 +68,40 @@ async def upload_image(
     file: UploadFile = File(...),
     current_user: models.User = Depends(get_current_user)
 ):
-    """Upload an image for a note/post"""
+    """Upload an image for a note/post to Cloudinary"""
     # Validate file type
     if not file.content_type.startswith('image/'):
         raise HTTPException(status_code=400, detail="File must be an image")
     
-    # Create uploads directory if it doesn't exist
-    uploads_dir = Path("uploads/notes")
-    uploads_dir.mkdir(parents=True, exist_ok=True)
+    # Verify Cloudinary is configured
+    if not all([os.getenv("CLOUDINARY_CLOUD_NAME"), os.getenv("CLOUDINARY_API_KEY"), os.getenv("CLOUDINARY_API_SECRET")]):
+        raise HTTPException(status_code=500, detail="Cloudinary not configured. Please set environment variables.")
     
-    # Generate unique filename
-    file_extension = os.path.splitext(file.filename)[1]
-    unique_filename = f"{uuid.uuid4()}{file_extension}"
-    file_path = uploads_dir / unique_filename
-    
-    # Save file
+    # Upload to Cloudinary
     try:
         contents = await file.read()
-        with open(file_path, "wb") as f:
-            f.write(contents)
+        
+        # Generate unique public_id
+        file_extension = os.path.splitext(file.filename)[1].lstrip('.')
+        unique_id = str(uuid.uuid4())
+        
+        # Upload to Cloudinary with folder organization
+        upload_result = cloudinary.uploader.upload(
+            contents,
+            folder="book_tracker/notes",
+            public_id=unique_id,
+            resource_type="image"
+        )
+        
+        # Get the secure URL from Cloudinary
+        image_url = upload_result.get('secure_url')
+        
+        if not image_url:
+            raise Exception("Failed to get image URL from Cloudinary")
+            
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to upload image: {str(e)}")
     
-    # Return the URL path (relative to server)
-    image_url = f"/uploads/notes/{unique_filename}"
     return {"image_url": image_url}
 
 
