@@ -26,14 +26,14 @@ export default function HomeSidebar() {
 
   const loadFriendsFeed = async () => {
     try {
-      const data = await apiFetch('/notes/friends-feed?limit=5');
+      const data = await apiFetch('/userbooks/friends/currently-reading?limit=5');
       // Transform API data to match component format
-      const transformed = (data || []).map(post => ({
-        user: post.user?.name || post.user?.username || 'Unknown',
-        book: post.userbook?.book?.title || post.book?.title || 'Unknown Book',
-        author: post.userbook?.book?.author || post.book?.author || '',
-        initial: (post.user?.name || post.user?.username || '?').charAt(0).toUpperCase(),
-        isMutual: post.user?.is_mutual || false
+      const transformed = (data || []).map(item => ({
+        user: item.user?.name || item.user?.username || 'Unknown',
+        book: item.book?.title || 'Unknown Book',
+        author: item.book?.author || '',
+        initial: (item.user?.name || item.user?.username || '?').charAt(0).toUpperCase(),
+        isMutual: item.user?.is_mutual || false
       }));
       setFriendsReading(transformed);
     } catch (error) {

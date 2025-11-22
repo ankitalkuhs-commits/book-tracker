@@ -211,3 +211,79 @@ def delete_userbook(userbook_id: int, db: Session = Depends(get_db), current_use
     db.commit()
     
     return {"status": "ok", "message": "Book removed from library successfully"}
+
+
+@router.get("/friends/currently-reading", response_model=List[dict])
+def get_friends_currently_reading(
+    limit: int = 10,
+    db: Session = Depends(get_db), 
+    current_user: models.User = Depends(get_current_user)
+):
+    """
+    Get books that friends are currently reading.
+    Returns userbooks with status='reading' from users that the current user follows.
+    """
+    from sqlmodel import and_
+    
+    # Get all users current user follows
+    following = db.exec(
+        select(models.Follow.followed_id)
+        .where(models.Follow.follower_id == current_user.id)
+    ).all()
+    
+    if not following:
+        return []
+    
+    following_ids = list(following)
+    
+    # Get mutual follows (users who follow you back)
+    mutual_followers = db.exec(
+        select(models.Follow.follower_id)
+        .where(
+            and_(
+                models.Follow.followed_id == current_user.id,
+                models.Follow.follower_id.in_(following_ids)
+            )
+        )
+    ).all()
+    mutual_ids = list(mutual_followers)
+    
+    # Get currently reading books from followed users
+    userbooks = db.exec(
+        select(UserBook)
+        .where(
+            and_(
+                UserBook.user_id.in_(following_ids),
+                UserBook.status == "reading"
+            )
+        )
+        .order_by(UserBook.updated_at.desc())
+        .limit(limit)
+    ).all()
+    
+    results = []
+    for ub in userbooks:
+        user = db.get(models.User, ub.user_id)
+        book = db.get(Book, ub.book_id)
+        
+        if user and book:
+            results.append({
+                "id": ub.id,
+                "user": {
+                    "id": user.id,
+                    "username": user.username,
+                    "name": user.name,
+                    "is_mutual": user.id in mutual_ids
+                },
+                "book": {
+                    "id": book.id,
+                    "title": book.title,
+                    "author": book.author,
+                    "cover_url": book.cover_url,
+                    "total_pages": book.total_pages
+                },
+                "current_page": ub.current_page,
+                "updated_at": ub.updated_at
+            })
+    
+    return results
