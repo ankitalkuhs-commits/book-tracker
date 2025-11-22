@@ -17,6 +17,10 @@ export default function LibraryPage() {
   const [formatFilter, setFormatFilter] = useState('all');
   const [ownershipFilter, setOwnershipFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(12);
 
   const tabs = [
     { id: 'all', label: 'All', status: null },
@@ -76,6 +80,18 @@ export default function LibraryPage() {
     
     return true;
   });
+
+  // Calculate pagination values
+  const totalBooks = filteredBooks.length;
+  const totalPages = Math.ceil(totalBooks / pageSize);
+  const startIndex = (currentPage - 1) * pageSize;
+  const endIndex = startIndex + pageSize;
+  const paginatedBooks = filteredBooks.slice(startIndex, endIndex);
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeTab, formatFilter, ownershipFilter, searchQuery]);
 
   // Handle book added from AddBookModal
   const handleBookAdded = async (bookData) => {
@@ -283,17 +299,248 @@ export default function LibraryPage() {
                     </button>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {filteredBooks.map((userbook) => (
-                      <BookCard 
-                        key={userbook.id} 
-                        userbook={userbook} 
-                        onOpenDetail={handleOpenDetail}
-                        onQuickAddNote={handleQuickAddNote}
-                        onDelete={handleDeleteBook}
-                      />
-                    ))}
-                  </div>
+                  <>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {paginatedBooks.map((userbook) => (
+                        <BookCard 
+                          key={userbook.id} 
+                          userbook={userbook} 
+                          onOpenDetail={handleOpenDetail}
+                          onQuickAddNote={handleQuickAddNote}
+                          onDelete={handleDeleteBook}
+                        />
+                      ))}
+                    </div>
+
+                    {/* Pagination Controls */}
+                    {totalPages > 1 && (
+                      <div style={{
+                        marginTop: '2rem',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '1rem',
+                        alignItems: 'center'
+                      }}>
+                        {/* Pagination Info */}
+                        <div style={{
+                          fontSize: '0.875rem',
+                          color: '#6B7280',
+                          fontWeight: '500'
+                        }}>
+                          Showing {startIndex + 1}-{Math.min(endIndex, totalBooks)} of {totalBooks} books
+                        </div>
+
+                        {/* Page Numbers and Navigation */}
+                        <div style={{
+                          display: 'flex',
+                          gap: '0.5rem',
+                          alignItems: 'center',
+                          flexWrap: 'wrap',
+                          justifyContent: 'center'
+                        }}>
+                          {/* Previous Button */}
+                          <button
+                            onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                            disabled={currentPage === 1}
+                            style={{
+                              padding: '0.5rem 1rem',
+                              border: '1px solid #D1D5DB',
+                              borderRadius: '6px',
+                              fontSize: '0.875rem',
+                              backgroundColor: currentPage === 1 ? '#F3F4F6' : 'white',
+                              color: currentPage === 1 ? '#9CA3AF' : '#374151',
+                              cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
+                              fontWeight: '500',
+                            }}
+                          >
+                            ← Previous
+                          </button>
+
+                          {/* Page Numbers */}
+                          {(() => {
+                            const pageNumbers = [];
+                            const showEllipsisStart = currentPage > 3;
+                            const showEllipsisEnd = currentPage < totalPages - 2;
+
+                            // Always show first page
+                            pageNumbers.push(
+                              <button
+                                key={1}
+                                onClick={() => setCurrentPage(1)}
+                                style={{
+                                  padding: '0.5rem 0.75rem',
+                                  border: '1px solid #D1D5DB',
+                                  borderRadius: '6px',
+                                  fontSize: '0.875rem',
+                                  backgroundColor: currentPage === 1 ? '#3B82F6' : 'white',
+                                  color: currentPage === 1 ? 'white' : '#374151',
+                                  cursor: 'pointer',
+                                  fontWeight: '500',
+                                  minWidth: '2.5rem'
+                                }}
+                              >
+                                1
+                              </button>
+                            );
+
+                            // Show ellipsis or page 2
+                            if (showEllipsisStart) {
+                              pageNumbers.push(
+                                <span key="ellipsis-start" style={{ color: '#9CA3AF', padding: '0 0.25rem' }}>...</span>
+                              );
+                            } else if (totalPages > 1) {
+                              pageNumbers.push(
+                                <button
+                                  key={2}
+                                  onClick={() => setCurrentPage(2)}
+                                  style={{
+                                    padding: '0.5rem 0.75rem',
+                                    border: '1px solid #D1D5DB',
+                                    borderRadius: '6px',
+                                    fontSize: '0.875rem',
+                                    backgroundColor: currentPage === 2 ? '#3B82F6' : 'white',
+                                    color: currentPage === 2 ? 'white' : '#374151',
+                                    cursor: 'pointer',
+                                    fontWeight: '500',
+                                    minWidth: '2.5rem'
+                                  }}
+                                >
+                                  2
+                                </button>
+                              );
+                            }
+
+                            // Show middle pages (current - 1, current, current + 1)
+                            for (let i = Math.max(2, currentPage - 1); i <= Math.min(totalPages - 1, currentPage + 1); i++) {
+                              if (i === 2 && !showEllipsisStart) continue; // Already shown
+                              if (i === totalPages - 1 && !showEllipsisEnd) continue; // Will be shown later
+                              
+                              pageNumbers.push(
+                                <button
+                                  key={i}
+                                  onClick={() => setCurrentPage(i)}
+                                  style={{
+                                    padding: '0.5rem 0.75rem',
+                                    border: '1px solid #D1D5DB',
+                                    borderRadius: '6px',
+                                    fontSize: '0.875rem',
+                                    backgroundColor: currentPage === i ? '#3B82F6' : 'white',
+                                    color: currentPage === i ? 'white' : '#374151',
+                                    cursor: 'pointer',
+                                    fontWeight: '500',
+                                    minWidth: '2.5rem'
+                                  }}
+                                >
+                                  {i}
+                                </button>
+                              );
+                            }
+
+                            // Show ellipsis or second-to-last page
+                            if (showEllipsisEnd) {
+                              pageNumbers.push(
+                                <span key="ellipsis-end" style={{ color: '#9CA3AF', padding: '0 0.25rem' }}>...</span>
+                              );
+                            } else if (totalPages > 2) {
+                              pageNumbers.push(
+                                <button
+                                  key={totalPages - 1}
+                                  onClick={() => setCurrentPage(totalPages - 1)}
+                                  style={{
+                                    padding: '0.5rem 0.75rem',
+                                    border: '1px solid #D1D5DB',
+                                    borderRadius: '6px',
+                                    fontSize: '0.875rem',
+                                    backgroundColor: currentPage === totalPages - 1 ? '#3B82F6' : 'white',
+                                    color: currentPage === totalPages - 1 ? 'white' : '#374151',
+                                    cursor: 'pointer',
+                                    fontWeight: '500',
+                                    minWidth: '2.5rem'
+                                  }}
+                                >
+                                  {totalPages - 1}
+                                </button>
+                              );
+                            }
+
+                            // Always show last page (if more than 1 page)
+                            if (totalPages > 1) {
+                              pageNumbers.push(
+                                <button
+                                  key={totalPages}
+                                  onClick={() => setCurrentPage(totalPages)}
+                                  style={{
+                                    padding: '0.5rem 0.75rem',
+                                    border: '1px solid #D1D5DB',
+                                    borderRadius: '6px',
+                                    fontSize: '0.875rem',
+                                    backgroundColor: currentPage === totalPages ? '#3B82F6' : 'white',
+                                    color: currentPage === totalPages ? 'white' : '#374151',
+                                    cursor: 'pointer',
+                                    fontWeight: '500',
+                                    minWidth: '2.5rem'
+                                  }}
+                                >
+                                  {totalPages}
+                                </button>
+                              );
+                            }
+
+                            return pageNumbers;
+                          })()}
+
+                          {/* Next Button */}
+                          <button
+                            onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                            disabled={currentPage === totalPages}
+                            style={{
+                              padding: '0.5rem 1rem',
+                              border: '1px solid #D1D5DB',
+                              borderRadius: '6px',
+                              fontSize: '0.875rem',
+                              backgroundColor: currentPage === totalPages ? '#F3F4F6' : 'white',
+                              color: currentPage === totalPages ? '#9CA3AF' : '#374151',
+                              cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
+                              fontWeight: '500',
+                            }}
+                          >
+                            Next →
+                          </button>
+                        </div>
+
+                        {/* Page Size Selector */}
+                        <div style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.5rem',
+                          fontSize: '0.875rem',
+                          color: '#6B7280'
+                        }}>
+                          <span>Books per page:</span>
+                          <select
+                            value={pageSize}
+                            onChange={(e) => {
+                              setPageSize(Number(e.target.value));
+                              setCurrentPage(1); // Reset to page 1 when changing page size
+                            }}
+                            style={{
+                              padding: '0.375rem 0.5rem',
+                              border: '1px solid #D1D5DB',
+                              borderRadius: '6px',
+                              fontSize: '0.875rem',
+                              backgroundColor: 'white',
+                              cursor: 'pointer',
+                              outline: 'none',
+                            }}
+                          >
+                            <option value={12}>12</option>
+                            <option value={24}>24</option>
+                            <option value={48}>48</option>
+                          </select>
+                        </div>
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             </div>
