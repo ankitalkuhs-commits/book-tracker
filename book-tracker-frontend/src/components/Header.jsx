@@ -6,9 +6,9 @@ export default function Header({ onRoute, onLogout, route }) {
   const getLinkStyle = (rt) => ({ ...styles.link, ...(route === rt ? styles.activeLink : {}) });
   return (
     <header style={styles.header}>
-      <h1 style={{ cursor: "pointer", margin: 0 }} onClick={() => onRoute("home")}>BookPulse</h1>
+      <h1 style={{ cursor: "pointer", margin: 0 }} onClick={() => onRoute("home")}>Track My Read</h1>
       <nav>
-        {/* Main BookPulse Pages */}
+        {/* Main Track My Read Pages */}
         <button style={getLinkStyle("home")} onClick={()=>onRoute("home")}>🏠 Home</button>
         <button style={getLinkStyle("my-library")} onClick={()=>onRoute("my-library")}>📚 My Library</button>
 
