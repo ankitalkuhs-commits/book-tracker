@@ -173,7 +173,7 @@ export default function LibraryPage() {
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="🔍 Search books by title or author..."
+                  placeholder="🔍 Search books in your library"
                   style={{
                     width: '100%',
                     padding: '0.75rem 1rem',
