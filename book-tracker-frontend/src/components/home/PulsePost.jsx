@@ -113,7 +113,7 @@ export default function PulsePost({ post }) {
           {post.image_url && (
             <div className="post-image">
               <img 
-                src={`${BACKEND}${post.image_url}`} 
+                src={post.image_url.startsWith('http') ? post.image_url : `${BACKEND}${post.image_url}`} 
                 alt="Post"
               />
             </div>
