@@ -13,6 +13,7 @@ export default function AddBookModal({ isOpen, onClose, onBookAdded }) {
   const [loanedTo, setLoanedTo] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [booksAddedCount, setBooksAddedCount] = useState(0);
+  const [addedBookIds, setAddedBookIds] = useState(new Set());
 
   // Reset state when modal opens
   useEffect(() => {
@@ -26,6 +27,7 @@ export default function AddBookModal({ isOpen, onClose, onBookAdded }) {
       setLoanedTo('');
       setSuccessMessage('');
       setBooksAddedCount(0);
+      setAddedBookIds(new Set());
     }
   }, [isOpen]);
 
@@ -80,6 +82,9 @@ export default function AddBookModal({ isOpen, onClose, onBookAdded }) {
         body: JSON.stringify(payload),
       });
 
+      // Mark book as added
+      setAddedBookIds(prev => new Set([...prev, book.google_id || book.isbn_13 || book.isbn_10 || book.title]));
+      
       // Show success message
       setSuccessMessage(`✓ "${book.title}" added!`);
       setBooksAddedCount(prev => prev + 1);
@@ -534,25 +539,30 @@ export default function AddBookModal({ isOpen, onClose, onBookAdded }) {
                 <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center' }}>
                   <button
                     onClick={() => handleAddBook(book)}
+                    disabled={addedBookIds.has(book.google_id || book.isbn_13 || book.isbn_10 || book.title)}
                     style={{
                       padding: '0.5rem 1rem',
-                      backgroundColor: '#10B981',
+                      backgroundColor: addedBookIds.has(book.google_id || book.isbn_13 || book.isbn_10 || book.title) ? '#9CA3AF' : '#10B981',
                       color: 'white',
                       border: 'none',
                       borderRadius: '6px',
                       fontSize: '0.875rem',
                       fontWeight: '600',
-                      cursor: 'pointer',
+                      cursor: addedBookIds.has(book.google_id || book.isbn_13 || book.isbn_10 || book.title) ? 'not-allowed' : 'pointer',
                       whiteSpace: 'nowrap',
                     }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = '#059669';
+                      if (!addedBookIds.has(book.google_id || book.isbn_13 || book.isbn_10 || book.title)) {
+                        e.currentTarget.style.backgroundColor = '#059669';
+                      }
                     }}
                     onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = '#10B981';
+                      if (!addedBookIds.has(book.google_id || book.isbn_13 || book.isbn_10 || book.title)) {
+                        e.currentTarget.style.backgroundColor = '#10B981';
+                      }
                     }}
                   >
-                    Add
+                    {addedBookIds.has(book.google_id || book.isbn_13 || book.isbn_10 || book.title) ? '✓ Added' : 'Add'}
                   </button>
                 </div>
               </div>
