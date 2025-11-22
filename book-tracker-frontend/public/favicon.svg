@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none">
+  <!-- Book background -->
+  <rect x="30" y="40" width="140" height="120" rx="8" fill="#6366F1"/>
+  
+  <!-- Book pages (left side) -->
+  <rect x="45" y="60" width="45" height="8" rx="2" fill="#E0E7FF"/>
+  <rect x="45" y="75" width="45" height="8" rx="2" fill="#E0E7FF"/>
+  <rect x="45" y="90" width="45" height="8" rx="2" fill="#E0E7FF"/>
+  
+  <!-- Graph icon (right side) -->
+  <path d="M115 110 L130 95 L145 100 L155 75" stroke="#E0E7FF" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <circle cx="115" cy="110" r="4" fill="#E0E7FF"/>
+  <circle cx="130" cy="95" r="4" fill="#E0E7FF"/>
+  <circle cx="145" cy="100" r="4" fill="#E0E7FF"/>
+  <circle cx="155" cy="75" r="4" fill="#E0E7FF"/>
+  
+  <!-- Arrow -->
+  <path d="M150 70 L155 75 L150 80" stroke="#E0E7FF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  
+  <!-- Book spine -->
+  <rect x="95" y="40" width="10" height="120" fill="#4F46E5"/>
+  
+  <!-- Book shadow/depth -->
+  <path d="M30 160 Q100 170 170 160" fill="#4338CA" opacity="0.3"/>
+</svg>
