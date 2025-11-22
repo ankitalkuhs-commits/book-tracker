@@ -1,4 +1,4 @@
-// Modern Header for BookPulse
+// Modern Header for Track My Read
 import React from 'react';
 
 export default function ModernHeader({ user, onRoute, onLogout, route }) {
@@ -23,7 +23,7 @@ export default function ModernHeader({ user, onRoute, onLogout, route }) {
         {/* Logo */}
         <div className="header-logo" onClick={() => onRoute('home')}>
           <div className="logo-icon">📖</div>
-          <h1 className="logo-text">BookPulse</h1>
+          <h1 className="logo-text">Track My Read</h1>
         </div>
 
         {/* Navigation */}
