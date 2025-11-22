@@ -31,6 +31,13 @@ export default function AddBookModal({ isOpen, onClose, onBookAdded }) {
     }
   }, [isOpen]);
 
+  // Clear search results when search query is empty
+  useEffect(() => {
+    if (searchQuery.trim() === '') {
+      setSearchResults([]);
+    }
+  }, [searchQuery]);
+
   const handleSearch = async () => {
     if (!searchQuery.trim() || searchQuery.length < 2) {
       alert('Please enter at least 2 characters to search');
