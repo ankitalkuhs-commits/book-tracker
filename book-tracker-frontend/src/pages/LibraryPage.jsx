@@ -20,7 +20,7 @@ export default function LibraryPage() {
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(12);
+  const pageSize = 6; // Fixed page size
 
   const tabs = [
     { id: 'all', label: 'All', status: null },
@@ -488,37 +488,6 @@ export default function LibraryPage() {
                           >
                             Next →
                           </button>
-                        </div>
-
-                        {/* Page Size Selector */}
-                        <div style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '0.5rem',
-                          fontSize: '0.875rem',
-                          color: '#6B7280'
-                        }}>
-                          <span>Books per page:</span>
-                          <select
-                            value={pageSize}
-                            onChange={(e) => {
-                              setPageSize(Number(e.target.value));
-                              setCurrentPage(1); // Reset to page 1 when changing page size
-                            }}
-                            style={{
-                              padding: '0.375rem 0.5rem',
-                              border: '1px solid #D1D5DB',
-                              borderRadius: '6px',
-                              fontSize: '0.875rem',
-                              backgroundColor: 'white',
-                              cursor: 'pointer',
-                              outline: 'none',
-                            }}
-                          >
-                            <option value={12}>12</option>
-                            <option value={24}>24</option>
-                            <option value={48}>48</option>
-                          </select>
                         </div>
                       </div>
                     )}
