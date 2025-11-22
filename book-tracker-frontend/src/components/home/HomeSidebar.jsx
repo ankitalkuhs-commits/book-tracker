@@ -30,8 +30,8 @@ export default function HomeSidebar() {
       // Transform API data to match component format
       const transformed = (data || []).map(post => ({
         user: post.user?.name || post.user?.username || 'Unknown',
-        book: post.book?.title || 'Reading',
-        author: post.book?.author || '',
+        book: post.userbook?.book?.title || post.book?.title || 'Unknown Book',
+        author: post.userbook?.book?.author || post.book?.author || '',
         initial: (post.user?.name || post.user?.username || '?').charAt(0).toUpperCase(),
         isMutual: post.user?.is_mutual || false
       }));
