@@ -4,7 +4,6 @@ import { BACKEND, apiFetch } from '../../services/api';
 
 export default function PulsePost({ post }) {
   const [likes, setLikes] = useState(post.likes_count || 0);
-  const [comments] = useState(post.comments_count || 0);
   const [liked, setLiked] = useState(post.user_has_liked || false);
   const [isLiking, setIsLiking] = useState(false);
 
@@ -133,11 +132,6 @@ export default function PulsePost({ post }) {
             >
               <span className="post-action-icon">{liked ? '❤️' : '🤍'}</span>
               <span>{likes}</span>
-            </button>
-
-            <button className="post-action-button">
-              <span className="post-action-icon">💬</span>
-              <span>{comments}</span>
             </button>
           </div>
 
