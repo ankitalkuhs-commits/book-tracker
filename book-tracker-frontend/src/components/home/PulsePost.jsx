@@ -124,22 +124,22 @@ export default function PulsePost({ post, currentUser }) {
           <div className="post-header">
             <div>
               <span className="post-username">{post.user?.name || 'Anonymous'}</span>
-              <span className="post-meta">shared this</span>
+              <span className="post-meta"> shared this</span>
             </div>
             {isOwner && !isEditing && (
               <button
                 onClick={() => setIsEditing(true)}
                 style={{
                   padding: '0.25rem 0.5rem',
-                  fontSize: '0.875rem',
+                  fontSize: '1rem',
                   color: '#6366F1',
                   background: 'none',
-                  border: '1px solid #6366F1',
-                  borderRadius: '0.25rem',
+                  border: 'none',
                   cursor: 'pointer'
                 }}
+                title="Edit post"
               >
-                ✏️ Edit
+                ✏️
               </button>
             )}
           </div>
