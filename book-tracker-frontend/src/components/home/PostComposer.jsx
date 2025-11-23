@@ -116,7 +116,7 @@ export default function PostComposer({ user, onPostCreated }) {
             placeholder="What are you feeling from your read?"
             value={text}
             onChange={(e) => setText(e.target.value)}
-            rows="3"
+            rows="2"
             className="post-composer-textarea"
           />
 
@@ -151,7 +151,7 @@ export default function PostComposer({ user, onPostCreated }) {
                 placeholder="Add a quote from the book..."
                 value={quote}
                 onChange={(e) => setQuote(e.target.value)}
-                rows="3"
+                rows="2"
                 className="quote-textarea"
               />
             </div>
