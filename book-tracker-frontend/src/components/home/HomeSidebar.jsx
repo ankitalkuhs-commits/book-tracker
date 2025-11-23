@@ -5,23 +5,23 @@ import { apiFetch } from '../../services/api';
 
 export default function HomeSidebar() {
   const [friendsReading, setFriendsReading] = useState([]);
-  const [topBooks, setTopBooks] = useState([]);
-  const [topReaders, setTopReaders] = useState([]);
+  // const [topBooks, setTopBooks] = useState([]);
+  // const [topReaders, setTopReaders] = useState([]);
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
 
   // Load friends feed from API
   useEffect(() => {
     loadFriendsFeed();
-    // Keep mock data for community highlights
-    setTopBooks([
-      { title: 'The Song of Achilles', emoji: '😢', color: '#DDD6FE' },
-      { title: 'Circe', emoji: '🌟', color: '#BBF7D0' },
-      { title: 'Atomic Habits', emoji: '🌟', color: '#BBF7D0' },
-    ]);
-    setTopReaders([
-      { username: '@marcoreads', initial: 'M' },
-      { username: '@bookish_jane', initial: 'J' },
-    ]);
+    // Keep mock data for community highlights (commented out for now)
+    // setTopBooks([
+    //   { title: 'The Song of Achilles', emoji: '😢', color: '#DDD6FE' },
+    //   { title: 'Circe', emoji: '🌟', color: '#BBF7D0' },
+    //   { title: 'Atomic Habits', emoji: '🌟', color: '#BBF7D0' },
+    // ]);
+    // setTopReaders([
+    //   { username: '@marcoreads', initial: 'M' },
+    //   { username: '@bookish_jane', initial: 'J' },
+    // ]);
   }, []);
 
   const loadFriendsFeed = async () => {
@@ -112,10 +112,9 @@ export default function HomeSidebar() {
       </div>
 
       {/* Community Highlights */}
-      <div className="sidebar-widget">
+      {/* <div className="sidebar-widget">
         <h3 className="widget-title">Community Highlights</h3>
 
-        {/* Top Emotional Books */}
         <div className="highlight-section">
           <h4 className="highlight-header">
             <span className="highlight-icon">🏆</span>
@@ -136,7 +135,6 @@ export default function HomeSidebar() {
           </div>
         </div>
 
-        {/* Most Expressive Readers */}
         <div className="highlight-section section-gap">
           <h4 className="highlight-header">
             <span className="highlight-icon">✨</span>
@@ -151,7 +149,7 @@ export default function HomeSidebar() {
             ))}
           </div>
         </div>
-      </div>
+      </div> */}
     </div>
   );
 }
