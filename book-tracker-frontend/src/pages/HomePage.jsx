@@ -18,8 +18,31 @@ export default function HomePage({ user }) {
         <div className="content-grid">
           {/* Main Content - Left/Center */}
           <div>
-            {/* Post Composer */}
-            <PostComposer user={user} onPostCreated={handlePostCreated} />
+            {/* Post Composer - Only show if logged in */}
+            {user ? (
+              <PostComposer user={user} onPostCreated={handlePostCreated} />
+            ) : (
+              <div className="card" style={{ textAlign: 'center', padding: '2rem' }}>
+                <h3 style={{ color: '#6366F1', marginBottom: '0.5rem' }}>Welcome to Track My Read!</h3>
+                <p style={{ color: '#6B7280', marginBottom: '1rem' }}>
+                  Join our community to share your reading journey, connect with fellow readers, and track your books.
+                </p>
+                <a 
+                  href="/login" 
+                  style={{ 
+                    display: 'inline-block',
+                    padding: '0.75rem 1.5rem',
+                    backgroundColor: '#6366F1',
+                    color: 'white',
+                    borderRadius: '0.5rem',
+                    textDecoration: 'none',
+                    fontWeight: '500'
+                  }}
+                >
+                  Login or Sign Up to Post
+                </a>
+              </div>
+            )}
             
             {/* Community Feed */}
             <CommunityPulseFeed key={refreshKey} />

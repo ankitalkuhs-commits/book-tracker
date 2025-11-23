@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from typing import Optional, List
 from pydantic import BaseModel
 from sqlmodel import Session
-from ..deps import get_db, get_current_user
+from ..deps import get_db, get_current_user, get_current_user_optional
 from .. import crud, models
 import os
 import uuid
@@ -155,7 +155,7 @@ def create_note(payload: NoteCreateSchema, db: Session = Depends(get_db), curren
 
 
 @router.get("/feed", status_code=status.HTTP_200_OK, response_model=List[NoteOutSchema])
-def get_feed(limit: int = 50, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+def get_feed(limit: int = 50, db: Session = Depends(get_db), current_user: Optional[models.User] = Depends(get_current_user_optional)):
     from sqlmodel import select, func
     notes = crud.get_notes_feed(db, limit=limit)
     result = []
@@ -173,12 +173,14 @@ def get_feed(limit: int = 50, db: Session = Depends(get_db), current_user: model
             select(func.count(models.Comment.id)).where(models.Comment.note_id == n.id)
         ).one()
         
-        # Check if current user has liked
-        user_has_liked = db.exec(
-            select(models.Like)
-            .where(models.Like.note_id == n.id)
-            .where(models.Like.user_id == current_user.id)
-        ).first() is not None
+        # Check if current user has liked (only if authenticated)
+        user_has_liked = False
+        if current_user:
+            user_has_liked = db.exec(
+                select(models.Like)
+                .where(models.Like.note_id == n.id)
+                .where(models.Like.user_id == current_user.id)
+            ).first() is not None
         
         result.append({
             "id": n.id,

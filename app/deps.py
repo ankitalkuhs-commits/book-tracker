@@ -76,3 +76,38 @@ def get_current_user(
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
 
     return user
+
+
+def get_current_user_optional(
+    db: Session = Depends(get_db),
+    creds: Optional[HTTPAuthorizationCredentials] = Depends(bearer_scheme)
+) -> Optional:
+    """
+    Optional authentication - returns User if authenticated, None if not.
+    Does not raise an error for unauthenticated users.
+    """
+    token = _extract_token(creds)
+    if not token:
+        return None
+
+    payload = auth.decode_token(token)
+    if not payload:
+        return None
+
+    sub = payload.get("sub")
+    if sub is None:
+        return None
+
+    # Try integer id first
+    user = None
+    try:
+        user_id = int(sub)
+        user = crud.get_user_by_id(db, user_id=user_id)
+    except Exception:
+        user = None
+
+    # If not found and sub looks like an email, try lookup by email
+    if user is None and isinstance(sub, str) and "@" in sub:
+        user = crud.get_user_by_email(db, email=sub)
+
+    return user

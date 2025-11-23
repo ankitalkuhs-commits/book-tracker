@@ -49,6 +49,8 @@ export default function HomeSidebar() {
       setFriendsReading(transformed);
     } catch (error) {
       console.error('Error loading friends feed:', error);
+      // Silently fail for unauthenticated users
+      setFriendsReading([]);
     }
   };
 
