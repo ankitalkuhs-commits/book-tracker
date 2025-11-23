@@ -2,10 +2,17 @@
 import React, { useState } from 'react';
 import { BACKEND, apiFetch } from '../../services/api';
 
-export default function PulsePost({ post }) {
+export default function PulsePost({ post, currentUser }) {
   const [likes, setLikes] = useState(post.likes_count || 0);
   const [liked, setLiked] = useState(post.user_has_liked || false);
   const [isLiking, setIsLiking] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedText, setEditedText] = useState(post.text || '');
+  const [editedQuote, setEditedQuote] = useState(post.quote || '');
+  const [isSaving, setIsSaving] = useState(false);
+  
+  // Check if current user owns this post
+  const isOwner = currentUser && post.user && currentUser.id === post.user.id;
 
   // Format timestamp (e.g., "2 hours ago", "Oct 1, 2025")
   const formatTimestamp = (dateString) => {
@@ -68,6 +75,42 @@ export default function PulsePost({ post }) {
     }
   };
 
+  const handleSaveEdit = async () => {
+    setIsSaving(true);
+    try {
+      await apiFetch(`/notes/${post.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          text: editedText,
+          quote: editedQuote,
+          emotion: post.emotion,
+          page_number: post.page_number,
+          chapter: post.chapter,
+          image_url: post.image_url,
+          userbook_id: post.userbook?.id,
+          is_public: post.is_public
+        })
+      });
+      
+      // Update post data
+      post.text = editedText;
+      post.quote = editedQuote;
+      setIsEditing(false);
+    } catch (error) {
+      console.error('Error updating post:', error);
+      alert('Failed to update post');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditedText(post.text || '');
+    setEditedQuote(post.quote || '');
+    setIsEditing(false);
+  };
+
   return (
     <div className="card">
       <div className="feed-post">
@@ -77,10 +120,28 @@ export default function PulsePost({ post }) {
         </div>
 
         <div className="post-content">
-          {/* User header */}
+          {/* User header with edit button */}
           <div className="post-header">
-            <span className="post-username">{post.user?.name || 'Anonymous'}</span>
-            <span className="post-meta">shared this</span>
+            <div>
+              <span className="post-username">{post.user?.name || 'Anonymous'}</span>
+              <span className="post-meta">shared this</span>
+            </div>
+            {isOwner && !isEditing && (
+              <button
+                onClick={() => setIsEditing(true)}
+                style={{
+                  padding: '0.25rem 0.5rem',
+                  fontSize: '0.875rem',
+                  color: '#6366F1',
+                  background: 'none',
+                  border: '1px solid #6366F1',
+                  borderRadius: '0.25rem',
+                  cursor: 'pointer'
+                }}
+              >
+                ✏️ Edit
+              </button>
+            )}
           </div>
 
           {/* Book info */}
@@ -90,22 +151,91 @@ export default function PulsePost({ post }) {
             </div>
           )}
 
-          {/* Post text/quote */}
-          {post.text && (
-            <div className="post-text">
-              {post.text}
+          {/* Post text/quote - Edit mode or display mode */}
+          {isEditing ? (
+            <div style={{ marginBottom: '1rem' }}>
+              <textarea
+                value={editedText}
+                onChange={(e) => setEditedText(e.target.value)}
+                placeholder="What are you feeling from your read?"
+                style={{
+                  width: '100%',
+                  minHeight: '80px',
+                  padding: '0.75rem',
+                  border: '1px solid #D1D5DB',
+                  borderRadius: '0.5rem',
+                  fontSize: '1rem',
+                  marginBottom: '0.5rem'
+                }}
+              />
+              {post.quote !== undefined && (
+                <textarea
+                  value={editedQuote}
+                  onChange={(e) => setEditedQuote(e.target.value)}
+                  placeholder="Add a quote (optional)"
+                  style={{
+                    width: '100%',
+                    minHeight: '60px',
+                    padding: '0.75rem',
+                    border: '1px solid #D1D5DB',
+                    borderRadius: '0.5rem',
+                    fontSize: '0.95rem',
+                    fontStyle: 'italic'
+                  }}
+                />
+              )}
+              <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+                <button
+                  onClick={handleSaveEdit}
+                  disabled={isSaving}
+                  style={{
+                    padding: '0.5rem 1rem',
+                    backgroundColor: '#6366F1',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '0.5rem',
+                    cursor: isSaving ? 'wait' : 'pointer',
+                    opacity: isSaving ? 0.5 : 1
+                  }}
+                >
+                  {isSaving ? 'Saving...' : 'Save'}
+                </button>
+                <button
+                  onClick={handleCancelEdit}
+                  disabled={isSaving}
+                  style={{
+                    padding: '0.5rem 1rem',
+                    backgroundColor: '#E5E7EB',
+                    color: '#374151',
+                    border: 'none',
+                    borderRadius: '0.5rem',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Cancel
+                </button>
+              </div>
             </div>
-          )}
+          ) : (
+            <>
+              {/* Post text/quote */}
+              {post.text && (
+                <div className="post-text">
+                  {post.text}
+                </div>
+              )}
 
-          {/* Quote section */}
-          {post.quote && (
-            <div className="post-quote">
-              <span className="post-quote-icon">"</span>
-              <p className="post-quote-text">
-                {post.quote}
-              </p>
-              <span className="post-quote-icon" style={{ float: 'right' }}>"</span>
-            </div>
+              {/* Quote section */}
+              {post.quote && (
+                <div className="post-quote">
+                  <span className="post-quote-icon">"</span>
+                  <p className="post-quote-text">
+                    {post.quote}
+                  </p>
+                  <span className="post-quote-icon" style={{ float: 'right' }}>"</span>
+                </div>
+              )}
+            </>
           )}
 
           {/* Image if available */}

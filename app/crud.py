@@ -128,6 +128,11 @@ def get_notes_feed(db: Session, limit: int = 50) -> List[models.Note]:
     return db.exec(q).all()
 
 
+def get_note_by_id(db: Session, note_id: int) -> Optional[models.Note]:
+    """Get a single note by ID"""
+    return db.exec(select(models.Note).where(models.Note.id == note_id)).first()
+
+
 def get_notes_for_user(db: Session, user_id: int) -> List[models.Note]:
     q = select(models.Note).where(models.Note.user_id == user_id).order_by(models.Note.created_at.desc())
     return db.exec(q).all()

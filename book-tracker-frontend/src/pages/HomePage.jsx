@@ -61,7 +61,7 @@ export default function HomePage({ user, onRoute }) {
             )}
             
             {/* Community Feed */}
-            <CommunityPulseFeed key={refreshKey} />
+            <CommunityPulseFeed key={refreshKey} currentUser={user} />
           </div>
 
           {/* Sidebar - Right */}

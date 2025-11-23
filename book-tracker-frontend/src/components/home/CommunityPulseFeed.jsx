@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 import PulsePost from './PulsePost';
 import { apiFetch } from '../../services/api';
 
-export default function CommunityPulseFeed() {
+export default function CommunityPulseFeed({ currentUser }) {
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -71,7 +71,7 @@ export default function CommunityPulseFeed() {
       <h2 className="section-title">Community Pulse</h2>
       <div>
         {posts.map((post) => (
-          <PulsePost key={post.id} post={post} />
+          <PulsePost key={post.id} post={post} currentUser={currentUser} />
         ))}
       </div>
     </div>

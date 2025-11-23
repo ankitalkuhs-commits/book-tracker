@@ -154,6 +154,56 @@ def create_note(payload: NoteCreateSchema, db: Session = Depends(get_db), curren
     return out
 
 
+@router.put("/{note_id}", response_model=NoteOutSchema, status_code=status.HTTP_200_OK)
+def update_note(
+    note_id: int,
+    payload: NoteCreateSchema,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """Update an existing note - only the owner can update"""
+    # Get the note
+    note = crud.get_note_by_id(db, note_id=note_id)
+    if not note:
+        raise HTTPException(status_code=404, detail="Note not found")
+    
+    # Check ownership
+    if note.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to edit this note")
+    
+    # Update fields
+    note.text = payload.text
+    note.emotion = payload.emotion
+    note.page_number = payload.page_number
+    note.chapter = payload.chapter
+    note.quote = payload.quote
+    if payload.image_url is not None:
+        note.image_url = payload.image_url
+    if payload.is_public is not None:
+        note.is_public = payload.is_public
+    
+    db.add(note)
+    db.commit()
+    db.refresh(note)
+    
+    # Build response
+    book = note.userbook.book if note.userbook else None
+    user = note.user
+    return {
+        "id": note.id,
+        "text": note.text,
+        "emotion": note.emotion,
+        "page_number": note.page_number,
+        "chapter": note.chapter,
+        "image_url": note.image_url,
+        "quote": note.quote,
+        "is_public": note.is_public,
+        "created_at": format_timestamp(note.created_at),
+        "user": {"id": user.id, "name": user.name} if user else None,
+        "book": {"id": book.id, "title": book.title, "author": book.author} if book else None
+    }
+
+
 @router.get("/feed", status_code=status.HTTP_200_OK, response_model=List[NoteOutSchema])
 def get_feed(limit: int = 50, db: Session = Depends(get_db), current_user: Optional[models.User] = Depends(get_current_user_optional)):
     from sqlmodel import select, func
