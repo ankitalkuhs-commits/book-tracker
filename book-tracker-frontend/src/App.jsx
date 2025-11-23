@@ -123,7 +123,7 @@ function AppContent(){
       )}
       
       {/* New BookPulse Pages - Full Width */}
-      {route==="home" && <HomePage user={user} />}
+      {route==="home" && <HomePage user={user} onRoute={setRoute} />}
       {route==="my-library" && <LibraryPage />}
       {route==="profile" && (
         <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '2rem' }}>
