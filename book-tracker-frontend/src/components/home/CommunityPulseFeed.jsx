@@ -26,8 +26,8 @@ export default function CommunityPulseFeed({ currentUser }) {
 
   useEffect(() => {
     loadPosts();
-    // Auto-refresh every 30 seconds
-    const interval = setInterval(loadPosts, 30000);
+    // Auto-refresh every 5 minutes
+    const interval = setInterval(loadPosts, 300000); // 5 minutes = 300000ms
     return () => clearInterval(interval);
   }, []);
 
