@@ -17,7 +17,7 @@ export default function HomePage({ user, onRoute }) {
       <div className="content-wrapper">
         <div className="content-grid">
           {/* Main Content - Left/Center */}
-          <div>
+          <div className="main-content">
             {/* Post Composer - Only show if logged in */}
             {user ? (
               <PostComposer user={user} onPostCreated={handlePostCreated} />
@@ -65,7 +65,7 @@ export default function HomePage({ user, onRoute }) {
           </div>
 
           {/* Sidebar - Right */}
-          <div>
+          <div className="sidebar-content">
             <HomeSidebar />
           </div>
         </div>

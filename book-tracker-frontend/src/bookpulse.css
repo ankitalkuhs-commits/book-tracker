@@ -150,9 +150,27 @@ body {
   gap: 1.5rem;
 }
 
+/* Mobile: Show sidebar before main content */
+.sidebar-content {
+  order: 1;
+}
+
+.main-content {
+  order: 2;
+}
+
 @media (min-width: 1024px) {
   .content-grid {
     grid-template-columns: 2fr 1fr;
+  }
+  
+  /* Desktop: Reset order (sidebar on right) */
+  .sidebar-content {
+    order: 2;
+  }
+  
+  .main-content {
+    order: 1;
   }
 }
 
