@@ -78,7 +78,14 @@ export default function HomeSidebar() {
             <p className="empty-state-subtitle">Search and follow readers to see what they're reading</p>
           </div>
         ) : (
-          <div className="friend-list">
+          <div 
+            className="friend-list"
+            style={{
+              maxHeight: 'calc(2 * (3.5rem + 1rem))', // 2 items: each ~3.5rem height + 1rem margin
+              overflowY: 'auto',
+              overflowX: 'hidden'
+            }}
+          >
             {friendsReading.map((item, idx) => (
               <div key={idx} className="friend-item">
                 <div className={`friend-avatar ${item.isMutual ? 'mutual' : ''}`}>
