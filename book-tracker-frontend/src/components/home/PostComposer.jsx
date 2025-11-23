@@ -184,9 +184,6 @@ export default function PostComposer({ user, onPostCreated }) {
               >
                 💬
               </button>
-              <button className="icon-btn" title="Tag user">
-                @
-              </button>
             </div>
 
             <button

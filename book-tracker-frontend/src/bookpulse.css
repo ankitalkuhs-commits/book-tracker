@@ -209,7 +209,7 @@ body {
   font-family: inherit;
   font-size: 1rem;
   resize: none;
-  margin-bottom: 1rem;
+  margin-bottom: 0.5rem;
 }
 
 .post-composer-textarea:focus {
