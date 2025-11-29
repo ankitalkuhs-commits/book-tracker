@@ -114,35 +114,56 @@ export default function PulsePost({ post, currentUser }) {
   return (
     <div className="card">
       <div className="feed-post">
-        {/* User Avatar */}
-        <div className="post-avatar">
-          {getInitials(post.user?.name)}
-        </div>
+        {/* User Avatar - only show if logged in */}
+        {currentUser && (
+          <div className="post-avatar">
+            {getInitials(post.user?.name)}
+          </div>
+        )}
 
         <div className="post-content">
-          {/* User header with edit button */}
-          <div className="post-header">
-            <div>
-              <span className="post-username">{post.user?.name || 'Anonymous'}</span>
-              <span className="post-meta"> shared this</span>
+          {/* User header with edit button - only show if logged in */}
+          {currentUser && (
+            <div className="post-header">
+              <div>
+                <span className="post-username">{post.user?.name || 'Anonymous'}</span>
+                <span className="post-meta"> shared this</span>
+              </div>
+              {isOwner && !isEditing && (
+                <button
+                  onClick={() => setIsEditing(true)}
+                  style={{
+                    padding: '0.25rem 0.5rem',
+                    fontSize: '1rem',
+                    color: '#6366F1',
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer'
+                  }}
+                  title="Edit post"
+                >
+                  ✏️
+                </button>
+              )}
             </div>
-            {isOwner && !isEditing && (
-              <button
-                onClick={() => setIsEditing(true)}
-                style={{
-                  padding: '0.25rem 0.5rem',
-                  fontSize: '1rem',
-                  color: '#6366F1',
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer'
-                }}
-                title="Edit post"
-              >
-                ✏️
-              </button>
-            )}
-          </div>
+          )}
+
+          {/* For non-logged-in users, show a simple header */}
+          {!currentUser && (
+            <div style={{
+              marginBottom: '0.75rem',
+              paddingBottom: '0.5rem',
+              borderBottom: '1px solid #E5E7EB'
+            }}>
+              <span style={{
+                fontSize: '0.875rem',
+                color: '#6B7280',
+                fontWeight: '500'
+              }}>
+                📚 Community Post
+              </span>
+            </div>
+          )}
 
           {/* Book info */}
           {post.userbook?.book && (
@@ -248,22 +269,38 @@ export default function PulsePost({ post, currentUser }) {
             </div>
           )}
 
-          {/* Actions (likes, comments) */}
-          <div className="post-actions">
-            <button
-              onClick={handleLike}
-              disabled={isLiking}
-              className="post-action-button"
-              style={{
-                color: liked ? '#EF4444' : '#6B7280',
-                opacity: isLiking ? 0.5 : 1,
-                cursor: isLiking ? 'wait' : 'pointer'
-              }}
-            >
-              <span className="post-action-icon">{liked ? '❤️' : '🤍'}</span>
-              <span>{likes}</span>
-            </button>
-          </div>
+          {/* Actions (likes, comments) - only show if logged in */}
+          {currentUser ? (
+            <div className="post-actions">
+              <button
+                onClick={handleLike}
+                disabled={isLiking}
+                className="post-action-button"
+                style={{
+                  color: liked ? '#EF4444' : '#6B7280',
+                  opacity: isLiking ? 0.5 : 1,
+                  cursor: isLiking ? 'wait' : 'pointer'
+                }}
+              >
+                <span className="post-action-icon">{liked ? '❤️' : '🤍'}</span>
+                <span>{likes}</span>
+              </button>
+            </div>
+          ) : (
+            <div style={{
+              padding: '0.75rem',
+              backgroundColor: '#F3F4F6',
+              borderRadius: '0.5rem',
+              textAlign: 'center',
+              fontSize: '0.875rem',
+              color: '#6B7280',
+              marginTop: '1rem'
+            }}>
+              <a href="/login" style={{ color: '#6366F1', textDecoration: 'none', fontWeight: '500' }}>
+                Log in
+              </a> to interact with posts
+            </div>
+          )}
 
           {/* Timestamp */}
           <div className="post-timestamp">
