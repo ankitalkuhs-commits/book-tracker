@@ -270,7 +270,7 @@ export default function PulsePost({ post, currentUser }) {
           )}
 
           {/* Actions (likes, comments) - only show if logged in */}
-          {currentUser ? (
+          {currentUser && (
             <div className="post-actions">
               <button
                 onClick={handleLike}
@@ -285,20 +285,6 @@ export default function PulsePost({ post, currentUser }) {
                 <span className="post-action-icon">{liked ? '❤️' : '🤍'}</span>
                 <span>{likes}</span>
               </button>
-            </div>
-          ) : (
-            <div style={{
-              padding: '0.75rem',
-              backgroundColor: '#F3F4F6',
-              borderRadius: '0.5rem',
-              textAlign: 'center',
-              fontSize: '0.875rem',
-              color: '#6B7280',
-              marginTop: '1rem'
-            }}>
-              <a href="/login" style={{ color: '#6366F1', textDecoration: 'none', fontWeight: '500' }}>
-                Log in
-              </a> to interact with posts
             </div>
           )}
 
