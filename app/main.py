@@ -79,9 +79,23 @@ uploads_path.mkdir(exist_ok=True)
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 # ---------------------
-# Note: DB initialization is handled by create_tables.py during deployment
-# No need to call init_db() here to avoid SSL connection issues with multiple workers
+# Step 5: Initialize database tables on startup (with error handling)
 # ---------------------
+@app.on_event("startup")
+async def startup_event():
+    """Initialize database tables on application startup"""
+    try:
+        from sqlmodel import SQLModel
+        from .database import engine
+        from . import models  # Import models to register them
+        
+        print("🔄 Attempting to create database tables...")
+        SQLModel.metadata.create_all(engine)
+        print("✅ Database tables initialized successfully!")
+    except Exception as e:
+        print(f"⚠️ Warning: Could not create tables (they may already exist): {e}")
+        print("⚠️ Application will continue - tables should exist from previous deployment")
+        # Don't crash the app - tables likely already exist
 
 @app.get("/")
 def root():
