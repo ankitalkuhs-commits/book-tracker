@@ -13,6 +13,9 @@ DATABASE_URL = os.getenv(
     f"sqlite:///{DB_PATH}"  # Default to SQLite for local development
 )
 
+# Render provides postgres:// but SQLAlchemy 1.4+ requires postgresql://
+if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
 # create engine
 # Only pass the sqlite-only connect_args when using SQLite.
@@ -29,8 +32,16 @@ else:
         echo=False,  # Set to False in production for cleaner logs
         pool_pre_ping=True,  # Verify connections before using them
         pool_recycle=300,  # Recycle connections after 5 minutes
-        pool_size=10,  # Connection pool size
-        max_overflow=20,  # Allow up to 20 extra connections beyond pool_size
+        pool_size=5,  # Reduced pool size for better stability
+        max_overflow=10,  # Reduced overflow
+        connect_args={
+            "sslmode": "prefer",  # Changed from "require" to "prefer" for better compatibility
+            "connect_timeout": 30,  # Increased timeout
+            "keepalives": 1,
+            "keepalives_idle": 30,
+            "keepalives_interval": 10,
+            "keepalives_count": 5,
+        }
     )
 
 
