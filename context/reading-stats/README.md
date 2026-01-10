@@ -1,201 +1,376 @@
-# Reading Analytics & Statistics
+# Reading Statistics Context
 
-**Feature Owner:** Analytics Module  
-**Last Updated:** December 27, 2025
+**Feature Owner:** Analytics & Stats  
+**Last Updated:** January 10, 2026
 
 ---
 
 ## Overview
-
-Personal reading statistics dashboard showing books read, pages tracked, and emotional engagement with readings.
-
----
-
-## Architecture
-
-### Backend Files
-- `app/routers/notes_router.py` - GET `/notes/me` for emotions count
-- `app/routers/userbooks_router.py` - Library data for stats calculation
-- `app/models.py` - UserBook, Note models
-
-### Frontend Files
-- `src/components/library/ReadingStatsTable.jsx` - Main statistics widget
-- `src/components/library/WeeklyPulseChart.jsx` - (Commented out) Activity chart
+Tracks and displays reading statistics, progress analytics, notes/highlights, and reading insights.
 
 ---
 
-## Key Decisions
+## Files in This Feature
 
-### 1. Stats Calculation Strategy
-**Client-Side Computation:**
-- Receives raw library data from API
-- Calculates stats in browser (reduces server load)
-- Real-time updates when library changes
+### Backend
+- `app/routers/notes_router.py` - Notes and highlights system
+- `app/models.py` - Notes model definition
 
-**Rationale:** Stats are derived from existing data, no need for separate endpoints
+### Frontend
+- `book-tracker-frontend/src/components/library/ReadingStatsTable.jsx` - Statistics table
+- `book-tracker-frontend/src/components/library/WeeklyPulseChart.jsx` - Visual analytics
+- `book-tracker-frontend/src/components/bookpulse/WeeklyPulse.jsx` - Weekly reading summary
 
-### 2. Metrics Tracked
-```javascript
-{
-  booksThisYear: 0,      // Books added in current year
-  currentlyReading: 0,   // status === 'reading'
-  booksFinished: 0,      // status === 'finished'
-  pagesRead: 0,          // Sum of current_page across all books
-  emotionsLogged: 0      // Count of notes/posts from API
-}
-```
+### Database Tables
+- `notes` - User notes and highlights with page references
+- `userbooks` - Reading progress and completion data
 
-### 3. Emotions Logged Evolution
-**v1 (Broken):**
-```javascript
-const emotionsLogged = Math.floor(Math.random() * 200);  // ❌ Random!
-```
+---
 
-**v2 (Current):**
-```javascript
-const notes = await apiFetch('/notes/me');
-const emotionsLogged = notes.length;  // ✅ Actual count
-```
+## Key Design Decisions
 
-**Fixed Issue:** Random number changed on every render, causing confusion
+### 1. Notes with Page References
+**Decision:** Store notes tied to specific pages/locations  
+**Why:**
+- Easy to reference while reading
+- Can display in context
+- Useful for studying/reviewing
+- Matches physical book experience
 
-### 4. Books This Year Logic
-```javascript
-const currentYear = new Date().getFullYear();
-const booksThisYear = library.filter(ub => {
-  const createdYear = new Date(ub.created_at).getFullYear();
-  return createdYear === currentYear;
-}).length;
-```
+**Implementation:**
+- `page_number` field for location
+- `note_text` for content
+- Optional `highlight_text` for quotes
+- Links to specific book via `book_id`
 
-**Rationale:** Tracks books added to library in current calendar year, not reading completion year
+### 2. Reading Progress Tracking
+**Decision:** Track both page-based and percentage progress  
+**Why:**
+- Physical books use pages
+- Ebooks use percentages
+- Both provide insights
+- Can calculate reading speed
+
+**Fields:**
+- `current_page` & `total_pages`
+- Auto-calculate percentage
+- Track `started_at` and `completed_at` timestamps
+
+### 3. Statistics Calculation
+**Decision:** Calculate stats on-demand (not stored)  
+**Why:**
+- Always accurate
+- No sync issues
+- Database is source of truth
+- Can add new metrics easily
+
+**Calculated Metrics:**
+- Books read (count where status=completed)
+- Currently reading (status=reading)
+- Average pages per book
+- Reading velocity (pages/day)
+- Completion rate
+
+### 4. Notes Privacy
+**Decision:** Notes are always private by default  
+**Why:**
+- Personal thoughts and insights
+- May contain spoilers
+- Study material
+- Optional sharing can be added later
+
+### 5. Weekly Pulse Analytics
+**Decision:** Week-based reading summaries  
+**Why:**
+- Manageable time frame
+- Encourages consistency
+- Easy to visualize
+- Aligns with habit tracking
 
 ---
 
 ## API Endpoints
 
-### GET `/notes/me`
-**Description:** Get all notes created by current user  
-**Used For:** Emotions Logged count  
-**Response:** Array of Note objects
+### Notes
 
-### GET `/userbooks/`
-**Description:** Get user's library  
-**Used For:** All other statistics calculations  
-**Response:** Array of UserBook objects
-
----
-
-## UI Display
-
-### Stats Grid (5 Cards)
-1. **Books This Year** 📚
-   - Count of books added in current year
-   - Icon: Book emoji
-
-2. **Currently Reading** 📖
-   - Count of books with status='reading'
-   - Icon: Open book emoji
-
-3. **Books Finished** ✅
-   - Count of books with status='finished'
-   - Icon: Checkmark emoji
-
-4. **Pages Read** 📄
-   - Sum of current_page across all books
-   - Formatted with commas (e.g., "1,234")
-   - Icon: Page emoji
-
-5. **Emotions Logged** 💭
-   - Count of posts/notes created
-   - Icon: Thought bubble emoji
-
-### Additional Insights
-- **Avg. Pages/Book:** `pagesRead / booksFinished`
-- **Reading Streak:** Hardcoded "7 days 🔥" (future implementation)
-
----
-
-## CSS Styling
-
-### Stats Grid
-```css
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 1rem;
+#### POST `/notes/`
+Create new note or highlight
+```json
+{
+  "book_id": 1,
+  "page_number": 42,
+  "note_text": "Interesting insight about...",
+  "highlight_text": "Actual quote from book",
+  "note_type": "note"  // or "highlight", "bookmark"
 }
 ```
 
-### Individual Stat Card
-```css
-.stat-card {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  padding: 1.5rem;
-  border-radius: 12px;
-  text-align: center;
+#### GET `/notes/?book_id={book_id}`
+Get all notes for a specific book (authenticated)
+
+#### GET `/notes/{note_id}`
+Get specific note
+
+#### PUT `/notes/{note_id}`
+Update existing note
+
+#### DELETE `/notes/{note_id}`
+Delete note (soft delete)
+
+### Statistics (Computed)
+
+#### GET `/stats/reading`
+Get reading statistics for current user
+```json
+{
+  "total_books": 47,
+  "books_reading": 3,
+  "books_completed": 42,
+  "books_wishlist": 15,
+  "total_pages_read": 12450,
+  "avg_pages_per_book": 297,
+  "completion_rate": 0.89
 }
 ```
+
+#### GET `/stats/weekly`
+Get weekly reading progress
+```json
+{
+  "week_of": "2026-01-05",
+  "pages_read": 350,
+  "books_started": 2,
+  "books_finished": 1,
+  "notes_created": 8
+}
+```
+
+---
+
+## Database Schema
+
+### notes table
+```sql
+CREATE TABLE notes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    book_id INTEGER NOT NULL,
+    page_number INTEGER,
+    note_text TEXT,
+    highlight_text TEXT,
+    note_type TEXT,  -- note, highlight, bookmark
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    FOREIGN KEY (book_id) REFERENCES books(id)
+);
+```
+
+### Relevant userbooks fields
+```sql
+current_page INTEGER,
+total_pages INTEGER,
+started_at TIMESTAMP,
+completed_at TIMESTAMP,
+rating INTEGER
+```
+
+---
+
+## Statistics Calculations
+
+### Books Read
+```python
+books_read = userbooks.filter(status="completed").count()
+```
+
+### Reading Velocity
+```python
+def calculate_reading_velocity(user_id):
+    recent_books = get_recently_completed_books(user_id, days=30)
+    total_pages = sum(book.total_pages for book in recent_books)
+    days_reading = (recent_books[-1].completed_at - recent_books[0].started_at).days
+    return total_pages / days_reading if days_reading > 0 else 0
+```
+
+### Completion Rate
+```python
+started = userbooks.filter(status__in=["reading", "completed", "did_not_finish"]).count()
+completed = userbooks.filter(status="completed").count()
+completion_rate = completed / started if started > 0 else 0
+```
+
+### Weekly Progress
+```python
+def get_weekly_stats(user_id, week_start):
+    week_end = week_start + timedelta(days=7)
+    
+    pages_read = sum_page_progress_in_range(user_id, week_start, week_end)
+    books_started = count_books_started_in_range(user_id, week_start, week_end)
+    books_finished = count_books_completed_in_range(user_id, week_start, week_end)
+    
+    return {
+        "pages_read": pages_read,
+        "books_started": books_started,
+        "books_finished": books_finished
+    }
+```
+
+---
+
+## Frontend Visualization
+
+### ReadingStatsTable.jsx
+Displays tabular statistics:
+- Total books by status
+- Total pages read
+- Average rating
+- Reading streaks
+- Monthly/yearly totals
+
+### WeeklyPulseChart.jsx
+Visual chart showing:
+- Pages read per day (bar chart)
+- Reading consistency (heatmap)
+- Progress over time (line graph)
+- Books completed timeline
+
+---
+
+## Notes Features
+
+### Note Types
+1. **Text Note** - Free-form thoughts
+2. **Highlight** - Quoted passages
+3. **Bookmark** - Page marker only
+
+### Note Organization
+- Sorted by page number
+- Filterable by book
+- Searchable by content
+- Exportable (future)
+
+### Common Use Cases
+- Study notes
+- Favorite quotes
+- Discussion points
+- Book club talking points
+- Review material
+
+---
+
+## File Attachments
+
+### Current Implementation
+- `uploads/notes/` directory
+- Image attachments supported
+- Reference stored in `note_attachment` field
+
+### Supported Types
+- Images (jpg, png)
+- PDFs (future)
+- Audio notes (future)
 
 ---
 
 ## Future Enhancements
 
-🔮 **Planned:**
+### Short Term
+- [ ] Reading goals (pages/day, books/month)
+- [ ] Streak tracking (consecutive reading days)
+- [ ] Genre-based statistics
+- [ ] Reading time estimates
+- [ ] Export notes to PDF/Markdown
 
-### 1. Weekly Pulse Chart
-- Activity heatmap (like GitHub contributions)
-- Shows reading sessions per day
-- Color intensity = pages read that day
+### Long Term
+- [ ] AI-generated reading insights
+- [ ] Reading pattern analysis
+- [ ] Book recommendation based on stats
+- [ ] Comparison with other readers
+- [ ] Reading challenges/achievements
 
-### 2. Reading Streak Tracking
-- Consecutive days with reading activity
-- Longest streak vs current streak
-- Gamification with badges
-
-### 3. Advanced Metrics
-- **Average Reading Speed:** Pages per day
-- **Genre Breakdown:** Pie chart of genres read
-- **Author Diversity:** Unique authors read
-- **Reading Goals:** Progress toward annual goal
-- **Monthly/Yearly Trends:** Line chart over time
-
-### 4. Social Comparisons
-- Rank among friends
-- Reading challenges and leaderboards
-- Community average comparisons
-
-### 5. Time-Based Analytics
-- Reading sessions duration
-- Preferred reading times
-- Time to complete book (start → finish)
+### Advanced Analytics
+- [ ] Reading speed by genre
+- [ ] Completion time predictions
+- [ ] Optimal reading times
+- [ ] Comprehension tracking
+- [ ] Vocabulary growth
 
 ---
 
-## Data Accuracy Considerations
+## Performance Optimization
 
-### Current Limitations
-1. **Pages Read:** Only counts current_page, not total pages in finished books
-2. **Books This Year:** Based on when added to library, not when read
-3. **Reading Streak:** Not yet implemented (hardcoded placeholder)
+### Indexes for Stats Queries
+```sql
+CREATE INDEX idx_userbooks_user_status ON userbooks(user_id, status);
+CREATE INDEX idx_userbooks_completed ON userbooks(user_id, completed_at);
+CREATE INDEX idx_notes_user_book ON notes(user_id, book_id);
+```
 
-### Improvement Ideas
-1. Track `total_pages` in Book model
-2. Add `started_at` and `finished_at` to UserBook
-3. Store reading sessions with timestamps
-4. Calculate actual reading speed and time
+### Caching Strategy
+- Cache calculated stats for 1 hour
+- Invalidate on book status change
+- Pre-calculate weekly stats
+- Use materialized views for heavy queries
 
 ---
 
-## Testing Checklist
+## Data Export
 
-- [ ] Stats update when adding new book
-- [ ] Stats update when changing book status
-- [ ] Stats update when updating current_page
-- [ ] Emotions Logged matches actual notes count
-- [ ] Books This Year only counts current year
-- [ ] Avg. Pages/Book calculation correct
-- [ ] Stats render correctly with 0 books
-- [ ] Large numbers formatted with commas
-- [ ] Stats responsive on mobile devices
+### Export Formats (Planned)
+- **CSV** - For spreadsheet analysis
+- **JSON** - For backup/migration
+- **Markdown** - For notes/highlights
+- **PDF** - For printing/sharing
+
+### What to Export
+- Reading list with metadata
+- All notes and highlights
+- Statistics summary
+- Reading timeline
+
+---
+
+## Troubleshooting
+
+### Notes not saving
+- Check user is authenticated
+- Verify book_id exists
+- Ensure file upload permissions (if attachment)
+- Check note_text is not empty
+
+### Statistics showing 0
+- Verify userbooks entries exist
+- Check status values are correct
+- Ensure completed_at dates are set
+- Validate SQL query filters
+
+### Chart not rendering
+- Check data format matches chart library
+- Verify dates are valid
+- Ensure no null values
+- Check browser console for errors
+
+---
+
+## Privacy Considerations
+
+### What's Always Private
+- All notes and highlights
+- Reading progress details
+- Time spent reading
+- Detailed statistics
+
+### What Can Be Shared (Future)
+- Total books read count
+- Favorite quotes (opted in)
+- Reading goals progress
+- General statistics
+
+---
+
+## Related Context
+
+- See [../library/README.md](../library/README.md) for book tracking
+- See [../community/README.md](../community/README.md) for sharing stats
+- See [../PROJECT_CONTEXT.md](../PROJECT_CONTEXT.md) for data architecture

@@ -1,332 +1,448 @@
-# Deployment & Infrastructure
+# Deployment Context
 
-**Feature Owner:** DevOps  
-**Last Updated:** December 27, 2025
+**Feature Owner:** DevOps & Infrastructure  
+**Last Updated:** January 10, 2026
 
 ---
 
 ## Overview
-
-Production deployment on Render (backend) and Vercel (frontend) with PostgreSQL database and Cloudinary image storage.
-
----
-
-## Infrastructure
-
-### Backend: Render
-- **Service Type:** Web Service
-- **Runtime:** Python 3.13
-- **Plan:** Free tier (upgradable)
-- **Region:** Oregon (US West)
-- **Start Command:** `gunicorn -k uvicorn.workers.UvicornWorker app.main:app --bind 0.0.0.0:$PORT --workers 2 --timeout 120`
-- **Port:** 10000 (auto-assigned by Render)
-- **Build Command:** `pip install -r requirements.txt`
-
-### Frontend: Vercel
-- **Framework:** Vite + React
-- **Plan:** Free tier
-- **Build Command:** `npm run build`
-- **Output Directory:** `dist`
-- **Auto-Deploy:** Enabled on `master` branch push
-- **Domain:** trackmyread.vercel.app
-
-### Database: PostgreSQL (Render)
-- **Service Type:** PostgreSQL
-- **Version:** 16
-- **Plan:** Free tier
-- **Region:** Oregon (US West)
-- **Backups:** Not included in free tier
-- **Connection:** Internal Database URL via `DATABASE_URL` env var
-
-### Image Storage: Cloudinary
-- **Plan:** Free tier (25 GB storage, 25 GB bandwidth/month)
-- **Folder Structure:** `book_tracker/notes/`
-- **URL Format:** Secure HTTPS URLs
-- **CDN:** Global delivery
+Database management, migrations, environment setup, and deployment configurations.
 
 ---
 
-## Environment Variables
+## Files in This Feature
 
-### Render Backend
+### Database Setup
+- `create_tables.py` - Python script to initialize database
+- `create_tables.sql` - SQL schema definition
+- `check_db.py` - Database validation utility
+- `check_setup.bat` - Windows setup verification
 
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `DATABASE_URL` | PostgreSQL connection string | `postgresql://user:pass@host/db` |
-| `SECRET_KEY` | JWT signing key | Random 32+ char string |
-| `CORS_ORIGINS` | Allowed frontend URLs | `https://trackmyread.vercel.app` |
-| `CLOUDINARY_CLOUD_NAME` | Cloudinary account name | `your-cloud-name` |
-| `CLOUDINARY_API_KEY` | Cloudinary API key | `123456789012345` |
-| `CLOUDINARY_API_SECRET` | Cloudinary API secret | `abcdef123456` |
+### Migrations
+- `migrations/` - Database migration scripts
+  - `add_follow_id.py` - Add follow system
+  - `migrate_db.py` - General migration runner
+  - `migrate_book_format_ownership.py` - Book format migration
+  - `migrate_status_values.py` - Status field migration
+  - `add_note_columns.py` - Add notes fields
 
-### Vercel Frontend
+### Configuration
+- `requirements.txt` - Python dependencies
+- `app/database.py` - Database connection setup
+- `.env` (not in repo) - Environment variables
 
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `VITE_API_URL` | Backend API base URL | `https://book-tracker-backend.onrender.com` |
-
----
-
-## Deployment Pipeline
-
-### Backend Deployment
-1. **Trigger:** Push to `master` branch on GitHub
-2. **Render Detection:** Webhook from GitHub
-3. **Build Phase:**
-   - Clone repository
-   - Install Python 3.13
-   - Run `pip install -r requirements.txt`
-   - Build takes ~2-3 minutes
-4. **Deploy Phase:**
-   - Start gunicorn with uvicorn workers
-   - App startup event creates database tables
-   - Health check on `/` endpoint
-   - Service goes live (~1 minute)
-5. **Total Time:** 3-5 minutes from push to live
-
-### Frontend Deployment
-1. **Trigger:** Push to `master` branch on GitHub
-2. **Vercel Detection:** Git integration
-3. **Build Phase:**
-   - Install Node.js dependencies
-   - Run `npm run build` (Vite)
-   - Build takes ~1-2 minutes
-4. **Deploy Phase:**
-   - Deploy to Vercel CDN
-   - Preview URL generated
-   - Production domain updated
-5. **Total Time:** 2-3 minutes from push to live
+### Uploads
+- `uploads/profile_pictures/` - User avatars
+- `uploads/notes/` - Note attachments
 
 ---
 
-## Critical Deployment Decisions
+## Key Design Decisions
 
-### 1. Database Table Creation Strategy
+### 1. SQLite for Development
+**Decision:** Use SQLite locally, PostgreSQL for production  
+**Why:**
+- Zero configuration for dev
+- File-based, easy backup
+- SQLModel is database-agnostic
+- Simple migration to PostgreSQL
 
-**Evolution:**
-- ❌ **v1:** Separate `create_tables.py` script in start command
-  - Issue: SSL connection failures blocked app startup
-- ✅ **v2:** App startup event with error handling
-  - Benefit: App starts even if table creation fails (tables likely exist)
-
-**Current Implementation:**
+**Migration Path:**
 ```python
-@app.on_event("startup")
-async def startup_event():
-    try:
-        SQLModel.metadata.create_all(engine)
-    except Exception as e:
-        print(f"Warning: {e}")
-        # Continue anyway - tables likely exist
+# DATABASE_URL in .env
+# Local: sqlite:///./book_tracker.db
+# Prod: postgresql://user:pass@host/db
 ```
 
-### 2. PostgreSQL Connection Configuration
+### 2. Manual Migration Scripts
+**Decision:** Python scripts instead of Alembic  
+**Why:**
+- Simpler for small project
+- More control over migrations
+- Easy to understand and debug
+- Can run selective migrations
 
-**SSL Settings:**
+**Pattern:**
 ```python
-connect_args={
-    "sslmode": "prefer",      # Flexible SSL requirement
-    "connect_timeout": 30,    # Increased timeout
-    "keepalives": 1,          # TCP keepalives
-    "keepalives_idle": 30,
-    "keepalives_interval": 10,
-    "keepalives_count": 5,
-}
+def migrate():
+    with Session(engine) as session:
+        # Migration logic
+        session.execute(text("ALTER TABLE..."))
+        session.commit()
 ```
 
-**Rationale:** Render's PostgreSQL requires SSL but "prefer" mode handles cert issues gracefully
+### 3. Environment Variables
+**Decision:** Use `.env` file for local, env vars for production  
+**Why:**
+- Keep secrets out of code
+- Different configs per environment
+- Standard practice
+- Easy deployment to Render/Railway
 
-### 3. Connection Pool Sizing
-```python
-pool_size=5        # Reduced from 10
-max_overflow=10    # Reduced from 20
+**Required Variables:**
+```
+SECRET_KEY=
+DATABASE_URL=
+CORS_ORIGINS=
+GOOGLE_BOOKS_API_KEY=
 ```
 
-**Rationale:** Free tier database has connection limits, smaller pool prevents exhaustion
+### 4. File Upload Storage
+**Decision:** Local filesystem (not S3 yet)  
+**Why:**
+- Simpler for MVP
+- No external dependencies
+- Free
+- Can migrate to S3 later
 
-### 4. DATABASE_URL Format Conversion
-```python
-# Render provides postgres://, SQLAlchemy needs postgresql://
-if DATABASE_URL.startswith("postgres://"):
-    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+**Structure:**
+```
+uploads/
+├── profile_pictures/
+│   └── {user_id}_{timestamp}.jpg
+└── notes/
+    └── {note_id}_{timestamp}.pdf
 ```
 
-**Rationale:** Compatibility between Render's format and SQLAlchemy 1.4+
+### 5. Database Backup Strategy
+**Decision:** Manual backups for now  
+**Why:**
+- SQLite is single file (easy copy)
+- Can automate with cron later
+- Backup before migrations
+- Version control backups
 
-### 5. Static File Handling
+---
+
+## Environment Setup
+
+### Local Development (Windows)
+
+#### 1. Python Environment
+```powershell
+cd C:\Users\sonal\Documents\projects\book-tracker
+python -m venv venv
+.\venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+```
+
+#### 2. Environment Variables
+Create `.env` file:
+```
+SECRET_KEY=your-secret-key-here
+DATABASE_URL=sqlite:///./book_tracker.db
+CORS_ORIGINS=http://localhost:5173,http://localhost:5174
+GOOGLE_BOOKS_API_KEY=your-google-api-key
+```
+
+#### 3. Database Initialization
+```powershell
+python create_tables.py
+```
+
+#### 4. Run Backend
+```powershell
+uvicorn app.main:app --reload
+```
+
+#### 5. Run Frontend
+```powershell
+cd book-tracker-frontend
+npm install
+npm run dev
+```
+
+---
+
+## Database Management
+
+### Creating Tables
 ```python
-# Backend uploads directory (ephemeral on Render)
+# create_tables.py
+from app.database import engine
+from app.models import SQLModel
+
+SQLModel.metadata.create_all(engine)
+```
+
+### Checking Database
+```powershell
+python check_db.py  # Lists all tables and row counts
+```
+
+### Manual SQL Queries
+```powershell
+sqlite3 book_tracker.db
+.tables
+SELECT * FROM users;
+.quit
+```
+
+---
+
+## Migration Workflow
+
+### Before Migration
+```powershell
+# Backup database
+cp book_tracker.db book_tracker.db.bak
+```
+
+### Running Migration
+```powershell
+python migrations/migrate_db.py
+```
+
+### Verify Migration
+```powershell
+python check_db.py
+# Check affected tables
+```
+
+### Rollback (if needed)
+```powershell
+# Restore backup
+cp book_tracker.db.bak book_tracker.db
+```
+
+---
+
+## Production Deployment
+
+### Platform: Render.com (Recommended)
+
+#### Backend Service
+1. Connect GitHub repo
+2. Build command: `pip install -r requirements.txt`
+3. Start command: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
+4. Environment variables:
+   ```
+   SECRET_KEY=<generate-strong-key>
+   DATABASE_URL=<postgresql-connection-string>
+   CORS_ORIGINS=https://your-frontend.com
+   GOOGLE_BOOKS_API_KEY=<your-key>
+   ```
+
+#### Database
+- Provision PostgreSQL database
+- Copy connection string to `DATABASE_URL`
+- Run migrations: `python create_tables.py`
+
+#### Frontend
+1. Build command: `npm run build`
+2. Publish directory: `dist`
+3. Environment variable:
+   ```
+   VITE_API_BASE_URL=https://your-backend.onrender.com
+   ```
+
+### Alternative: Railway.app
+
+Similar process:
+1. Connect repo
+2. Add PostgreSQL plugin
+3. Set environment variables
+4. Deploy
+
+---
+
+## File Upload Configuration
+
+### Local Setup
+```python
+# app/main.py
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 ```
 
-**Issue:** Files deleted on redeploy  
-**Solution:** Migrated to Cloudinary for persistence
+### Production Setup
+**Option 1: Same server**
+- Keep files on server
+- Mount uploads directory
+- Backup regularly
+
+**Option 2: S3 (Future)**
+- Use boto3 for uploads
+- Store URLs in database
+- Better scalability
 
 ---
 
-## Monitoring & Debugging
+## Environment Variables Reference
 
-### Render Logs
-Access via: Dashboard → Service → Logs tab
-
-**Key Log Patterns:**
-```
-✅ Database tables initialized successfully!
-⚠️ Warning: Could not create tables (they may already exist)
-❌ Error: SSL connection has been closed unexpectedly
-```
-
-### Vercel Logs
-Access via: Dashboard → Deployments → Function Logs
-
-**Useful for:**
-- Build errors
-- Runtime errors
-- API call failures
-
-### Database Monitoring
-Access via: Render → PostgreSQL Service → Metrics
-
-**Metrics:**
-- Connection count
-- Storage usage
-- Query performance
-
----
-
-## Common Deployment Issues
-
-### Issue 1: Backend Shows "Failed Service"
-**Symptoms:** Red status, app won't start  
-**Causes:**
-1. Database connection failure (SSL errors)
-2. Missing environment variables
-3. Syntax errors in code
-4. Port binding issues
-
-**Solutions:**
-1. Check `DATABASE_URL` is set correctly
-2. Verify all required env vars present
-3. Check logs for Python tracebacks
-4. Ensure start command uses `$PORT`
-
-### Issue 2: Free PostgreSQL Database Suspended
-**Symptoms:** "SSL connection has been closed unexpectedly"  
-**Cause:** Free tier database deleted after inactivity  
-**Solution:**
-1. Create new PostgreSQL service on Render
-2. Copy Internal Database URL
-3. Update `DATABASE_URL` in backend service
-4. Redeploy (tables auto-created)
-
-### Issue 3: CORS Errors on Frontend
-**Symptoms:** Browser console shows CORS policy errors  
-**Cause:** Frontend URL not in `CORS_ORIGINS`  
-**Solution:** Add frontend URL to `CORS_ORIGINS` env var (comma-separated for multiple)
-
-### Issue 4: Images Not Loading
-**Symptoms:** Broken image icons in posts  
-**Causes:**
-1. Cloudinary credentials not set
-2. Old local file URLs in database
-
-**Solutions:**
-1. Verify `CLOUDINARY_*` env vars
-2. Re-upload images (new uploads use Cloudinary)
-
-### Issue 5: Build Timeout on Render
-**Symptoms:** Build fails with timeout error  
-**Cause:** Large dependencies or slow download  
-**Solutions:**
-1. Check `requirements.txt` for unnecessary packages
-2. Use `--no-cache-dir` in pip install
-3. Upgrade to paid plan for faster builds
-
----
-
-## Backup & Recovery
-
-### Current State (Free Tier)
-❌ **No automated backups**  
-⚠️ **Risk:** Database loss if service deleted
-
-### Recommended Approach
-1. **Upgrade Database:** Starter plan ($7/mo) includes daily backups
-2. **Manual Exports:** Periodic pg_dump via Render shell
-3. **Code Backups:** GitHub repository (code is safe)
-4. **Image Backups:** Cloudinary retains images permanently
-
-### Manual Backup Command
+### Backend (.env)
 ```bash
-# Access Render shell for PostgreSQL service
-pg_dump $DATABASE_URL > backup.sql
+# Security
+SECRET_KEY=your-super-secret-key-min-32-chars
+ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=43200  # 30 days
+
+# Database
+DATABASE_URL=sqlite:///./book_tracker.db  # Local
+# DATABASE_URL=postgresql://user:pass@host:5432/dbname  # Production
+
+# CORS
+CORS_ORIGINS=http://localhost:5173,http://localhost:5174
+
+# APIs
+GOOGLE_BOOKS_API_KEY=your-google-books-api-key
+
+# File Uploads
+UPLOAD_DIR=./uploads
+MAX_FILE_SIZE=10485760  # 10MB
+```
+
+### Frontend (.env)
+```bash
+VITE_API_BASE_URL=http://127.0.0.1:8000  # Local
+# VITE_API_BASE_URL=https://your-backend.onrender.com  # Production
+```
+
+---
+
+## Database Schema Versioning
+
+### Current Schema Version: 1.0
+
+### Migration History
+1. **v1.0** - Initial schema (create_tables.sql)
+2. **v1.1** - Add follow system (add_follow_id.py)
+3. **v1.2** - Book format fields (migrate_book_format_ownership.py)
+4. **v1.3** - Status enum values (migrate_status_values.py)
+5. **v1.4** - Note attachments (add_note_columns.py)
+
+---
+
+## Backup Strategy
+
+### Automated Backup (Future)
+```powershell
+# Backup script
+$date = Get-Date -Format "yyyyMMdd_HHmmss"
+Copy-Item book_tracker.db "backups/book_tracker_$date.db"
+
+# Keep last 7 days
+Get-ChildItem backups/*.db | 
+  Where-Object {$_.CreationTime -lt (Get-Date).AddDays(-7)} | 
+  Remove-Item
+```
+
+### Manual Backup
+```powershell
+# Before major changes
+cp book_tracker.db book_tracker.db.bak
+```
+
+---
+
+## Monitoring & Logging
+
+### Current: Console Logging
+FastAPI default logging to stdout
+
+### Future: Structured Logging
+```python
+import logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+```
+
+### Production Monitoring
+- Use Render logs
+- Add Sentry for error tracking
+- Monitor database size
+- Track API response times
+
+---
+
+## Security Checklist
+
+### Pre-Deployment
+- [x] SECRET_KEY is strong and unique
+- [x] Passwords are bcrypt hashed
+- [x] CORS origins restricted
+- [x] SQL injection prevented (SQLModel)
+- [ ] HTTPS enforced
+- [ ] Rate limiting configured
+- [ ] File upload size limits
+- [ ] Input validation on all endpoints
+
+---
+
+## Troubleshooting
+
+### Database locked error
+SQLite issue with concurrent writes
+```python
+# Solution: Use WAL mode
+engine = create_engine(
+    "sqlite:///./book_tracker.db",
+    connect_args={"check_same_thread": False, "timeout": 30}
+)
+```
+
+### Migration failed
+```powershell
+# Rollback to backup
+cp book_tracker.db.bak book_tracker.db
+
+# Check what went wrong
+python check_db.py
+```
+
+### File upload permission errors
+```powershell
+# Ensure upload directories exist
+mkdir uploads\profile_pictures
+mkdir uploads\notes
 ```
 
 ---
 
 ## Performance Optimization
 
-### Backend
-- ✅ Gunicorn with 2 uvicorn workers (parallelism)
-- ✅ Connection pooling (reuse DB connections)
-- ✅ Pool pre-ping (detect stale connections)
-- ⏳ TODO: Redis caching for frequent queries
-- ⏳ TODO: Database query optimization (indexes)
+### Database Indexes
+```sql
+-- Add indexes for common queries
+CREATE INDEX idx_userbooks_user_status ON userbooks(user_id, status);
+CREATE INDEX idx_follows_follower ON follows(follower_id);
+CREATE INDEX idx_journals_created ON journals(created_at DESC);
+```
 
-### Frontend
-- ✅ Vite build optimization (code splitting)
-- ✅ Vercel CDN (global distribution)
-- ✅ Cloudinary CDN for images
-- ⏳ TODO: Lazy loading for images
-- ⏳ TODO: React.memo for expensive components
+### Connection Pooling
+Already handled by SQLModel for SQLite
 
----
-
-## Cost Analysis
-
-### Current Monthly Costs
-- **Render Backend:** $0 (Free tier)
-- **Render PostgreSQL:** $0 (Free tier, limited)
-- **Vercel Frontend:** $0 (Free tier)
-- **Cloudinary:** $0 (Free tier)
-- **Total:** $0/month
-
-### Recommended Paid Upgrades
-1. **PostgreSQL Starter:** $7/mo
-   - Daily backups
-   - 256 MB RAM → 1 GB RAM
-   - More connections
-   - Better performance
-
-2. **Render Starter:** $7/mo (when needed)
-   - No cold starts
-   - More compute
-   - Better uptime SLA
-
-**Total Recommended:** $7-14/month for production-ready setup
+For PostgreSQL:
+```python
+engine = create_engine(
+    DATABASE_URL,
+    pool_size=20,
+    max_overflow=10
+)
+```
 
 ---
 
-## Scaling Roadmap
+## Future Infrastructure Plans
 
-### Phase 1: Current (Free Tier)
-- Single backend instance
-- Free database with limits
-- Auto-sleep after inactivity
+### Short Term
+- [ ] Automated database backups
+- [ ] Error monitoring (Sentry)
+- [ ] API rate limiting
+- [ ] Request logging
 
-### Phase 2: Paid Starter ($7-14/mo)
-- Persistent backend (no sleep)
-- Reliable database with backups
-- 100+ concurrent users
+### Long Term
+- [ ] Move to PostgreSQL
+- [ ] S3 for file storage
+- [ ] Redis for caching
+- [ ] CDN for static assets
+- [ ] Docker containerization
 
-### Phase 3: Growth ($50+/mo)
-- Multiple backend instances
-- Production database plan
-- Redis caching layer
-- CDN optimization
+---
 
-### Phase 4: Scale ($200+/mo)
-- Load balancer
-- Database replication
-- Separate worker processes
-- Advanced monitoring (DataDog, Sentry)
+## Related Context
+
+- See [../PROJECT_CONTEXT.md](../PROJECT_CONTEXT.md) for architecture
+- See [../auth/README.md](../auth/README.md) for security setup
+- See [GOOGLE_OAUTH_SETUP.md](../../GOOGLE_OAUTH_SETUP.md) for OAuth setup

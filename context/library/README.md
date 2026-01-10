@@ -1,196 +1,332 @@
-# Book Library Management
+# Library Management Context
 
-**Feature Owner:** Library Module  
-**Last Updated:** December 27, 2025
+**Feature Owner:** Library & Books  
+**Last Updated:** January 10, 2026
 
 ---
 
 ## Overview
-
-Personal book library with status tracking, filtering, search, and pagination. Integrates with Google Books API for metadata.
-
----
-
-## Architecture
-
-### Backend Files
-- `app/routers/userbooks_router.py` - Library CRUD operations
-- `app/routers/books_router.py` - Book search and details
-- `app/routers/googlebooks_router.py` - Google Books integration
-- `app/models.py` - Book, UserBook models
-
-### Frontend Files
-- `src/pages/LibraryPage.jsx` - Main library view
-- `src/components/library/BookCard.jsx` - Individual book display
-- `src/components/library/AddBookModal.jsx` - Add books to library
-- `src/components/library/BookDetailModal.jsx` - View/edit book details
+Manages book catalog, user reading lists, book search, and reading status tracking.
 
 ---
 
-## Key Decisions
+## Files in This Feature
 
-### 1. Book Status System
-```python
-status: 'reading' | 'to-read' | 'finished'
-```
+### Backend
+- `app/routers/books_router.py` - Book catalog CRUD operations
+- `app/routers/userbooks_router.py` - User's reading list and status
+- `app/routers/googlebooks_router.py` - External book search integration
+- `app/models.py` - Book and UserBook models
 
-**Rationale:** Simple 3-state system covers most reading workflows. Can be extended with 'paused', 'abandoned', etc.
+### Frontend
+- `book-tracker-frontend/src/pages/LibraryPage.jsx` - Main library view
+- `book-tracker-frontend/src/components/library/BookCard.jsx` - Book display card
+- `book-tracker-frontend/src/components/library/AddBookModal.jsx` - Add book UI
+- `book-tracker-frontend/src/components/library/BookDetailModal.jsx` - Book details
+- `book-tracker-frontend/src/components/AddBook.jsx` - Legacy add book form
+- `book-tracker-frontend/src/components/BookList.jsx` - Legacy book list
 
-### 2. Dual Ownership Model
-- **Book Table:** Shared across all users (deduplication by ISBN/title)
-- **UserBook Table:** User-specific metadata (status, rating, notes, current_page)
+### Database Tables
+- `books` - Master book catalog
+- `userbooks` - User reading status and progress
+- `book_ownership` - Tracking physical/ebook ownership
 
-**Benefit:** Reduces database redundancy, enables social features (see what others read)
+---
 
-### 3. Filter Architecture
-```javascript
-// Filters: Tab (status) + Format + Ownership + Search
-const filteredBooks = library.filter(ub => {
-  // Status, format, ownership, and search query filters
-});
-```
+## Key Design Decisions
 
-**Chaining:** Multiple filters work together for precise results
+### 1. Separate Book Catalog from User Books
+**Decision:** Split `books` and `userbooks` tables  
+**Why:**
+- One book can be read by many users
+- Avoids duplicating book metadata
+- Easier to share books between users
+- Cleaner data model
 
-### 4. Pagination Strategy
-- **Page Size:** Fixed at 6 books per page
-- **Smart Ellipsis:** Shows "1 ... 5 6 7 ... 20" for large page counts
-- **Reset on Filter:** Page resets to 1 when filters change
+**Implementation:**
+- `books` table: title, author, ISBN, cover, description (shared)
+- `userbooks` table: user_id, book_id, status, progress (personal)
 
-### 5. Book Formats
-Supported formats:
-- hardcover, paperback, ebook, kindle, pdf, audiobook
+### 2. Reading Status Options
+**Decision:** Fixed set of statuses  
+**Options:**
+- `want_to_read` - Wishlist/planned
+- `reading` - Currently reading
+- `completed` - Finished
+- `did_not_finish` - Started but didn't finish
 
-**Rationale:** Covers most common reading formats, allows filtering by preferred format
+**Why:**
+- Clear user intent
+- Easy filtering and statistics
+- Matches common reading apps (Goodreads pattern)
+
+### 3. Google Books Integration
+**Decision:** Use Google Books API for search  
+**Why:**
+- Comprehensive book database
+- Free tier available
+- Rich metadata (covers, descriptions, ISBNs)
+- Reduces manual data entry
+
+**Implementation:**
+- Search endpoint proxies to Google Books
+- Parse and normalize response
+- Store selected books in local database
+
+### 4. Book Format Tracking
+**Decision:** Track physical, ebook, audiobook separately  
+**Why:**
+- Users often own multiple formats
+- Affects reading experience
+- Useful for collection statistics
+
+**Fields:**
+- `format` - physical/ebook/audiobook
+- `owns_physical`, `owns_ebook`, `owns_audiobook` booleans
+
+### 5. Progress Tracking
+**Decision:** Store page number and percentage  
+**Why:**
+- Page numbers for physical books
+- Percentage for ebooks/audiobooks
+- Both provide different insights
+
+**Fields:**
+- `current_page` - For physical books
+- `total_pages` - Total book length
+- Auto-calculate percentage when updated
 
 ---
 
 ## API Endpoints
 
-### GET `/userbooks/`
-**Description:** Get current user's library  
-**Response:** Array of UserBook objects with nested Book data
+### Books Catalog
 
-### POST `/userbooks/`
-**Request:**
+#### GET `/books/`
+List all books in catalog (paginated)
+
+#### GET `/books/{book_id}`
+Get specific book details
+
+#### POST `/books/`
+Add book to catalog (authenticated)
 ```json
 {
-  "book_id": 123,
-  "status": "reading",
-  "format": "paperback",
-  "ownership_status": "owned"
+  "title": "string",
+  "author": "string",
+  "isbn": "string",
+  "cover_image": "url",
+  "description": "text"
 }
 ```
 
-### PATCH `/userbooks/{id}`
-**Request:** Partial update (status, current_page, rating, notes, etc.)
+### User Books
 
-### DELETE `/userbooks/{id}`
-**Description:** Remove book from library (cascades to notes)
+#### GET `/userbooks/`
+Get current user's reading list with status filter
+```
+Query params: ?status=reading
+```
 
-### GET `/googlebooks/search?q={query}`
-**Description:** Search Google Books API for book metadata
+#### POST `/userbooks/`
+Add book to user's library
+```json
+{
+  "book_id": 1,
+  "status": "want_to_read",
+  "format": "physical"
+}
+```
+
+#### PUT `/userbooks/{userbook_id}`
+Update reading status or progress
+```json
+{
+  "status": "reading",
+  "current_page": 150,
+  "total_pages": 400
+}
+```
+
+#### DELETE `/userbooks/{userbook_id}`
+Remove book from user's library
+
+### Google Books Search
+
+#### GET `/googlebooks/search?q={query}`
+Search Google Books API
+Returns: Array of book objects with metadata
 
 ---
 
 ## Database Schema
 
-### UserBook Model
-```python
-class UserBook(SQLModel, table=True):
-    id: int
-    user_id: int  # FK to User
-    book_id: int  # FK to Book
-    status: str  # 'reading' | 'to-read' | 'finished'
-    current_page: int = 0
-    rating: Optional[int] = None  # 1-5 stars
-    private_notes: Optional[str] = None
-    format: Optional[str] = None
-    ownership_status: Optional[str] = None
-    borrowed_from: Optional[str] = None
-    loaned_to: Optional[str] = None
-    created_at: datetime
-    updated_at: datetime
+### books table
+```sql
+CREATE TABLE books (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT NOT NULL,
+    author TEXT,
+    isbn TEXT UNIQUE,
+    cover_image TEXT,
+    description TEXT,
+    published_date TEXT,
+    page_count INTEGER,
+    google_books_id TEXT,
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP
+);
+```
+
+### userbooks table
+```sql
+CREATE TABLE userbooks (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    book_id INTEGER NOT NULL,
+    status TEXT NOT NULL,
+    format TEXT,
+    current_page INTEGER,
+    total_pages INTEGER,
+    rating INTEGER,
+    started_at TIMESTAMP,
+    completed_at TIMESTAMP,
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    FOREIGN KEY (book_id) REFERENCES books(id),
+    UNIQUE(user_id, book_id)
+);
 ```
 
 ---
 
-## UI Features
+## Common Workflows
 
-### Tab Navigation
-- **All:** Shows all books
-- **Currently Reading:** status='reading'
-- **Want to Read:** status='to-read'
-- **Finished:** status='finished'
+### Adding a Book to Library
+1. User searches via Google Books
+2. Frontend displays results
+3. User selects book
+4. Check if book exists in local catalog (by ISBN)
+5. If not, create book entry
+6. Create userbook entry linking user to book
+7. Set initial status (e.g., want_to_read)
 
-Each tab shows count badge.
+### Updating Reading Progress
+1. User opens book detail
+2. Updates current page / percentage
+3. PUT to `/userbooks/{id}`
+4. Backend updates progress
+5. Auto-update status if reaching 100%
 
-### Filter System
-1. **Format Filter:** Dropdown with all formats + "All Formats"
-2. **Ownership Filter:** owned | borrowed | loaned
-3. **Search:** Real-time filter by title or author (case-insensitive)
-4. **Clear Filters:** Button appears when any filter is active
-
-### Pagination
-- Shows "X-Y of Z books"
-- Previous/Next buttons
-- Page number buttons with smart ellipsis
-- Disabled state for first/last page
-
-### Book Card Actions
-- Quick status change dropdown
-- "Add Note" button → Opens detail modal
-- "⋮" menu → View details, Delete
+### Filtering Library
+1. Frontend requests `/userbooks/?status=reading`
+2. Backend filters by status
+3. Joins with books table for metadata
+4. Returns enriched list
 
 ---
 
-## Common Patterns
+## Frontend State Management
 
-### Adding a Book
-1. User clicks "+ Add Book"
-2. Modal opens with Google Books search
-3. User searches and selects book
-4. POST `/googlebooks/add` creates Book + UserBook
-5. Library reloads to show new book
+### Library Page State
+```javascript
+const [books, setBooks] = useState([]);
+const [filter, setFilter] = useState('all');
+const [loading, setLoading] = useState(true);
+```
 
-### Updating Reading Progress
-1. User opens book detail modal
-2. Updates current_page field
-3. PATCH `/userbooks/{id}` with new data
-4. UI updates optimistically
+### Book Card Actions
+- View details → Open modal
+- Update status → Dropdown menu
+- Update progress → Progress bar click
+- Delete → Confirmation then API call
 
-### Deleting a Book
-1. User clicks delete in menu
-2. Confirmation dialog
-3. DELETE `/userbooks/{id}`
-4. Book removed from local state (optimistic UI)
-5. Associated notes are cascaded
+---
+
+## Statistics & Analytics
+
+### Reading Stats Calculated
+- Total books read
+- Currently reading count
+- Books by status
+- Average pages per book
+- Reading completion rate
+- Books read per month
+
+**Related:** See [../reading-stats/README.md](../reading-stats/README.md)
+
+---
+
+## Google Books API Integration
+
+### API Key Setup
+```bash
+# Environment variable
+GOOGLE_BOOKS_API_KEY=your_api_key_here
+```
+
+### Search Query Format
+```
+GET https://www.googleapis.com/books/v1/volumes?q={query}&key={api_key}
+```
+
+### Response Parsing
+Extract:
+- `volumeInfo.title`
+- `volumeInfo.authors[0]`
+- `volumeInfo.imageLinks.thumbnail`
+- `volumeInfo.description`
+- `volumeInfo.industryIdentifiers` (ISBN)
+
+### Rate Limits
+- Free tier: 1000 requests/day
+- Implement caching to reduce calls
+- Store frequently searched books locally
 
 ---
 
 ## Future Enhancements
 
-🔮 **Planned:**
-- ISBN barcode scanning for quick book addition
-- Bulk import from Goodreads/CSV
-- Reading history timeline
-- Book recommendations based on library
-- Tags/categories for books
-- Reading goals (e.g., "Read 50 books this year")
-- Library analytics (genres, authors, reading speed)
+### Short Term
+- [ ] Book series tracking
+- [ ] Reading goals (books per year)
+- [ ] Book recommendations based on library
+- [ ] Import from Goodreads CSV
+- [ ] Bulk status updates
+
+### Long Term
+- [ ] AI-powered book suggestions
+- [ ] Library sharing with friends
+- [ ] Reading challenges
+- [ ] Book club features
+- [ ] ISBN barcode scanner
 
 ---
 
-## Testing Checklist
+## Troubleshooting
 
-- [ ] Add book via Google Books search
-- [ ] Add book manually (custom title/author)
-- [ ] Change book status (reading → finished)
-- [ ] Update current page and verify progress
-- [ ] Filter by format (show only eBooks)
-- [ ] Filter by ownership status
-- [ ] Search for book by title
-- [ ] Search for book by author
-- [ ] Pagination with 20+ books
-- [ ] Delete book from library
-- [ ] Verify notes are deleted with book
+### Book duplicates in catalog
+- Check ISBN matching logic
+- Ensure unique constraint on ISBN
+- Normalize ISBN-10 vs ISBN-13
+
+### Google Books search not working
+- Verify API key is valid
+- Check rate limits
+- Ensure CORS proxy working
+- Test direct API call
+
+### Progress not updating
+- Verify userbook_id in request
+- Check user owns this book
+- Ensure total_pages is set
+- Validate current_page <= total_pages
+
+---
+
+## Related Context
+
+- See [../PROJECT_CONTEXT.md](../PROJECT_CONTEXT.md) for database design
+- See [../reading-stats/README.md](../reading-stats/README.md) for analytics
+- See [../community/README.md](../community/README.md) for sharing books

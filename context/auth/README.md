@@ -1,167 +1,255 @@
-# Authentication & User Management
+# Authentication Context
 
-**Feature Owner:** Core Backend  
-**Last Updated:** December 27, 2025
+**Feature Owner:** Auth System  
+**Last Updated:** January 10, 2026
 
 ---
 
 ## Overview
-
-JWT-based stateless authentication system with bcrypt password hashing. Supports signup, login, token refresh, and optional authentication for public endpoints.
-
----
-
-## Architecture
-
-### Backend Files
-- `app/auth.py` - Token generation, password hashing utilities
-- `app/routers/auth_router.py` - Auth endpoints
-- `app/deps.py` - Authentication dependencies
-- `app/models.py` - User model
-
-### Frontend Files
-- `src/pages/LoginPage.jsx` - Login UI
-- `src/pages/SignupPage.jsx` - Registration UI
-- `src/services/api.js` - Token storage and API client
+Handles user authentication, registration, and session management using JWT tokens.
 
 ---
 
-## Key Decisions
+## Files in This Feature
 
-### 1. JWT Configuration
-```python
-SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key-here")
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7  # 7 days
-```
+### Backend
+- `app/auth.py` - Core auth utilities (password hashing, token creation/verification)
+- `app/routers/auth_router.py` - Login and signup endpoints
+- `app/deps.py` - Dependency injection for protected routes
 
-**Rationale:** Long-lived tokens (7 days) for better UX, with refresh mechanism for security.
+### Frontend
+- `book-tracker-frontend/src/components/AuthForm.jsx` - Login/signup form UI
+- `book-tracker-frontend/src/services/api.js` - API client with token handling
+
+### Database
+- `users` table in SQLite - Stores user credentials and profile info
+
+---
+
+## Key Design Decisions
+
+### 1. JWT Token Authentication
+**Decision:** Use JWT tokens with OAuth2 password flow  
+**Why:**
+- Stateless (no server-side sessions)
+- Works well with REST APIs
+- Scalable across multiple servers
+- Frontend can easily include in requests
+
+**Implementation:**
+- Token lifetime: 30 days
+- Stored in localStorage on frontend
+- Sent as `Authorization: Bearer <token>` header
+- Secret key stored in environment variable
 
 ### 2. Password Security
-- **Hashing:** bcrypt with automatic salt generation
-- **Validation:** Email format validation via `email-validator`
-- **Storage:** Only hashed passwords stored in database
+**Decision:** Bcrypt hashing with salt  
+**Why:**
+- Industry standard for password storage
+- Automatically handles salting
+- Slow by design (prevents brute force)
+- Adaptive (can increase rounds over time)
 
-### 3. Optional Authentication Pattern
+**Implementation:**
 ```python
-def get_current_user_optional(db, credentials) -> Optional[User]:
-    """Returns None for unauthenticated, User for authenticated"""
+from passlib.context import CryptContext
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 ```
 
-**Use Case:** Public community feed accessible without login, but degraded functionality.
+### 3. OAuth2 Password Flow
+**Decision:** Use OAuth2PasswordRequestForm  
+**Why:**
+- Standard protocol for username/password auth
+- Compatible with OpenAPI/Swagger
+- Allows easy testing via /docs
+- Can extend to OAuth providers later
 
-### 4. Token Storage
-- **Frontend:** `localStorage` with key `bt_token`
-- **API Calls:** Automatic Authorization header injection in `apiFetch()`
-- **Expiration Handling:** 401 response triggers logout
+### 4. Username Requirements
+**Decision:** Unique username (not email-based login)  
+**Why:**
+- Users prefer handles for social features
+- Email can be optional/private
+- Username visible in community features
+- Can add email login later if needed
+
+**Validation:**
+- Minimum 3 characters
+- Alphanumeric + underscores
+- Unique check at registration
+
+### 5. Token Storage
+**Decision:** localStorage (not httpOnly cookies)  
+**Why:**
+- Simpler CORS handling
+- No cookie domain complexity
+- Frontend fully controls token lifecycle
+- Trade-off: XSS risk (mitigated by React escaping)
 
 ---
 
 ## API Endpoints
 
 ### POST `/auth/signup`
-**Request:**
+**Purpose:** Create new user account  
+**Input:**
 ```json
 {
-  "email": "user@example.com",
-  "password": "securepassword",
-  "name": "John Doe"
+  "username": "string",
+  "email": "string",
+  "password": "string"
 }
 ```
-
-**Response:**
+**Output:**
 ```json
 {
-  "access_token": "eyJ0eXAiOiJKV1QiLCJhbGc...",
-  "token_type": "bearer",
-  "user": {
-    "id": 1,
-    "email": "user@example.com",
-    "name": "John Doe"
-  }
+  "access_token": "jwt_token_string",
+  "token_type": "bearer"
 }
 ```
+**Validations:**
+- Username uniqueness
+- Password strength (8+ chars)
+- Email format (if provided)
 
 ### POST `/auth/login`
-**Request:**
-```json
-{
-  "email": "user@example.com",
-  "password": "securepassword"
-}
-```
-
-**Response:** Same as signup
-
-### POST `/auth/refresh`
-**Headers:** `Authorization: Bearer <token>`  
-**Response:** New token with extended expiration
+**Purpose:** Authenticate existing user  
+**Input:** OAuth2PasswordRequestForm (username + password)  
+**Output:** Same as signup (access token)  
+**Process:**
+1. Lookup user by username
+2. Verify password with bcrypt
+3. Generate JWT token
+4. Return token
 
 ---
 
-## Frontend Flow
+## Common Patterns
 
-1. **Signup:**
-   - User fills form → POST `/auth/signup`
-   - Store token in `localStorage`
-   - Redirect to home page
+### Protected Route
+```python
+from app.deps import get_current_user
 
-2. **Login:**
-   - User enters credentials → POST `/auth/login`
-   - Store token in `localStorage`
-   - Redirect to home page
+@router.get("/protected")
+def protected_route(current_user: User = Depends(get_current_user)):
+    return {"user_id": current_user.id}
+```
 
-3. **Authenticated Requests:**
-   - `apiFetch()` automatically adds token to headers
-   - If 401, clear token and redirect to login
-
-4. **Logout:**
-   - Clear `localStorage.removeItem('bt_token')`
-   - Redirect to login page
+### Frontend API Call with Auth
+```javascript
+const token = localStorage.getItem('token');
+const response = await axios.get('/api/protected', {
+  headers: { Authorization: `Bearer ${token}` }
+});
+```
 
 ---
 
 ## Security Considerations
 
-✅ **Implemented:**
-- HTTPS in production (Vercel/Render)
-- JWT token signing with secret key
-- Password hashing with bcrypt
-- CORS with explicit origins
-- Email validation
+### Current Protections
+- ✅ Passwords never stored in plain text
+- ✅ Bcrypt prevents rainbow table attacks
+- ✅ Token expiration limits session lifetime
+- ✅ HTTPS enforced in production
+- ✅ CORS restricts allowed origins
 
-⚠️ **Future Improvements:**
-- Rate limiting on auth endpoints
-- Account lockout after failed attempts
-- Email verification
-- Password reset flow
-- Multi-factor authentication (MFA)
-- Refresh token rotation
-
----
-
-## Testing Checklist
-
-- [ ] Signup with valid email/password
-- [ ] Signup with duplicate email (should fail)
-- [ ] Login with correct credentials
-- [ ] Login with incorrect password (should fail)
-- [ ] Access protected route without token (should redirect)
-- [ ] Token expiration handling (after 7 days)
-- [ ] Token refresh mechanism
+### Known Limitations
+- ⚠️ No password reset flow (yet)
+- ⚠️ No email verification (yet)
+- ⚠️ No 2FA support (yet)
+- ⚠️ Token refresh not implemented
+- ⚠️ No account lockout after failed attempts
 
 ---
 
-## Common Issues
+## Environment Variables
 
-### Issue: "Invalid token" on valid requests
-**Cause:** Token expired or SECRET_KEY mismatch  
-**Solution:** Check token expiration, verify SECRET_KEY in environment
+```bash
+SECRET_KEY=your-secret-key-here  # For JWT signing
+ALGORITHM=HS256                    # JWT algorithm
+ACCESS_TOKEN_EXPIRE_MINUTES=43200  # 30 days
+```
 
-### Issue: CORS error on auth endpoints
-**Cause:** Frontend origin not in CORS_ORIGINS  
-**Solution:** Add frontend URL to CORS_ORIGINS environment variable
+---
 
-### Issue: Password hash verification fails
-**Cause:** bcrypt version mismatch or corrupted hash  
-**Solution:** Regenerate password hash, ensure bcrypt==4.2.1
+## Database Schema
+
+```sql
+CREATE TABLE users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT UNIQUE NOT NULL,
+    email TEXT UNIQUE,
+    hashed_password TEXT NOT NULL,
+    bio TEXT,
+    profile_picture TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+---
+
+## Testing Endpoints
+
+### Via Swagger UI
+1. Go to http://127.0.0.1:8000/docs
+2. Click "Authorize" button (top right)
+3. Enter username and password
+4. Click "Authorize"
+5. All requests now include token
+
+### Via curl
+```bash
+# Signup
+curl -X POST http://127.0.0.1:8000/auth/signup \
+  -H "Content-Type: application/json" \
+  -d '{"username":"test","password":"test1234"}'
+
+# Login
+curl -X POST http://127.0.0.1:8000/auth/login \
+  -d "username=test&password=test1234"
+```
+
+---
+
+## Future Enhancements
+
+### Short Term
+- [ ] Add password reset via email
+- [ ] Implement token refresh mechanism
+- [ ] Add "remember me" option
+- [ ] Account lockout after 5 failed attempts
+
+### Long Term
+- [ ] Social login (Google, GitHub)
+- [ ] Two-factor authentication
+- [ ] Session management (view/revoke devices)
+- [ ] Email verification for signups
+- [ ] Password strength meter on frontend
+
+---
+
+## Troubleshooting
+
+### "Invalid credentials" error
+- Check password is correct
+- Verify user exists in database
+- Ensure bcrypt is comparing correctly
+
+### "Token has expired"
+- User needs to log in again
+- Check token expiration settings
+- Consider implementing refresh tokens
+
+### CORS errors on login
+- Verify frontend origin in CORS_ORIGINS
+- Check Authorization header format
+- Ensure credentials are included
+
+---
+
+## Related Context
+
+- See [../PROJECT_CONTEXT.md](../PROJECT_CONTEXT.md) for overall architecture
+- See [../community/README.md](../community/README.md) for user profiles
+- See [../deployment/README.md](../deployment/README.md) for production setup

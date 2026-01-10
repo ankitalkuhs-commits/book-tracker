@@ -1,279 +1,411 @@
-# Community & Social Features
+# Community Features Context
 
-**Feature Owner:** Social Module  
-**Last Updated:** December 27, 2025
+**Feature Owner:** Social & Community  
+**Last Updated:** January 10, 2026
 
 ---
 
 ## Overview
-
-Social reading platform where users share reading emotions, follow friends, and engage with posts through likes and (future) comments.
-
----
-
-## Architecture
-
-### Backend Files
-- `app/routers/notes_router.py` - Posts/notes CRUD, feed generation
-- `app/routers/follow_router.py` - Follow/unfollow relationships
-- `app/routers/likes_comments.py` - Like functionality
-- `app/routers/users_router.py` - User discovery
-- `app/models.py` - Note, Follow, Like models
-
-### Frontend Files
-- `src/pages/HomePage.jsx` - Community feed page
-- `src/components/home/PostComposer.jsx` - Create new posts
-- `src/components/home/CommunityPulseFeed.jsx` - Feed container
-- `src/components/home/PulsePost.jsx` - Individual post card
-- `src/components/home/HomeSidebar.jsx` - Friends activity widget
+Handles social interactions including following users, activity feeds, likes, comments, and reading journals.
 
 ---
 
-## Key Decisions
+## Files in This Feature
 
-### 1. Public vs Private Posts
-```python
-class Note:
-    is_public: bool = True  # Public by default
-```
+### Backend
+- `app/routers/follow_router.py` - Follow/unfollow system, followers/following lists
+- `app/routers/likes_comments.py` - Likes and comments on posts
+- `app/routers/journals.py` - Reading journal entries
+- `app/routers/profile_router.py` - User profiles and public info
 
-**Access Control:**
-- Public posts: Visible in community feed to all users (including non-logged-in)
-- Private posts: Only visible to post owner
-- Non-logged-in users: Can view posts but not user details or take actions
+### Frontend
+- `book-tracker-frontend/src/pages/HomePage.jsx` - Main social feed
+- `book-tracker-frontend/src/components/Feed.jsx` - Activity feed display
+- `book-tracker-frontend/src/components/FollowPanel.jsx` - Follow suggestions
+- `book-tracker-frontend/src/components/Profile.jsx` - User profile view
+- `book-tracker-frontend/src/components/home/CommunityPulseFeed.jsx` - Community feed
+- `book-tracker-frontend/src/components/home/PulsePost.jsx` - Individual post
+- `book-tracker-frontend/src/components/home/UserSearchModal.jsx` - Find users
+- `book-tracker-frontend/src/components/bookpulse/` - BookPulse specific components
 
-### 2. Image Storage Strategy
-**Evolution:**
-- ❌ **v1:** Local filesystem (`/uploads/notes/`) - Lost on Render redeploy
-- ✅ **v2:** Cloudinary cloud storage - Persistent across deployments
+### Database Tables
+- `follows` - User follow relationships
+- `journals` - Reading journal posts
+- `likes` - Likes on journal entries
+- `comments` - Comments on posts
+
+---
+
+## Key Design Decisions
+
+### 1. Follow System (Not Friendship)
+**Decision:** One-way follow model (like Twitter)  
+**Why:**
+- Asymmetric relationships more flexible
+- Users can follow without requiring approval
+- Reduces friction for discovery
+- Privacy controlled by user (public/private accounts)
 
 **Implementation:**
-```python
-upload_result = cloudinary.uploader.upload(
-    file_contents,
-    folder="book_tracker/notes",
-    public_id=unique_id
-)
-image_url = upload_result['secure_url']
-```
+- `follows` table: follower_id → followed_id
+- No mutual acceptance required
+- Count followers and following separately
 
-### 3. Feed Algorithm
-**Current:** Chronological (newest first)  
-**Query:** All public notes, sorted by created_at DESC  
-**Limit:** 50 posts per load
+### 2. Activity Feed Algorithm
+**Decision:** Chronological feed of followed users  
+**Why:**
+- Simple to implement
+- Predictable for users
+- No black-box algorithm
+- Real-time updates easier
 
-**Future Enhancement:** Personalized feed with:
-- Posts from followed users weighted higher
-- Engagement-based ranking
-- Topic/genre relevance
+**Implementation:**
+- Query journals from followed users
+- Order by created_at DESC
+- Include user's own posts
+- Paginate results
 
-### 4. Auto-Refresh Strategy
-- **Interval:** 5 minutes (300000ms)
-- **Trigger:** Also refreshes on page navigation back to home
-- **Rationale:** Balance between freshness and server load
+### 3. Journal Entries for Activity
+**Decision:** Explicit journal posts (not auto-generated)  
+**Why:**
+- Users control what they share
+- More meaningful than auto-posts
+- Encourages thoughtful updates
+- Can include rich text and thoughts
 
-### 5. Privacy for Non-Authenticated Users
-**What they see:**
-- Post content (text, quote, image)
-- Book information
-- Timestamp
-- "📚 Community Post" header (no user details)
+**Fields:**
+- `book_id` - What they're reading
+- `entry_text` - User's thoughts
+- `is_public` - Visibility control
+- `entry_type` - update/review/quote
 
-**What they DON'T see:**
-- User names and avatars
-- Like button / like counts
-- Edit functionality
-- Any interactive elements
+### 4. Likes & Comments Separation
+**Decision:** Separate tables for likes and comments  
+**Why:**
+- Different data structures
+- Easier to count likes quickly
+- Comments need more fields (text, replies)
+- Can query independently
+
+### 5. Profile Privacy Controls
+**Decision:** Public profiles by default, optional privacy  
+**Why:**
+- Social platform encourages discovery
+- Users opt-in to privacy
+- Simpler permission model
+- Can add granular controls later
 
 ---
 
 ## API Endpoints
 
-### GET `/notes/feed`
-**Authentication:** Optional (uses `get_current_user_optional`)  
-**Response:** Public posts with like counts and user_has_liked flag
+### Follow System
 
-### POST `/notes/`
-**Request:**
+#### POST `/follow/{user_id}`
+Follow a user (authenticated)
+
+#### DELETE `/follow/{user_id}`
+Unfollow a user (authenticated)
+
+#### GET `/follow/followers`
+Get current user's followers list
+
+#### GET `/follow/following`
+Get users current user is following
+
+#### GET `/follow/feed`
+Get activity feed from followed users
 ```json
 {
-  "userbook_id": 123,
-  "text": "This book is amazing!",
-  "emotion": "😍",
-  "quote": "To be or not to be...",
-  "page_number": 42,
-  "chapter": "Chapter 3",
+  "entries": [
+    {
+      "id": 1,
+      "user": {...},
+      "book": {...},
+      "entry_text": "Loving this book!",
+      "created_at": "2026-01-10T12:00:00"
+    }
+  ]
+}
+```
+
+### Journals
+
+#### POST `/journals/`
+Create reading journal entry
+```json
+{
+  "book_id": 1,
+  "entry_text": "Amazing chapter!",
+  "entry_type": "update",
   "is_public": true
 }
 ```
 
-### POST `/notes/upload-image`
-**Content-Type:** multipart/form-data  
-**Returns:** Cloudinary secure_url
+#### GET `/journals/{user_id}`
+Get user's journal entries (if public or own)
 
-### PUT `/notes/{note_id}`
-**Authorization:** Required (must be post owner)  
-**Request:** Updated text, quote, and metadata
+#### PUT `/journals/{entry_id}`
+Update journal entry (own entries only)
 
-### DELETE `/notes/{note_id}`
-**Authorization:** Required (must be post owner)
+#### DELETE `/journals/{entry_id}`
+Delete journal entry (own entries only)
 
-### POST `/notes/{note_id}/like`
-### DELETE `/notes/{note_id}/like`
+### Likes & Comments
 
-### GET `/follow/following`
-**Returns:** List of users current user follows
+#### POST `/likes/journal/{journal_id}`
+Like a journal entry
 
-### POST `/follow/{user_id}`
-### DELETE `/follow/{user_id}`
+#### DELETE `/likes/journal/{journal_id}`
+Unlike a journal entry
+
+#### GET `/likes/journal/{journal_id}`
+Get all likes on an entry
+
+#### POST `/comments/journal/{journal_id}`
+Comment on journal entry
+```json
+{
+  "comment_text": "Great insight!"
+}
+```
+
+#### GET `/comments/journal/{journal_id}`
+Get comments on an entry
+
+### Profiles
+
+#### GET `/profile/{user_id}`
+Get user's public profile
+```json
+{
+  "id": 1,
+  "username": "booklover",
+  "bio": "Reading enthusiast",
+  "profile_picture": "url",
+  "followers_count": 42,
+  "following_count": 15,
+  "books_read": 100
+}
+```
+
+#### PUT `/profile/`
+Update own profile (bio, picture, privacy)
 
 ---
 
 ## Database Schema
 
-### Note Model
-```python
-class Note(SQLModel, table=True):
-    id: int
-    user_id: int  # FK to User
-    userbook_id: Optional[int]  # FK to UserBook
-    text: Optional[str]
-    emotion: Optional[str]  # Emoji
-    quote: Optional[str]
-    image_url: Optional[str]  # Cloudinary URL
-    page_number: Optional[int]
-    chapter: Optional[str]
-    is_public: bool = True
-    created_at: datetime
-    updated_at: datetime
+### follows table
+```sql
+CREATE TABLE follows (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    follower_id INTEGER NOT NULL,
+    followed_id INTEGER NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (follower_id) REFERENCES users(id),
+    FOREIGN KEY (followed_id) REFERENCES users(id),
+    UNIQUE(follower_id, followed_id)
+);
 ```
 
-### Follow Model
-```python
-class Follow(SQLModel, table=True):
-    id: int
-    follower_id: int  # User who follows
-    followed_id: int  # User being followed
-    created_at: datetime
+### journals table
+```sql
+CREATE TABLE journals (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    book_id INTEGER,
+    entry_text TEXT NOT NULL,
+    entry_type TEXT,  -- update, review, quote, milestone
+    is_public BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    FOREIGN KEY (book_id) REFERENCES books(id)
+);
 ```
 
-### Like Model
-```python
-class Like(SQLModel, table=True):
-    id: int
-    user_id: int
-    note_id: int
-    created_at: datetime
+### likes table
+```sql
+CREATE TABLE likes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    journal_id INTEGER NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    FOREIGN KEY (journal_id) REFERENCES journals(id),
+    UNIQUE(user_id, journal_id)
+);
 ```
 
----
-
-## UI Features
-
-### Post Composer
-- **Text Area:** Main thought/emotion (placeholder: "What are you feeling from your read?")
-- **Quote Field:** Optional favorite quote
-- **Image Upload:** Cloudinary integration
-- **Book Selection:** Link post to specific book in library
-- **Height:** 2 rows (reduced for compact UI)
-
-### Individual Post (PulsePost)
-- **Avatar:** User initials in gradient circle (if logged in)
-- **Username & Header:** "John Doe shared this" (if logged in)
-- **Book Info:** Title below username
-- **Content:** Text and/or quote in styled blockquote
-- **Image:** Full-width responsive image
-- **Actions:** Like button with count (if logged in)
-- **Edit Button:** Pencil icon (✏️) for post owner only
-- **Timestamp:** Relative (e.g., "2 hours ago") or absolute
-
-### Edit Mode
-- Inline editing with textareas for text and quote
-- Save/Cancel buttons
-- Owner validation (403 if not owner)
-- Optimistic UI update
-
-### Friends Reading Widget
-- Shows books friends are currently reading
-- Max 2 visible entries with scroll
-- Commented out "Community Highlights" (future feature)
-
----
-
-## Frontend Patterns
-
-### Optimistic UI Updates
-**Like Button:**
-```javascript
-// Immediately update UI
-setLiked(!liked);
-setLikes(liked ? likes - 1 : likes + 1);
-
-try {
-  await apiFetch(...);  // Confirm with server
-} catch {
-  // Revert on error
-  setLiked(previousLiked);
-  setLikes(previousLikes);
-}
-```
-
-### Image URL Handling
-```javascript
-// Support both Cloudinary and legacy local URLs
-const imageUrl = post.image_url.startsWith('http') 
-  ? post.image_url 
-  : `${BACKEND}${post.image_url}`;
+### comments table
+```sql
+CREATE TABLE comments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    journal_id INTEGER NOT NULL,
+    comment_text TEXT NOT NULL,
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    FOREIGN KEY (journal_id) REFERENCES journals(id)
+);
 ```
 
 ---
 
-## Security & Privacy
+## Common Workflows
 
-✅ **Implemented:**
-- Owner-only edit/delete validation
-- Public/private post toggle
-- Optional authentication for feed viewing
-- No user data exposed to non-authenticated users
+### Following a User
+1. User searches for username
+2. Clicks "Follow" button
+3. POST to `/follow/{user_id}`
+4. Backend creates follow relationship
+5. UI updates to show "Following" state
+6. User now sees their activity in feed
 
-⚠️ **Future Improvements:**
-- Report/flag inappropriate content
-- Block users
-- Content moderation queue
-- Private messaging
-- Granular privacy controls (friends-only posts)
+### Posting Journal Entry
+1. User clicks "Share Update" from book
+2. Writes their thoughts
+3. Selects entry type (update/review)
+4. Chooses public/private visibility
+5. POST to `/journals/`
+6. Entry appears in followers' feeds (if public)
+
+### Viewing Feed
+1. User visits home page
+2. GET `/follow/feed`
+3. Backend queries journals from followed users
+4. Joins user and book data
+5. Returns chronological list
+6. Frontend displays with like/comment counts
+
+---
+
+## Frontend Components
+
+### HomePage.jsx
+- Main container for social feed
+- Includes post composer
+- Renders PulsePost components
+- Infinite scroll for pagination
+
+### PulsePost.jsx
+- Individual post card
+- Shows: user, book, entry text, timestamp
+- Like button with count
+- Comment button with count
+- Share/bookmark options
+
+### FollowPanel.jsx
+- Shows suggested users to follow
+- Displays follower/following stats
+- Quick follow/unfollow buttons
+
+### UserSearchModal.jsx
+- Search users by username
+- Display profile previews
+- Follow directly from search
+
+---
+
+## Privacy & Permissions
+
+### What's Public by Default
+- Profile information (username, bio, picture)
+- Public journal entries
+- Follower/following counts
+- Reading statistics
+
+### What's Private
+- Email address
+- Private journal entries
+- Exact reading progress (unless shared)
+- Personal notes
+
+### Permission Checks
+```python
+def can_view_journal(journal, current_user):
+    if journal.is_public:
+        return True
+    return journal.user_id == current_user.id
+```
+
+---
+
+## Notifications (Future)
+
+### Planned Notification Types
+- New follower
+- Like on your post
+- Comment on your post
+- Friend finished a book
+- Reading milestone reached
+
+**Current Status:** Not implemented yet
 
 ---
 
 ## Future Enhancements
 
-🔮 **Planned:**
-- **Comments:** Threaded discussions on posts
-- **Reactions:** Multiple emoji reactions beyond just "like"
-- **Bookmarks:** Save posts for later
-- **Shares:** Reshare posts to own feed
-- **Mentions:** Tag other users in posts
-- **Hashtags:** Topic-based discovery
-- **Notifications:** New likes, comments, follows
-- **Feed Filters:** By book, genre, followed users only
-- **Community Highlights:** Trending posts, top readers
+### Short Term
+- [ ] Notification system
+- [ ] User search autocomplete
+- [ ] Tagged users in posts
+- [ ] Hashtags for books/genres
+- [ ] Pin favorite posts
+
+### Long Term
+- [ ] Direct messaging
+- [ ] Book clubs (group feature)
+- [ ] Reading challenges together
+- [ ] Shared reading lists
+- [ ] Story/highlight feature
 
 ---
 
-## Testing Checklist
+## Troubleshooting
 
-- [ ] Create post with text only
-- [ ] Create post with text + quote
-- [ ] Create post with image upload
-- [ ] Link post to book in library
-- [ ] View post as owner (edit button visible)
-- [ ] View post as other user (no edit button)
-- [ ] Edit post text and quote
-- [ ] Delete post (confirm cascade to likes)
-- [ ] Like a post
-- [ ] Unlike a post
-- [ ] View feed as non-logged-in user (no user details)
-- [ ] Follow a user
-- [ ] Unfollow a user
-- [ ] Auto-refresh after 5 minutes
-- [ ] Public vs private post visibility
+### Feed not showing updates
+- Check user is following someone
+- Verify followed users have public posts
+- Check journal `is_public` flag
+- Ensure proper join on user/book tables
+
+### Can't follow user
+- Verify user exists
+- Check for existing follow relationship
+- Ensure not trying to follow self
+- Check for database constraint errors
+
+### Likes not counting
+- Verify unique constraint (user_id, journal_id)
+- Check double-like prevention
+- Ensure like table has proper indexes
+
+---
+
+## Performance Considerations
+
+### Feed Query Optimization
+```sql
+-- Index on follows for fast lookup
+CREATE INDEX idx_follows_follower ON follows(follower_id);
+CREATE INDEX idx_follows_followed ON follows(followed_id);
+
+-- Index on journals for feed queries
+CREATE INDEX idx_journals_user_created ON journals(user_id, created_at DESC);
+```
+
+### Caching Strategy
+- Cache follower/following counts
+- Denormalize like counts on journals
+- Paginate feed (20-50 entries per page)
+
+---
+
+## Related Context
+
+- See [../auth/README.md](../auth/README.md) for user authentication
+- See [../library/README.md](../library/README.md) for book integration
+- See [../PROJECT_CONTEXT.md](../PROJECT_CONTEXT.md) for overall design
