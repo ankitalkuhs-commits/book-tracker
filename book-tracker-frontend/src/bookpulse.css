@@ -1066,6 +1066,8 @@ body {
   display: flex;
   gap: 0.5rem;
   align-items: center;
+  flex-shrink: 0;
+  flex-wrap: wrap;
 }
 
 /* Badge Styles */
@@ -2478,7 +2480,23 @@ body {
   }
 
   .user-card {
-    padding: 1rem;
+    padding: 0.75rem;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+
+  .user-card-info {
+    flex: 1;
+    min-width: 0;
+    max-width: calc(100% - 120px); /* Ensure space for avatar and button */
+  }
+
+  .user-card-name {
+    font-size: 0.875rem;
+  }
+
+  .user-card-username {
+    font-size: 0.75rem;
   }
 
   .user-card-content {
@@ -2487,8 +2505,8 @@ body {
   }
 
   .user-card-actions {
-    width: 100%;
-    justify-content: center;
+    flex-shrink: 0;
+    margin-left: auto;
   }
 
   /* Touch-friendly buttons */
