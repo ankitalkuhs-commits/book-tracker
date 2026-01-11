@@ -31,6 +31,7 @@ class User(SQLModel, table=True):
     # Use the same column name as existing DB:
     password_hash: str = Field(nullable=False)
     bio: Optional[str] = None
+    is_admin: bool = Field(default=False)
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
     # Relationships

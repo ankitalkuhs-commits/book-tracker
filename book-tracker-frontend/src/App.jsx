@@ -17,6 +17,7 @@ import BPFeed from "./pages/BPFeed";
 import BPLibrary from "./pages/BPLibrary";
 import HomePage from "./pages/HomePage";
 import LibraryPage from "./pages/LibraryPage";
+import AdminPage from "./pages/AdminPage";
 
 // TODO: Replace with your actual Google OAuth Client ID from Google Cloud Console
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || "YOUR_GOOGLE_CLIENT_ID_HERE";
@@ -112,7 +113,7 @@ function AppContent(){
 
   function logout(){ localStorage.removeItem("bt_token"); setUser(null); setRoute("home"); setMsg("Logged out"); }
 
-  const isModernPage = route === "home" || route === "my-library" || route === "profile" || route === "login" || route === "signup";
+  const isModernPage = route === "home" || route === "my-library" || route === "profile" || route === "login" || route === "signup" || route === "admin";
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -125,6 +126,7 @@ function AppContent(){
       {/* New BookPulse Pages - Full Width */}
       {route==="home" && <HomePage user={user} onRoute={setRoute} />}
       {route==="my-library" && <LibraryPage />}
+      {route==="admin" && <AdminPage />}
       {route==="profile" && (
         <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '2rem' }}>
           <Profile setMsg={setMsg} />

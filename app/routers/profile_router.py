@@ -54,6 +54,7 @@ def get_profile(db: Session = Depends(get_db), current_user=Depends(get_current_
         "followers_count": len(followers),
         "following_count": len(following),
         "stats": stats,
+        "is_admin": user.is_admin,
     }
 
 

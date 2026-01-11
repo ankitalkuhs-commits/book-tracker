@@ -5,7 +5,7 @@ from fastapi.security import OAuth2PasswordBearer
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
 from .database import init_db
-from .routers import auth_router, books_router, userbooks_router, notes_router, follow_router, profile_router, googlebooks_router, likes_comments, users_router
+from .routers import auth_router, books_router, userbooks_router, notes_router, follow_router, profile_router, googlebooks_router, likes_comments, users_router, admin_router
 import os
 # ---------------------
 # Step 1: define FastAPI app with security scheme for Swagger
@@ -69,6 +69,7 @@ app.include_router(profile_router.router)
 app.include_router(googlebooks_router.router)
 app.include_router(likes_comments.router)
 app.include_router(users_router.router)
+app.include_router(admin_router.router)
 
 # ---------------------
 # Step 4.5: Mount static files for uploads

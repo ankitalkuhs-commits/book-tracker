@@ -7,6 +7,11 @@ export default function ModernHeader({ user, onRoute, onLogout, route }) {
     { id: 'my-library', label: 'My Library', icon: '📚' },
   ];
 
+  // Add admin link if user is admin
+  if (user?.is_admin) {
+    navItems.push({ id: 'admin', label: 'Admin', icon: '🔐' });
+  }
+
   const getInitials = () => {
     if (!user?.name) return 'U';
     return user.name
