@@ -192,6 +192,7 @@ function UsersTable({ users }) {
               <th style={tableHeaderStyle}>Followers</th>
               <th style={tableHeaderStyle}>Following</th>
               <th style={tableHeaderStyle}>Joined</th>
+              <th style={tableHeaderStyle}>Last Active</th>
               <th style={tableHeaderStyle}>Admin</th>
             </tr>
           </thead>
@@ -207,6 +208,9 @@ function UsersTable({ users }) {
                 <td style={tableCellStyle}>{user.following_count}</td>
                 <td style={tableCellStyle}>
                   {new Date(user.created_at).toLocaleDateString()}
+                </td>
+                <td style={tableCellStyle}>
+                  {user.last_active ? new Date(user.last_active).toLocaleDateString() : 'Never'}
                 </td>
                 <td style={tableCellStyle}>
                   {user.is_admin && <span style={{ color: '#10b981', fontWeight: 'bold' }}>✓</span>}
@@ -234,6 +238,7 @@ function BooksTable({ books }) {
               <th style={tableHeaderStyle}>Reading</th>
               <th style={tableHeaderStyle}>Completed</th>
               <th style={tableHeaderStyle}>Total Users</th>
+              <th style={tableHeaderStyle}>Added By</th>
             </tr>
           </thead>
           <tbody>
@@ -245,6 +250,9 @@ function BooksTable({ books }) {
                 <td style={tableCellStyle}>{book.users_reading}</td>
                 <td style={tableCellStyle}>{book.users_completed}</td>
                 <td style={{ ...tableCellStyle, fontWeight: 'bold' }}>{book.total_users}</td>
+                <td style={{ ...tableCellStyle, fontSize: '0.8rem', color: '#6b7280' }}>
+                  {book.added_by_users}
+                </td>
               </tr>
             ))}
           </tbody>

@@ -43,6 +43,7 @@ class UserSummary(BaseModel):
     followers_count: int
     following_count: int
     created_at: datetime
+    last_active: datetime | None
 
 
 class BookSummary(BaseModel):
@@ -53,6 +54,7 @@ class BookSummary(BaseModel):
     users_reading: int
     users_completed: int
     total_users: int
+    added_by_users: str
 
 
 class FollowRelationship(BaseModel):
@@ -201,7 +203,8 @@ def get_all_users(
             books_count=books_count,
             followers_count=followers_count,
             following_count=following_count,
-            created_at=user.created_at
+            created_at=user.created_at,
+            last_active=user.last_active
         ))
     
     return result
@@ -242,13 +245,28 @@ def get_popular_books(
             .where(models.UserBook.book_id == book.id)
         ).one() or 0
         
+        # Get all users who added this book
+        user_books = db.exec(
+            select(models.UserBook)
+            .where(models.UserBook.book_id == book.id)
+        ).all()
+        
+        user_names = []
+        for ub in user_books:
+            user = db.get(models.User, ub.user_id)
+            if user:
+                user_names.append(user.name or user.email.split('@')[0])
+        
+        added_by_users = ", ".join(user_names) if user_names else "-"
+        
         result.append(BookSummary(
             id=book.id,
             title=book.title,
             author=book.author,
             users_reading=users_reading,
             users_completed=users_completed,
-            total_users=total_users
+            total_users=total_users,
+            added_by_users=added_by_users
         ))
     
     # Sort by total users descending

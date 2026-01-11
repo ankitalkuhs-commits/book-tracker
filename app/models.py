@@ -33,6 +33,7 @@ class User(SQLModel, table=True):
     bio: Optional[str] = None
     is_admin: bool = Field(default=False)
     created_at: datetime = Field(default_factory=datetime.utcnow)
+    last_active: Optional[datetime] = None
 
     # Relationships
     userbooks: List["UserBook"] = Relationship(back_populates="user")

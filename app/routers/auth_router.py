@@ -44,9 +44,20 @@ def signup(payload: SignupIn, db: Session = Depends(get_session)):
 
 @router.post("/login")
 def login(payload: LoginIn, db: Session = Depends(get_session)):
+    from datetime import datetime, date
+    
     user = crud.get_user_by_email(db, payload.email)
     if not user or not auth.verify_password(payload.password, user.password_hash):
         raise HTTPException(status_code=401, detail="Invalid credentials")
+    
+    # Update last_active only if date has changed
+    today = date.today()
+    if user.last_active is None or user.last_active.date() != today:
+        user.last_active = datetime.utcnow()
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+    
     token = auth.create_access_token({"sub": user.email})
     return {"access_token": token, "user": {"id": user.id, "name": user.name, "email": user.email}}
 
