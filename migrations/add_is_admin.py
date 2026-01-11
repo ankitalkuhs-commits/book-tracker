@@ -3,6 +3,12 @@ Migration: Add is_admin column to users table and set admin user.
 Security: Only ankitalkuhs@gmail.com is set as admin.
 """
 
+import sys
+import os
+
+# Add parent directory to path for imports
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from sqlmodel import Session, select, text
 from app.database import engine
 from app.models import User
