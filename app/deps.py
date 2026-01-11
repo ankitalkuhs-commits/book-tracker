@@ -115,11 +115,11 @@ def get_current_user_optional(
 def get_admin_user(
     current_user = Depends(get_current_user)
 ):
-    \"\"\"
+    """
     Ensure the current user is an admin.
     Raises 403 Forbidden if user is not admin.
     Security: Only ankitalkuhs@gmail.com should have is_admin=True
-    \"\"\"
+    """
     if not current_user.is_admin:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
