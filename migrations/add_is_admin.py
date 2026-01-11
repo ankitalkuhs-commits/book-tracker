@@ -19,9 +19,9 @@ def migrate():
     with Session(engine) as session:
         print("Adding is_admin column to users table...")
         
-        # Add column (PostgreSQL syntax)
+        # Add column (PostgreSQL syntax - "user" is a reserved keyword, needs quotes)
         try:
-            session.exec(text("ALTER TABLE user ADD COLUMN is_admin BOOLEAN DEFAULT FALSE"))
+            session.exec(text('ALTER TABLE "user" ADD COLUMN is_admin BOOLEAN DEFAULT FALSE'))
             session.commit()
             print("✓ Column added successfully")
         except Exception as e:
