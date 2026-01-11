@@ -19,13 +19,13 @@ def migrate():
     with Session(engine) as session:
         print("Adding is_admin column to users table...")
         
-        # Add column (SQLite syntax)
+        # Add column (PostgreSQL syntax)
         try:
-            session.exec(text("ALTER TABLE users ADD COLUMN is_admin BOOLEAN DEFAULT 0"))
+            session.exec(text("ALTER TABLE user ADD COLUMN is_admin BOOLEAN DEFAULT FALSE"))
             session.commit()
             print("✓ Column added successfully")
         except Exception as e:
-            if "duplicate column" in str(e).lower():
+            if "duplicate column" in str(e).lower() or "already exists" in str(e).lower():
                 print("✓ Column already exists")
                 session.rollback()
             else:
