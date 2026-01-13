@@ -66,6 +66,8 @@ def google_auth(payload: GoogleAuthIn, db: Session = Depends(get_session)):
     """
     Verify Google OAuth token and create/login user.
     """
+    from datetime import datetime, date
+    
     try:
         # Verify the Google token
         # Note: In production, you should verify against your actual Google Client ID
@@ -94,6 +96,14 @@ def google_auth(payload: GoogleAuthIn, db: Session = Depends(get_session)):
             random_password = secrets.token_urlsafe(32)
             hashed = auth.hash_password(random_password)
             user = crud.create_user(db, name=name, email=email, password_hash=hashed)
+        
+        # Update last_active only if date has changed
+        today = date.today()
+        if user.last_active is None or user.last_active.date() != today:
+            user.last_active = datetime.utcnow()
+            db.add(user)
+            db.commit()
+            db.refresh(user)
 
         # Create access token
         token = auth.create_access_token({"sub": user.email})
