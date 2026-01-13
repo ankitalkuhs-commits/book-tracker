@@ -1,12 +1,12 @@
 # Authentication Context
 
 **Feature Owner:** Auth System  
-**Last Updated:** January 10, 2026
+**Last Updated:** January 13, 2026
 
 ---
 
 ## Overview
-Handles user authentication, registration, and session management using JWT tokens.
+Handles user authentication using Google OAuth 2.0 and JWT tokens for session management.
 
 ---
 
@@ -14,22 +14,37 @@ Handles user authentication, registration, and session management using JWT toke
 
 ### Backend
 - `app/auth.py` - Core auth utilities (password hashing, token creation/verification)
-- `app/routers/auth_router.py` - Login and signup endpoints
-- `app/deps.py` - Dependency injection for protected routes
+- `app/routers/auth_router.py` - Google OAuth and JWT endpoints
+- `app/deps.py` - Dependency injection for protected routes (get_current_user, get_admin_user)
 
 ### Frontend
-- `book-tracker-frontend/src/components/AuthForm.jsx` - Login/signup form UI
+- `book-tracker-frontend/src/components/AuthForm.jsx` - Google OAuth sign-in UI
 - `book-tracker-frontend/src/services/api.js` - API client with token handling
 
 ### Database
-- `users` table in SQLite - Stores user credentials and profile info
+- `user` table in PostgreSQL - Stores user credentials, profile info, admin status, last_active
 
 ---
 
 ## Key Design Decisions
 
-### 1. JWT Token Authentication
-**Decision:** Use JWT tokens with OAuth2 password flow  
+### 1. Google OAuth Only
+**Decision:** Use Google OAuth 2.0 as the sole authentication method  
+**Why:**
+- Simplified user experience (one-click sign-in)
+- No password management complexity
+- Better security (Google handles authentication)
+- No password reset flows needed
+- Faster signup process
+
+**Implementation:**
+- Google Sign-In button via @react-oauth/google
+- Backend verifies Google token with id_token.verify_oauth2_token
+- Creates account on first sign-in automatically
+- Random password generated for OAuth users (stored but unused)
+
+### 2. JWT Token Authentication
+**Decision:** Use JWT tokens after Google OAuth  
 **Why:**
 - Stateless (no server-side sessions)
 - Works well with REST APIs
@@ -42,84 +57,80 @@ Handles user authentication, registration, and session management using JWT toke
 - Sent as `Authorization: Bearer <token>` header
 - Secret key stored in environment variable
 
-### 2. Password Security
-**Decision:** Bcrypt hashing with salt  
+### 3. Merged Login/Signup
+**Decision:** Single "Sign In" page (no separate signup)  
 **Why:**
-- Industry standard for password storage
-- Automatically handles salting
-- Slow by design (prevents brute force)
-- Adaptive (can increase rounds over time)
+- Google OAuth handles both cases automatically
+- Simpler UX (one button instead of two)
+- Cleaner navigation
+- Modern pattern (Notion, Linear, etc.)
 
 **Implementation:**
-```python
-from passlib.context import CryptContext
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-```
+- AuthForm component has no type prop
+- /auth/google endpoint creates account if new user
+- Frontend shows single "Sign In" button in header
 
-### 3. OAuth2 Password Flow
-**Decision:** Use OAuth2PasswordRequestForm  
+### 4. Admin Access Control
+**Decision:** is_admin boolean flag on user table  
 **Why:**
-- Standard protocol for username/password auth
-- Compatible with OpenAPI/Swagger
-- Allows easy testing via /docs
-- Can extend to OAuth providers later
+- Simple role-based access control
+- Easy to extend with more roles later
+- Protects admin endpoints with get_admin_user dependency
+- First user (ankitalkuhs@gmail.com) set as admin
 
-### 4. Username Requirements
-**Decision:** Unique username (not email-based login)  
+### 5. Last Active Tracking
+**Decision:** Track last_active timestamp on users  
 **Why:**
-- Users prefer handles for social features
-- Email can be optional/private
-- Username visible in community features
-- Can add email login later if needed
+- Admin dashboard needs user engagement metrics
+- Updated once per day (not on every request)
+- Helps identify inactive users
 
-**Validation:**
-- Minimum 3 characters
-- Alphanumeric + underscores
-- Unique check at registration
-
-### 5. Token Storage
-**Decision:** localStorage (not httpOnly cookies)  
-**Why:**
-- Simpler CORS handling
-- No cookie domain complexity
-- Frontend fully controls token lifecycle
-- Trade-off: XSS risk (mitigated by React escaping)
+**Implementation:**
+- Updated in /auth/google endpoint on login
+- Only updates if date changed (not multiple times/day)
+- Displayed in admin dashboard users table
 
 ---
 
 ## API Endpoints
 
-### POST `/auth/signup`
-**Purpose:** Create new user account  
+### POST `/auth/google`
+**Purpose:** Authenticate with Google OAuth token  
 **Input:**
 ```json
 {
-  "username": "string",
-  "email": "string",
-  "password": "string"
+  "token": "google_credential_token"
 }
 ```
 **Output:**
 ```json
 {
   "access_token": "jwt_token_string",
-  "token_type": "bearer"
+  "user": {
+    "id": 1,
+    "name": "User Name",
+    "email": "user@example.com"
+  }
 }
 ```
-**Validations:**
-- Username uniqueness
-- Password strength (8+ chars)
-- Email format (if provided)
-
-### POST `/auth/login`
-**Purpose:** Authenticate existing user  
-**Input:** OAuth2PasswordRequestForm (username + password)  
-**Output:** Same as signup (access token)  
 **Process:**
-1. Lookup user by username
-2. Verify password with bcrypt
-3. Generate JWT token
-4. Return token
+1. Verify Google token with Google's servers
+2. Extract email, name, google_id from token
+3. Check if user exists by email
+4. Create new user if first time (with random password)
+5. Update last_active if date changed
+6. Generate JWT token
+7. Return token and user info
+
+### POST `/auth/login` (Legacy - email/password)
+**Status:** Deprecated (kept for backwards compatibility)  
+**Purpose:** Authenticate with email and password  
+**Note:** Frontend no longer uses this endpoint
+
+### POST `/auth/signup` (Legacy - email/password)
+**Status:** Deprecated (kept for backwards compatibility)  
+**Purpose:** Create account with email and password  
+**Note:** Frontend no longer uses this endpoint
 
 ---
 
@@ -134,12 +145,30 @@ def protected_route(current_user: User = Depends(get_current_user)):
     return {"user_id": current_user.id}
 ```
 
-### Frontend API Call with Auth
+### Admin-Only Route
+```python
+from app.deps import get_admin_user
+
+@router.get("/admin/stats")
+def admin_stats(admin_user: User = Depends(get_admin_user)):
+    return {"admin_id": admin_user.id}
+```
+
+### Frontend Google Sign-In
 ```javascript
-const token = localStorage.getItem('token');
-const response = await axios.get('/api/protected', {
-  headers: { Authorization: `Bearer ${token}` }
-});
+import { GoogleLogin } from '@react-oauth/google';
+
+<GoogleLogin
+  onSuccess={async (credentialResponse) => {
+    const data = await apiFetch("/auth/google", {
+      method: "POST",
+      body: JSON.stringify({ token: credentialResponse.credential }),
+    });
+    localStorage.setItem("bt_token", data.access_token);
+    setUser(data.user);
+  }}
+  onError={() => alert("Sign in failed")}
+/>
 ```
 
 ---
@@ -147,41 +176,33 @@ const response = await axios.get('/api/protected', {
 ## Security Considerations
 
 ### Current Protections
-- ✅ Passwords never stored in plain text
-- ✅ Bcrypt prevents rainbow table attacks
-- ✅ Token expiration limits session lifetime
+- ✅ Google handles authentication (2FA, suspicious login detection)
+- ✅ JWT tokens expire after 30 days
+- ✅ Admin endpoints protected by is_admin check
 - ✅ HTTPS enforced in production
 - ✅ CORS restricts allowed origins
+- ✅ Last active tracking for security audits
 
 ### Known Limitations
-- ⚠️ No password reset flow (yet)
-- ⚠️ No email verification (yet)
-- ⚠️ No 2FA support (yet)
-- ⚠️ Token refresh not implemented
-- ⚠️ No account lockout after failed attempts
-
----
-
-## Environment Variables
-
-```bash
-SECRET_KEY=your-secret-key-here  # For JWT signing
-ALGORITHM=HS256                    # JWT algorithm
-ACCESS_TOKEN_EXPIRE_MINUTES=43200  # 30 days
-```
+- ⚠️ Google OAuth only (no email/password option)
+- ⚠️ Token refresh not implemented (requires re-login after 30 days)
+- ⚠️ No account lockout (handled by Google)
+- ⚠️ No session revocation (JWT can't be invalidated server-side)
 
 ---
 
 ## Database Schema
 
 ```sql
-CREATE TABLE users (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    username TEXT UNIQUE NOT NULL,
-    email TEXT UNIQUE,
-    hashed_password TEXT NOT NULL,
+CREATE TABLE "user" (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
     bio TEXT,
-    profile_picture TEXT,
+    profile_picture VARCHAR(500),
+    is_admin BOOLEAN DEFAULT FALSE,
+    last_active TIMESTAMP,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

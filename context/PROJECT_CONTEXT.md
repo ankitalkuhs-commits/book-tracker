@@ -1,7 +1,7 @@
 # Book Tracker - Project Context
 
-**Last Updated:** January 10, 2026  
-**Project Version:** 1.0.0
+**Last Updated:** January 13, 2026  
+**Project Version:** 1.2.0
 
 ---
 
@@ -13,6 +13,7 @@ A social book tracking platform where users can:
 - Discover what others are reading
 - Take notes and highlights
 - Analyze reading statistics
+- Access admin dashboard for platform management
 
 ---
 
@@ -20,18 +21,20 @@ A social book tracking platform where users can:
 
 ### Backend Stack
 - **Framework:** FastAPI (Python)
-- **Database:** SQLite (local development)
-- **Auth:** JWT tokens with OAuth2 password flow
-- **Password Security:** Bcrypt hashing
+- **Database:** PostgreSQL (production on Render), SQLite (local development)
+- **Auth:** JWT tokens with Google OAuth 2.0
+- **Password Security:** Bcrypt hashing (for OAuth fallback)
 - **File Uploads:** Profile pictures, note attachments
+- **Deployment:** Render (auto-deploy from GitHub)
 
 ### Frontend Stack
 - **Framework:** React 18
 - **Build Tool:** Vite
-- **Styling:** TailwindCSS
-- **State Management:** React Context API
-- **Routing:** React Router
-- **API Client:** Axios
+- **Styling:** TailwindCSS + inline styles
+- **State Management:** React useState/useEffect (no Context API)
+- **Routing:** Hash-based routing (#/route)
+- **API Client:** Custom fetch wrapper
+- **Deployment:** Vercel (auto-deploy from GitHub)
 
 ### Data Flow
 ```
@@ -54,10 +57,11 @@ SQLite Database (book_tracker.db)
 - Database tables aligned with features
 
 ### 2. **Authentication First**
+- Google OAuth 2.0 for sign-in (email/password removed)
 - JWT tokens required for most endpoints
-- Passwords hashed with bcrypt
-- Token expiration: 30 days
-- Secure password requirements enforced
+- Single "Sign In" page (merged login/signup)
+- Admin access controlled by is_admin flag
+- Last active tracking for user engagement
 
 ### 3. **Social by Design**
 - Follow system to connect users
@@ -121,9 +125,10 @@ SQLite Database (book_tracker.db)
 - Maintains referential integrity
 - Allows "undo" functionality
 
-### Timestamps
+### Timestamps & Tracking
 - `created_at`, `updated_at` on all tables
-- Enables audit trails
+- `last_active` on users table (updated daily on login)
+- Enables audit trails and engagement analytics
 - Supports chronological queries
 
 ---
@@ -133,13 +138,17 @@ SQLite Database (book_tracker.db)
 ### Component Hierarchy
 ```
 App.jsx
-├── Header / ModernHeader
-├── Sidebar
+├── ModernHeader (modern pages) / Header (legacy)
+├── Footer (modern pages only)
 └── Pages
     ├── HomePage (Community Feed)
     ├── LibraryPage (Personal Books)
-    ├── BPFeed (BookPulse Feed)
-    └── BPLibrary (BookPulse Library)
+    ├── AdminPage (Platform Statistics)
+    ├── AboutPage (SEO landing)
+    ├── PrivacyPage (Privacy Policy)
+    ├── TermsPage (Terms of Service)
+    ├── HelpPage (FAQ)
+    └── ContactPage (Contact info)
 ```
 
 ### State Management Strategy
