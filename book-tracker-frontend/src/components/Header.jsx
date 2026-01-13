@@ -19,10 +19,7 @@ export default function Header({ onRoute, onLogout, route }) {
         <button style={getLinkStyle("follow")} onClick={() => onRoute("follow")}>Follow</button>
         
         {!localStorage.getItem("bt_token") ? (
-          <>
-            <button style={getLinkStyle("login")} onClick={() => onRoute("login")}>Login</button>
-            <button style={getLinkStyle("signup")} onClick={() => onRoute("signup")}>Signup</button>
-          </>
+          <button style={getLinkStyle("login")} onClick={() => onRoute("login")}>Sign In</button>
         ) : (
           <>
             <button style={getLinkStyle("profile")} onClick={() => onRoute("profile")}>Profile</button>

@@ -31,30 +31,17 @@ export default function HomePage({ user, onRoute }) {
                   <button 
                     onClick={() => onRoute && onRoute('login')}
                     style={{ 
-                      padding: '0.75rem 1.5rem',
-                      backgroundColor: 'white',
-                      color: '#6366F1',
-                      border: '2px solid #6366F1',
-                      borderRadius: '0.5rem',
-                      fontWeight: '500',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    Login
-                  </button>
-                  <button 
-                    onClick={() => onRoute && onRoute('signup')}
-                    style={{ 
-                      padding: '0.75rem 1.5rem',
+                      padding: '0.75rem 2rem',
                       backgroundColor: '#6366F1',
                       color: 'white',
                       border: 'none',
                       borderRadius: '0.5rem',
                       fontWeight: '500',
-                      cursor: 'pointer'
+                      cursor: 'pointer',
+                      fontSize: '1rem'
                     }}
                   >
-                    Sign Up
+                    Get Started
                   </button>
                 </div>
               </div>

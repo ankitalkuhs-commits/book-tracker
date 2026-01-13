@@ -33,7 +33,7 @@ export default function AboutPage({ onRoute }) {
           Connect with fellow readers, share your thoughts, and discover your next favorite book.
         </p>
         <button 
-          onClick={() => onRoute('signup')}
+          onClick={() => onRoute('login')}
           style={{
             background: 'white',
             color: '#667eea',
@@ -177,7 +177,7 @@ export default function AboutPage({ onRoute }) {
           Join thousands of readers tracking their books and sharing their stories.
         </p>
         <button 
-          onClick={() => onRoute('signup')}
+          onClick={() => onRoute('login')}
           style={{
             background: 'white',
             color: '#667eea',

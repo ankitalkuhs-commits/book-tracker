@@ -139,7 +139,7 @@ function AppContent(){
 
   function logout(){ localStorage.removeItem("bt_token"); setUser(null); navigateToRoute("home"); setMsg("Logged out"); }
 
-  const isModernPage = route === "home" || route === "my-library" || route === "profile" || route === "login" || route === "signup" || route === "admin" || route === "about" || route === "privacy" || route === "terms" || route === "help" || route === "contact";
+  const isModernPage = route === "home" || route === "my-library" || route === "profile" || route === "login" || route === "admin" || route === "about" || route === "privacy" || route === "terms" || route === "help" || route === "contact";
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -163,27 +163,14 @@ function AppContent(){
           <Profile setMsg={setMsg} />
         </div>
       )}
-      {route==="signup" && (
-        <div style={{ maxWidth: '500px', margin: '4rem auto', padding: '2rem' }}>
-          {msg && <div style={{ padding: '1rem', marginBottom: '1rem', backgroundColor: '#e0f2fe', color: '#0369a1', borderRadius: '0.5rem' }}>{msg}</div>}
-          <AuthForm type="signup" onSuccess={(token,u)=>{ 
-            localStorage.setItem("bt_token", token); 
-            setUser(u||{}); 
-            navigateToRoute("home"); 
-            setMsg("Signed up");
-            // Fetch full user data
-            if (u) loadCurrentUser();
-          }} />
-        </div>
-      )}
       {route==="login" && (
         <div style={{ maxWidth: '500px', margin: '4rem auto', padding: '2rem' }}>
           {msg && <div style={{ padding: '1rem', marginBottom: '1rem', backgroundColor: '#e0f2fe', color: '#0369a1', borderRadius: '0.5rem' }}>{msg}</div>}
-          <AuthForm type="login" onSuccess={(token,u)=>{ 
+          <AuthForm onSuccess={(token,u)=>{ 
             localStorage.setItem("bt_token", token); 
             setUser(u||{}); 
             navigateToRoute("home"); 
-            setMsg("Logged in");
+            setMsg("Welcome!");
             // Fetch full user data
             if (u) loadCurrentUser();
           }} />

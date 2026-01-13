@@ -49,14 +49,9 @@ export default function ModernHeader({ user, onRoute, onLogout, route }) {
         {/* User Menu */}
         <div className="header-nav">
           {!localStorage.getItem('bt_token') ? (
-            <>
-              <button onClick={() => onRoute('login')} className="nav-button">
-                Login
-              </button>
-              <button onClick={() => onRoute('signup')} className="btn-primary">
-                Sign Up
-              </button>
-            </>
+            <button onClick={() => onRoute('login')} className="btn-primary">
+              Sign In
+            </button>
           ) : (
             <>
               <button

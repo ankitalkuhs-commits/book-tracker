@@ -6,10 +6,9 @@ import { apiFetch } from "../services/api";
 /*
   AuthForm
   Props:
-    - type: "login" or "signup"
     - onSuccess(token, user) -> callback when login/signup success
 */
-export default function AuthForm({ type = "login", onSuccess }) {
+export default function AuthForm({ onSuccess }) {
   const [busy, setBusy] = useState(false);
 
   async function handleGoogleSuccess(credentialResponse) {
@@ -49,16 +48,14 @@ export default function AuthForm({ type = "login", onSuccess }) {
           fontSize: '2rem',
           color: '#1f2937'
         }}>
-          {type === "signup" ? "Create your account" : "Welcome back"}
+          Welcome to TrackMyRead
         </h2>
         <p style={{ 
           margin: 0,
           color: '#6b7280',
           fontSize: '1rem'
         }}>
-          {type === "signup" 
-            ? "Start tracking your reading journey" 
-            : "Continue your reading journey"}
+          Sign in to start tracking your reading journey
         </p>
       </div>
       
@@ -72,7 +69,7 @@ export default function AuthForm({ type = "login", onSuccess }) {
           onSuccess={handleGoogleSuccess}
           onError={handleGoogleError}
           useOneTap
-          text={type === "signup" ? "signup_with" : "signin_with"}
+          text="signin_with"
         />
       </div>
 
