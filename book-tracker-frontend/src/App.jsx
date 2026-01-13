@@ -18,6 +18,12 @@ import BPLibrary from "./pages/BPLibrary";
 import HomePage from "./pages/HomePage";
 import LibraryPage from "./pages/LibraryPage";
 import AdminPage from "./pages/AdminPage";
+import AboutPage from "./pages/AboutPage";
+import PrivacyPage from "./pages/PrivacyPage";
+import TermsPage from "./pages/TermsPage";
+import HelpPage from "./pages/HelpPage";
+import ContactPage from "./pages/ContactPage";
+import Footer from "./components/shared/Footer";
 
 // TODO: Replace with your actual Google OAuth Client ID from Google Cloud Console
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || "YOUR_GOOGLE_CLIENT_ID_HERE";
@@ -113,7 +119,7 @@ function AppContent(){
 
   function logout(){ localStorage.removeItem("bt_token"); setUser(null); setRoute("home"); setMsg("Logged out"); }
 
-  const isModernPage = route === "home" || route === "my-library" || route === "profile" || route === "login" || route === "signup" || route === "admin";
+  const isModernPage = route === "home" || route === "my-library" || route === "profile" || route === "login" || route === "signup" || route === "admin" || route === "about" || route === "privacy" || route === "terms" || route === "help" || route === "contact";
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -127,6 +133,11 @@ function AppContent(){
       {route==="home" && <HomePage user={user} onRoute={setRoute} />}
       {route==="my-library" && <LibraryPage />}
       {route==="admin" && <AdminPage />}
+      {route==="about" && <AboutPage />}
+      {route==="privacy" && <PrivacyPage />}
+      {route==="terms" && <TermsPage />}
+      {route==="help" && <HelpPage />}
+      {route==="contact" && <ContactPage />}
       {route==="profile" && (
         <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '2rem' }}>
           <Profile setMsg={setMsg} />
@@ -192,6 +203,9 @@ function AppContent(){
           </main>
         </div>
       )}
+      
+      {/* Footer - shown on all modern pages */}
+      {isModernPage && <Footer onRoute={setRoute} />}
     </div>
   );
 }

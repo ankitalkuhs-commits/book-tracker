@@ -5,6 +5,7 @@ export default function ModernHeader({ user, onRoute, onLogout, route }) {
   const navItems = [
     { id: 'home', label: 'Home', icon: '🏠' },
     { id: 'my-library', label: 'My Library', icon: '📚' },
+    { id: 'about', label: 'About', icon: 'ℹ️' },
   ];
 
   // Add admin link if user is admin
