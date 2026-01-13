@@ -1,6 +1,6 @@
 import React from 'react';
 
-export default function ContactPage() {
+export default function ContactPage({ onRoute }) {
   return (
     <div style={{ minHeight: 'calc(100vh - 200px)' }}>
       <div style={{ 
@@ -90,6 +90,7 @@ export default function ContactPage() {
             description="Check out our Help & FAQ page for quick answers to common questions."
             linkText="View FAQ"
             linkUrl="#/help"
+            onRoute={onRoute}
           />
           <InfoCard 
             icon="🐛"
@@ -97,6 +98,7 @@ export default function ContactPage() {
             description="Report technical issues or bugs to help us improve the platform."
             linkText="Report Issue"
             linkUrl="mailto:ankitalkuhs@gmail.com?subject=Bug Report"
+            onRoute={onRoute}
           />
           <InfoCard 
             icon="💡"
@@ -104,6 +106,7 @@ export default function ContactPage() {
             description="Have an idea for a new feature? We'd love to hear your suggestions!"
             linkText="Suggest Feature"
             linkUrl="mailto:ankitalkuhs@gmail.com?subject=Feature Request"
+            onRoute={onRoute}
           />
         </div>
 
@@ -129,7 +132,7 @@ export default function ContactPage() {
   );
 }
 
-function InfoCard({ icon, title, description, linkText, linkUrl }) {
+function InfoCard({ icon, title, description, linkText, linkUrl, onRoute }) {
   return (
     <div style={{
       background: 'white',
@@ -163,20 +166,42 @@ function InfoCard({ icon, title, description, linkText, linkUrl }) {
       }}>
         {description}
       </p>
-      <a 
-        href={linkUrl}
-        style={{
-          color: '#667eea',
-          fontWeight: '600',
-          textDecoration: 'none',
-          borderBottom: '2px solid transparent',
-          transition: 'border-color 0.2s'
-        }}
-        onMouseOver={(e) => e.target.style.borderBottomColor = '#667eea'}
-        onMouseOut={(e) => e.target.style.borderBottomColor = 'transparent'}
-      >
-        {linkText} →
-      </a>
+      {linkUrl.startsWith('mailto:') ? (
+        <a 
+          href={linkUrl}
+          style={{
+            color: '#667eea',
+            fontWeight: '600',
+            textDecoration: 'none',
+            borderBottom: '2px solid transparent',
+            transition: 'border-color 0.2s'
+          }}
+          onMouseOver={(e) => e.target.style.borderBottomColor = '#667eea'}
+          onMouseOut={(e) => e.target.style.borderBottomColor = 'transparent'}
+        >
+          {linkText} →
+        </a>
+      ) : (
+        <button
+          onClick={() => onRoute(linkUrl.replace('#/', ''))}
+          style={{
+            color: '#667eea',
+            fontWeight: '600',
+            textDecoration: 'none',
+            borderBottom: '2px solid transparent',
+            transition: 'border-color 0.2s',
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            fontSize: 'inherit',
+            padding: 0
+          }}
+          onMouseOver={(e) => e.target.style.borderBottomColor = '#667eea'}
+          onMouseOut={(e) => e.target.style.borderBottomColor = 'transparent'}
+        >
+          {linkText} →
+        </button>
+      )}
     </div>
   );
 }

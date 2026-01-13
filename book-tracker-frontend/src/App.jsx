@@ -133,11 +133,11 @@ function AppContent(){
       {route==="home" && <HomePage user={user} onRoute={setRoute} />}
       {route==="my-library" && <LibraryPage />}
       {route==="admin" && <AdminPage />}
-      {route==="about" && <AboutPage />}
+      {route==="about" && <AboutPage onRoute={setRoute} />}
       {route==="privacy" && <PrivacyPage />}
       {route==="terms" && <TermsPage />}
       {route==="help" && <HelpPage />}
-      {route==="contact" && <ContactPage />}
+      {route==="contact" && <ContactPage onRoute={setRoute} />}
       {route==="profile" && (
         <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '2rem' }}>
           <Profile setMsg={setMsg} />

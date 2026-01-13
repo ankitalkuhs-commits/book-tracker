@@ -1,6 +1,6 @@
 import React from 'react';
 
-export default function AboutPage() {
+export default function AboutPage({ onRoute }) {
   return (
     <div style={{ 
       minHeight: 'calc(100vh - 200px)', 
@@ -177,7 +177,7 @@ export default function AboutPage() {
           Join thousands of readers tracking their books and sharing their stories.
         </p>
         <button 
-          onClick={() => window.location.href = '#/signup'}
+          onClick={() => onRoute('login')}
           style={{
             background: 'white',
             color: '#667eea',
