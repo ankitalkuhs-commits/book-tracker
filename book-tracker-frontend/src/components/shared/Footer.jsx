@@ -95,23 +95,24 @@ export default function Footer({ onRoute }) {
 function FooterLink({ onClick, children }) {
   return (
     <li style={{ marginBottom: '0.5rem' }}>
-      <a
-        onClick={(e) => {
-          e.preventDefault();
-          onClick();
-        }}
-        href="#"
+      <button
+        onClick={onClick}
         style={{
           color: '#9ca3af',
           textDecoration: 'none',
           transition: 'color 0.2s',
-          cursor: 'pointer'
+          cursor: 'pointer',
+          background: 'none',
+          border: 'none',
+          padding: 0,
+          font: 'inherit',
+          textAlign: 'left'
         }}
         onMouseOver={(e) => e.target.style.color = 'white'}
         onMouseOut={(e) => e.target.style.color = '#9ca3af'}
       >
         {children}
-      </a>
+      </button>
     </li>
   );
 }
