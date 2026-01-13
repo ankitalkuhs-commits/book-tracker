@@ -35,9 +35,9 @@ export default function Footer({ onRoute }) {
               Quick Links
             </h4>
             <ul style={{ listStyle: 'none', padding: 0 }}>
-              <FooterLink onClick={() => onRoute('about')}>About</FooterLink>
-              <FooterLink onClick={() => onRoute('help')}>Help & FAQ</FooterLink>
-              <FooterLink onClick={() => onRoute('contact')}>Contact Us</FooterLink>
+              <FooterLink route="about">About</FooterLink>
+              <FooterLink route="help">Help & FAQ</FooterLink>
+              <FooterLink route="contact">Contact Us</FooterLink>
             </ul>
           </div>
 
@@ -47,8 +47,8 @@ export default function Footer({ onRoute }) {
               Legal
             </h4>
             <ul style={{ listStyle: 'none', padding: 0 }}>
-              <FooterLink onClick={() => onRoute('privacy')}>Privacy Policy</FooterLink>
-              <FooterLink onClick={() => onRoute('terms')}>Terms of Service</FooterLink>
+              <FooterLink route="privacy">Privacy Policy</FooterLink>
+              <FooterLink route="terms">Terms of Service</FooterLink>
             </ul>
           </div>
 
@@ -92,27 +92,22 @@ export default function Footer({ onRoute }) {
   );
 }
 
-function FooterLink({ onClick, children }) {
+function FooterLink({ route, children }) {
   return (
     <li style={{ marginBottom: '0.5rem' }}>
-      <button
-        onClick={onClick}
+      <a
+        href={`#/${route}`}
         style={{
           color: '#9ca3af',
           textDecoration: 'none',
           transition: 'color 0.2s',
-          cursor: 'pointer',
-          background: 'none',
-          border: 'none',
-          padding: 0,
-          font: 'inherit',
-          textAlign: 'left'
+          cursor: 'pointer'
         }}
         onMouseOver={(e) => e.target.style.color = 'white'}
         onMouseOut={(e) => e.target.style.color = '#9ca3af'}
       >
         {children}
-      </button>
+      </a>
     </li>
   );
 }

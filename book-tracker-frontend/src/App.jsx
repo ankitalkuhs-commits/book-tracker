@@ -29,12 +29,21 @@ import Footer from "./components/shared/Footer";
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || "YOUR_GOOGLE_CLIENT_ID_HERE";
 
 function AppContent(){
-  const [route,setRoute] = useState("home");  // Changed default from "books" to "home"
+  const [route,setRoute] = useState(() => {
+    const hash = window.location.hash.slice(2); // Remove '#/' prefix
+    return hash || "home";
+  });
   const [user,setUser] = useState(null);
   const [books,setBooks] = useState([]);
   const [library,setLibrary] = useState([]);
   const [feed,setFeed] = useState([]);
   const [msg,setMsg] = useState(null);
+
+  // Custom setRoute that also updates URL hash
+  const navigateToRoute = (newRoute) => {
+    window.location.hash = `#/${newRoute}`;
+    setRoute(newRoute);
+  };
 
   useEffect(() => {
     const token = localStorage.getItem("bt_token");
@@ -42,6 +51,17 @@ function AppContent(){
       // Fetch current user data
       loadCurrentUser();
     }
+
+    // Listen for hash changes for proper URL routing
+    const handleHashChange = () => {
+      const hash = window.location.hash.slice(2); // Remove '#/' prefix
+      if (hash) {
+        setRoute(hash);
+      }
+    };
+
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
   }, []);
 
   async function loadCurrentUser() {
@@ -117,27 +137,27 @@ function AppContent(){
     }
   }
 
-  function logout(){ localStorage.removeItem("bt_token"); setUser(null); setRoute("home"); setMsg("Logged out"); }
+  function logout(){ localStorage.removeItem("bt_token"); setUser(null); navigateToRoute("home"); setMsg("Logged out"); }
 
   const isModernPage = route === "home" || route === "my-library" || route === "profile" || route === "login" || route === "signup" || route === "admin" || route === "about" || route === "privacy" || route === "terms" || route === "help" || route === "contact";
 
   return (
     <div className="min-h-screen bg-gray-50">
       {isModernPage ? (
-        <ModernHeader user={user} onRoute={setRoute} onLogout={logout} route={route} />
+        <ModernHeader user={user} onRoute={navigateToRoute} onLogout={logout} route={route} />
       ) : (
-        <Header user={user} onRoute={setRoute} onLogout={logout} route={route} />
+        <Header user={user} onRoute={navigateToRoute} onLogout={logout} route={route} />
       )}
       
       {/* New BookPulse Pages - Full Width */}
-      {route==="home" && <HomePage user={user} onRoute={setRoute} />}
+      {route==="home" && <HomePage user={user} onRoute={navigateToRoute} />}
       {route==="my-library" && <LibraryPage />}
       {route==="admin" && <AdminPage />}
-      {route==="about" && <AboutPage onRoute={setRoute} />}
+      {route==="about" && <AboutPage onRoute={navigateToRoute} />}
       {route==="privacy" && <PrivacyPage />}
       {route==="terms" && <TermsPage />}
       {route==="help" && <HelpPage />}
-      {route==="contact" && <ContactPage onRoute={setRoute} />}
+      {route==="contact" && <ContactPage onRoute={navigateToRoute} />}
       {route==="profile" && (
         <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '2rem' }}>
           <Profile setMsg={setMsg} />
@@ -149,7 +169,7 @@ function AppContent(){
           <AuthForm type="signup" onSuccess={(token,u)=>{ 
             localStorage.setItem("bt_token", token); 
             setUser(u||{}); 
-            setRoute("home"); 
+            navigateToRoute("home"); 
             setMsg("Signed up");
             // Fetch full user data
             if (u) loadCurrentUser();
@@ -162,7 +182,7 @@ function AppContent(){
           <AuthForm type="login" onSuccess={(token,u)=>{ 
             localStorage.setItem("bt_token", token); 
             setUser(u||{}); 
-            setRoute("home"); 
+            navigateToRoute("home"); 
             setMsg("Logged in");
             // Fetch full user data
             if (u) loadCurrentUser();
@@ -205,7 +225,7 @@ function AppContent(){
       )}
       
       {/* Footer - shown on all modern pages */}
-      {isModernPage && <Footer onRoute={setRoute} />}
+      {isModernPage && <Footer onRoute={navigateToRoute} />}
     </div>
   );
 }
