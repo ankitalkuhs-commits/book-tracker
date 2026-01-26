@@ -24,6 +24,10 @@ export default function App() {
     setIsLoggedIn(true);
   };
 
+  const handleLogout = () => {
+    setIsLoggedIn(false);
+  };
+
   if (loading) {
     return (
       <View style={styles.container}>
@@ -35,7 +39,7 @@ export default function App() {
   return (
     <View style={styles.container}>
       {isLoggedIn ? (
-        <LibraryScreen />
+        <LibraryScreen onLogout={handleLogout} />
       ) : (
         <LoginScreen onLoginSuccess={handleLoginSuccess} />
       )}

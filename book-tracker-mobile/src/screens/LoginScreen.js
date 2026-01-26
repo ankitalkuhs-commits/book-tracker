@@ -21,7 +21,7 @@ export default function LoginScreen({ onLoginSuccess }) {
       const response = await fetch('https://book-tracker-backend-0hiz.onrender.com/auth/demo', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: 'demo@bookpulse.com' }) // Change this to your email if you want
+        body: JSON.stringify({ email: 'ankitshukla47.as@gmail.com' })
       });
       
       if (!response.ok) {
@@ -44,7 +44,7 @@ export default function LoginScreen({ onLoginSuccess }) {
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.logo}>📚</Text>
-        <Text style={styles.title}>BookPulse</Text>
+        <Text style={styles.title}>TrackMyRead</Text>
         <Text style={styles.subtitle}>Track your reading journey</Text>
       </View>
 

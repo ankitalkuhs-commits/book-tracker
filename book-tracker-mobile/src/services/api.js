@@ -83,13 +83,21 @@ export const booksAPI = {
   
   // Search Google Books
   search: async (query) => {
-    const response = await api.get(`/api/googlebooks/search?q=${encodeURIComponent(query)}`);
-    return response.data;
+    const response = await api.get(`/api/googlebooks/search?query=${encodeURIComponent(query)}`);
+    // Backend returns { results: [...], total_items: ... }
+    // We just need the results array
+    return response.data.results || [];
   },
   
   // Get book details from Google Books
   getGoogleBookDetails: async (googleBooksId) => {
     const response = await api.get(`/api/googlebooks/book/${googleBooksId}`);
+    return response.data;
+  },
+  
+  // Add book from Google Books to user's library
+  addToLibrary: async (bookData) => {
+    const response = await api.post('/books/add-to-library', bookData);
     return response.data;
   },
 };
@@ -109,10 +117,8 @@ export const userbooksAPI = {
   },
   
   // Update reading progress
-  updateProgress: async (userbookId, currentPage) => {
-    const response = await api.put(`/userbooks/${userbookId}/progress`, {
-      current_page: currentPage,
-    });
+  updateProgress: async (userbookId, progressData) => {
+    const response = await api.put(`/userbooks/${userbookId}/progress`, progressData);
     return response.data;
   },
   
