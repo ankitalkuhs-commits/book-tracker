@@ -229,7 +229,7 @@ def get_user_stats(
     total_pages = 0
     for userbook in all_books:
         if userbook.status == "finished" and userbook.book:
-            total_pages += userbook.book.page_count or 0
+            total_pages += userbook.book.total_pages or 0
     
     return UserStats(
         total_books=total_books,
