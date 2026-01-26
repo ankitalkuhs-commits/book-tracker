@@ -4,6 +4,7 @@ from sqlmodel import select, func, or_, and_
 from sqlmodel import Session
 from typing import List, Optional
 from pydantic import BaseModel
+from datetime import datetime, timedelta
 from ..database import get_session
 from ..deps import get_current_user
 from .. import models
@@ -167,3 +168,75 @@ def get_following_list(
     results.sort(key=lambda x: (not x.is_mutual, x.followed_at), reverse=True)
     
     return results
+
+
+class UserStats(BaseModel):
+    """User reading statistics."""
+    total_books: int
+    finished: int
+    reading: int
+    to_read: int
+    last_month: int
+    this_year: int
+    total_pages: int
+
+
+@router.get("/{user_id}/stats", response_model=UserStats)
+def get_user_stats(
+    user_id: int,
+    db: Session = Depends(get_session),
+    current_user: models.User = Depends(get_current_user)
+):
+    """
+    Get reading statistics for a specific user.
+    Returns total books, status counts, recent activity, and pages read.
+    """
+    # Verify user exists
+    user = db.get(models.User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Get all user's books
+    all_books = db.exec(
+        select(models.UserBook)
+        .where(models.UserBook.user_id == user_id)
+    ).all()
+    
+    # Count by status
+    total_books = len(all_books)
+    finished = len([b for b in all_books if b.status == "finished"])
+    reading = len([b for b in all_books if b.status == "reading"])
+    to_read = len([b for b in all_books if b.status == "to-read"])
+    
+    # Calculate date ranges
+    now = datetime.utcnow()
+    one_month_ago = now - timedelta(days=30)
+    year_start = datetime(now.year, 1, 1)
+    
+    # Count books finished last month
+    last_month = len([
+        b for b in all_books 
+        if b.status == "finished" and b.updated_at and b.updated_at >= one_month_ago
+    ])
+    
+    # Count books finished this year
+    this_year = len([
+        b for b in all_books 
+        if b.status == "finished" and b.updated_at and b.updated_at >= year_start
+    ])
+    
+    # Calculate total pages read (finished books only)
+    total_pages = 0
+    for userbook in all_books:
+        if userbook.status == "finished" and userbook.book:
+            total_pages += userbook.book.page_count or 0
+    
+    return UserStats(
+        total_books=total_books,
+        finished=finished,
+        reading=reading,
+        to_read=to_read,
+        last_month=last_month,
+        this_year=this_year,
+        total_pages=total_pages
+    )

@@ -213,6 +213,47 @@ def delete_userbook(userbook_id: int, db: Session = Depends(get_db), current_use
     return {"status": "ok", "message": "Book removed from library successfully"}
 
 
+@router.get("/user/{user_id}", response_model=List[dict])
+def get_user_books(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """Get books for a specific user (for viewing their profile)."""
+    # Verify user exists
+    user = db.get(models.User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Get user's books
+    userbooks = db.exec(select(UserBook).where(UserBook.user_id == user_id)).all()
+    
+    results = []
+    for ub in userbooks:
+        book = db.get(Book, ub.book_id)
+        results.append({
+            "id": ub.id,
+            "user_id": ub.user_id,
+            "book_id": ub.book_id,
+            "status": ub.status,
+            "current_page": ub.current_page,
+            "rating": ub.rating,
+            "created_at": ub.created_at,
+            "updated_at": ub.updated_at,
+            # embed book details (or null)
+            "book": {
+                "id": book.id,
+                "title": book.title,
+                "author": book.author,
+                "description": book.description,
+                "total_pages": book.total_pages,
+                "cover_url": book.cover_url,
+                "page_count": getattr(book, "page_count", None),
+            } if book else None
+        })
+    return results
+
+
 @router.get("/friends/currently-reading", response_model=List[dict])
 def get_friends_currently_reading(
     limit: int = 10,
