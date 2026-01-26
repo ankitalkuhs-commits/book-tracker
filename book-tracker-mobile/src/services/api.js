@@ -5,8 +5,8 @@ import axios from 'axios';
 // Your backend URL
 // For development: Use your deployed backend OR local IP
 const API_BASE_URL = 'https://book-tracker-backend-0hiz.onrender.com';
-// For testing locally: Uncomment and use your PC's local IP
-// const API_BASE_URL = 'http://192.168.1.10:8000'; // Replace with your IP from ipconfig
+// For testing locally: Use your PC's local IP
+// const API_BASE_URL = 'http://192.168.1.1:8000'; // Local backend for testing
 
 // Create axios instance
 const api = axios.create({
