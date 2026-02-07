@@ -32,6 +32,25 @@ class LoginIn(BaseModel):
 class GoogleAuthIn(BaseModel):
     token: str
 
+@router.post("/demo-login")
+def demo_login(db: Session = Depends(get_session)):
+    """Demo login endpoint for testing - creates or uses a demo account"""
+    demo_email = "demo@bookpulse.app"
+    demo_name = "Demo User"
+    
+    # Get or create demo user
+    user = crud.get_user_by_email(db, demo_email)
+    if not user:
+        # Create demo user with a simple password
+        hashed = auth.hash_password("demo123456")
+        user = crud.create_user(db, name=demo_name, email=demo_email, password_hash=hashed)
+    
+    token = auth.create_access_token({"sub": user.email})
+    return {
+        "access_token": token,
+        "user": {"id": user.id, "name": user.name, "email": user.email}
+    }
+
 @router.post("/signup")
 def signup(payload: SignupIn, db: Session = Depends(get_session)):
     existing = crud.get_user_by_email(db, payload.email)
