@@ -81,19 +81,40 @@ def login(payload: LoginIn, db: Session = Depends(get_session)):
 def google_auth(payload: GoogleAuthIn, db: Session = Depends(get_session)):
     """
     Verify Google OAuth token and create/login user.
+    Accepts tokens from both Web and Android clients.
     """
     from datetime import datetime, date
+    import os
+    
+    # Accept both Web and Android client IDs
+    WEB_CLIENT_ID = "580873034102-ukh12uuph4c17eqvvbjl1a48alrfepok.apps.googleusercontent.com"
+    ANDROID_CLIENT_ID = "580873034102-hp8st6ei62sadh6t3iq1tdlp867h4be0.apps.googleusercontent.com"
     
     try:
-        # Verify the Google token
-        # Note: In production, you should verify against your actual Google Client ID
-        idinfo = id_token.verify_oauth2_token(
-            payload.token, 
-            requests.Request(),
-            # TODO: Replace with your actual Google Client ID
-            # For now, skip audience verification by passing None
-            clock_skew_in_seconds=10
-        )
+        # Try verifying with Web Client ID first
+        idinfo = None
+        last_error = None
+        
+        for client_id in [WEB_CLIENT_ID, ANDROID_CLIENT_ID]:
+            try:
+                idinfo = id_token.verify_oauth2_token(
+                    payload.token, 
+                    requests.Request(),
+                    audience=client_id,
+                    clock_skew_in_seconds=10
+                )
+                print(f"✅ Token verified with client_id: {client_id}")
+                break
+            except ValueError as e:
+                last_error = e
+                print(f"❌ Token verification failed for {client_id}: {e}")
+                continue
+        
+        if not idinfo:
+            raise HTTPException(
+                status_code=401, 
+                detail=f"Invalid Google token: {str(last_error)}"
+            )
 
         # Extract user info from Google token
         email = idinfo.get('email')
