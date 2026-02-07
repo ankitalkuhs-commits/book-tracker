@@ -5,9 +5,13 @@ Router for Google Books API integration.
 from fastapi import APIRouter, HTTPException, Depends
 from typing import List, Optional
 import httpx
+import os
 from pydantic import BaseModel
 
 router = APIRouter(prefix="/api/googlebooks", tags=["Google Books"])
+
+# Google Books API Key - get from environment variable or use default
+GOOGLE_BOOKS_API_KEY = os.getenv("GOOGLE_BOOKS_API_KEY", "AIzaSyDKd9VimeN2ggeLC2oQNlzAWpPKXRybigs")
 
 
 class GoogleBookResult(BaseModel):
@@ -56,7 +60,8 @@ async def search_google_books(query: str, max_results: int = 10):
         "q": query,
         "maxResults": max_results,
         "printType": "books",
-        "langRestrict": "en"
+        "langRestrict": "en",
+        "key": GOOGLE_BOOKS_API_KEY
     }
     
     try:
@@ -147,10 +152,11 @@ async def get_book_details(google_book_id: str):
         Detailed book information
     """
     url = f"https://www.googleapis.com/books/v1/volumes/{google_book_id}"
+    params = {"key": GOOGLE_BOOKS_API_KEY}
     
     try:
         async with httpx.AsyncClient() as client:
-            response = await client.get(url, timeout=10.0)
+            response = await client.get(url, params=params, timeout=10.0)
             response.raise_for_status()
             item = response.json()
         
