@@ -34,16 +34,13 @@ class GoogleAuthIn(BaseModel):
 
 @router.post("/demo-login")
 def demo_login(db: Session = Depends(get_session)):
-    """Demo login endpoint for testing - creates or uses a demo account"""
-    demo_email = "demo@bookpulse.app"
-    demo_name = "Demo User"
+    """Demo login endpoint for testing - uses existing user account"""
+    demo_email = "ankitshukla47.as@gmail.com"
     
-    # Get or create demo user
+    # Get existing user
     user = crud.get_user_by_email(db, demo_email)
     if not user:
-        # Create demo user with a simple password
-        hashed = auth.hash_password("demo123456")
-        user = crud.create_user(db, name=demo_name, email=demo_email, password_hash=hashed)
+        raise HTTPException(status_code=404, detail="Demo user not found in database")
     
     token = auth.create_access_token({"sub": user.email})
     return {
