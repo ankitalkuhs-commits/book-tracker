@@ -10,8 +10,11 @@ from pydantic import BaseModel
 
 router = APIRouter(prefix="/api/googlebooks", tags=["Google Books"])
 
-# Google Books API Key - get from environment variable or use default
-GOOGLE_BOOKS_API_KEY = os.getenv("GOOGLE_BOOKS_API_KEY", "AIzaSyDKd9VimeN2ggeLC2oQNlzAWpPKXRybigs")
+# Google Books API Key - read from environment variable
+GOOGLE_BOOKS_API_KEY = os.getenv("GOOGLE_BOOKS_API_KEY")
+
+if not GOOGLE_BOOKS_API_KEY:
+    print("WARNING: GOOGLE_BOOKS_API_KEY environment variable not set. Google Books API may have rate limits.")
 
 
 class GoogleBookResult(BaseModel):
