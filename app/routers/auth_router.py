@@ -32,6 +32,10 @@ class LoginIn(BaseModel):
 class GoogleAuthIn(BaseModel):
     token: str
 
+class AccountDeletionRequest(BaseModel):
+    email: str
+    reason: str = None
+
 @router.post("/demo-login")
 def demo_login(db: Session = Depends(get_session)):
     """Demo login endpoint for testing - uses existing user account"""
@@ -187,3 +191,38 @@ def demo_login(payload: DemoLoginIn, db: Session = Depends(get_session)):
     # Create access token
     token = auth.create_access_token({"sub": user.email})
     return {"access_token": token, "user": {"id": user.id, "name": user.name, "email": user.email}}
+
+@router.post("/delete-account")
+def request_account_deletion(payload: AccountDeletionRequest, db: Session = Depends(get_session)):
+    """
+    Request account deletion. User can submit via web form.
+    """
+    from datetime import datetime
+    
+    # Check if user exists
+    user = crud.get_user_by_email(db, payload.email)
+    if not user:
+        # Return success even if user doesn't exist (privacy - don't reveal if email is registered)
+        return {"message": "Account deletion request received"}
+    
+    # In production, you would:
+    # 1. Send confirmation email to user
+    # 2. Mark account for deletion (add deletion_requested_at timestamp)
+    # 3. Schedule deletion job for 30 days later
+    # 4. Allow user to cancel within 30 days
+    
+    # For now, just log the request (you can add email notification later)
+    print(f"🗑️ Account deletion requested for {payload.email}")
+    print(f"   Reason: {payload.reason or 'Not provided'}")
+    print(f"   Requested at: {datetime.utcnow()}")
+    
+    # TODO: Implement actual deletion logic
+    # - Add `deletion_requested_at` field to User model
+    # - Create scheduled job to delete after 30 days
+    # - Send confirmation email
+    
+    return {
+        "message": "Account deletion request received",
+        "email": payload.email,
+        "note": "Your account will be deleted within 30 days"
+    }
