@@ -1,5 +1,5 @@
 // Library Screen - Shows user's books
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import {
   View,
   Text,
@@ -12,15 +12,13 @@ import {
   TextInput,
 } from 'react-native';
 import { userbooksAPI, authAPI } from '../services/api';
-import BookDetailScreen from './BookDetailScreen';
-import SearchScreen from './SearchScreen';
+import { PreloadContext } from '../../App';
 
-export default function LibraryScreen({ onLogout }) {
-  const [books, setBooks] = useState([]);
-  const [loading, setLoading] = useState(true);
+export default function LibraryScreen({ navigation, onLogout }) {
+  const preloaded = useContext(PreloadContext);
+  const [books, setBooks] = useState(preloaded?.library || []);
+  const [loading, setLoading] = useState(!preloaded?.library);
   const [refreshing, setRefreshing] = useState(false);
-  const [selectedBook, setSelectedBook] = useState(null);
-  const [showSearch, setShowSearch] = useState(false);
   const [activeTab, setActiveTab] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -37,8 +35,17 @@ export default function LibraryScreen({ onLogout }) {
   };
 
   useEffect(() => {
-    loadBooks();
-  }, []);
+    // Only load if not already preloaded
+    if (!preloaded?.library) {
+      loadBooks();
+    }
+    
+    // Reload books when screen comes into focus
+    const unsubscribe = navigation.addListener('focus', () => {
+      loadBooks();
+    });
+    return unsubscribe;
+  }, [navigation]);
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -75,7 +82,7 @@ export default function LibraryScreen({ onLogout }) {
   const renderBook = ({ item }) => (
     <TouchableOpacity 
       style={styles.bookCard}
-      onPress={() => setSelectedBook(item)}
+      onPress={() => navigation.navigate('BookDetail', { userbook: item, userbookId: item.id })}
     >
       <Image
         source={{ uri: item.book?.cover_url || 'https://via.placeholder.com/100x150' }}
@@ -83,31 +90,27 @@ export default function LibraryScreen({ onLogout }) {
       />
       <View style={styles.bookInfo}>
         <Text style={styles.bookTitle} numberOfLines={2}>
-          {item.book?.title}
+          {item.book?.title || 'Untitled'}
         </Text>
         <Text style={styles.bookAuthor} numberOfLines={1}>
-          {item.book?.author}
+          {item.book?.author || 'Unknown Author'}
         </Text>
-        <View style={styles.statusBadge}>
-          <Text style={styles.statusText}>
-            {item.status === 'to-read' && '📚 To Read'}
-            {item.status === 'reading' && '📖 Reading'}
-            {item.status === 'finished' && '✅ Finished'}
-          </Text>
-        </View>
-        {item.book?.total_pages && (
-          <Text style={styles.progress}>
-            {item.status === 'reading' && item.current_page && (
-              `Page ${item.current_page} of ${item.book.total_pages}`
-            )}
-            {item.status === 'finished' && (
-              `${item.book.total_pages} pages • Completed`
-            )}
-            {item.status === 'to-read' && (
-              `${item.book.total_pages} pages`
-            )}
-          </Text>
+        {item.status && (
+          <View style={styles.statusBadge}>
+            <Text style={styles.statusText}>
+              {item.status === 'to-read' ? '📚 To Read' : item.status === 'reading' ? '📖 Reading' : '✅ Finished'}
+            </Text>
+          </View>
         )}
+        {item.book?.total_pages ? (
+          <Text style={styles.progress}>
+            {item.status === 'reading' && item.current_page 
+              ? `Page ${item.current_page} of ${item.book.total_pages}`
+              : item.status === 'finished'
+              ? `${item.book.total_pages} pages • Completed`
+              : `${item.book.total_pages} pages`}
+          </Text>
+        ) : null}
       </View>
     </TouchableOpacity>
   );
@@ -120,61 +123,17 @@ export default function LibraryScreen({ onLogout }) {
     );
   }
 
-  // If viewing a book detail, show that screen
-  if (selectedBook) {
-    return (
-      <BookDetailScreen 
-        userbook={selectedBook} 
-        onBack={() => {
-          setSelectedBook(null);
-          // Reload books when coming back from detail screen
-          loadBooks();
-        }} 
-      />
-    );
-  }
-
-  // If showing search screen
-  if (showSearch) {
-    return (
-      <View style={styles.container}>
-        <View style={styles.searchHeader}>
-          <TouchableOpacity onPress={() => setShowSearch(false)} style={styles.backButton}>
-            <Text style={styles.backButtonText}>← Back</Text>
-          </TouchableOpacity>
-        </View>
-        <SearchScreen 
-          onBookAdded={() => {
-            setShowSearch(false);
-            loadBooks();
-          }}
-        />
-      </View>
-    );
-  }
-
   return (
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.headerContainer}>
         <Text style={styles.header}>My Library</Text>
-        <View style={styles.headerButtons}>
-          <TouchableOpacity 
-            style={styles.addButton}
-            onPress={() => setShowSearch(true)}
-          >
-            <Text style={styles.addButtonText}>+ Add Book</Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={styles.logoutButton}
-            onPress={async () => {
-              await authAPI.logout();
-              onLogout();
-            }}
-          >
-            <Text style={styles.logoutButtonText}>Logout</Text>
-          </TouchableOpacity>
-        </View>
+        <TouchableOpacity 
+          style={styles.addButton}
+          onPress={() => navigation.navigate('Search')}
+        >
+          <Text style={styles.addButtonText}>+ Add Book</Text>
+        </TouchableOpacity>
       </View>
 
       {/* Tab Bar */}
@@ -265,37 +224,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingTop: 60,
-    paddingBottom: 15,
+    paddingBottom: 16,
     backgroundColor: '#fff',
     borderBottomWidth: 1,
     borderBottomColor: '#e0e0e0',
   },
   header: {
-    fontSize: 24,
-    fontWeight: 'bold',
-  },
-  headerButtons: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#333',
   },
   addButton: {
-    backgroundColor: '#4285F4',
+    backgroundColor: '#0066cc',
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 8,
   },
   addButtonText: {
     color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  logoutButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  logoutButtonText: {
-    color: '#4285F4',
     fontSize: 14,
     fontWeight: '600',
   },

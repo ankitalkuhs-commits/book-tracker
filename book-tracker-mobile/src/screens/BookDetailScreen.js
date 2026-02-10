@@ -10,10 +10,13 @@ import {
   ActivityIndicator,
   TextInput,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { userbooksAPI, notesAPI } from '../services/api';
 
-export default function BookDetailScreen({ userbook, onBack }) {
+export default function BookDetailScreen({ route, navigation }) {
+  const { userbook, userbookId } = route.params;
   const [notes, setNotes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(userbook.current_page?.toString() || '0');
@@ -155,11 +158,15 @@ export default function BookDetailScreen({ userbook, onBack }) {
     : 0;
 
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView 
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={0}
+    >
       <ScrollView style={styles.content}>
         {/* Header with back button */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={onBack} style={styles.backButton}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
             <Text style={styles.backButtonText}>← Back</Text>
           </TouchableOpacity>
         </View>
@@ -174,8 +181,8 @@ export default function BookDetailScreen({ userbook, onBack }) {
           </View>
           
           <View style={styles.bookInfo}>
-            <Text style={styles.bookTitle}>{userbook.book?.title}</Text>
-            <Text style={styles.bookAuthor}>{userbook.book?.author}</Text>
+            <Text style={styles.bookTitle}>{userbook.book?.title || 'Untitled Book'}</Text>
+            <Text style={styles.bookAuthor}>{userbook.book?.author || 'Unknown Author'}</Text>
             
             {userbook.book?.total_pages && (
               <Text style={styles.bookPages}>📖 {userbook.book.total_pages} pages</Text>
@@ -231,7 +238,7 @@ export default function BookDetailScreen({ userbook, onBack }) {
                   keyboardType="numeric"
                   placeholder="0"
                 />
-                <Text style={styles.totalPages}>/ {userbook.book?.total_pages || '?'}</Text>
+                <Text style={styles.totalPages}>/ {userbook.book?.total_pages ? userbook.book.total_pages : '?'}</Text>
                 <TouchableOpacity
                   style={styles.updateButton}
                   onPress={updateProgress}
@@ -323,7 +330,7 @@ export default function BookDetailScreen({ userbook, onBack }) {
           )}
         </View>
       </ScrollView>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 

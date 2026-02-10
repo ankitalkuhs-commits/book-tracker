@@ -15,7 +15,7 @@ import {
 } from 'react-native';
 import { booksAPI, userbooksAPI } from '../services/api';
 
-export default function SearchScreen({ onBookAdded }) {
+export default function SearchScreen({ navigation }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [searching, setSearching] = useState(false);
@@ -75,10 +75,8 @@ export default function SearchScreen({ onBookAdded }) {
       setBookFormat('hardcover');
       setOwnershipStatus('owned');
       
-      // Notify parent to refresh library
-      if (onBookAdded) {
-        onBookAdded();
-      }
+      // Navigate back to library (which will auto-refresh)
+      navigation.goBack();
     } catch (error) {
       console.error('Add book error:', error);
       Alert.alert('Error', error.response?.data?.detail || 'Failed to add book. It might already be in your library.');

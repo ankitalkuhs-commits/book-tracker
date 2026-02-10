@@ -23,6 +23,7 @@ import PrivacyPage from "./pages/PrivacyPage";
 import TermsPage from "./pages/TermsPage";
 import HelpPage from "./pages/HelpPage";
 import ContactPage from "./pages/ContactPage";
+import AccountDeletionPage from "./pages/AccountDeletionPage";
 import Footer from "./components/shared/Footer";
 
 // TODO: Replace with your actual Google OAuth Client ID from Google Cloud Console
@@ -139,7 +140,7 @@ function AppContent(){
 
   function logout(){ localStorage.removeItem("bt_token"); setUser(null); navigateToRoute("home"); setMsg("Logged out"); }
 
-  const isModernPage = route === "home" || route === "my-library" || route === "profile" || route === "login" || route === "admin" || route === "about" || route === "privacy" || route === "terms" || route === "help" || route === "contact";
+  const isModernPage = route === "home" || route === "my-library" || route === "profile" || route === "login" || route === "admin" || route === "about" || route === "privacy" || route === "terms" || route === "help" || route === "contact" || route === "account-deletion";
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -158,6 +159,7 @@ function AppContent(){
       {route==="terms" && <TermsPage />}
       {route==="help" && <HelpPage />}
       {route==="contact" && <ContactPage onRoute={navigateToRoute} />}
+      {route==="account-deletion" && <AccountDeletionPage />}
       {route==="profile" && (
         <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '2rem' }}>
           <Profile setMsg={setMsg} />

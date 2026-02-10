@@ -110,6 +110,12 @@ export const userbooksAPI = {
     return response.data;
   },
   
+  // Get another user's books
+  getUserBooks: async (userId) => {
+    const response = await api.get(`/userbooks/user/${userId}`);
+    return response.data;
+  },
+  
   // Add book to library
   addBook: async (bookData) => {
     const response = await api.post('/userbooks/', bookData);
@@ -135,25 +141,85 @@ export const userbooksAPI = {
     const response = await api.delete(`/userbooks/${userbookId}`);
     return response.data;
   },
+
+  // Get what friends are currently reading
+  getFriendsReading: async (limit = 10) => {
+    const response = await api.get(`/userbooks/friends/currently-reading?limit=${limit}`);
+    return response.data;
+  },
 };
 
 // Notes API (for community feed)
 export const notesAPI = {
-  // Get feed (friend activities)
-  getFeed: async () => {
-    const response = await api.get('/notes/feed');
+  // Get friends feed (from users you follow)
+  getFriendsFeed: async (limit = 50) => {
+    const response = await api.get(`/notes/friends-feed?limit=${limit}`);
     return response.data;
   },
+
+  // Get community feed (all public posts)
+  getCommunityFeed: async (limit = 50) => {
+    const response = await api.get(`/notes/feed?limit=${limit}`);
+    return response.data;
+  },
+
+  // Like a post
+  likePost: async (noteId) => {
+    const response = await api.post(`/notes/${noteId}/like`);
+    return response.data;
+  },
+
+  // Unlike a post
+  unlikePost: async (noteId) => {
+    const response = await api.delete(`/notes/${noteId}/like`);
+    return response.data;
+  },
+
+  // Get comments for a post
+  getComments: async (noteId) => {
+    const response = await api.get(`/notes/${noteId}/comments`);
+    return response.data;
+  },
+
+  // Add comment to a post
+  addComment: async (noteId, text) => {
+    const response = await api.post(`/notes/${noteId}/comments`, { text });
+    return response.data;
+  },
+  
+  // Delete comment (not implemented yet in backend)
+  // deleteComment: async (commentId) => {
+  //   const response = await api.delete(`/comments/${commentId}`);
+  //   return response.data;
+  // },
   
   // Get my notes
   getMyNotes: async () => {
     const response = await api.get('/notes/me');
     return response.data;
   },
+
+  // Get notes for specific userbook
+  getNotesForBook: async (userbookId) => {
+    const response = await api.get(`/notes/userbook/${userbookId}`);
+    return response.data;
+  },
   
   // Create note
   createNote: async (noteData) => {
     const response = await api.post('/notes/', noteData);
+    return response.data;
+  },
+
+  // Update note
+  updateNote: async (noteId, noteData) => {
+    const response = await api.put(`/notes/${noteId}`, noteData);
+    return response.data;
+  },
+
+  // Delete note
+  deleteNote: async (noteId) => {
+    const response = await api.delete(`/notes/${noteId}`);
     return response.data;
   },
   
@@ -179,7 +245,43 @@ export const notesAPI = {
 export const userAPI = {
   // Get current user profile
   getProfile: async () => {
-    const response = await api.get('/users/me');
+    const response = await api.get('/profile/me');
+    return response.data;
+  },
+  
+  // Get another user's stats
+  getUserStats: async (userId) => {
+    const response = await api.get(`/users/${userId}/stats`);
+    return response.data;
+  },
+  
+  // Update user profile
+  updateProfile: async (profileData) => {
+    const response = await api.put('/profile/me', profileData);
+    return response.data;
+  },
+
+  // Search users
+  searchUsers: async (query) => {
+    const response = await api.get(`/users/search?q=${encodeURIComponent(query)}`);
+    return response.data;
+  },
+
+  // Follow user
+  followUser: async (userId) => {
+    const response = await api.post(`/follow/${userId}`);
+    return response.data;
+  },
+
+  // Unfollow user
+  unfollowUser: async (userId) => {
+    const response = await api.delete(`/follow/${userId}`);
+    return response.data;
+  },
+
+  // Get following list
+  getFollowing: async () => {
+    const response = await api.get('/users/following');
     return response.data;
   },
   
