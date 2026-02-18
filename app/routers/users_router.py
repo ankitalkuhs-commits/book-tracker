@@ -225,11 +225,13 @@ def get_user_stats(
         if b.status == "finished" and b.updated_at and b.updated_at >= year_start
     ])
     
-    # Calculate total pages read (finished books only)
+    # Calculate total pages read (finished books + current progress)
     total_pages = 0
     for userbook in all_books:
         if userbook.status == "finished" and userbook.book:
             total_pages += userbook.book.total_pages or 0
+        elif userbook.status == "reading" and userbook.current_page:
+            total_pages += userbook.current_page or 0
     
     return UserStats(
         total_books=total_books,

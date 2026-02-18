@@ -205,21 +205,21 @@ def request_account_deletion(payload: AccountDeletionRequest, db: Session = Depe
         # Return success even if user doesn't exist (privacy - don't reveal if email is registered)
         return {"message": "Account deletion request received"}
     
-    # In production, you would:
-    # 1. Send confirmation email to user
-    # 2. Mark account for deletion (add deletion_requested_at timestamp)
-    # 3. Schedule deletion job for 30 days later
-    # 4. Allow user to cancel within 30 days
+    # Mark account for deletion
+    user.deletion_requested_at = datetime.utcnow()
+    user.deletion_reason = payload.reason
+    db.add(user)
+    db.commit()
     
-    # For now, just log the request (you can add email notification later)
+    # Log the request
     print(f"🗑️ Account deletion requested for {payload.email}")
     print(f"   Reason: {payload.reason or 'Not provided'}")
-    print(f"   Requested at: {datetime.utcnow()}")
+    print(f"   Requested at: {user.deletion_requested_at}")
     
-    # TODO: Implement actual deletion logic
-    # - Add `deletion_requested_at` field to User model
-    # - Create scheduled job to delete after 30 days
-    # - Send confirmation email
+    # TODO: Production enhancements:
+    # - Send confirmation email to user
+    # - Create scheduled job to auto-delete after 30 days
+    # - Add endpoint to cancel deletion request
     
     return {
         "message": "Account deletion request received",

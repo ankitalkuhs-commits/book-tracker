@@ -23,7 +23,14 @@ export default function ReadingStatsTable({ library }) {
     const currentlyReading = library.filter((ub) => ub.status === 'reading').length;
     const booksFinished = library.filter((ub) => ub.status === 'finished').length;
     
-    const pagesRead = library.reduce((sum, ub) => sum + (ub.current_page || 0), 0);
+    const pagesRead = library.reduce((sum, ub) => {
+      if (ub.status === 'finished' && ub.book?.total_pages) {
+        return sum + ub.book.total_pages;
+      } else if (ub.status === 'reading' && ub.current_page) {
+        return sum + ub.current_page;
+      }
+      return sum;
+    }, 0);
 
     // Fetch actual emotions count from notes API
     const fetchEmotionsCount = async () => {

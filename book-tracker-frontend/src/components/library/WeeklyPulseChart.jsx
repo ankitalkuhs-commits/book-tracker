@@ -1,24 +1,71 @@
 // WeeklyPulseChart - Bar chart showing pages read per day
 import React, { useEffect, useState } from 'react';
+import { apiFetch } from '../../services/api';
 
 export default function WeeklyPulseChart() {
   const [weekData, setWeekData] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Mock data for now - will integrate with backend tracking later
-    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    const data = days.map((day) => ({
-      day,
-      pages: Math.floor(Math.random() * 50), // Random for demo
-    }));
-    setWeekData(data);
+    loadReadingActivity();
   }, []);
+
+  const loadReadingActivity = async () => {
+    try {
+      setLoading(true);
+      const data = await apiFetch('/reading-activity/daily?days=30');
+      
+      // Get last 7 days for weekly view
+      const last7Days = data.data.slice(-7);
+      
+      const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+      const today = new Date().getDay(); // 0 = Sunday, 1 = Monday, etc
+      
+      // Map data to day names
+      const chartData = last7Days.map((dayData, index) => {
+        const dayIndex = (today - 6 + index) % 7;
+        const adjustedIndex = dayIndex === 0 ? 6 : dayIndex - 1; // Adjust so Monday = 0
+        
+        return {
+          day: days[adjustedIndex] || days[index],
+          pages: dayData.pages_read || 0,
+          date: dayData.date
+        };
+      });
+      
+      setWeekData(chartData);
+    } catch (error) {
+      console.error('Error loading reading activity:', error);
+      // Fallback to empty data
+      const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+      const emptyData = days.map((day) => ({ day, pages: 0 }));
+      setWeekData(emptyData);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const maxPages = Math.max(...weekData.map((d) => d.pages), 1);
 
+  if (loading) {
+    return (
+      <>
+        <h3 className="widget-title">Your Weekly Reading</h3>
+        <div className="chart-container" style={{ 
+          display: 'flex', 
+          justifyContent: 'center', 
+          alignItems: 'center', 
+          height: '200px' 
+        }}>
+          <p>Loading...</p>
+        </div>
+      </>
+    );
+  }
+
   return (
     <>
-      <h3 className="widget-title">Your Weekly Pulse</h3>
+      <h3 className="widget-title">Your Weekly Reading</h3>
       
       <div className="chart-container">
         {weekData.map((data, idx) => {

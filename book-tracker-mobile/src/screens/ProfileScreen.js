@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { userAPI, authAPI, userbooksAPI } from '../services/api';
 import { PreloadContext } from '../../App';
+import ReadingActivityChart from '../components/ReadingActivityChart';
 
 const ProfileScreen = ({ onLogout }) => {
   const preloaded = useContext(PreloadContext);
@@ -34,9 +35,14 @@ const ProfileScreen = ({ onLogout }) => {
     const reading = booksData.filter(b => b.status === 'reading').length;
     const finished = booksData.filter(b => b.status === 'finished').length;
     const toRead = booksData.filter(b => b.status === 'to-read').length;
-    const totalPagesRead = booksData
-      .filter(b => b.status === 'finished')
-      .reduce((sum, b) => sum + (b.book?.total_pages || 0), 0);
+    const totalPagesRead = booksData.reduce((sum, b) => {
+      if (b.status === 'finished') {
+        return sum + (b.book?.total_pages || 0);
+      } else if (b.status === 'reading' && b.current_page) {
+        return sum + (b.current_page || 0);
+      }
+      return sum;
+    }, 0);
     
     setStats({
       totalBooks,
@@ -172,6 +178,9 @@ const ProfileScreen = ({ onLogout }) => {
             <Text style={styles.statLabel}>Total Pages Read</Text>
           </View>
         </View>
+
+        {/* Reading Activity Chart */}
+        <ReadingActivityChart />
 
         {/* This Year Stats */}
         <View style={styles.sectionHeader}>

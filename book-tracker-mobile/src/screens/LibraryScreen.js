@@ -176,7 +176,8 @@ export default function LibraryScreen({ navigation, onLogout }) {
       <View style={styles.searchContainer}>
         <TextInput
           style={styles.searchInput}
-          placeholder="Search your library..."
+          placeholder="Search in library"
+          placeholderTextColor="#999"
           value={searchQuery}
           onChangeText={setSearchQuery}
           clearButtonMode="while-editing"
@@ -283,9 +284,12 @@ const styles = StyleSheet.create({
   searchInput: {
     backgroundColor: '#f5f5f5',
     paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingVertical: 12,
     borderRadius: 8,
     fontSize: 15,
+    color: '#333',
+    borderWidth: 1,
+    borderColor: '#ddd',
   },
   searchHeader: {
     backgroundColor: '#fff',

@@ -26,8 +26,12 @@ def update_progress(userbook_id: int, data: UserBookProgress, db: Session = Depe
     if not userbook:
         raise HTTPException(status_code=404, detail="UserBook not found")
 
+    # Track previous page for activity logging
+    old_page = userbook.current_page or 0
+    new_page = data.current_page or 0
+
     # ✅ Update the current page
-    userbook.current_page = data.current_page or 0
+    userbook.current_page = new_page
 
     # ✅ Fetch total pages if the book exists
     book = db.get(Book, userbook.book_id) if userbook.book_id else None
@@ -50,6 +54,36 @@ def update_progress(userbook_id: int, data: UserBookProgress, db: Session = Depe
 
     # ✅ Always update timestamp
     userbook.updated_at = datetime.utcnow()
+
+    # ✅ Log reading activity if pages increased
+    if new_page > old_page:
+        from ..models import ReadingActivity
+        pages_read = new_page - old_page
+        today = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+        
+        # Check if activity for today already exists
+        existing_activity = db.exec(
+            select(models.ReadingActivity)
+            .where(models.ReadingActivity.user_id == userbook.user_id)
+            .where(models.ReadingActivity.userbook_id == userbook_id)
+            .where(models.ReadingActivity.date >= today)
+        ).first()
+        
+        if existing_activity:
+            # Update existing activity
+            existing_activity.pages_read += pages_read
+            existing_activity.current_page = new_page
+            db.add(existing_activity)
+        else:
+            # Create new activity entry
+            activity = models.ReadingActivity(
+                user_id=userbook.user_id,
+                userbook_id=userbook_id,
+                date=today,
+                pages_read=pages_read,
+                current_page=new_page
+            )
+            db.add(activity)
 
     db.add(userbook)
     db.commit()

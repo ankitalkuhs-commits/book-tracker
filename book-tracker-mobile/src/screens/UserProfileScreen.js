@@ -9,6 +9,7 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { userAPI, userbooksAPI } from '../services/api';
+import ReadingActivityChart from '../components/ReadingActivityChart';
 
 export default function UserProfileScreen({ route, navigation }) {
   const { userId, userName } = route.params;
@@ -114,6 +115,9 @@ export default function UserProfileScreen({ route, navigation }) {
           <Text style={styles.statLabel}>To Read</Text>
         </View>
       </View>
+
+      {/* Reading Activity Chart */}
+      <ReadingActivityChart userId={userId} />
 
       {/* Reading Activity */}
       <View style={styles.section}>

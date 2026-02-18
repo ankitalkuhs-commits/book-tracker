@@ -23,6 +23,7 @@ export default function LoginScreen({ onLoginSuccess, preloadedFeed }) {
   useEffect(() => {
     GoogleSignin.configure({
       webClientId: '580873034102-ukh12uuph4c17eqvvbjl1a48alrfepok.apps.googleusercontent.com', // Web client for ID token
+      androidClientId: '580873034102-iti54sb6qu097dmlpmi8dma7jg3t7ek3.apps.googleusercontent.com', // Android client for Play Store
       offlineAccess: false,
     });
     console.log('🔑 Google Sign-In configured');

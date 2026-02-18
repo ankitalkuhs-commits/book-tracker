@@ -44,6 +44,8 @@ class UserSummary(BaseModel):
     following_count: int
     created_at: datetime
     last_active: datetime | None
+    deletion_requested_at: datetime | None
+    deletion_reason: str | None
 
 
 class BookSummary(BaseModel):
@@ -204,7 +206,9 @@ def get_all_users(
             followers_count=followers_count,
             following_count=following_count,
             created_at=user.created_at,
-            last_active=user.last_active
+            last_active=user.last_active,
+            deletion_requested_at=user.deletion_requested_at,
+            deletion_reason=user.deletion_reason
         ))
     
     return result

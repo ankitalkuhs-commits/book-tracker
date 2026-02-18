@@ -589,7 +589,7 @@ const FeedScreen = ({ navigation }) => {
             <View style={styles.emptyState}>
               <Text style={styles.emptyIcon}>📚</Text>
               <Text style={styles.emptyText}>
-                No posts yet.{'\n'}Be the first to share your reading pulse!
+                No posts yet.{'\n'}Be the first to share your reading journey!
               </Text>
             </View>
           ) : (
@@ -603,7 +603,7 @@ const FeedScreen = ({ navigation }) => {
               <Text style={styles.sectionTitle}>Find Friends</Text>
               <TextInput
                 style={styles.searchInput}
-                placeholder="Search users..."
+                placeholder="Search users"
                 value={searchQuery}
                 onChangeText={setSearchQuery}
                 autoCapitalize="none"
@@ -678,7 +678,7 @@ const FeedScreen = ({ navigation }) => {
             }}>
               <Text style={styles.cancelButton}>Cancel</Text>
             </TouchableOpacity>
-            <Text style={styles.composerTitle}>{editingPost ? 'Edit Post' : 'Share Your Pulse'}</Text>
+            <Text style={styles.composerTitle}>{editingPost ? 'Edit Post' : 'Create Post'}</Text>
             <TouchableOpacity
               onPress={handleCreatePost}
               disabled={posting || !postText.trim()}
@@ -996,7 +996,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingTop: 50,
+    paddingBottom: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#e0e0e0',
     backgroundColor: '#fff',
@@ -1304,9 +1305,12 @@ const styles = StyleSheet.create({
   searchInput: {
     backgroundColor: '#f5f5f5',
     paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingVertical: 12,
     borderRadius: 8,
     fontSize: 15,
+    color: '#333',
+    borderWidth: 1,
+    borderColor: '#ddd',
   },
   searchingIndicator: {
     padding: 16,

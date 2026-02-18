@@ -128,7 +128,8 @@ export default function SearchScreen({ navigation }) {
       <View style={styles.searchContainer}>
         <TextInput
           style={styles.searchInput}
-          placeholder="Search by title, author, or ISBN..."
+          placeholder="Search books"
+          placeholderTextColor="#999"
           value={searchQuery}
           onChangeText={setSearchQuery}
           onSubmitEditing={searchBooks}
@@ -369,6 +370,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
     fontSize: 16,
     backgroundColor: '#f9f9f9',
+    color: '#333',
   },
   searchButton: {
     width: 45,

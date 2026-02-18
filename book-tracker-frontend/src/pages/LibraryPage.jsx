@@ -499,10 +499,10 @@ export default function LibraryPage() {
 
           {/* Sidebar */}
           <div>
-            {/* Weekly Pulse Chart - Hidden for now */}
-            {/* <div className="sidebar-widget">
+            {/* Weekly Reading Chart */}
+            <div className="sidebar-widget">
               <WeeklyPulseChart />
-            </div> */}
+            </div>
 
             {/* Reading Stats */}
             <div className="sidebar-widget">

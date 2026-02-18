@@ -1,8 +1,18 @@
 # Google OAuth Setup for Mobile App
 
-## Quick Fix for Current 400 Error
+## 🚨 PLAY STORE FIX - DEVELOPER_ERROR
 
-The app is currently showing a 400 error because the Google OAuth redirect URI is not configured. Here's how to fix it:
+If you're getting `DEVELOPER_ERROR` on Play Store builds, **see [PLAYSTORE_FIX.md](PLAYSTORE_FIX.md)** for the complete solution.
+
+**Quick Summary**: You need to:
+1. Get SHA-1 from Play Console
+2. Create Android OAuth client in Google Cloud Console
+3. Add `androidClientId` to LoginScreen.js
+4. Rebuild and upload
+
+---
+
+## Development Setup (Expo Go)
 
 ### 1. Get Your Expo Redirect URI
 
@@ -26,7 +36,7 @@ OR check app.json for your slug and use: `https://auth.expo.io/@YOUR-EXPO-USERNA
 1. Go to [Google Cloud Console](https://console.cloud.google.com/)
 2. Select your project
 3. Go to **APIs & Services** → **Credentials**
-4. Click on your Web client ID: `278815533717-2kjgpkddo1dujt8cguf0q3ib8lrka9ra`
+4. Click on your Web client ID
 5. Under **Authorized redirect URIs**, click **ADD URI**
 6. Add these URIs:
    ```
@@ -41,28 +51,77 @@ OR check app.json for your slug and use: `https://auth.expo.io/@YOUR-EXPO-USERNA
 2. Tap "Sign in with Google"
 3. Should now work without 400 error!
 
-## For Production Builds
+---
 
-When building standalone apps (not using Expo Go), you'll need:
+## Production Builds (Play Store / App Store)
 
-1. **iOS Client ID** (from Google Cloud Console)
-2. **Android Client ID** (from Google Cloud Console)
-3. Update [LoginScreen.js](src/screens/LoginScreen.js) lines 24-26 with these IDs
+### For Android (Play Store)
 
-## Current Setup (Development)
+**⚠️ CRITICAL**: Production Android builds REQUIRE an Android OAuth Client ID
 
-✅ Uses web client ID: `278815533717-2kjgpkddo1dujt8cguf0q3ib8lrka9ra`
-✅ Works with Expo Go for testing
-⚠️ **Needs redirect URI added to Google Cloud Console**
+See **[PLAYSTORE_FIX.md](PLAYSTORE_FIX.md)** for complete step-by-step instructions.
 
-## Troubleshooting
+**Summary**:
+1. Get SHA-1 from Play Console → App Signing
+2. Create Android OAuth client in Google Cloud Console
+   - Package: `com.bookpulse.mobile`
+   - SHA-1: From Play Console
+3. Add to LoginScreen.js:
+   ```javascript
+   GoogleSignin.configure({
+     webClientId: '...',
+     androidClientId: 'YOUR_ANDROID_CLIENT_ID', // ADD THIS
+     offlineAccess: false,
+   });
+   ```
+4. Rebuild with `eas build --platform android --profile production`
 
-**400 Error** → Add Expo redirect URI to Google Cloud Console (see step 2 above)
+### For iOS (App Store)
 
-**No response** → Check internet connection
-
-**Token invalid** → Backend /auth/google endpoint issue (check backend logs)
+1. Create iOS OAuth client in Google Cloud Console
+2. Add to LoginScreen.js:
+   ```javascript
+   GoogleSignin.configure({
+     webClientId: '...',
+     iosClientId: 'YOUR_IOS_CLIENT_ID', // ADD THIS
+     offlineAccess: false,
+   });
+   ```
+3. Rebuild with `eas build --platform ios --profile production`
 
 ---
 
-**IMPORTANT**: The web client ID is already in the code. You just need to add the redirect URI to Google Cloud Console!
+## Current Setup
+
+### Development (Expo Go)
+- ✅ Web client ID: `580873034102-ukh12uuph4c17eqvvbjl1a48alrfepok.apps.googleusercontent.com`
+- ✅ Package: `com.bookpulse.mobile`
+- ✅ Backend: `https://book-tracker-backend-0hiz.onrender.com/auth/google`
+
+### Production (Play Store)
+- ❌ Android Client ID: **REQUIRED** - see PLAYSTORE_FIX.md
+- ❌ SHA-1 Certificate: **REQUIRED** - get from Play Console
+
+### Production (App Store)
+- ❌ iOS Client ID: Not yet configured
+
+---
+
+## Troubleshooting
+
+| Issue | Solution |
+|-------|----------|
+| **DEVELOPER_ERROR** on Play Store | See [PLAYSTORE_FIX.md](PLAYSTORE_FIX.md) - need Android Client ID |
+| **400 Error** in Expo Go | Add Expo redirect URI to Google Cloud Console |
+| **No response** | Check internet connection |
+| **Token invalid** | Check backend /auth/google endpoint |
+| **Works in Expo Go, fails in Play Store** | Production needs platform-specific client IDs |
+
+---
+
+## Quick Links
+
+- 📱 [Play Store Fix Guide](PLAYSTORE_FIX.md)
+- 🔑 [Google Cloud Console](https://console.cloud.google.com/)
+- 📦 [Play Console](https://play.google.com/console/)
+- 📚 [React Native Google Sign-In Docs](https://react-native-google-signin.github.io/docs/)
