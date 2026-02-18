@@ -182,8 +182,12 @@ def add_userbook(payload: dict, db: Session = Depends(get_db), current_user: mod
 
 @router.get("/", response_model=List[dict])
 def list_userbooks(db: Session = Depends(get_db), current_user = Depends(get_current_user)):
-    # fetch userbooks for current user
-    userbooks = db.exec(select(UserBook).where(UserBook.user_id == current_user.id)).all()
+    # fetch userbooks for current user, most recently updated/added first
+    userbooks = db.exec(
+        select(UserBook)
+        .where(UserBook.user_id == current_user.id)
+        .order_by(UserBook.updated_at.desc().nulls_last(), UserBook.created_at.desc())
+    ).all()
 
     results = []
     for ub in userbooks:
@@ -259,8 +263,12 @@ def get_user_books(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     
-    # Get user's books
-    userbooks = db.exec(select(UserBook).where(UserBook.user_id == user_id)).all()
+    # Get user's books, most recently updated/added first
+    userbooks = db.exec(
+        select(UserBook)
+        .where(UserBook.user_id == user_id)
+        .order_by(UserBook.updated_at.desc().nulls_last(), UserBook.created_at.desc())
+    ).all()
     
     results = []
     for ub in userbooks:
