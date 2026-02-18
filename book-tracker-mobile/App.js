@@ -6,6 +6,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
 import { Ionicons } from '@expo/vector-icons';
 import { authAPI } from './src/services/api';
+import { handleAppOpen } from './src/services/NotificationService';
 import LoginScreen from './src/screens/LoginScreen';
 import LibraryScreen from './src/screens/LibraryScreen';
 import FeedScreen from './src/screens/FeedScreen';
@@ -200,6 +201,9 @@ export default function App() {
       const loggedIn = await authAPI.isLoggedIn();
       
       if (loggedIn) {
+        // Trigger notification logic - cancel today's nudge since user opened the app
+        handleAppOpen().catch(err => console.warn('Notification error:', err));
+
         // User is logged in - preload library, profile, and logged-in feed
         const token = await authAPI.getToken();
         const headers = { 
@@ -258,6 +262,8 @@ export default function App() {
 
   const handleLoginSuccess = () => {
     setIsLoggedIn(true);
+    // User just logged in - cancel nudge for today, schedule for 9PM if not yet passed
+    handleAppOpen().catch(err => console.warn('Notification error:', err));
   };
 
   const handleLogout = () => {
