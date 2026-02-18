@@ -42,23 +42,24 @@ def migrate():
                 print("deletion_reason already exists")
                 
         else:
-            # PostgreSQL
+            # PostgreSQL - use autocommit to avoid transaction issues
             try:
-                print("Adding deletion_requested_at column...")
                 conn.execute(text(
                     "ALTER TABLE \"user\" ADD COLUMN IF NOT EXISTS deletion_requested_at TIMESTAMP"
                 ))
-                conn.commit()
                 print("✓ Added deletion_requested_at")
-                
-                print("Adding deletion_reason column...")
+            except Exception as e:
+                print(f"deletion_requested_at: {e}")
+
+            try:
                 conn.execute(text(
                     "ALTER TABLE \"user\" ADD COLUMN IF NOT EXISTS deletion_reason TEXT"
                 ))
-                conn.commit()
                 print("✓ Added deletion_reason")
             except Exception as e:
-                print(f"Migration completed or columns already exist: {e}")
+                print(f"deletion_reason: {e}")
+            
+            conn.commit()
     
     print("\n✅ Migration complete!")
 
