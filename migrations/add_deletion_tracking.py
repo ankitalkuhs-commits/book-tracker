@@ -18,7 +18,7 @@ engine = create_engine(DATABASE_URL)
 def migrate():
     """Add deletion tracking columns to user table"""
     
-    with engine.connect() as conn:
+    with engine.begin() as conn:
         # Check if columns already exist
         if DATABASE_URL.startswith("sqlite"):
             # SQLite: Check pragma table info
@@ -28,7 +28,6 @@ def migrate():
             if "deletion_requested_at" not in columns:
                 print("Adding deletion_requested_at column...")
                 conn.execute(text("ALTER TABLE user ADD COLUMN deletion_requested_at DATETIME"))
-                conn.commit()
                 print("✓ Added deletion_requested_at")
             else:
                 print("deletion_requested_at already exists")
@@ -36,7 +35,6 @@ def migrate():
             if "deletion_reason" not in columns:
                 print("Adding deletion_reason column...")
                 conn.execute(text("ALTER TABLE user ADD COLUMN deletion_reason TEXT"))
-                conn.commit()
                 print("✓ Added deletion_reason")
             else:
                 print("deletion_reason already exists")
@@ -58,8 +56,6 @@ def migrate():
                 print("✓ Added deletion_reason")
             except Exception as e:
                 print(f"deletion_reason: {e}")
-            
-            conn.commit()
     
     print("\n✅ Migration complete!")
 
