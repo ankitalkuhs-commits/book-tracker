@@ -340,3 +340,38 @@ def set_admin_status(
         "user_id": user_id,
         "is_admin": is_admin
     }
+
+
+@router.post("/bot/trigger")
+def trigger_editorial_bot(
+    admin_user=Depends(get_admin_user)
+):
+    """
+    Manually trigger the TrackMyRead Editorial Bot.
+    Fetches today's NYT bestseller and posts it to the community feed.
+    Requires admin access.
+    """
+    import subprocess
+    import sys
+    try:
+        result = subprocess.run(
+            [sys.executable, "editorial_bot.py"],
+            capture_output=True,
+            text=True,
+            timeout=60
+        )
+        if result.returncode == 0:
+            return {
+                "status": "success",
+                "message": "Editorial bot ran successfully",
+                "output": result.stdout
+            }
+        else:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Bot failed: {result.stderr or result.stdout}"
+            )
+    except subprocess.TimeoutExpired:
+        raise HTTPException(status_code=504, detail="Bot timed out after 60 seconds")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
