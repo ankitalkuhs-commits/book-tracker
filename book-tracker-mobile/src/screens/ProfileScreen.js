@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { userAPI, authAPI, userbooksAPI } from '../services/api';
 import { PreloadContext } from '../../App';
-import ReadingActivityChart from '../components/ReadingActivityChart';
+// import ReadingActivityChart from '../components/ReadingActivityChart'; // Temporarily disabled - compatibility issues
 
 const ProfileScreen = ({ onLogout }) => {
   const preloaded = useContext(PreloadContext);
@@ -180,7 +180,7 @@ const ProfileScreen = ({ onLogout }) => {
         </View>
 
         {/* Reading Activity Chart */}
-        <ReadingActivityChart />
+        {/* <ReadingActivityChart /> */} {/* Temporarily disabled - compatibility issues */}
 
         {/* This Year Stats */}
         <View style={styles.sectionHeader}>

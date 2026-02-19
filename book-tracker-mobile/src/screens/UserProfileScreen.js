@@ -9,7 +9,7 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { userAPI, userbooksAPI } from '../services/api';
-import ReadingActivityChart from '../components/ReadingActivityChart';
+// import ReadingActivityChart from '../components/ReadingActivityChart'; // Temporarily disabled - compatibility issues
 
 export default function UserProfileScreen({ route, navigation }) {
   const { userId, userName } = route.params;
@@ -117,7 +117,7 @@ export default function UserProfileScreen({ route, navigation }) {
       </View>
 
       {/* Reading Activity Chart */}
-      <ReadingActivityChart userId={userId} />
+      {/* <ReadingActivityChart userId={userId} /> */} {/* Temporarily disabled - compatibility issues */}
 
       {/* Reading Activity */}
       <View style={styles.section}>
