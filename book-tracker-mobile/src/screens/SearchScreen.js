@@ -85,7 +85,11 @@ export default function SearchScreen({ navigation }) {
     }
   };
 
-  const renderBook = ({ item }) => (
+  const renderBook = ({ item }) => {
+    // Defensive: skip null/undefined items
+    if (!item) return null;
+    
+    return (
     <View style={styles.bookCard}>
       <Image
         source={{ uri: item.cover_url || 'https://via.placeholder.com/80x120' }}
@@ -93,7 +97,7 @@ export default function SearchScreen({ navigation }) {
       />
       <View style={styles.bookInfo}>
         <Text style={styles.bookTitle} numberOfLines={2}>
-          {item.title}
+          {item.title || 'Untitled'}
         </Text>
         <Text style={styles.bookAuthor} numberOfLines={1}>
           {item.authors?.join(', ') || 'Unknown Author'}
@@ -117,7 +121,8 @@ export default function SearchScreen({ navigation }) {
         </TouchableOpacity>
       </View>
     </View>
-  );
+    );
+  };
 
   return (
     <View style={styles.container}>
@@ -155,9 +160,9 @@ export default function SearchScreen({ navigation }) {
         </View>
       ) : searchResults.length > 0 ? (
         <FlatList
-          data={searchResults}
+          data={searchResults.filter(item => item != null)}
           renderItem={renderBook}
-          keyExtractor={(item) => item.google_id || Math.random().toString()}
+          keyExtractor={(item, index) => item?.google_id || `search-${index}`}
           contentContainerStyle={styles.results}
         />
       ) : (
