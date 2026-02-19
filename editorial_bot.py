@@ -91,7 +91,7 @@ def get_book_cover(isbn: str, title: str) -> str | None:
 def generate_post_text(book: dict) -> dict:
     """Use Gemini to generate teaser + why buzzing text."""
     genai.configure(api_key=GEMINI_API_KEY)
-    model = genai.GenerativeModel("gemini-2.0-flash")
+    model = genai.GenerativeModel("gemini-1.5-flash-latest")
 
     title       = book.get("title", "")
     author      = book.get("author", "")
