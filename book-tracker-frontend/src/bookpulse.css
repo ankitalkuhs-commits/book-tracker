@@ -1293,12 +1293,13 @@ body {
   margin-top: 1rem;
   border-radius: 8px;
   overflow: hidden;
+  background: #f8f9fa;
 }
 
 .post-image img {
   width: 100%;
-  max-height: 384px;
-  object-fit: cover;
+  max-height: 400px;
+  object-fit: contain;
 }
 
 /* Post Actions */
