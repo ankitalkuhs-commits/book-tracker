@@ -21,36 +21,49 @@ const ProfileScreen = ({ onLogout }) => {
   const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
-    if (preloaded?.profile && preloaded?.library) {
-      // Calculate stats from preloaded library data
-      calculateStats(preloaded.library);
-      setLoading(false);
-    } else {
+    try {
+      if (preloaded?.profile && preloaded?.library) {
+        // Calculate stats from preloaded library data
+        setProfile(preloaded.profile);
+        calculateStats(preloaded.library);
+        setLoading(false);
+      } else {
+        loadProfile();
+      }
+    } catch (err) {
+      console.error('ProfileScreen useEffect error:', err);
       loadProfile();
     }
   }, []);
 
   const calculateStats = (booksData) => {
-    const totalBooks = booksData.length;
-    const reading = booksData.filter(b => b.status === 'reading').length;
-    const finished = booksData.filter(b => b.status === 'finished').length;
-    const toRead = booksData.filter(b => b.status === 'to-read').length;
-    const totalPagesRead = booksData.reduce((sum, b) => {
-      if (b.status === 'finished') {
-        return sum + (b.book?.total_pages || 0);
-      } else if (b.status === 'reading' && b.current_page) {
-        return sum + (b.current_page || 0);
-      }
-      return sum;
-    }, 0);
-    
-    setStats({
-      totalBooks,
-      reading,
-      finished,
-      toRead,
-      totalPagesRead,
-    });
+    try {
+      // Defensive: ensure booksData is an array
+      const books = Array.isArray(booksData) ? booksData : [];
+      const totalBooks = books.length;
+      const reading = books.filter(b => b?.status === 'reading').length;
+      const finished = books.filter(b => b?.status === 'finished').length;
+      const toRead = books.filter(b => b?.status === 'to-read').length;
+      const totalPagesRead = books.reduce((sum, b) => {
+        if (b?.status === 'finished') {
+          return sum + (b.book?.total_pages || 0);
+        } else if (b?.status === 'reading' && b.current_page) {
+          return sum + (b.current_page || 0);
+        }
+        return sum;
+      }, 0);
+      
+      setStats({
+        totalBooks,
+        reading,
+        finished,
+        toRead,
+        totalPagesRead,
+      });
+    } catch (err) {
+      console.error('Error calculating stats:', err);
+      setStats({ totalBooks: 0, reading: 0, finished: 0, toRead: 0, totalPagesRead: 0 });
+    }
   };
 
   const loadProfile = async () => {
