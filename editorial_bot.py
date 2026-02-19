@@ -25,7 +25,7 @@ import requests
 import random
 import google.generativeai as genai
 from sqlalchemy import create_engine, text
-from datetime import datetime
+from datetime import datetime, timezone
 
 # ── Config ────────────────────────────────────────────────────────────────────
 NYT_API_KEY   = os.getenv("NYT_API_KEY")
@@ -41,10 +41,10 @@ NYT_LISTS = [
     "hardcover-fiction",
     "hardcover-nonfiction",
     "young-adult-hardcover",
-    "paperback-trade-fiction",
+    "trade-fiction-paperback",
     "advice-how-to-and-miscellaneous",
     "graphic-books-and-manga",
-    "science",
+    "combined-print-and-e-book-fiction",
 ]
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -170,7 +170,7 @@ by {author}
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 def run_bot():
-    print(f"\n🤖 TrackMyRead Editorial Bot starting — {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}")
+    print(f"\n🤖 TrackMyRead Editorial Bot starting — {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}")
 
     # Validate env vars
     if not NYT_API_KEY:
@@ -197,16 +197,16 @@ def run_bot():
         print(f"✅ Bot user id: {bot_user_id}")
 
         # ── Pick today's list (rotate by weekday) ─────────────────────────────
-        list_index = datetime.utcnow().weekday() % len(NYT_LISTS)
+        list_index = datetime.now(timezone.utc).weekday() % len(NYT_LISTS)
         list_name  = NYT_LISTS[list_index]
         list_display_map = {
             "hardcover-fiction": "NYT Hardcover Fiction",
             "hardcover-nonfiction": "NYT Hardcover Nonfiction",
             "young-adult-hardcover": "NYT Young Adult",
-            "paperback-trade-fiction": "NYT Paperback Fiction",
+            "trade-fiction-paperback": "NYT Paperback Fiction",
             "advice-how-to-and-miscellaneous": "NYT Advice & How-To",
             "graphic-books-and-manga": "NYT Graphic Books & Manga",
-            "science": "NYT Science",
+            "combined-print-and-e-book-fiction": "NYT Combined Fiction",
         }
         print(f"📋 Today's list: {list_display_map.get(list_name, list_name)}")
 
