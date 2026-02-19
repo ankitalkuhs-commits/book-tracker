@@ -65,24 +65,43 @@ def get_already_posted_isbns(conn) -> set:
 
 
 def get_book_cover(book: dict) -> str | None:
-    """Get book cover - prefer NYT image, fallback to Open Library (higher res than Google Books)."""
-    # NYT provides book_image directly - usually good quality
-    nyt_image = book.get("book_image")
-    if nyt_image:
-        return nyt_image.replace("http://", "https://")
-    
-    # Fallback: Open Library covers (higher quality than Google Books)
+    """Get book cover - prefer Open Library (full covers), fallback to NYT."""
     isbn = book.get("primary_isbn13") or book.get("primary_isbn10")
+    
+    # Priority 1: Open Library covers (full book cover, not cropped)
     if isbn:
-        # Open Library provides L (large), M (medium), S (small)
         cover_url = f"https://covers.openlibrary.org/b/isbn/{isbn}-L.jpg"
         try:
-            # Check if image exists (returns 1x1 pixel if not found)
-            resp = requests.head(cover_url, timeout=3)
-            if resp.status_code == 200:
+            resp = requests.head(cover_url, timeout=3, allow_redirects=True)
+            # Open Library returns 302 redirect to actual image if found
+            if resp.status_code in (200, 302):
                 return cover_url
         except Exception:
             pass
+    
+    # Priority 2: Google Books (larger zoom level)
+    if isbn:
+        try:
+            resp = requests.get(
+                "https://www.googleapis.com/books/v1/volumes",
+                params={"q": f"isbn:{isbn}", "maxResults": 1},
+                timeout=5
+            )
+            items = resp.json().get("items", [])
+            if items:
+                # Get thumbnail and request larger size via zoom parameter
+                thumbnail = items[0].get("volumeInfo", {}).get("imageLinks", {}).get("thumbnail")
+                if thumbnail:
+                    # Change zoom=1 to zoom=3 for larger image
+                    large_cover = thumbnail.replace("zoom=1", "zoom=3").replace("http://", "https://")
+                    return large_cover
+        except Exception:
+            pass
+    
+    # Priority 3: NYT image (often square/cropped, last resort)
+    nyt_image = book.get("book_image")
+    if nyt_image:
+        return nyt_image.replace("http://", "https://")
     
     return None
 
