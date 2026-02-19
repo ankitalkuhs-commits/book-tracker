@@ -49,16 +49,8 @@ class ProfileErrorBoundary extends Component {
 }
 
 const ProfileScreen = ({ onLogout }) => {
+  const preloaded = useContext(PreloadContext);
   const [error, setError] = useState(null);
-  
-  // Wrap useContext in try-catch
-  let preloaded = null;
-  try {
-    preloaded = useContext(PreloadContext);
-  } catch (err) {
-    console.error('PreloadContext error:', err);
-  }
-  
   const [profile, setProfile] = useState(preloaded?.profile || null);
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(!preloaded?.profile);
