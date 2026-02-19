@@ -64,55 +64,41 @@ def get_already_posted_isbns(conn) -> set:
     return {r[0] for r in rows}
 
 
-def get_book_cover(isbn: str, title: str) -> str | None:
-    """Try to get a cover image from Google Books."""
-    try:
-        resp = requests.get(
-            "https://www.googleapis.com/books/v1/volumes",
-            params={"q": f"isbn:{isbn}" if isbn else title, "maxResults": 1},
-            timeout=5
-        )
-        items = resp.json().get("items", [])
-        if items:
-            image_links = items[0].get("volumeInfo", {}).get("imageLinks", {})
-            # Prefer high quality, fall back to thumbnail
-            cover = (image_links.get("extraLarge") or
-                     image_links.get("large") or
-                     image_links.get("medium") or
-                     image_links.get("thumbnail"))
-            if cover:
-                # Use HTTPS
-                return cover.replace("http://", "https://")
-    except Exception as e:
-        print(f"⚠️  Cover fetch failed: {e}")
+def get_book_cover(book: dict) -> str | None:
+    """Get book cover - prefer NYT image, fallback to Open Library (higher res than Google Books)."""
+    # NYT provides book_image directly - usually good quality
+    nyt_image = book.get("book_image")
+    if nyt_image:
+        return nyt_image.replace("http://", "https://")
+    
+    # Fallback: Open Library covers (higher quality than Google Books)
+    isbn = book.get("primary_isbn13") or book.get("primary_isbn10")
+    if isbn:
+        # Open Library provides L (large), M (medium), S (small)
+        cover_url = f"https://covers.openlibrary.org/b/isbn/{isbn}-L.jpg"
+        try:
+            # Check if image exists (returns 1x1 pixel if not found)
+            resp = requests.head(cover_url, timeout=3)
+            if resp.status_code == 200:
+                return cover_url
+        except Exception:
+            pass
+    
     return None
 
 
 def generate_fallback_text(book: dict) -> dict:
     """Generate a template-based post if Gemini fails."""
-    title = book.get("title", "this book")
-    author = book.get("author", "the author")
     description = book.get("description", "")
-    weeks_on = book.get("weeks_on_list", 0)
     
-    # Create simple but engaging fallback content
-    teaser = f"A captivating read that has readers across the country hooked."
+    # Use first sentence of description or a generic teaser
     if description:
-        # Use first sentence of description as a base
         first_sentence = description.split('.')[0].strip()
-        if len(first_sentence) > 20:
-            teaser = first_sentence + "."
+        teaser = first_sentence + "." if len(first_sentence) > 20 else "A must-read that's captivating readers everywhere."
+    else:
+        teaser = "A must-read that's captivating readers everywhere."
     
-    why_buzzing = f"This title has earned its spot on the NYT bestseller list"
-    if weeks_on > 1:
-        why_buzzing += f", holding strong for {weeks_on} weeks"
-    why_buzzing += ". Readers are calling it a must-read."
-    
-    return {
-        "teaser": teaser,
-        "why_buzzing": why_buzzing,
-        "quote": "Every great story begins with a single page."
-    }
+    return {"teaser": teaser}
 
 
 def generate_post_text(book: dict) -> dict:
@@ -129,42 +115,23 @@ def generate_post_text(book: dict) -> dict:
     weeks_on    = book.get("weeks_on_list", 0)
     publisher   = book.get("publisher", "")
 
-    prompt = f"""You are an editorial writer for a book-tracking social platform called TrackMyRead.
-Write an engaging post about this NYT bestselling book for our community feed.
+    prompt = f"""Write a 1-2 sentence teaser for this NYT bestselling book. Make it compelling but concise.
 
 Book: "{title}" by {author}
-Publisher: {publisher}
-NYT Rank: #{rank}
-Weeks on list: {weeks_on}
 Description: {description}
 
-Generate these three sections (keep it warm, literary, and conversational — not overly promotional):
-
-1. TEASER (2-3 lines max): A compelling hook that makes readers want to pick it up immediately.
-
-2. WHY_BUZZING (2-3 sentences): Why this book is resonating right now — cultural relevance, themes, reader reactions. Don't make things up; base this on the description and its bestseller status.
-
-3. QUOTE (one line, 10-20 words): A short, safe, original line inspired by the book's themes (NOT a direct quote from the book — create a thematic line). Make it feel literary.
-
-Reply in this exact format:
-TEASER: <text>
-WHY_BUZZING: <text>
-QUOTE: <text>
+Reply with ONLY the teaser text, no labels or formatting. Keep it under 30 words.
 """
 
     response = model.generate_content(prompt)
-    raw = response.text.strip()
+    teaser = response.text.strip()
+    
+    # Clean up any accidental formatting
+    teaser = teaser.replace("TEASER:", "").strip()
+    if teaser.startswith('"') and teaser.endswith('"'):
+        teaser = teaser[1:-1]
 
-    result = {"teaser": "", "why_buzzing": "", "quote": ""}
-    for line in raw.split("\n"):
-        if line.startswith("TEASER:"):
-            result["teaser"] = line.replace("TEASER:", "").strip()
-        elif line.startswith("WHY_BUZZING:"):
-            result["why_buzzing"] = line.replace("WHY_BUZZING:", "").strip()
-        elif line.startswith("QUOTE:"):
-            result["quote"] = line.replace("QUOTE:", "").strip()
-
-    return result
+    return {"teaser": teaser}
 
 
 def build_post_text(book: dict, generated: dict) -> str:
@@ -175,24 +142,14 @@ def build_post_text(book: dict, generated: dict) -> str:
     weeks_on  = book.get("weeks_on_list", 0)
     list_name = book.get("_list_display", "NYT Bestseller")
 
-    weeks_str = f" · {weeks_on} week{'s' if weeks_on != 1 else ''} on the list" if weeks_on else ""
+    weeks_str = f" · {weeks_on} weeks" if weeks_on > 1 else ""
 
-    text = f"""📚 Editorial Pick
+    text = f"""📚 {title} by {author}
 
-{title}
-by {author}
+🏆 #{rank} {list_name}{weeks_str}
 
-🏆 #{rank} on {list_name}{weeks_str}
+{generated['teaser']}"""
 
-✨ {generated['teaser']}
-
-💬 Why people are talking:
-{generated['why_buzzing']}"""
-
-    if generated.get("quote"):
-        text += f'\n\n📖 "{generated["quote"]}"'
-
-    text += "\n\n🔖 Tap to add to your library →"
     return text
 
 
@@ -297,10 +254,7 @@ def run_bot():
         print(f"✍️  Post text generated ({len(post_text)} chars)")
 
         # ── Get book cover ────────────────────────────────────────────────────
-        cover_url = get_book_cover(
-            book.get("primary_isbn13") or book.get("primary_isbn10", ""),
-            title
-        )
+        cover_url = get_book_cover(book)
         if cover_url:
             print(f"🖼️  Cover found: {cover_url[:60]}...")
         else:
