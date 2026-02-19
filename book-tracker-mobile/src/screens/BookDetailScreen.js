@@ -204,7 +204,7 @@ export default function BookDetailScreen({ route, navigation }) {
             <Text style={styles.bookTitle}>{userbook.book?.title || 'Untitled Book'}</Text>
             <Text style={styles.bookAuthor}>{userbook.book?.author || 'Unknown Author'}</Text>
             
-            {userbook.book?.total_pages && (
+            {userbook.book?.total_pages > 0 && (
               <Text style={styles.bookPages}>📖 {userbook.book.total_pages} pages</Text>
             )}
             

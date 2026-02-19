@@ -102,7 +102,7 @@ export default function SearchScreen({ navigation }) {
         <Text style={styles.bookAuthor} numberOfLines={1}>
           {item.authors?.join(', ') || 'Unknown Author'}
         </Text>
-        {item.total_pages && (
+        {item.total_pages > 0 && (
           <Text style={styles.bookPages}>{item.total_pages} pages</Text>
         )}
         <TouchableOpacity
