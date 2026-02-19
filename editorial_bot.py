@@ -282,7 +282,7 @@ def run_bot():
                 "text":      post_text,
                 "image_url": cover_url,
                 "is_public": True,
-                "created_at": datetime.utcnow(),
+                "created_at": datetime.now(timezone.utc),
             }
         )
         note_id = note_result.lastrowid if is_sqlite else conn.execute(
@@ -292,7 +292,7 @@ def run_bot():
         # ── Track posted book ─────────────────────────────────────────────────
         conn.execute(
             text("INSERT INTO editorial_post (nyt_isbn, book_title, note_id, posted_at) VALUES (:isbn, :title, :note_id, :posted_at)"),
-            {"isbn": isbn, "title": title, "note_id": note_id, "posted_at": datetime.utcnow()}
+            {"isbn": isbn, "title": title, "note_id": note_id, "posted_at": datetime.now(timezone.utc)}
         )
 
     print(f"\n✅ Post published! Note id: {note_id}")
