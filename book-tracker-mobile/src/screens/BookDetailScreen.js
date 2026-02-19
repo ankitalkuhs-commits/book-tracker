@@ -16,10 +16,11 @@ import {
 import { userbooksAPI, notesAPI } from '../services/api';
 
 export default function BookDetailScreen({ route, navigation }) {
-  const { userbook, userbookId } = route.params;
+  const { userbook, userbookId } = route.params || {};
+  
   const [notes, setNotes] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [currentPage, setCurrentPage] = useState(userbook.current_page?.toString() || '0');
+  const [currentPage, setCurrentPage] = useState(userbook?.current_page?.toString() || '0');
   const [updatingProgress, setUpdatingProgress] = useState(false);
   const [showAddNote, setShowAddNote] = useState(false);
   const [newNoteText, setNewNoteText] = useState('');
@@ -28,7 +29,11 @@ export default function BookDetailScreen({ route, navigation }) {
   const [updatingStatus, setUpdatingStatus] = useState(false);
 
   useEffect(() => {
-    loadNotes();
+    if (userbook) {
+      loadNotes();
+    } else {
+      setLoading(false);
+    }
   }, []);
 
   const loadNotes = async (showLoading = true) => {
@@ -153,9 +158,24 @@ export default function BookDetailScreen({ route, navigation }) {
     }
   };
 
-  const progressPercent = userbook.book?.total_pages
+  const progressPercent = userbook?.book?.total_pages
     ? Math.round((parseInt(currentPage) / userbook.book.total_pages) * 100)
     : 0;
+
+  // Guard: if no userbook data, show error
+  if (!userbook) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <Text style={{ fontSize: 18, color: '#666', marginBottom: 16 }}>Book not found</Text>
+        <TouchableOpacity 
+          onPress={() => navigation.goBack()}
+          style={{ backgroundColor: '#0066cc', padding: 12, borderRadius: 8 }}
+        >
+          <Text style={{ color: '#fff' }}>Go Back</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   return (
     <KeyboardAvoidingView 

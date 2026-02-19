@@ -457,17 +457,20 @@ const FeedScreen = ({ navigation }) => {
   };
 
   const renderPost = (post) => {
+    // Defensive: skip null/undefined posts
+    if (!post) return null;
+    
     const userName = post.user?.name || post.user?.email || 'Unknown User';
     const timeAgo = formatTimeAgo(post.created_at);
     const isOwnPost = currentUser && (post.user?.id === currentUser.id || post.user?.email === currentUser.email);
 
     return (
-      <View key={post.id} style={styles.postCard}>
+      <View key={post.id || Math.random().toString()} style={styles.postCard}>
         {/* User Info */}
         <View style={styles.postHeader}>
           <View style={styles.userInfo}>
             <View style={styles.avatar}>
-              <Text style={styles.avatarText}>{userName[0].toUpperCase()}</Text>
+              <Text style={styles.avatarText}>{(userName[0] || 'U').toUpperCase()}</Text>
             </View>
             <View>
               <Text style={styles.userName}>{userName}</Text>
@@ -593,7 +596,7 @@ const FeedScreen = ({ navigation }) => {
               </Text>
             </View>
           ) : (
-            posts.map(post => renderPost(post))
+            posts.filter(p => p != null).map(post => renderPost(post))
           )
         ) : (
           // Friends/Following Tab
