@@ -22,21 +22,31 @@ const ProfileScreen = ({ onLogout }) => {
   useEffect(() => {
     if (preloaded?.profile && preloaded?.library) {
       // Calculate stats from preloaded library data
-      calculateStats(preloaded.library);
+      calculateStats(preloaded.library, preloaded.profile?.stats);
       setLoading(false);
     } else {
       loadProfile();
     }
   }, []);
 
-  const calculateStats = (booksData) => {
+  const calculateStats = (booksData, profileStats = null) => {
     const totalBooks = booksData.length;
     const reading = booksData.filter(b => b.status === 'reading').length;
     const finished = booksData.filter(b => b.status === 'finished').length;
     const toRead = booksData.filter(b => b.status === 'to-read').length;
-    const totalPagesRead = booksData
-      .filter(b => b.status === 'finished')
-      .reduce((sum, b) => sum + (b.book?.total_pages || 0), 0);
+    
+    // Use backend stats if available (more accurate), fallback to client-side calculation
+    let totalPagesRead = profileStats?.total_pages_read;
+    if (totalPagesRead === undefined || totalPagesRead === null) {
+      totalPagesRead = booksData.reduce((sum, b) => {
+        if (b.status === 'finished') {
+          return sum + (b.book?.total_pages || b.current_page || 0);
+        } else if (b.status === 'reading') {
+          return sum + (b.current_page || 0);
+        }
+        return sum;
+      }, 0);
+    }
     
     setStats({
       totalBooks,
@@ -56,7 +66,7 @@ const ProfileScreen = ({ onLogout }) => {
       ]);
 
       setProfile(profileData);
-      calculateStats(booksData);
+      calculateStats(booksData, profileData?.stats);
     } catch (error) {
       console.error('Error loading profile:', error);
       Alert.alert('Error', 'Failed to load profile');

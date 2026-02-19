@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlmodel import Session, select
+from sqlmodel import Session, select, func
 from pydantic import BaseModel
 from datetime import datetime
 
-from ..models import User, UserBook, Follow
+from ..models import User, UserBook, Follow, ReadingActivity, Book
 from ..deps import get_db, get_current_user
 
 router = APIRouter(prefix="/profile", tags=["profile"])
@@ -38,11 +38,33 @@ def get_profile(db: Session = Depends(get_db), current_user=Depends(get_current_
     reading = [b for b in total_books if b.status == "reading"]
     to_read = [b for b in total_books if b.status == "to-read"]
 
+    # Calculate total pages read
+    # First try: sum from reading_activity table (most accurate)
+    activity_sum = db.exec(
+        select(func.coalesce(func.sum(ReadingActivity.pages_read), 0))
+        .where(ReadingActivity.user_id == user.id)
+    ).first()
+    
+    if activity_sum and activity_sum > 0:
+        total_pages_read = activity_sum
+    else:
+        # Fallback: calculate from book data
+        total_pages_read = 0
+        for ub in total_books:
+            if ub.status == "finished":
+                # Finished: use total_pages, fallback to current_page
+                book = db.get(Book, ub.book_id)
+                total_pages_read += (book.total_pages if book and book.total_pages else 0) or (ub.current_page or 0)
+            elif ub.status == "reading":
+                # Reading: use current progress
+                total_pages_read += ub.current_page or 0
+
     stats = {
         "total_books": len(total_books),
         "finished": len(finished),
         "reading": len(reading),
         "to_read": len(to_read),
+        "total_pages_read": total_pages_read,
     }
 
     return {

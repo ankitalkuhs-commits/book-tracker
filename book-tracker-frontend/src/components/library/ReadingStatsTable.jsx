@@ -22,20 +22,16 @@ export default function ReadingStatsTable({ library }) {
 
     const currentlyReading = library.filter((ub) => ub.status === 'reading').length;
     const booksFinished = library.filter((ub) => ub.status === 'finished').length;
-    
-    const pagesRead = library.reduce((sum, ub) => {
-      if (ub.status === 'finished' && ub.book?.total_pages) {
-        return sum + ub.book.total_pages;
-      } else if (ub.status === 'reading' && ub.current_page) {
-        return sum + ub.current_page;
-      }
-      return sum;
-    }, 0);
 
-    // Fetch actual emotions count from notes API
-    const fetchEmotionsCount = async () => {
+    // Fetch pages read from backend (uses reading_activity or fallback calculation)
+    const fetchStats = async () => {
       try {
-        const notes = await apiFetch('/notes/me');
+        const [profile, notes] = await Promise.all([
+          apiFetch('/profile/me'),
+          apiFetch('/notes/me'),
+        ]);
+        
+        const pagesRead = profile?.stats?.total_pages_read || 0;
         const emotionsLogged = Array.isArray(notes) ? notes.length : 0;
         
         setStats({
@@ -46,8 +42,17 @@ export default function ReadingStatsTable({ library }) {
           booksFinished,
         });
       } catch (error) {
-        console.error('Error fetching emotions count:', error);
-        // Fallback to 0 if API call fails
+        console.error('Error fetching stats:', error);
+        // Fallback to client-side calculation if API fails
+        const pagesRead = library.reduce((sum, ub) => {
+          if (ub.status === 'finished') {
+            return sum + (ub.book?.total_pages || ub.current_page || 0);
+          } else if (ub.status === 'reading') {
+            return sum + (ub.current_page || 0);
+          }
+          return sum;
+        }, 0);
+        
         setStats({
           booksThisYear,
           currentlyReading,
@@ -58,7 +63,7 @@ export default function ReadingStatsTable({ library }) {
       }
     };
 
-    fetchEmotionsCount();
+    fetchStats();
   }, [library]);
 
   const statItems = [
