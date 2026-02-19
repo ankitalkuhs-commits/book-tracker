@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, Component } from 'react';
 import {
   View,
   Text,
@@ -13,8 +13,52 @@ import { userAPI, authAPI, userbooksAPI } from '../services/api';
 import { PreloadContext } from '../../App';
 // import ReadingActivityChart from '../components/ReadingActivityChart'; // Temporarily disabled - compatibility issues
 
+// Error Boundary to catch any crashes
+class ProfileErrorBoundary extends Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.error('ProfileScreen crashed:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+          <Text style={{ fontSize: 18, color: '#666', marginBottom: 16, textAlign: 'center' }}>
+            Profile couldn't load
+          </Text>
+          <TouchableOpacity 
+            onPress={() => this.setState({ hasError: false, error: null })}
+            style={{ backgroundColor: '#0066cc', padding: 12, borderRadius: 8 }}
+          >
+            <Text style={{ color: '#fff' }}>Try Again</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 const ProfileScreen = ({ onLogout }) => {
-  const preloaded = useContext(PreloadContext);
+  const [error, setError] = useState(null);
+  
+  // Wrap useContext in try-catch
+  let preloaded = null;
+  try {
+    preloaded = useContext(PreloadContext);
+  } catch (err) {
+    console.error('PreloadContext error:', err);
+  }
+  
   const [profile, setProfile] = useState(preloaded?.profile || null);
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(!preloaded?.profile);
@@ -85,27 +129,40 @@ const ProfileScreen = ({ onLogout }) => {
   };
 
   const onRefresh = async () => {
-    setRefreshing(true);
-    await loadProfile();
-    setRefreshing(false);
+    try {
+      setRefreshing(true);
+      await loadProfile();
+    } catch (err) {
+      console.error('Refresh error:', err);
+    } finally {
+      setRefreshing(false);
+    }
   };
 
   const handleLogout = async () => {
-    Alert.alert(
-      'Logout',
-      'Are you sure you want to logout?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Logout',
-          style: 'destructive',
-          onPress: async () => {
-            await authAPI.logout();
-            if (onLogout) onLogout();
+    try {
+      Alert.alert(
+        'Logout',
+        'Are you sure you want to logout?',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Logout',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                await authAPI.logout();
+                if (onLogout) onLogout();
+              } catch (err) {
+                console.error('Logout error:', err);
+              }
+            },
           },
-        },
-      ]
-    );
+        ]
+      );
+    } catch (err) {
+      console.error('HandleLogout error:', err);
+    }
   };
 
   if (loading) {
@@ -116,9 +173,31 @@ const ProfileScreen = ({ onLogout }) => {
     );
   }
 
-  const currentYear = new Date().getFullYear();
+  // Error fallback
+  if (error) {
+    return (
+      <View style={styles.centered}>
+        <Text style={{ fontSize: 18, color: '#666', marginBottom: 16 }}>Something went wrong</Text>
+        <TouchableOpacity 
+          onPress={() => { setError(null); loadProfile(); }}
+          style={{ backgroundColor: '#0066cc', padding: 12, borderRadius: 8 }}
+        >
+          <Text style={{ color: '#fff' }}>Retry</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
-  return (
+  let currentYear = 2026;
+  try {
+    currentYear = new Date().getFullYear();
+  } catch (e) {
+    console.error('Date error:', e);
+  }
+
+  // Wrap entire render in try-catch
+  try {
+    return (
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
@@ -147,7 +226,7 @@ const ProfileScreen = ({ onLogout }) => {
           <Text style={styles.userEmail}>{profile?.email}</Text>
           {profile?.created_at && (
             <Text style={styles.memberSince}>
-              Member since {new Date(profile.created_at).toLocaleDateString()}
+              Member since {(() => { try { return new Date(profile.created_at).toLocaleDateString(); } catch { return 'Unknown'; } })()}
             </Text>
           )}
         </View>
@@ -244,7 +323,21 @@ const ProfileScreen = ({ onLogout }) => {
         </View>
       </ScrollView>
     </View>
-  );
+    );
+  } catch (renderError) {
+    console.error('ProfileScreen render error:', renderError);
+    return (
+      <View style={styles.centered}>
+        <Text style={{ fontSize: 18, color: '#666', marginBottom: 16 }}>Something went wrong</Text>
+        <TouchableOpacity 
+          onPress={() => { setError(null); loadProfile(); }}
+          style={{ backgroundColor: '#0066cc', padding: 12, borderRadius: 8 }}
+        >
+          <Text style={{ color: '#fff' }}>Retry</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 };
 
 const styles = StyleSheet.create({
@@ -401,4 +494,11 @@ const styles = StyleSheet.create({
   },
 });
 
-export default ProfileScreen;
+// Wrap with Error Boundary
+const ProfileScreenWithBoundary = (props) => (
+  <ProfileErrorBoundary>
+    <ProfileScreen {...props} />
+  </ProfileErrorBoundary>
+);
+
+export default ProfileScreenWithBoundary;
