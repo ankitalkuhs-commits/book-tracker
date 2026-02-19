@@ -88,10 +88,39 @@ def get_book_cover(isbn: str, title: str) -> str | None:
     return None
 
 
+def generate_fallback_text(book: dict) -> dict:
+    """Generate a template-based post if Gemini fails."""
+    title = book.get("title", "this book")
+    author = book.get("author", "the author")
+    description = book.get("description", "")
+    weeks_on = book.get("weeks_on_list", 0)
+    
+    # Create simple but engaging fallback content
+    teaser = f"A captivating read that has readers across the country hooked."
+    if description:
+        # Use first sentence of description as a base
+        first_sentence = description.split('.')[0].strip()
+        if len(first_sentence) > 20:
+            teaser = first_sentence + "."
+    
+    why_buzzing = f"This title has earned its spot on the NYT bestseller list"
+    if weeks_on > 1:
+        why_buzzing += f", holding strong for {weeks_on} weeks"
+    why_buzzing += ". Readers are calling it a must-read."
+    
+    return {
+        "teaser": teaser,
+        "why_buzzing": why_buzzing,
+        "quote": "Every great story begins with a single page."
+    }
+
+
 def generate_post_text(book: dict) -> dict:
     """Use Gemini to generate teaser + why buzzing text."""
     genai.configure(api_key=GEMINI_API_KEY)
-    model = genai.GenerativeModel("gemini-1.5-flash-latest")
+    
+    # Use gemini-2.5-flash (stable, free tier as of Feb 2026)
+    model = genai.GenerativeModel("gemini-2.5-flash")
 
     title       = book.get("title", "")
     author      = book.get("author", "")
@@ -257,8 +286,11 @@ def run_bot():
         print("🤖 Generating post text with Gemini...")
         try:
             generated = generate_post_text(book)
+            print("✅ Gemini generation successful")
         except Exception as e:
-            print(f"❌ Gemini error: {e}"); sys.exit(1)
+            print(f"⚠️  Gemini error: {e}")
+            print("📝 Using fallback template...")
+            generated = generate_fallback_text(book)
 
         post_text = build_post_text(book, generated)
         print(f"✍️  Post text generated ({len(post_text)} chars)")
