@@ -213,8 +213,9 @@ def run_bot():
 
         # ── Get bot user ID ───────────────────────────────────────────────────
         is_sqlite = DATABASE_URL.startswith("sqlite")
+        user_table = "user" if is_sqlite else '"user"'
         bot_row = conn.execute(
-            text(f"SELECT id FROM {'user' if is_sqlite else '\"user\"'} WHERE email = :email"),
+            text(f"SELECT id FROM {user_table} WHERE email = :email"),
             {"email": BOT_EMAIL}
         ).fetchone()
 
