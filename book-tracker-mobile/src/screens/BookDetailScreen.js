@@ -595,6 +595,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     minHeight: 100,
     marginBottom: 10,
+    color: '#333',
   },
   noteFormRow: {
     flexDirection: 'row',
@@ -609,6 +610,7 @@ const styles = StyleSheet.create({
     padding: 10,
     fontSize: 14,
     width: 80,
+    color: '#333',
   },
   noteFormButtons: {
     flex: 1,
