@@ -1,6 +1,7 @@
 // BookCard - Individual book card in library
 import React, { useState, useEffect } from 'react';
 import { apiFetch } from '../../services/api';
+import { getAmazonBookUrl } from '../../config/api';
 
 const EMOTION_COLORS = {
   'Calm': { emoji: '😌', bg: '#E0F2FE', text: '#0C4A6E' },
@@ -185,6 +186,23 @@ export default function BookCard({ userbook, onOpenDetail, onQuickAddNote, onDel
         >
           📝 Note {notesCount > 0 && <span className="note-badge">{notesCount}</span>}
         </button>
+        <a
+          href={getAmazonBookUrl(book.title, book.author)}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={(e) => e.stopPropagation()}
+          className="quick-action-btn amazon"
+          style={{
+            backgroundColor: '#FF9900',
+            color: '#111',
+            textDecoration: 'none',
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          🛒 Buy
+        </a>
         <button
           onClick={handleRemoveBook}
           className="quick-action-btn red"
