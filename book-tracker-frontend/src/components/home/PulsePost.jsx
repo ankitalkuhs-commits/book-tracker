@@ -1,6 +1,7 @@
 // PulsePost - Individual post in the community feed
 import React, { useState } from 'react';
 import { BACKEND, apiFetch } from '../../services/api';
+import { getAmazonBookUrl } from '../../config/api';
 
 export default function PulsePost({ post, currentUser }) {
   const [likes, setLikes] = useState(post.likes_count || 0);
@@ -267,6 +268,32 @@ export default function PulsePost({ post, currentUser }) {
                 alt="Post"
               />
             </div>
+          )}
+
+          {/* Buy on Amazon button - shown if post has book info */}
+          {post.userbook?.book && (
+            <a
+              href={getAmazonBookUrl(post.userbook.book.title, post.userbook.book.author)}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                marginTop: '12px',
+                marginBottom: '8px',
+                padding: '8px 14px',
+                backgroundColor: '#FF9900',
+                color: '#111',
+                fontWeight: '600',
+                fontSize: '0.85rem',
+                borderRadius: '6px',
+                textDecoration: 'none',
+                boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+              }}
+            >
+              🛒 Buy on Amazon
+            </a>
           )}
 
           {/* Actions (likes, comments) - only show if logged in */}

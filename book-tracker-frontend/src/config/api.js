@@ -29,3 +29,12 @@ export const API_ENDPOINTS = {
 };
 
 export default API_BASE_URL;
+
+// Amazon Affiliate Configuration
+export const AMAZON_AFFILIATE_TAG = 'trackmyread-21';
+
+// Generate Amazon search URL with affiliate tag
+export const getAmazonBookUrl = (title, author) => {
+  const searchQuery = encodeURIComponent(`${title} ${author || ''}`.trim());
+  return `https://www.amazon.com/s?k=${searchQuery}&tag=${AMAZON_AFFILIATE_TAG}`;
+};

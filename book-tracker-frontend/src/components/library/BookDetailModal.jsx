@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { apiFetch } from '../../services/api';
+import { getAmazonBookUrl } from '../../config/api';
 
 const EMOTIONS = [
   { label: 'Calm', emoji: '😌', color: '#E0F2FE', textColor: '#0284C7' },
@@ -195,6 +196,29 @@ export default function BookDetailModal({ book: userbook, onClose, onUpdate, onA
               {book.total_pages && <span>📄 {book.total_pages} pages</span>}
               {book.publisher && <span>📚 {book.publisher}</span>}
             </div>
+            
+            {/* Buy on Amazon Button */}
+            <a
+              href={getAmazonBookUrl(book.title, book.author)}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                marginTop: '10px',
+                padding: '8px 14px',
+                backgroundColor: '#FF9900',
+                color: '#111',
+                fontWeight: '600',
+                fontSize: '0.85rem',
+                borderRadius: '6px',
+                textDecoration: 'none',
+                boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+              }}
+            >
+              🛒 Buy on Amazon
+            </a>
             
             {/* Progress Circle */}
             <div className="progress-circle-large">
