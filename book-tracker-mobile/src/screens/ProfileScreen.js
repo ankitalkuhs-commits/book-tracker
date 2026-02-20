@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   Alert,
 } from 'react-native';
+import Constants from 'expo-constants';
 import { userAPI, authAPI, userbooksAPI } from '../services/api';
 import { PreloadContext } from '../../App';
 
@@ -228,7 +229,9 @@ const ProfileScreen = ({ onLogout }) => {
             Track My Read helps you track your reading journey, share your
             thoughts, and connect with fellow readers.
           </Text>
-          <Text style={styles.versionText}>Version 1.0.0</Text>
+          <Text style={styles.versionText}>
+            Version {Constants.expoConfig?.version || '1.0.0'} (Build {Constants.expoConfig?.android?.versionCode || '?'})
+          </Text>
         </View>
       </ScrollView>
     </View>
