@@ -131,6 +131,16 @@ class Comment(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 
+class ReadingActivity(SQLModel, table=True):
+    """User reading activity log."""
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: int = Field(foreign_key="user.id")
+    book_id: int = Field(foreign_key="book.id")
+    activity_type: str  # e.g., 'start', 'finish', 'note', 'update'
+    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    details: Optional[str] = None
+
+
 from typing import Optional
 from sqlmodel import SQLModel
 
