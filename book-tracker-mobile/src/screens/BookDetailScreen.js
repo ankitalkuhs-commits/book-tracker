@@ -117,18 +117,19 @@ export default function BookDetailScreen({ route, navigation }) {
       
       const updateData = { status: newStatus };
       
-      // If marking as finished, set current_page to total_pages
-      if (newStatus === 'finished' && userbook.book?.total_pages) {
-        updateData.current_page = userbook.book.total_pages;
-        setCurrentPage(userbook.book.total_pages.toString());
+      // If marking as finished, set current_page to total_pages if available, else use current_page or 0
+      if (newStatus === 'finished') {
+        const pages = userbook.book?.total_pages || userbook.current_page || 0;
+        updateData.current_page = pages;
+        setCurrentPage(pages.toString());
       }
       
       await userbooksAPI.updateProgress(userbook.id, updateData);
       
       // Update the userbook object locally
       userbook.status = newStatus;
-      if (newStatus === 'finished' && userbook.book?.total_pages) {
-        userbook.current_page = userbook.book.total_pages;
+      if (newStatus === 'finished') {
+        userbook.current_page = userbook.book?.total_pages || userbook.current_page || 0;
       }
       
       Alert.alert('Success', `Status changed to ${getStatusLabel(newStatus)}!`);
