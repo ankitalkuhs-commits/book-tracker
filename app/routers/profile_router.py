@@ -61,10 +61,13 @@ def get_profile(db: Session = Depends(get_db), current_user=Depends(get_current_
 
     stats = {
         "total_books": len(total_books),
+        "totalBooks": len(total_books),
         "finished": len(finished),
         "reading": len(reading),
         "to_read": len(to_read),
+        "toRead": len(to_read),
         "total_pages_read": total_pages_read,
+        "totalPagesRead": total_pages_read,
     }
 
     return {
@@ -111,9 +114,11 @@ def update_profile(payload: ProfileUpdate, db: Session = Depends(get_db), curren
 
     stats = {
         "total_books": len(total_books),
+        "totalBooks": len(total_books),
         "finished": len(finished),
         "reading": len(reading),
         "to_read": len(to_read),
+        "toRead": len(to_read),
     }
 
     return {
