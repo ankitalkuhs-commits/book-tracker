@@ -37,9 +37,6 @@ class User(SQLModel, table=True):
     deletion_requested_at: Optional[datetime] = None
     deletion_reason: Optional[str] = None
 
-    # Total pages read (sum of completed + current progress)
-    total_pages_read: int = Field(default=0, nullable=False)
-
     # Relationships
     userbooks: List["UserBook"] = Relationship(back_populates="user")
     notes: List["Note"] = Relationship(back_populates="user")
@@ -131,17 +128,6 @@ class Comment(SQLModel, table=True):
     note_id: int = Field(foreign_key="note.id", index=True)
     user_id: int = Field(foreign_key="user.id", index=True)
     text: str = Field(nullable=False)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-
-
-class ReadingActivity(SQLModel, table=True):
-    """Track daily reading progress for analytics/charts."""
-    id: Optional[int] = Field(default=None, primary_key=True)
-    user_id: int = Field(foreign_key="user.id", index=True)
-    userbook_id: int = Field(foreign_key="userbook.id", index=True)
-    date: datetime = Field(default_factory=datetime.utcnow, index=True)  # Day of activity
-    pages_read: int = Field(default=0)  # Pages read on this day
-    current_page: int = Field(default=0)  # Page number at end of day
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 
