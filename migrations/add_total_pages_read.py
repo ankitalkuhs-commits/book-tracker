@@ -8,7 +8,7 @@ def upgrade(engine):
     with engine.connect() as conn:
         # SQLite and PostgreSQL compatible
         conn.execute(text("""
-            ALTER TABLE user ADD COLUMN total_pages_read INTEGER NOT NULL DEFAULT 0;
+            ALTER TABLE "user" ADD COLUMN total_pages_read INTEGER NOT NULL DEFAULT 0;
         """))
         print("Added total_pages_read column to user table.")
 
