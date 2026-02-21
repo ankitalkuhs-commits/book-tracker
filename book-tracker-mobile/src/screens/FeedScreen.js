@@ -270,7 +270,7 @@ const FeedScreen = ({ navigation }) => {
     setShowComposer(true);
   };
 
-  const handleDeletePost = (post) => {
+  const handleDeletePost = (post, isOwnPost, isAdmin) => {
     Alert.alert(
       'Delete Post',
       'Are you sure you want to delete this post?',
@@ -281,7 +281,11 @@ const FeedScreen = ({ navigation }) => {
           style: 'destructive',
           onPress: async () => {
             try {
-              await notesAPI.deleteNote(post.id);
+              if (isAdmin && !isOwnPost) {
+                await notesAPI.adminDeleteNote(post.id);
+              } else {
+                await notesAPI.deleteNote(post.id);
+              }
               Alert.alert('Success', 'Post deleted successfully');
               await loadFeed();
             } catch (error) {
@@ -463,6 +467,7 @@ const FeedScreen = ({ navigation }) => {
     const userName = post.user?.name || post.user?.email || 'Unknown User';
     const timeAgo = formatTimeAgo(post.created_at);
     const isOwnPost = currentUser && (post.user?.id === currentUser.id || post.user?.email === currentUser.email);
+    const isAdmin = currentUser && currentUser.is_admin;
 
     return (
       <View key={post.id || Math.random().toString()} style={styles.postCard}>
@@ -477,12 +482,14 @@ const FeedScreen = ({ navigation }) => {
               <Text style={styles.timeAgo}>{timeAgo}</Text>
             </View>
           </View>
-          {isOwnPost && (
+          {(isOwnPost || isAdmin) && (
             <View style={styles.postActions}>
-              <TouchableOpacity onPress={() => handleEditPost(post)} style={styles.editButton}>
-                <Text style={styles.editIcon}>✏️</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => handleDeletePost(post)} style={styles.deleteButton}>
+              {isOwnPost && !isAdmin && (
+                <TouchableOpacity onPress={() => handleEditPost(post)} style={styles.editButton}>
+                  <Text style={styles.editIcon}>✏️</Text>
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity onPress={() => handleDeletePost(post, isOwnPost, isAdmin)} style={styles.deleteButton}>
                 <Text style={styles.deleteIcon}>🗑️</Text>
               </TouchableOpacity>
             </View>
