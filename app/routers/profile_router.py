@@ -59,6 +59,10 @@ def get_profile(db: Session = Depends(get_db), current_user=Depends(get_current_
                 # Reading: use current progress
                 total_pages_read += ub.current_page or 0
 
+    # NOTE: For cross-platform compatibility, we return both snake_case and camelCase keys in the stats object.
+    # - The web frontend expects snake_case (e.g., total_books, to_read, total_pages_read)
+    # - The mobile app expects camelCase (e.g., totalBooks, toRead, totalPagesRead)
+    # This avoids the need to rebuild the mobile app after backend changes.
     stats = {
         "total_books": len(total_books),
         "totalBooks": len(total_books),
@@ -69,6 +73,20 @@ def get_profile(db: Session = Depends(get_db), current_user=Depends(get_current_
         "total_pages_read": total_pages_read,
         "totalPagesRead": total_pages_read,
     }
+
+    # Log the outgoing profile response for debugging mobile issues
+    import logging
+    logging.warning(f"/profile/me response: {repr({
+        'id': user.id,
+        'name': user.name,
+        'email': user.email,
+        'bio': user.bio,
+        'created_at': user.created_at,
+        'followers_count': len(followers),
+        'following_count': len(following),
+        'stats': stats,
+        'is_admin': user.is_admin,
+    })}")
 
     return {
         "id": user.id,
