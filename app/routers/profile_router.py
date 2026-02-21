@@ -38,26 +38,16 @@ def get_profile(db: Session = Depends(get_db), current_user=Depends(get_current_
     reading = [b for b in total_books if b.status == "reading"]
     to_read = [b for b in total_books if b.status == "to-read"]
 
-    # Calculate total pages read
-    # First try: sum from reading_activity table (most accurate)
-    activity_sum = db.exec(
-        select(func.coalesce(func.sum(ReadingActivity.pages_read), 0))
-        .where(ReadingActivity.user_id == user.id)
-    ).first()
-    
-    if activity_sum and activity_sum > 0:
-        total_pages_read = activity_sum
-    else:
-        # Fallback: calculate from book data
-        total_pages_read = 0
-        for ub in total_books:
-            if ub.status == "finished":
-                # Finished: use total_pages, fallback to current_page
-                book = db.get(Book, ub.book_id)
-                total_pages_read += (book.total_pages if book and book.total_pages else 0) or (ub.current_page or 0)
-            elif ub.status == "reading":
-                # Reading: use current progress
-                total_pages_read += ub.current_page or 0
+    # Calculate total pages read from book data (ReadingActivity.pages_read no longer exists)
+    total_pages_read = 0
+    for ub in total_books:
+        if ub.status == "finished":
+            # Finished: use total_pages, fallback to current_page
+            book = db.get(Book, ub.book_id)
+            total_pages_read += (book.total_pages if book and book.total_pages else 0) or (ub.current_page or 0)
+        elif ub.status == "reading":
+            # Reading: use current progress
+            total_pages_read += ub.current_page or 0
 
     # NOTE: For cross-platform compatibility, we return both snake_case and camelCase keys in the stats object.
     # - The web frontend expects snake_case (e.g., total_books, to_read, total_pages_read)
