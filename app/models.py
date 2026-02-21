@@ -37,6 +37,9 @@ class User(SQLModel, table=True):
     deletion_requested_at: Optional[datetime] = None
     deletion_reason: Optional[str] = None
 
+    # Total pages read (sum of completed + current progress)
+    total_pages_read: int = Field(default=0, nullable=False)
+
     # Relationships
     userbooks: List["UserBook"] = Relationship(back_populates="user")
     notes: List["Note"] = Relationship(back_populates="user")
