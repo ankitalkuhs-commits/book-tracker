@@ -704,7 +704,7 @@ const FeedScreen = ({ navigation }) => {
             </TouchableOpacity>
           </View>
 
-          <ScrollView style={styles.composerContent}>
+          <View style={styles.composerContent}>
             <TextInput
               style={styles.postInput}
               placeholder="What are you feeling from your read?"
@@ -750,7 +750,7 @@ const FeedScreen = ({ navigation }) => {
                 />
               </View>
             )}
-          </ScrollView>
+          </View>
 
           <View style={styles.composerActions}>
             <TouchableOpacity
