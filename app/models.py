@@ -143,6 +143,8 @@ class Comment(SQLModel, table=True):
 
 class ReadingActivity(SQLModel, table=True):
     """User reading activity log."""
+    __tablename__ = "reading_activity"
+
     id: Optional[int] = Field(default=None, primary_key=True)
 
     user_id: int = Field(foreign_key="user.id")
@@ -151,10 +153,9 @@ class ReadingActivity(SQLModel, table=True):
     # date used for stats queries
     date: datetime = Field(default_factory=datetime.utcnow)
 
-    activity_type: str  # 'start', 'finish', 'progress', 'note'
-    pages_read: Optional[int] = 0
-
-    details: Optional[str] = None
+    pages_read: Optional[int] = Field(default=0)
+    current_page: Optional[int] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
 
 
 from typing import Optional

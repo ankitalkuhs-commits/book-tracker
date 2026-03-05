@@ -71,7 +71,7 @@ def update_progress(userbook_id: int, data: UserBookProgress, db: Session = Depe
         
         if existing_activity:
             # Update existing activity
-            existing_activity.pages_read += pages_read
+            existing_activity.pages_read = (existing_activity.pages_read or 0) + pages_read
             existing_activity.current_page = new_page
             db.add(existing_activity)
         else:
@@ -81,7 +81,7 @@ def update_progress(userbook_id: int, data: UserBookProgress, db: Session = Depe
                 userbook_id=userbook_id,
                 date=today,
                 pages_read=pages_read,
-                current_page=new_page
+                current_page=new_page,
             )
             db.add(activity)
 

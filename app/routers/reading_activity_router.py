@@ -37,7 +37,7 @@ def get_daily_reading_stats(
         date_key = activity.date.date() if isinstance(activity.date, datetime) else activity.date
         if date_key not in daily_stats:
             daily_stats[date_key] = 0
-        daily_stats[date_key] += activity.pages_read
+        daily_stats[date_key] += (activity.pages_read or 0)
     
     # Fill in missing days with 0
     result = []
@@ -86,7 +86,7 @@ def get_user_daily_reading_stats(
         date_key = activity.date.date() if isinstance(activity.date, datetime) else activity.date
         if date_key not in daily_stats:
             daily_stats[date_key] = 0
-        daily_stats[date_key] += activity.pages_read
+        daily_stats[date_key] += (activity.pages_read or 0)
     
     # Fill in missing days with 0
     result = []

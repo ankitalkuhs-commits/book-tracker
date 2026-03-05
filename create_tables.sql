@@ -104,3 +104,16 @@ CREATE TABLE IF NOT EXISTS comment (
 
 CREATE INDEX IF NOT EXISTS ix_comment_note_id ON comment(note_id);
 CREATE INDEX IF NOT EXISTS ix_comment_user_id ON comment(user_id);
+
+CREATE TABLE IF NOT EXISTS reading_activity (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
+    userbook_id INTEGER NOT NULL REFERENCES userbook(id) ON DELETE CASCADE,
+    date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    pages_read INTEGER DEFAULT 0,
+    current_page INTEGER,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_reading_activity_user_date ON reading_activity(user_id, date);
+CREATE INDEX IF NOT EXISTS idx_reading_activity_userbook ON reading_activity(userbook_id);
