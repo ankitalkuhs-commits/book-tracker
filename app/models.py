@@ -131,13 +131,29 @@ class Comment(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 
+# class ReadingActivity(SQLModel, table=True):
+#    """User reading activity log."""
+#    id: Optional[int] = Field(default=None, primary_key=True)
+#    user_id: int = Field(foreign_key="user.id")
+#    book_id: int = Field(foreign_key="book.id")
+#    activity_type: str  # e.g., 'start', 'finish', 'note', 'update'
+#    timestamp: datetime = Field(default_factory=datetime.utcnow)
+#    details: Optional[str] = None
+
+
 class ReadingActivity(SQLModel, table=True):
     """User reading activity log."""
     id: Optional[int] = Field(default=None, primary_key=True)
+
     user_id: int = Field(foreign_key="user.id")
-    book_id: int = Field(foreign_key="book.id")
-    activity_type: str  # e.g., 'start', 'finish', 'note', 'update'
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    userbook_id: int = Field(foreign_key="userbook.id", index=True)
+
+    # date used for stats queries
+    date: datetime = Field(default_factory=datetime.utcnow)
+
+    activity_type: str  # 'start', 'finish', 'progress', 'note'
+    pages_read: Optional[int] = 0
+
     details: Optional[str] = None
 
 
