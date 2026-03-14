@@ -53,6 +53,7 @@ class NoteOutSchema(BaseModel):
     quote: Optional[str] = None  # New field
     is_public: bool
     created_at: Optional[str]
+    updated_at: Optional[str] = None
     likes_count: Optional[int] = 0  # New field
     comments_count: Optional[int] = 0  # New field
     user_has_liked: Optional[bool] = False  # New field
@@ -182,6 +183,9 @@ def update_note(
     if payload.is_public is not None:
         note.is_public = payload.is_public
     
+    from datetime import datetime, timezone
+    note.updated_at = datetime.now(timezone.utc)
+
     db.add(note)
     db.commit()
     db.refresh(note)
@@ -199,6 +203,7 @@ def update_note(
         "quote": note.quote,
         "is_public": note.is_public,
         "created_at": format_timestamp(note.created_at),
+        "updated_at": format_timestamp(note.updated_at),
         "user": {"id": user.id, "name": user.name} if user else None,
         "book": {"id": book.id, "title": book.title, "author": book.author} if book else None
     }
@@ -410,3 +415,20 @@ def get_friends_feed(
     ), reverse=True)
     
     return result
+
+
+@router.delete("/{note_id}", status_code=status.HTTP_200_OK)
+def delete_note(
+    note_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """Note owner or admin can delete a note/post."""
+    note = crud.get_note_by_id(db, note_id=note_id)
+    if not note:
+        raise HTTPException(status_code=404, detail="Note not found")
+    if note.user_id != current_user.id and not getattr(current_user, "is_admin", False):
+        raise HTTPException(status_code=403, detail="Not authorized to delete this note")
+    db.delete(note)
+    db.commit()
+    return {"message": "Note deleted successfully"}
