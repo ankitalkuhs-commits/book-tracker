@@ -24,8 +24,7 @@ import TermsPage from "./pages/TermsPage";
 import HelpPage from "./pages/HelpPage";
 import ContactPage from "./pages/ContactPage";
 import AccountDeletionPage from "./pages/AccountDeletionPage";
-import Footer from "./components/shared/Footer";
-
+import Footer from "./components/shared/Footer";import PWAInstallBanner from './components/shared/PWAInstallBanner';
 // TODO: Replace with your actual Google OAuth Client ID from Google Cloud Console
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || "YOUR_GOOGLE_CLIENT_ID_HERE";
 
@@ -215,6 +214,9 @@ function AppContent(){
       
       {/* Footer - shown on all modern pages */}
       {isModernPage && <Footer onRoute={navigateToRoute} />}
+
+      {/* PWA install nudge - mobile only, not shown if already installed */}
+      <PWAInstallBanner />
     </div>
   );
 }

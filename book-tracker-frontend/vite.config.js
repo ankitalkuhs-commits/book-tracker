@@ -19,6 +19,7 @@ export default defineConfig({
         orientation: 'portrait',
         scope: '/',
         start_url: '/',
+        prefer_related_applications: false,
         icons: [
           {
             src: '/icon-192.png',
