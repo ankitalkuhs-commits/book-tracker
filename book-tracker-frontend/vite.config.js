@@ -10,8 +10,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg', 'apple-touch-icon.png', 'icon-192.png', 'icon-512.png'],
       manifest: {
-        name: 'BookPulse - Track Your Reading',
-        short_name: 'BookPulse',
+        name: 'Track My Read',
+        short_name: 'TrackMyRead',
         description: 'Social book tracking — log reads, share pulses, follow friends.',
         theme_color: '#667eea',
         background_color: '#ffffff',
