@@ -691,10 +691,10 @@ const FeedScreen = ({ navigation }) => {
             </TouchableOpacity>
           </View>
 
-          {/* KAV wraps only the scrollable content + action bar so
-              padding mode smoothly shifts them up without reflowing the header */}
+          {/* KAV only needed on iOS - Android Modal uses adjustResize natively */}
           <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
+            behavior="padding"
+            enabled={Platform.OS === 'ios'}
             style={{ flex: 1 }}
           >
             <ScrollView
@@ -1038,7 +1038,7 @@ const styles = StyleSheet.create({
   postInput: {
     fontSize: 16,
     color: '#333',
-    minHeight: 120,
+    height: 160,
     textAlignVertical: 'top',
     marginBottom: 16,
   },
