@@ -663,10 +663,8 @@ const FeedScreen = ({ navigation }) => {
         animationType="slide"
         onRequestClose={() => setShowComposer(false)}
       >
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={styles.modalContainer}
-        >
+        <View style={styles.modalContainer}>
+          {/* Header stays fixed outside KAV so it never moves when keyboard opens */}
           <View style={styles.composerHeader}>
             <TouchableOpacity onPress={() => {
               setShowComposer(false);
@@ -693,73 +691,85 @@ const FeedScreen = ({ navigation }) => {
             </TouchableOpacity>
           </View>
 
-          <View style={styles.composerContent}>
-            <TextInput
-              style={styles.postInput}
-              placeholder="What are you feeling from your read?"
-              placeholderTextColor="#999"
-              value={postText}
-              onChangeText={setPostText}
-              multiline
-              autoFocus
-            />
+          {/* KAV wraps only the scrollable content + action bar so
+              padding mode smoothly shifts them up without reflowing the header */}
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
+            style={{ flex: 1 }}
+          >
+            <ScrollView
+              style={styles.composerContent}
+              contentContainerStyle={styles.composerContentContainer}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+            >
+              <TextInput
+                style={styles.postInput}
+                placeholder="What are you feeling from your read?"
+                placeholderTextColor="#999"
+                value={postText}
+                onChangeText={setPostText}
+                multiline
+                autoFocus
+              />
 
-            {selectedImage && (
-              <View style={styles.imagePreviewContainer}>
-                <Image source={{ uri: selectedImage }} style={styles.imagePreview} />
-                <TouchableOpacity
-                  style={styles.removeImageButton}
-                  onPress={() => setSelectedImage(null)}
-                >
-                  <Text style={styles.removeImageText}>✕</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-
-            {showQuoteInput && (
-              <View style={styles.quoteBox}>
-                <View style={styles.quoteHeader}>
-                  <Text style={styles.quoteIcon}>💬 Quote</Text>
+              {selectedImage && (
+                <View style={styles.imagePreviewContainer}>
+                  <Image source={{ uri: selectedImage }} style={styles.imagePreview} />
                   <TouchableOpacity
-                    onPress={() => {
-                      setShowQuoteInput(false);
-                      setPostQuote('');
-                    }}
+                    style={styles.removeImageButton}
+                    onPress={() => setSelectedImage(null)}
                   >
-                    <Text style={styles.removeQuote}>Remove</Text>
+                    <Text style={styles.removeImageText}>✕</Text>
                   </TouchableOpacity>
                 </View>
-                <TextInput
-                  style={styles.quoteInput}
-                  placeholder="Add a quote from the book..."
-                  placeholderTextColor="#999"
-                  value={postQuote}
-                  onChangeText={setPostQuote}
-                  multiline
-                />
-              </View>
-            )}
-          </View>
+              )}
 
-          <View style={styles.composerActions}>
-            <TouchableOpacity
-              style={styles.actionButton}
-              onPress={showImageOptions}
-            >
-              <Text style={styles.actionIcon}>📷</Text>
-              <Text style={styles.actionLabel}>Add Image</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.actionButton}
-              onPress={() => setShowQuoteInput(!showQuoteInput)}
-            >
-              <Text style={styles.actionIcon}>💬</Text>
-              <Text style={styles.actionLabel}>
-                {showQuoteInput ? 'Remove Quote' : 'Add Quote'}
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </KeyboardAvoidingView>
+              {showQuoteInput && (
+                <View style={styles.quoteBox}>
+                  <View style={styles.quoteHeader}>
+                    <Text style={styles.quoteIcon}>💬 Quote</Text>
+                    <TouchableOpacity
+                      onPress={() => {
+                        setShowQuoteInput(false);
+                        setPostQuote('');
+                      }}
+                    >
+                      <Text style={styles.removeQuote}>Remove</Text>
+                    </TouchableOpacity>
+                  </View>
+                  <TextInput
+                    style={styles.quoteInput}
+                    placeholder="Add a quote from the book..."
+                    placeholderTextColor="#999"
+                    value={postQuote}
+                    onChangeText={setPostQuote}
+                    multiline
+                  />
+                </View>
+              )}
+            </ScrollView>
+
+            <View style={styles.composerActions}>
+              <TouchableOpacity
+                style={styles.actionButton}
+                onPress={showImageOptions}
+              >
+                <Text style={styles.actionIcon}>📷</Text>
+                <Text style={styles.actionLabel}>Add Image</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.actionButton}
+                onPress={() => setShowQuoteInput(!showQuoteInput)}
+              >
+                <Text style={styles.actionIcon}>💬</Text>
+                <Text style={styles.actionLabel}>
+                  {showQuoteInput ? 'Remove Quote' : 'Add Quote'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </KeyboardAvoidingView>
+        </View>
       </Modal>
     </View>
   );
@@ -1020,7 +1030,10 @@ const styles = StyleSheet.create({
   },
   composerContent: {
     flex: 1,
+  },
+  composerContentContainer: {
     padding: 20,
+    flexGrow: 1,
   },
   postInput: {
     fontSize: 16,
