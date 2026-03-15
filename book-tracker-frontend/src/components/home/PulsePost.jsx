@@ -261,11 +261,18 @@ export default function PulsePost({ post, currentUser }) {
           )}
 
           {/* Image if available */}
-          {post.image_url && (
+          {post.image_url && post.image_url !== 'null' && (
             <div className="post-image">
               <img 
                 src={post.image_url.startsWith('http') ? post.image_url : `${BACKEND}${post.image_url}`} 
                 alt="Post"
+                onError={(e) => { e.target.parentElement.style.display = 'none'; }}
+                onLoad={(e) => {
+                  // Hide placeholder images that are too small (e.g. Google Books "no cover" icons)
+                  if (e.target.naturalWidth < 50 || e.target.naturalHeight < 50) {
+                    e.target.parentElement.style.display = 'none';
+                  }
+                }}
               />
             </div>
           )}
