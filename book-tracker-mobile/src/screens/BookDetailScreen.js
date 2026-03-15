@@ -14,12 +14,14 @@ import {
   Platform,
 } from 'react-native';
 import { userbooksAPI, notesAPI } from '../services/api';
+import { getStatusLabel, getStatusColor, calcProgressPercent } from '../utils/bookUtils';
 
 export default function BookDetailScreen({ route, navigation }) {
   const { userbook, userbookId } = route.params || {};
   
   const [notes, setNotes] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [currentStatus, setCurrentStatus] = useState(userbook?.status || 'to-read');
   const [currentPage, setCurrentPage] = useState(userbook?.current_page?.toString() || '0');
   const [updatingProgress, setUpdatingProgress] = useState(false);
   const [showAddNote, setShowAddNote] = useState(false);
@@ -41,13 +43,8 @@ export default function BookDetailScreen({ route, navigation }) {
       setLoading(true);
     }
     try {
-      const allNotes = await notesAPI.getMyNotes();
-      console.log('All notes:', allNotes);
-      console.log('Current userbook.book.id:', userbook.book?.id);
-      // Filter by book ID, not userbook ID
-      const bookNotes = allNotes.filter(note => note.book?.id === userbook.book?.id);
-      console.log('Filtered notes for this book:', bookNotes);
-      setNotes(bookNotes);
+      const bookNotes = await notesAPI.getNotesForBook(userbook.id);
+      setNotes(bookNotes || []);
     } catch (error) {
       console.error('Error loading notes:', error);
     } finally {
@@ -60,11 +57,9 @@ export default function BookDetailScreen({ route, navigation }) {
   const updateProgress = async () => {
     setUpdatingProgress(true);
     try {
-      console.log('Updating progress for userbook:', userbook.id, 'to page:', currentPage);
-      const result = await userbooksAPI.updateProgress(userbook.id, {
-        current_page: parseInt(currentPage),
+      await userbooksAPI.updateProgress(userbook.id, {
+        current_page: parseInt(currentPage) || 0,
       });
-      console.log('Progress update result:', result);
       Alert.alert('Success', 'Progress updated!');
     } catch (error) {
       console.error('Error updating progress:', error);
@@ -84,14 +79,12 @@ export default function BookDetailScreen({ route, navigation }) {
     try {
       const noteData = {
         userbook_id: userbook.id,
-        text: newNoteText.trim(),  // Changed from note_text to text
+        text: newNoteText.trim(),
         page_number: newNotePage ? parseInt(newNotePage) : null,
-        is_public: false,  // Keep notes private by default
+        is_public: false,
       };
-      
-      console.log('Creating note with data:', noteData);
-      const createdNote = await notesAPI.createNote(noteData);
-      console.log('Note created:', createdNote);
+
+      await notesAPI.createNote(noteData);
       
       // Reload notes (don't show loading spinner)
       await loadNotes(false);
@@ -113,25 +106,20 @@ export default function BookDetailScreen({ route, navigation }) {
   const changeStatus = async (newStatus) => {
     setUpdatingStatus(true);
     try {
-      console.log('Changing status to:', newStatus);
-      
       const updateData = { status: newStatus };
-      
-      // If marking as finished, set current_page to total_pages if available, else use current_page or 0
+
       if (newStatus === 'finished') {
         const pages = userbook.book?.total_pages || userbook.current_page || 0;
         updateData.current_page = pages;
         setCurrentPage(pages.toString());
       }
-      
+
       await userbooksAPI.updateProgress(userbook.id, updateData);
-      
-      // Update the userbook object locally
+
+      // Update local state so UI re-renders correctly
+      setCurrentStatus(newStatus);
       userbook.status = newStatus;
-      if (newStatus === 'finished') {
-        userbook.current_page = userbook.book?.total_pages || userbook.current_page || 0;
-      }
-      
+
       Alert.alert('Success', `Status changed to ${getStatusLabel(newStatus)}!`);
     } catch (error) {
       console.error('Error changing status:', error);
@@ -141,27 +129,30 @@ export default function BookDetailScreen({ route, navigation }) {
     }
   };
 
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'reading': return '#4CAF50';
-      case 'finished': return '#2196F3';
-      case 'to-read': return '#FF9800';
-      default: return '#999';
-    }
+  const handleRemoveBook = () => {
+    Alert.alert(
+      'Remove Book',
+      'Remove this book from your library? This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await userbooksAPI.deleteBook(userbook.id);
+              navigation.goBack();
+            } catch (error) {
+              console.error('Error removing book:', error);
+              Alert.alert('Error', 'Failed to remove book from library');
+            }
+          },
+        },
+      ]
+    );
   };
 
-  const getStatusLabel = (status) => {
-    switch (status) {
-      case 'reading': return 'Reading';
-      case 'finished': return 'Finished';
-      case 'to-read': return 'To Read';
-      default: return status;
-    }
-  };
-
-  const progressPercent = userbook?.book?.total_pages
-    ? Math.round((parseInt(currentPage) / userbook.book.total_pages) * 100)
-    : 0;
+  const progressPercent = calcProgressPercent(currentPage, userbook?.book?.total_pages);
 
   // Guard: if no userbook data, show error
   if (!userbook) {
@@ -181,17 +172,13 @@ export default function BookDetailScreen({ route, navigation }) {
   return (
     <KeyboardAvoidingView 
       style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={0}
+      behavior="padding"
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 60}
     >
-      <ScrollView style={styles.content}>
-        {/* Header with back button */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-            <Text style={styles.backButtonText}>← Back</Text>
-          </TouchableOpacity>
-        </View>
-
+      <ScrollView 
+        style={styles.content}
+        keyboardShouldPersistTaps="handled"
+      >
         {/* Book Info Card */}
         <View style={styles.bookCard}>
           <View style={styles.bookCoverContainer}>
@@ -217,17 +204,17 @@ export default function BookDetailScreen({ route, navigation }) {
                   key={status}
                   style={[
                     styles.statusButton,
-                    userbook.status === status && styles.statusButtonActive,
+                    currentStatus === status && styles.statusButtonActive,
                     { borderColor: getStatusColor(status) },
-                    userbook.status === status && { backgroundColor: getStatusColor(status) },
+                    currentStatus === status && { backgroundColor: getStatusColor(status) },
                   ]}
                   onPress={() => changeStatus(status)}
-                  disabled={updatingStatus || userbook.status === status}
+                  disabled={updatingStatus || currentStatus === status}
                 >
                   <Text
                     style={[
                       styles.statusButtonText,
-                      userbook.status === status && styles.statusButtonTextActive,
+                      currentStatus === status && styles.statusButtonTextActive,
                     ]}
                   >
                     {getStatusLabel(status)}
@@ -239,7 +226,7 @@ export default function BookDetailScreen({ route, navigation }) {
         </View>
 
         {/* Progress Section */}
-        {userbook.status === 'reading' && (
+        {currentStatus === 'reading' && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Reading Progress</Text>
             <View style={styles.progressContainer}>
@@ -349,6 +336,13 @@ export default function BookDetailScreen({ route, navigation }) {
               <Text style={styles.addNoteButtonText}>+ Add Note</Text>
             </TouchableOpacity>
           )}
+        </View>
+
+        {/* Remove Book */}
+        <View style={styles.removeSection}>
+          <TouchableOpacity style={styles.removeButton} onPress={handleRemoveBook}>
+            <Text style={styles.removeButtonText}>Remove from Library</Text>
+          </TouchableOpacity>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -516,6 +510,7 @@ const styles = StyleSheet.create({
     padding: 10,
     fontSize: 16,
     width: 80,
+    color: '#333',
   },
   totalPages: {
     fontSize: 16,
@@ -602,6 +597,23 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
+  },
+  removeSection: {
+    padding: 20,
+    paddingBottom: 40,
+    alignItems: 'center',
+  },
+  removeButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 32,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#e53e3e',
+  },
+  removeButtonText: {
+    color: '#e53e3e',
+    fontSize: 15,
+    fontWeight: '600',
   },
   pageInput: {
     backgroundColor: '#fff',

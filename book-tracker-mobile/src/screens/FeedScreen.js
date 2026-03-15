@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useCallback } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import {
   View,
   Text,
@@ -17,6 +18,25 @@ import {
 import * as ImagePicker from 'expo-image-picker';
 import { notesAPI, userbooksAPI, userAPI } from '../services/api';
 import { PreloadContext } from '../../App';
+import { formatTimeAgo } from '../utils/bookUtils';
+
+// Hides itself when the image URL fails to load or returns a placeholder (e.g. Open Library 1x1 grey)
+const PostImage = ({ uri, style }) => {
+  const [failed, setFailed] = useState(false);
+  if (failed || !uri) return null;
+  return (
+    <Image
+      source={{ uri }}
+      style={style}
+      resizeMode="contain"
+      onError={() => setFailed(true)}
+      onLoad={(e) => {
+        const { width, height } = e.nativeEvent.source;
+        if (width <= 1 || height <= 1) setFailed(true);
+      }}
+    />
+  );
+};
 
 const FeedScreen = ({ navigation }) => {
   const preloaded = useContext(PreloadContext);
@@ -34,7 +54,6 @@ const FeedScreen = ({ navigation }) => {
   const [showQuoteInput, setShowQuoteInput] = useState(false);
   const [selectedImage, setSelectedImage] = useState(null);
   const [posting, setPosting] = useState(false);
-  const [editingPost, setEditingPost] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
 
   useEffect(() => {
@@ -44,6 +63,13 @@ const FeedScreen = ({ navigation }) => {
     loadFriendsReading();
     loadCurrentUser();
   }, []);
+
+  // Reset to Community tab whenever the Home icon is tapped
+  useFocusEffect(
+    useCallback(() => {
+      setActiveTab('community');
+    }, [])
+  );
 
   useEffect(() => {
     if (!searchQuery.trim()) {
@@ -226,48 +252,40 @@ const FeedScreen = ({ navigation }) => {
 
     setPosting(true);
     try {
-      if (editingPost) {
-        // Update existing post
-        await notesAPI.updateNote(editingPost.id, {
-          text: postText.trim(),
-          quote: postQuote.trim() || null,
-        });
-        Alert.alert('Success', 'Post updated successfully!');
-      } else {
-        // Create new post
-        await notesAPI.createNote({
-          text: postText.trim(),
-          quote: postQuote.trim() || null,
-          is_public: true,
-        });
-        Alert.alert('Success', 'Pulse shared successfully!');
+      // Upload image if one is selected and not already a remote URL
+      let imageUrl = null;
+      if (selectedImage) {
+        if (selectedImage.startsWith('http')) {
+          imageUrl = selectedImage;
+        } else {
+          const uploaded = await notesAPI.uploadImage(selectedImage);
+          imageUrl = uploaded.image_url;
+        }
       }
+
+      await notesAPI.createNote({
+        text: postText.trim(),
+        quote: postQuote.trim() || null,
+        is_public: true,
+        image_url: imageUrl,
+      });
+      Alert.alert('Success', 'Pulse shared successfully!');
 
       // Clear form
       setPostText('');
       setPostQuote('');
       setShowQuoteInput(false);
       setSelectedImage(null);
-      setEditingPost(null);
       setShowComposer(false);
 
       // Reload feed
       await loadFeed();
     } catch (error) {
-      console.error('Error creating/updating post:', error);
-      Alert.alert('Error', editingPost ? 'Failed to update post' : 'Failed to create post');
+      console.error('Error creating post:', error);
+      Alert.alert('Error', 'Failed to create post');
     } finally {
       setPosting(false);
     }
-  };
-
-  const handleEditPost = (post) => {
-    setEditingPost(post);
-    setPostText(post.text || '');
-    setPostQuote(post.quote || '');
-    setShowQuoteInput(!!post.quote);
-    setSelectedImage(post.image_url || null);
-    setShowComposer(true);
   };
 
   const handleDeletePost = (post, isOwnPost, isAdmin) => {
@@ -281,11 +299,7 @@ const FeedScreen = ({ navigation }) => {
           style: 'destructive',
           onPress: async () => {
             try {
-              if (isAdmin && !isOwnPost) {
-                await notesAPI.adminDeleteNote(post.id);
-              } else {
-                await notesAPI.deleteNote(post.id);
-              }
+              await notesAPI.deleteNote(post.id);
               Alert.alert('Success', 'Post deleted successfully');
               await loadFeed();
             } catch (error) {
@@ -401,14 +415,9 @@ const FeedScreen = ({ navigation }) => {
     const username = user.username || `user${user.id}`;
 
     return (
-      <TouchableOpacity 
+      <View 
         key={user.id} 
         style={styles.userCard}
-        activeOpacity={0.7}
-        onPress={() => navigation.navigate('UserProfile', {
-          userId: user.id,
-          userName: user.name
-        })}
       >
         <View style={styles.userAvatar}>
           <Text style={styles.userAvatarText}>{initials}</Text>
@@ -456,7 +465,7 @@ const FeedScreen = ({ navigation }) => {
               : 'Follow'}
           </Text>
         </TouchableOpacity>
-      </TouchableOpacity>
+      </View>
     );
   };
 
@@ -465,7 +474,9 @@ const FeedScreen = ({ navigation }) => {
     if (!post) return null;
     
     const userName = post.user?.name || post.user?.email || 'Unknown User';
-    const timeAgo = formatTimeAgo(post.created_at);
+    const timeAgo = post.updated_at && post.updated_at !== post.created_at
+      ? `Edited ${formatTimeAgo(post.updated_at)}`
+      : formatTimeAgo(post.created_at);
     const isOwnPost = currentUser && (post.user?.id === currentUser.id || post.user?.email === currentUser.email);
     const isAdmin = currentUser && currentUser.is_admin;
 
@@ -484,11 +495,6 @@ const FeedScreen = ({ navigation }) => {
           </View>
           {(isOwnPost || isAdmin) && (
             <View style={styles.postActions}>
-              {isOwnPost && !isAdmin && (
-                <TouchableOpacity onPress={() => handleEditPost(post)} style={styles.editButton}>
-                  <Text style={styles.editIcon}>✏️</Text>
-                </TouchableOpacity>
-              )}
               <TouchableOpacity onPress={() => handleDeletePost(post, isOwnPost, isAdmin)} style={styles.deleteButton}>
                 <Text style={styles.deleteIcon}>🗑️</Text>
               </TouchableOpacity>
@@ -504,13 +510,7 @@ const FeedScreen = ({ navigation }) => {
         )}
 
         {/* Note Image */}
-        {post.image_url && (
-          <Image 
-            source={{ uri: post.image_url }} 
-            style={styles.noteImage}
-            resizeMode="cover"
-          />
-        )}
+        <PostImage uri={post.image_url} style={styles.noteImage} />
 
         {/* Quote */}
         {post.quote && (
@@ -540,21 +540,6 @@ const FeedScreen = ({ navigation }) => {
     );
   };
 
-  const formatTimeAgo = (timestamp) => {
-    const now = new Date();
-    const postDate = new Date(timestamp);
-    const diffMs = now - postDate;
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMs / 3600000);
-    const diffDays = Math.floor(diffMs / 86400000);
-
-    if (diffMins < 1) return 'Just now';
-    if (diffMins < 60) return `${diffMins}m ago`;
-    if (diffHours < 24) return `${diffHours}h ago`;
-    if (diffDays < 7) return `${diffDays}d ago`;
-    return postDate.toLocaleDateString();
-  };
-
   if (loading) {
     return (
       <View style={styles.centered}>
@@ -581,7 +566,7 @@ const FeedScreen = ({ navigation }) => {
             onPress={() => setActiveTab('friends')}
           >
             <Text style={[styles.tabText, activeTab === 'friends' && styles.activeTabText]}>
-              Following
+              Your Friends
             </Text>
           </TouchableOpacity>
         </View>
@@ -626,6 +611,11 @@ const FeedScreen = ({ navigation }) => {
                 </View>
               )}
 
+              {searchQuery.trim() !== '' && (
+                <TouchableOpacity onPress={() => setSearchQuery('')} style={{ position: 'absolute', right: 12, top: 10 }}>
+                  <Text style={{ fontSize: 18, color: '#999' }}>✕</Text>
+                </TouchableOpacity>
+              )}
               {searchQuery.trim() !== '' && searchResults.length > 0 && (
                 <View style={styles.searchResults}>
                   {searchResults.map(user => renderUserCard(user))}
@@ -680,7 +670,6 @@ const FeedScreen = ({ navigation }) => {
           <View style={styles.composerHeader}>
             <TouchableOpacity onPress={() => {
               setShowComposer(false);
-              setEditingPost(null);
               setPostText('');
               setPostQuote('');
               setSelectedImage(null);
@@ -688,7 +677,7 @@ const FeedScreen = ({ navigation }) => {
             }}>
               <Text style={styles.cancelButton}>Cancel</Text>
             </TouchableOpacity>
-            <Text style={styles.composerTitle}>{editingPost ? 'Edit Post' : 'Create Post'}</Text>
+            <Text style={styles.composerTitle}>Create Post</Text>
             <TouchableOpacity
               onPress={handleCreatePost}
               disabled={posting || !postText.trim()}
@@ -699,7 +688,7 @@ const FeedScreen = ({ navigation }) => {
                   (!postText.trim() || posting) && styles.postButtonDisabled,
                 ]}
               >
-                {posting ? (editingPost ? 'Updating...' : 'Posting...') : (editingPost ? 'Update' : 'Post')}
+                {posting ? 'Posting...' : 'Post'}
               </Text>
             </TouchableOpacity>
           </View>
@@ -914,9 +903,9 @@ const styles = StyleSheet.create({
   },
   noteImage: {
     width: '100%',
-    height: 250,
+    aspectRatio: 2 / 3,
     borderRadius: 8,
-    backgroundColor: '#e0e0e0',
+    backgroundColor: '#f5f5f5',
     marginBottom: 8,
   },
   quoteContainer: {

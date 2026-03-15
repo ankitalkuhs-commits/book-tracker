@@ -232,7 +232,7 @@ export const notesAPI = {
       name: 'photo.jpg',
     });
     
-    const response = await api.post('/uploads/notes/', formData, {
+    const response = await api.post('/notes/upload-image', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
