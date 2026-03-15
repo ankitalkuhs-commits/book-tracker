@@ -61,8 +61,8 @@ export default function PWAInstallBanner() {
   };
 
   const handleDismiss = () => {
-    // Don't show again for 7 days
-    localStorage.setItem(DISMISSED_KEY, Date.now() + 7 * 24 * 60 * 60 * 1000);
+    // Don't show again for 1 day
+    localStorage.setItem(DISMISSED_KEY, Date.now() + 1 * 24 * 60 * 60 * 1000);
     setShow(false);
   };
 
