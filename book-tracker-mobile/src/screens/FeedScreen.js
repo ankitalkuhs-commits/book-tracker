@@ -1038,7 +1038,7 @@ const styles = StyleSheet.create({
   postInput: {
     fontSize: 16,
     color: '#333',
-    height: 160,
+    height: 120,
     textAlignVertical: 'top',
     marginBottom: 16,
   },
@@ -1068,7 +1068,7 @@ const styles = StyleSheet.create({
   quoteInput: {
     fontSize: 15,
     color: '#333',
-    minHeight: 60,
+    height: 70,
     textAlignVertical: 'top',
   },
   composerActions: {
