@@ -133,6 +133,7 @@ export default function YourFriendsTab({ currentUser }) {
   const [searchResults, setSearchResults] = useState([]);
   const [searching, setSearching] = useState(false);
   const [friendsReading, setFriendsReading] = useState([]);
+  const [showFindFriends, setShowFindFriends] = useState(false);
 
   const loadFriendsReading = useCallback(async () => {
     if (!currentUser) return;
@@ -181,42 +182,52 @@ export default function YourFriendsTab({ currentUser }) {
 
   return (
     <div style={{ maxWidth: 680, margin: '0 auto' }}>
-      {/* Find Friends */}
-      <div style={styles.section}>
-        <h3 style={styles.sectionTitle}>Find Friends</h3>
-        <div style={styles.searchRow}>
-          <input
-            type="text"
-            placeholder="Search users"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            style={styles.searchInput}
-          />
-          {searchQuery && (
-            <button onClick={() => setSearchQuery('')} style={styles.clearBtn}>✕</button>
-          )}
-        </div>
-
-        {searching && <div style={styles.hint}>Searching…</div>}
-
-        {!searching && searchQuery && searchResults.length === 0 && (
-          <div style={styles.hint}>No users found</div>
-        )}
-
-        {searchResults.length > 0 && (
-          <div style={styles.resultList}>
-            {searchResults.map(u => (
-              <UserCard key={u.id} user={u} onFollowChange={loadFriendsReading} />
-            ))}
-          </div>
-        )}
-      </div>
-
       {/* What Friends Are Reading */}
       <div style={styles.section}>
-        <h3 style={styles.sectionTitle}>What Friends Are Reading</h3>
+        {/* Card header */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
+          <h3 style={styles.sectionTitle}>What Friends Are Reading</h3>
+          <button
+            onClick={() => { setShowFindFriends(v => !v); setSearchQuery(''); setSearchResults([]); }}
+            style={styles.findBtn}
+          >
+            👥 {showFindFriends ? 'Close' : 'Find Friends'}
+          </button>
+        </div>
+
+        {/* Inline Find Friends search — toggles open */}
+        {showFindFriends && (
+          <div style={{ marginBottom: '1rem' }}>
+            <div style={styles.searchRow}>
+              <input
+                type="text"
+                placeholder="Search users"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                style={styles.searchInput}
+                autoFocus
+              />
+              {searchQuery && (
+                <button onClick={() => setSearchQuery('')} style={styles.clearBtn}>✕</button>
+              )}
+            </div>
+            {searching && <div style={styles.hint}>Searching…</div>}
+            {!searching && searchQuery && searchResults.length === 0 && (
+              <div style={styles.hint}>No users found</div>
+            )}
+            {searchResults.length > 0 && (
+              <div style={styles.resultList}>
+                {searchResults.map(u => (
+                  <UserCard key={u.id} user={u} onFollowChange={loadFriendsReading} />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Friends list */}
         {friendsReading.length === 0 ? (
-          <div style={{ padding: '2rem', textAlign: 'center' }}>
+          <div style={{ padding: '1.5rem', textAlign: 'center' }}>
             <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>👥</div>
             <p style={{ color: '#6B7280', margin: 0 }}>No friends yet!</p>
             <p style={{ color: '#9CA3AF', fontSize: '0.875rem', marginTop: '0.25rem' }}>
@@ -245,7 +256,22 @@ const styles = {
     fontSize: '1rem',
     fontWeight: '700',
     color: '#1a202c',
-    margin: '0 0 0.75rem 0',
+    margin: 0,
+  },
+  findBtn: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+    padding: '0.45rem 1rem',
+    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+    color: 'white',
+    border: 'none',
+    borderRadius: '20px',
+    fontWeight: '600',
+    fontSize: '0.85rem',
+    cursor: 'pointer',
+    whiteSpace: 'nowrap',
+    flexShrink: 0,
   },
   searchRow: {
     position: 'relative',

@@ -19,34 +19,40 @@ export default function HomePage({ user, onRoute }) {
         {/* Community / Your Friends tabs */}
         <div style={{
           display: 'flex',
-          borderBottom: '2px solid #E5E7EB',
+          justifyContent: 'center',
           marginBottom: '1.25rem',
-          background: 'white',
-          borderRadius: '12px 12px 0 0',
-          overflow: 'hidden',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
         }}>
-          {['community', 'friends'].map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              style={{
-                flex: 1,
-                padding: '1rem',
-                border: 'none',
-                background: 'none',
-                cursor: 'pointer',
-                fontWeight: '600',
-                fontSize: '0.95rem',
-                color: activeTab === tab ? '#1a73e8' : '#6B7280',
-                borderBottom: activeTab === tab ? '2px solid #1a73e8' : '2px solid transparent',
-                marginBottom: '-2px',
-                transition: 'color 0.2s',
-              }}
-            >
-              {tab === 'community' ? 'Community' : 'Your Friends'}
-            </button>
-          ))}
+          <div style={{
+            display: 'flex',
+            background: 'white',
+            borderRadius: '30px',
+            padding: '4px',
+            boxShadow: '0 1px 4px rgba(0,0,0,0.12)',
+            gap: '2px',
+          }}>
+            {[['community', '🌐 Community'], ['friends', '👥 Your Friends']].map(([tab, label]) => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                style={{
+                  padding: '0.5rem 1.4rem',
+                  border: 'none',
+                  borderRadius: '24px',
+                  cursor: 'pointer',
+                  fontWeight: '600',
+                  fontSize: '0.9rem',
+                  transition: 'all 0.2s',
+                  background: activeTab === tab
+                    ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+                    : 'transparent',
+                  color: activeTab === tab ? 'white' : '#6B7280',
+                  boxShadow: activeTab === tab ? '0 2px 8px rgba(102,126,234,0.4)' : 'none',
+                }}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
         </div>
 
         {activeTab === 'community' ? (
