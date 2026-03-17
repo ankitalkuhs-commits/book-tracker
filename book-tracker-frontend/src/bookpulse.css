@@ -74,27 +74,38 @@ body {
 
 .nav-button {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.625rem 1rem;
+  gap: 2px;
+  padding: 0.5rem 0.875rem;
   border: none;
   border-radius: 8px;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s;
   background: transparent;
-  color: #4a5568;
+  color: #6B7280;
+}
+
+.nav-button .icon {
+  font-size: 1.2rem;
+  line-height: 1;
+}
+
+.nav-button .label {
+  font-size: 0.7rem;
+  font-weight: 500;
+  line-height: 1;
 }
 
 .nav-button:hover {
   background: #f7fafc;
-  color: #2d3748;
+  color: #1a73e8;
 }
 
 .nav-button.active {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  box-shadow: 0 4px 6px rgba(102, 126, 234, 0.3);
+  background: transparent;
+  color: #1a73e8;
 }
 
 .user-avatar {
