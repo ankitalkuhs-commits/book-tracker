@@ -47,6 +47,19 @@ export default function PulsePost({ post, currentUser }) {
       .slice(0, 2);
   };
 
+  // Get a consistent color based on username (matches mobile colored avatars)
+  const getAvatarColor = (name) => {
+    const colors = [
+      '#1a73e8', '#e91e63', '#9c27b0', '#3f51b5',
+      '#009688', '#ff5722', '#795548', '#607d8b',
+      '#f44336', '#4caf50'
+    ];
+    if (!name) return colors[0];
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    return colors[Math.abs(hash) % colors.length];
+  };
+
   const handleLike = async () => {
     if (isLiking) return; // Prevent double-clicks
     
@@ -115,56 +128,36 @@ export default function PulsePost({ post, currentUser }) {
   return (
     <div className="card">
       <div className="feed-post">
-        {/* User Avatar - only show if logged in */}
-        {currentUser && (
-          <div className="post-avatar">
-            {getInitials(post.user?.name)}
-          </div>
-        )}
+        {/* User Avatar - always show */}
+        <div className="post-avatar" style={{ background: getAvatarColor(post.user?.name) }}>
+          {getInitials(post.user?.name)}
+        </div>
 
         <div className="post-content">
-          {/* User header with edit button - only show if logged in */}
-          {currentUser && (
-            <div className="post-header">
-              <div>
-                <span className="post-username">{post.user?.name || 'Anonymous'}</span>
-                <span className="post-meta"> shared this</span>
-              </div>
-              {isOwner && !isEditing && (
-                <button
-                  onClick={() => setIsEditing(true)}
-                  style={{
-                    padding: '0.25rem 0.5rem',
-                    fontSize: '1rem',
-                    color: '#6366F1',
-                    background: 'none',
-                    border: 'none',
-                    cursor: 'pointer'
-                  }}
-                  title="Edit post"
-                >
-                  ✏️
-                </button>
-              )}
+          {/* User header - always show name and date */}
+          <div className="post-header">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+              <span className="post-username">{post.user?.name || 'Community Member'}</span>
+              <span className="post-timestamp" style={{ marginTop: 0 }}>{formatTimestamp(post.created_at)}</span>
             </div>
-          )}
-
-          {/* For non-logged-in users, show a simple header */}
-          {!currentUser && (
-            <div style={{
-              marginBottom: '0.75rem',
-              paddingBottom: '0.5rem',
-              borderBottom: '1px solid #E5E7EB'
-            }}>
-              <span style={{
-                fontSize: '0.875rem',
-                color: '#6B7280',
-                fontWeight: '500'
-              }}>
-                📚 Community Post
-              </span>
-            </div>
-          )}
+            {isOwner && !isEditing && (
+              <button
+                onClick={() => setIsEditing(true)}
+                style={{
+                  padding: '0.25rem 0.5rem',
+                  fontSize: '1rem',
+                  color: '#6366F1',
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  marginLeft: 'auto'
+                }}
+                title="Edit post"
+              >
+                ✏️
+              </button>
+            )}
+          </div>
 
           {/* Book info */}
           {post.userbook?.book && (
@@ -322,10 +315,6 @@ export default function PulsePost({ post, currentUser }) {
             </div>
           )}
 
-          {/* Timestamp */}
-          <div className="post-timestamp">
-            {formatTimestamp(post.created_at)}
-          </div>
         </div>
       </div>
     </div>

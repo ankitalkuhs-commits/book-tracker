@@ -1,7 +1,7 @@
 # Library Management Context
 
 **Feature Owner:** Library & Books  
-**Last Updated:** January 10, 2026
+**Last Updated:** March 14, 2026
 
 ---
 
@@ -18,13 +18,22 @@ Manages book catalog, user reading lists, book search, and reading status tracki
 - `app/routers/googlebooks_router.py` - External book search integration
 - `app/models.py` - Book and UserBook models
 
-### Frontend
+### Frontend - Web
 - `book-tracker-frontend/src/pages/LibraryPage.jsx` - Main library view
 - `book-tracker-frontend/src/components/library/BookCard.jsx` - Book display card
 - `book-tracker-frontend/src/components/library/AddBookModal.jsx` - Add book UI
 - `book-tracker-frontend/src/components/library/BookDetailModal.jsx` - Book details
 - `book-tracker-frontend/src/components/AddBook.jsx` - Legacy add book form
 - `book-tracker-frontend/src/components/BookList.jsx` - Legacy book list
+
+### Frontend - Mobile
+- `book-tracker-mobile/src/screens/LibraryScreen.js` - Library with status tabs and search
+- `book-tracker-mobile/src/screens/BookDetailScreen.js` - Book detail, note entry, progress
+
+### Mobile LibraryScreen Notes (March 2026)
+- Status tabs now show live book counts: `All (N)`, `Reading (N)`, `Want to Read (N)`, `Finished (N)`
+- Search input has a `✕` clear button for Android (no built-in clear button on Android)
+- `searchContainer` is `flexDirection: row` with `searchInput` flex:1 + clear button alongside
 
 ### Database Tables
 - `books` - Master book catalog
@@ -50,15 +59,12 @@ Manages book catalog, user reading lists, book search, and reading status tracki
 ### 2. Reading Status Options
 **Decision:** Fixed set of statuses  
 **Options:**
-- `want_to_read` - Wishlist/planned
+- `to-read` - Wishlist/planned *(mobile uses `to-read` not `want_to_read`)*
 - `reading` - Currently reading
-- `completed` - Finished
-- `did_not_finish` - Started but didn't finish
+- `finished` - Finished *(mobile uses `finished` not `completed`)*
 
-**Why:**
-- Clear user intent
-- Easy filtering and statistics
-- Matches common reading apps (Goodreads pattern)
+**CRITICAL:** Backend and mobile use `to-read` / `reading` / `finished`. Only 3 values.
+Web may reference `want_to_read` / `completed` in some legacy code — use the 3 above.
 
 ### 3. Google Books Integration
 **Decision:** Use Google Books API for search  

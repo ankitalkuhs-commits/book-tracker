@@ -113,24 +113,21 @@ async function scheduleNudgeFor9PM() {
 
 // ─── Main entry point: call this on every app open ───────────────────────────
 // Logic:
-//   - If user opens the app → cancel today's nudge (they're already active)
-//   - Schedule tomorrow's nudge check (done automatically on next open)
+//   - Always cancel any existing nudge and reschedule for 9PM tonight
+//   - scheduleNudgeFor9PM does nothing if 9PM has already passed today
+//   - This ensures the nudge fires even if user opens the app multiple times
 export async function handleAppOpen() {
   try {
     const hasPermission = await requestNotificationPermission();
     if (!hasPermission) return;
 
     const today = new Date().toDateString();
-    const lastActive = await AsyncStorage.getItem(STORAGE_KEYS.LAST_ACTIVE_DATE);
 
-    // Cancel any pending nudge for today since user opened the app
+    // Always cancel old nudge and reschedule — opening the app multiple times
+    // on the same day should not prevent tonight's notification from firing.
     await cancelScheduledNudge();
-
-    // If it's a new day, schedule tonight's nudge
-    if (lastActive !== today) {
-      await AsyncStorage.setItem(STORAGE_KEYS.LAST_ACTIVE_DATE, today);
-      await scheduleNudgeFor9PM();
-    }
+    await AsyncStorage.setItem(STORAGE_KEYS.LAST_ACTIVE_DATE, today);
+    await scheduleNudgeFor9PM(); // no-op if 9PM has already passed
   } catch (err) {
     console.warn('Notification service error:', err);
   }

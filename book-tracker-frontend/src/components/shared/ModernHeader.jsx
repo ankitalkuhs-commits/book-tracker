@@ -28,7 +28,7 @@ export default function ModernHeader({ user, onRoute, onLogout, route }) {
       <div className="modern-header-container">
         {/* Logo */}
         <div className="header-logo" onClick={() => onRoute('home')}>
-          <div className="logo-icon">📖</div>
+          <img src="/icon-192.png" alt="Track My Read" style={{ width: '40px', height: '40px', borderRadius: '8px', objectFit: 'cover' }} />
           <h1 className="logo-text">Track My Read</h1>
         </div>
 

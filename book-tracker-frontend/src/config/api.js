@@ -34,6 +34,7 @@ export default API_BASE_URL;
 export const AMAZON_AFFILIATE_TAG = 'trackmyread-21';
 
 // Generate Amazon search URL with affiliate tag
+// Using amazon.com - Amazon auto-redirects to user's local store
 export const getAmazonBookUrl = (title, author) => {
   const searchQuery = encodeURIComponent(`${title} ${author || ''}`.trim());
   return `https://www.amazon.com/s?k=${searchQuery}&tag=${AMAZON_AFFILIATE_TAG}`;

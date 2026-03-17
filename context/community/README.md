@@ -1,7 +1,7 @@
 # Community Features Context
 
 **Feature Owner:** Social & Community  
-**Last Updated:** January 10, 2026
+**Last Updated:** March 14, 2026
 
 ---
 
@@ -18,15 +18,20 @@ Handles social interactions including following users, activity feeds, likes, co
 - `app/routers/journals.py` - Reading journal entries
 - `app/routers/profile_router.py` - User profiles and public info
 
-### Frontend
+### Frontend - Web
 - `book-tracker-frontend/src/pages/HomePage.jsx` - Main social feed
 - `book-tracker-frontend/src/components/Feed.jsx` - Activity feed display
 - `book-tracker-frontend/src/components/FollowPanel.jsx` - Follow suggestions
 - `book-tracker-frontend/src/components/Profile.jsx` - User profile view
 - `book-tracker-frontend/src/components/home/CommunityPulseFeed.jsx` - Community feed
-- `book-tracker-frontend/src/components/home/PulsePost.jsx` - Individual post
+- `book-tracker-frontend/src/components/home/PulsePost.jsx` - Individual post (has `onError` image hiding)
 - `book-tracker-frontend/src/components/home/UserSearchModal.jsx` - Find users
 - `book-tracker-frontend/src/components/bookpulse/` - BookPulse specific components
+
+### Frontend - Mobile
+- `book-tracker-mobile/src/screens/FeedScreen.js` - Community feed + friend search
+- `book-tracker-mobile/src/screens/ProfileScreen.js` - User profile with bio editing
+- `book-tracker-mobile/src/services/NotificationService.js` - Daily 9PM reading nudges
 
 ### Database Tables
 - `follows` - User follow relationships
@@ -97,7 +102,29 @@ Handles social interactions including following users, activity feeds, likes, co
 
 ---
 
-## API Endpoints
+## Notes/Posts API Endpoints (notes_router.py)
+
+> **Note:** The primary "social posts" in this app are called **notes** (stored in `notes` table, served from `app/routers/notes_router.py`). They differ from `journals` (separate system).
+
+#### GET `/notes/feed`
+Get public posts from followed users + self. Returns:
+```json
+{
+  "id": 1, "text": "...", "emotion": "...", "image_url": "...",
+  "is_public": true, "created_at": "...", "updated_at": "...",
+  "user": {"id": 1, "name": "Alice"},
+  "book": {"id": 2, "title": "Dune", "author": "Frank Herbert"},
+  "likes_count": 5, "comments_count": 2, "user_has_liked": false
+}
+```
+
+#### PUT `/notes/{note_id}`
+Update own note. Now sets `updated_at` timestamp on save.
+
+#### DELETE `/notes/{note_id}`  *(fixed March 2026)*
+Delete a note. **Owner or admin** can delete. Returns `{"message": "Note deleted successfully"}`.
+- Fixed: was admin-only with a critical placement bug (code placed before `router` was defined)
+- Fixed: now all authenticated owners can delete their own posts
 
 ### Follow System
 
@@ -361,6 +388,49 @@ def can_view_journal(journal, current_user):
 - [ ] Reading challenges together
 - [ ] Shared reading lists
 - [ ] Story/highlight feature
+
+---
+
+## Mobile-Specific Notes (FeedScreen.js)
+
+### PostImage Component
+Custom component that hides itself on any image load failure:
+```javascript
+const PostImage = ({ uri, style }) => {
+  const [failed, setFailed] = useState(false);
+  if (failed || !uri) return null;
+  return (
+    <Image source={{ uri }} style={style} resizeMode="contain"
+      onError={() => setFailed(true)}
+      onLoad={(e) => {
+        const { width, height } = e.nativeEvent.source;
+        if (width <= 1 || height <= 1) setFailed(true); // catches Open Library 1x1 placeholder
+      }}
+    />
+  );
+};
+```
+
+### Feed UI Changes (March 2026)
+- "Following" tab renamed to **"Your Friends"**
+- Friend search user cards no longer navigate on tap (prevented crash) — follow button still works
+- `✕` clear button added to friend search input
+- Post timestamps show **"Edited X ago"** when `updated_at` differs from `created_at`
+
+### Web Feed (PulsePost.jsx)
+- `<img>` tags have `onError` handler that hides the parent container on failure
+- Prevents blank white spaces from broken Open Library cover URLs
+
+### Notification Service (NotificationService.js)
+Schedules a 9PM daily reading nudge. **Fixed bug (March 2026):**
+- Old: only rescheduled on first open of the day → second open cancelled without rescheduling
+- New: always cancel + reschedule on every app open; `scheduleNudgeFor9PM()` self-guards (no-op if 9PM passed)
+
+### Bio Editing (ProfileScreen.js)
+- Profile screen now shows user bio below name/email
+- Tap bio (or "Add a bio…" placeholder) to enter edit mode
+- TextInput with Cancel / Save; Save calls `userAPI.updateProfile({ bio })`
+- Backend: `PUT /profile/me` — `bio` field fully supported
 
 ---
 

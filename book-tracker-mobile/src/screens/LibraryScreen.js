@@ -138,38 +138,25 @@ export default function LibraryScreen({ navigation, onLogout }) {
 
       {/* Tab Bar */}
       <View style={styles.tabBar}>
-        <TouchableOpacity 
-          style={[styles.tab, activeTab === 'all' && styles.activeTab]}
-          onPress={() => setActiveTab('all')}
-        >
-          <Text style={[styles.tabText, activeTab === 'all' && styles.activeTabText]}>
-            All
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity 
-          style={[styles.tab, activeTab === 'reading' && styles.activeTab]}
-          onPress={() => setActiveTab('reading')}
-        >
-          <Text style={[styles.tabText, activeTab === 'reading' && styles.activeTabText]}>
-            Reading
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity 
-          style={[styles.tab, activeTab === 'to-read' && styles.activeTab]}
-          onPress={() => setActiveTab('to-read')}
-        >
-          <Text style={[styles.tabText, activeTab === 'to-read' && styles.activeTabText]}>
-            Want to Read
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity 
-          style={[styles.tab, activeTab === 'finished' && styles.activeTab]}
-          onPress={() => setActiveTab('finished')}
-        >
-          <Text style={[styles.tabText, activeTab === 'finished' && styles.activeTabText]}>
-            Finished
-          </Text>
-        </TouchableOpacity>
+        {[
+          { key: 'all', label: 'All', count: books.length },
+          { key: 'reading', label: 'Reading', count: books.filter(b => b.status === 'reading').length },
+          { key: 'to-read', label: 'Want to Read', count: books.filter(b => b.status === 'to-read').length },
+          { key: 'finished', label: 'Finished', count: books.filter(b => b.status === 'finished').length },
+        ].map(({ key, label, count }) => (
+          <TouchableOpacity
+            key={key}
+            style={[styles.tab, activeTab === key && styles.activeTab]}
+            onPress={() => setActiveTab(key)}
+          >
+            <Text style={[styles.tabText, activeTab === key && styles.activeTabText]}>
+              {label}
+            </Text>
+            <Text style={[styles.tabCount, activeTab === key && styles.activeTabText]}>
+              {count}
+            </Text>
+          </TouchableOpacity>
+        ))}
       </View>
 
       {/* Search Bar */}
@@ -182,6 +169,11 @@ export default function LibraryScreen({ navigation, onLogout }) {
           onChangeText={setSearchQuery}
           clearButtonMode="while-editing"
         />
+        {searchQuery.length > 0 && (
+          <TouchableOpacity onPress={() => setSearchQuery('')} style={styles.clearButton}>
+            <Text style={styles.clearButtonText}>✕</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       {getFilteredBooks().length === 0 ? (
@@ -270,6 +262,11 @@ const styles = StyleSheet.create({
     color: '#666',
     fontWeight: '500',
   },
+  tabCount: {
+    fontSize: 12,
+    color: '#999',
+    marginTop: 2,
+  },
   activeTabText: {
     color: '#4285F4',
     fontWeight: '700',
@@ -280,8 +277,11 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#e0e0e0',
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   searchInput: {
+    flex: 1,
     backgroundColor: '#f5f5f5',
     paddingHorizontal: 16,
     paddingVertical: 12,
@@ -290,6 +290,15 @@ const styles = StyleSheet.create({
     color: '#333',
     borderWidth: 1,
     borderColor: '#ddd',
+  },
+  clearButton: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    marginLeft: 8,
+  },
+  clearButtonText: {
+    fontSize: 18,
+    color: '#999',
   },
   searchHeader: {
     backgroundColor: '#fff',

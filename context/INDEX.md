@@ -1,6 +1,6 @@
 # Book Tracker - Context Index
 
-**Last Updated:** January 10, 2026
+**Last Updated:** March 14, 2026
 
 ## Overview
 This index maps all context files for the Book Tracker project. Use this as your starting point to navigate project documentation and AI context.
@@ -39,6 +39,8 @@ This index maps all context files for the Book Tracker project. Use this as your
 - `app/routers/googlebooks_router.py` - External book search
 - `book-tracker-frontend/src/pages/LibraryPage.jsx` - Library UI
 - `book-tracker-frontend/src/components/library/` - Library components
+- `book-tracker-mobile/src/screens/LibraryScreen.js` - Mobile library (tabs with counts, search+clear)
+- `book-tracker-mobile/src/screens/BookDetailScreen.js` - Mobile book detail + notes
 
 **Key Decisions:** See [library/README.md](library/README.md)
 
@@ -49,8 +51,12 @@ This index maps all context files for the Book Tracker project. Use this as your
 - `app/routers/follow_router.py` - Follow/unfollow system
 - `app/routers/likes_comments.py` - Social interactions
 - `app/routers/journals.py` - Reading journals
+- `app/routers/notes_router.py` - Notes/posts + feed (fixed delete endpoint March 2026)
 - `book-tracker-frontend/src/pages/HomePage.jsx` - Social feed
-- `book-tracker-frontend/src/components/home/` - Community components
+- `book-tracker-frontend/src/components/home/` - Community components (PulsePost has image error handling)
+- `book-tracker-mobile/src/screens/FeedScreen.js` - Mobile feed (PostImage component, friend search, clear button)
+- `book-tracker-mobile/src/screens/ProfileScreen.js` - Mobile profile (bio editing)
+- `book-tracker-mobile/src/services/NotificationService.js` - Daily 9PM nudge notifications (fixed March 2026)
 
 **Key Decisions:** See [community/README.md](community/README.md)
 
@@ -71,6 +77,19 @@ This index maps all context files for the Book Tracker project. Use this as your
 - `create_tables.py` - Database initialization
 - `migrations/` - Database migration scripts
 - Environment variables configuration
+- `book-tracker-mobile/eas.json` - EAS build profiles (development APK, preview APK, production AAB)
+
+**Mobile Build Commands:**
+```powershell
+# Dev client APK (for testing with hot-reload)
+eas build --platform android --profile development
+# Connect live:
+npx expo start --dev-client --tunnel
+
+# Production AAB (Play Store)
+eas build --platform android --profile production
+```
+> Note: Expo Go cannot be used — app has native Google Sign-In module
 
 **Key Decisions:** See [deployment/README.md](deployment/README.md)
 

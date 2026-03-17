@@ -72,9 +72,12 @@ def get_book_cover(book: dict) -> str | None:
     if isbn:
         cover_url = f"https://covers.openlibrary.org/b/isbn/{isbn}-L.jpg"
         try:
-            resp = requests.head(cover_url, timeout=3, allow_redirects=True)
-            # Open Library returns 302 redirect to actual image if found
-            if resp.status_code in (200, 302):
+            resp = requests.head(cover_url, timeout=5, allow_redirects=True)
+            # Open Library returns 200 if cover exists.
+            # If it redirects to a URL containing '-1-' or 'default', it's a placeholder.
+            final_url = str(resp.url)
+            is_placeholder = "-1-" in final_url or "default" in final_url
+            if resp.status_code == 200 and not is_placeholder:
                 return cover_url
         except Exception:
             pass

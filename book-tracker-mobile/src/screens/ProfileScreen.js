@@ -7,6 +7,7 @@ import {
   RefreshControl,
   TouchableOpacity,
   ActivityIndicator,
+  TextInput,
   Alert,
 } from 'react-native';
 import Constants from 'expo-constants';
@@ -19,10 +20,13 @@ const ProfileScreen = ({ onLogout }) => {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(!preloaded?.profile);
   const [refreshing, setRefreshing] = useState(false);
+  const [editingBio, setEditingBio] = useState(false);
+  const [bioText, setBioText] = useState('');
 
   useEffect(() => {
     if (preloaded?.profile && preloaded?.library) {
       // Calculate stats from preloaded library data
+      setBioText(preloaded.profile?.bio || '');
       calculateStats(preloaded.library, preloaded.profile?.stats);
       setLoading(false);
     } else {
@@ -67,6 +71,7 @@ const ProfileScreen = ({ onLogout }) => {
       ]);
 
       setProfile(profileData);
+      setBioText(profileData?.bio || '');
       calculateStats(booksData, profileData?.stats);
     } catch (error) {
       console.error('Error loading profile:', error);
@@ -80,6 +85,16 @@ const ProfileScreen = ({ onLogout }) => {
     setRefreshing(true);
     await loadProfile();
     setRefreshing(false);
+  };
+
+  const saveBio = async () => {
+    try {
+      await userAPI.updateProfile({ bio: bioText });
+      setProfile(prev => ({ ...prev, bio: bioText }));
+      setEditingBio(false);
+    } catch (err) {
+      Alert.alert('Error', 'Failed to save bio');
+    }
   };
 
   const handleLogout = async () => {
@@ -141,6 +156,36 @@ const ProfileScreen = ({ onLogout }) => {
             <Text style={styles.memberSince}>
               Member since {new Date(profile.created_at).toLocaleDateString()}
             </Text>
+          )}
+
+          {/* Bio section */}
+          {editingBio ? (
+            <View style={styles.bioEditContainer}>
+              <TextInput
+                style={styles.bioInput}
+                value={bioText}
+                onChangeText={setBioText}
+                placeholder="Write something about yourself…"
+                multiline
+                maxLength={200}
+                autoFocus
+              />
+              <View style={styles.bioActions}>
+                <TouchableOpacity onPress={() => setEditingBio(false)} style={styles.bioCancelBtn}>
+                  <Text style={styles.bioCancelText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={saveBio} style={styles.bioSaveBtn}>
+                  <Text style={styles.bioSaveText}>Save</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          ) : (
+            <TouchableOpacity onPress={() => { setBioText(profile?.bio || ''); setEditingBio(true); }} style={styles.bioDisplayRow}>
+              <Text style={profile?.bio ? styles.bioText : styles.bioPlaceholder}>
+                {profile?.bio || 'Add a bio…'}
+              </Text>
+              <Text style={styles.bioEditIcon}>✏️</Text>
+            </TouchableOpacity>
           )}
         </View>
 
@@ -308,6 +353,73 @@ const styles = StyleSheet.create({
   memberSince: {
     fontSize: 12,
     color: '#999',
+    marginBottom: 12,
+  },
+  bioDisplayRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+    paddingHorizontal: 8,
+  },
+  bioText: {
+    flex: 1,
+    fontSize: 14,
+    color: '#555',
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  bioPlaceholder: {
+    flex: 1,
+    fontSize: 14,
+    color: '#bbb',
+    textAlign: 'center',
+    fontStyle: 'italic',
+  },
+  bioEditIcon: {
+    fontSize: 14,
+    marginLeft: 6,
+  },
+  bioEditContainer: {
+    width: '100%',
+    marginTop: 8,
+  },
+  bioInput: {
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 8,
+    padding: 10,
+    fontSize: 14,
+    color: '#333',
+    minHeight: 70,
+    textAlignVertical: 'top',
+  },
+  bioActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    marginTop: 8,
+    gap: 8,
+  },
+  bioCancelBtn: {
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#ccc',
+  },
+  bioCancelText: {
+    fontSize: 14,
+    color: '#666',
+  },
+  bioSaveBtn: {
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 6,
+    backgroundColor: '#0066cc',
+  },
+  bioSaveText: {
+    fontSize: 14,
+    color: '#fff',
+    fontWeight: '600',
   },
   sectionHeader: {
     paddingHorizontal: 16,

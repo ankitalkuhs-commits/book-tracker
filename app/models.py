@@ -100,6 +100,7 @@ class Note(SQLModel, table=True):
     quote: Optional[str] = None  # New: store book quotes
     is_public: bool = Field(default=True)
     created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: Optional[datetime] = None
 
     # Relationships
     user: Optional[User] = Relationship(back_populates="notes")
