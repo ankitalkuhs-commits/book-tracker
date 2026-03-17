@@ -62,56 +62,7 @@ export default function HomeSidebar() {
         onClose={() => setIsSearchModalOpen(false)}
       />
 
-      {/* What Friends Are Reading */}
-      <div className="sidebar-widget">
-        <div className="sidebar-header">
-          <h3 className="widget-title">What Friends Are Reading</h3>
-          <button onClick={() => setIsSearchModalOpen(true)} className="btn btn-primary">
-            <span>👥</span>
-            Find Friends
-          </button>
-        </div>
-        
-        {friendsReading.length === 0 ? (
-          <div className="empty-state">
-            <p className="empty-state-title">No friends yet!</p>
-            <p className="empty-state-subtitle">Search and follow readers to see what they're reading</p>
-          </div>
-        ) : (
-          <div 
-            className="friend-list"
-            style={{
-              maxHeight: 'calc(2 * (3.5rem + 1rem))', // 2 items: each ~3.5rem height + 1rem margin
-              overflowY: 'auto',
-              overflowX: 'hidden'
-            }}
-          >
-            {friendsReading.map((item, idx) => (
-              <div key={idx} className="friend-item">
-                <div className={`friend-avatar ${item.isMutual ? 'mutual' : ''}`}>
-                  {item.initial}
-                </div>
-                
-                <div className="friend-content">
-                  <p className="friend-meta">
-                    <span className="friend-name">{item.user}</span>
-                    {item.isMutual && (
-                      <span className="badge badge-purple">Mutual</span>
-                    )}
-                    {' '}is reading
-                  </p>
-                  <p className="friend-book">{item.book}</p>
-                  {item.author && (
-                    <p className="friend-author">{item.author}</p>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Community Highlights */}
+      {/* Community Highlights */
       {/* <div className="sidebar-widget">
         <h3 className="widget-title">Community Highlights</h3>
 
