@@ -615,9 +615,9 @@ body {
 
 /* Chart */
 .chart-container {
-  height: 192px;
+  height: 200px;
   display: flex;
-  align-items: flex-end;
+  align-items: stretch;
   justify-content: space-between;
   gap: 0.5rem;
   margin-bottom: 1.5rem;
@@ -628,12 +628,12 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.5rem;
 }
 
 .chart-bar-container {
+  flex: 1;
+  min-height: 0;
   width: 100%;
-  height: 160px;
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
@@ -2037,7 +2037,7 @@ body {
 .chart-container {
   display: flex;
   gap: 1rem;
-  align-items: flex-end;
+  align-items: stretch;
   padding: 1rem 0;
   height: 200px;
 }
@@ -2051,6 +2051,7 @@ body {
 
 .chart-bar-container {
   flex: 1;
+  min-height: 0;
   display: flex;
   align-items: flex-end;
   width: 100%;
