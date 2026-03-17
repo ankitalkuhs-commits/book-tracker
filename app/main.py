@@ -90,7 +90,8 @@ async def startup_event():
         from sqlmodel import SQLModel
         from .database import engine
         from . import models  # Import models to register them
-        
+        from sqlalchemy import text
+
         print("🔄 Attempting to create database tables...")
         SQLModel.metadata.create_all(engine)
         print("✅ Database tables initialized successfully!")
@@ -98,6 +99,22 @@ async def startup_event():
         print(f"⚠️ Warning: Could not create tables (they may already exist): {e}")
         print("⚠️ Application will continue - tables should exist from previous deployment")
         # Don't crash the app - tables likely already exist
+
+    # Run column migrations that create_all won't handle (adding columns to existing tables)
+    try:
+        from .database import engine
+        from sqlalchemy import text
+        with engine.connect() as conn:
+            conn.execute(text("ALTER TABLE note ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP"))
+            conn.commit()
+            print("✅ note.updated_at column ensured.")
+    except Exception as e:
+        # SQLite doesn't support IF NOT EXISTS on ALTER TABLE — silently skip if column exists
+        err = str(e).lower()
+        if "duplicate column" in err or "already exists" in err:
+            print("ℹ️ note.updated_at already exists, skipping.")
+        else:
+            print(f"⚠️ note.updated_at migration skipped: {e}")
 
 @app.get("/")
 def root():

@@ -19,8 +19,8 @@ def migrate():
         except Exception:
             pass
 
-        # Add the column
-        conn.execute(text("ALTER TABLE note ADD COLUMN updated_at DATETIME"))
+        # Add the column (TIMESTAMP works for both SQLite and PostgreSQL)
+        conn.execute(text("ALTER TABLE note ADD COLUMN updated_at TIMESTAMP"))
         conn.commit()
         print("✅ Added 'updated_at' column to 'note' table.")
 
