@@ -72,11 +72,12 @@ body {
   gap: 1.5rem;
 }
 
+/* Large screen: icon + label side by side */
 .nav-button {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
-  gap: 2px;
+  gap: 6px;
   padding: 0.5rem 0.875rem;
   border: none;
   border-radius: 8px;
@@ -88,24 +89,47 @@ body {
 }
 
 .nav-button .icon {
-  font-size: 1.2rem;
+  font-size: 1.1rem;
   line-height: 1;
 }
 
 .nav-button .label {
-  font-size: 0.7rem;
+  display: block;
+  font-size: 0.9rem;
   font-weight: 500;
   line-height: 1;
 }
 
 .nav-button:hover {
-  background: #f7fafc;
+  background: #f0f4ff;
   color: #1a73e8;
 }
 
 .nav-button.active {
-  background: transparent;
-  color: #1a73e8;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #ffffff;
+}
+
+/* Small screen: icon above label, no filled active background */
+@media (max-width: 768px) {
+  .nav-button {
+    flex-direction: column;
+    gap: 2px;
+    padding: 0.4rem 0.6rem;
+  }
+
+  .nav-button .icon {
+    font-size: 1.2rem;
+  }
+
+  .nav-button .label {
+    font-size: 0.65rem;
+  }
+
+  .nav-button.active {
+    background: transparent;
+    color: #1a73e8;
+  }
 }
 
 .user-avatar {
