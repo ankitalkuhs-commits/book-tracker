@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import PostComposer from '../components/home/PostComposer';
 import CommunityPulseFeed from '../components/home/CommunityPulseFeed';
 import YourFriendsTab from '../components/home/YourFriendsTab';
+import CurrentlyReadingWidget from '../components/home/CurrentlyReadingWidget';
 
 export default function HomePage({ user, onRoute }) {
   const [refreshKey, setRefreshKey] = useState(0);
@@ -84,6 +85,10 @@ export default function HomePage({ user, onRoute }) {
                 </div>
               )}
               <CommunityPulseFeed key={refreshKey} currentUser={user} />
+            </div>
+            {/* Sidebar */}
+            <div className="sidebar-content">
+              <CurrentlyReadingWidget user={user} onRoute={onRoute} />
             </div>
           </div>
         ) : (
