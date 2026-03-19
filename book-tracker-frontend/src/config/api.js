@@ -31,11 +31,16 @@ export const API_ENDPOINTS = {
 export default API_BASE_URL;
 
 // Amazon Affiliate Configuration
-export const AMAZON_AFFILIATE_TAG = 'trackmyread-21';
+const AMAZON_TAG_IN = 'trackmyread-21';
+const AMAZON_TAG_COM = 'trackmyread-20';
 
 // Generate Amazon search URL with affiliate tag
-// Using amazon.com - Amazon auto-redirects to user's local store
+// Auto-detects India via timezone → amazon.in, otherwise amazon.com
 export const getAmazonBookUrl = (title, author) => {
   const searchQuery = encodeURIComponent(`${title} ${author || ''}`.trim());
-  return `https://www.amazon.com/s?k=${searchQuery}&tag=${AMAZON_AFFILIATE_TAG}`;
+  const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const isIndia = tz === 'Asia/Calcutta' || tz === 'Asia/Kolkata';
+  const domain = isIndia ? 'amazon.in' : 'amazon.com';
+  const tag = isIndia ? AMAZON_TAG_IN : AMAZON_TAG_COM;
+  return `https://www.${domain}/s?k=${searchQuery}&tag=${tag}`;
 };
