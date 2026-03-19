@@ -45,24 +45,9 @@ export default function CurrentlyReadingWidget({ user, onRoute }) {
         </div>
       ) : books.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '0.75rem 0' }}>
-          <p style={{ color: '#9CA3AF', fontSize: '0.85rem', marginBottom: '0.75rem' }}>
+          <p style={{ color: '#9CA3AF', fontSize: '0.85rem' }}>
             No books in progress
           </p>
-          <button
-            onClick={() => onRoute && onRoute('my-library')}
-            style={{
-              padding: '0.4rem 1rem',
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-              color: 'white',
-              border: 'none',
-              borderRadius: '20px',
-              fontSize: '0.8rem',
-              fontWeight: '600',
-              cursor: 'pointer',
-            }}
-          >
-            Add a book
-          </button>
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -74,9 +59,9 @@ export default function CurrentlyReadingWidget({ user, onRoute }) {
             return (
               <div key={ub.id} style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}>
                 {/* Cover */}
-                {book.cover_image ? (
+                {book.cover_url ? (
                   <img
-                    src={book.cover_image}
+                    src={book.cover_url}
                     alt={book.title}
                     style={{ width: '40px', height: '58px', objectFit: 'cover', borderRadius: '4px', flexShrink: 0 }}
                   />
