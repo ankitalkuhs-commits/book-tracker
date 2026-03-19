@@ -62,7 +62,7 @@ export default function HomeSidebar() {
         onClose={() => setIsSearchModalOpen(false)}
       />
 
-      {/* Community Highlights */
+      {/* Community Highlights */}
       {/* <div className="sidebar-widget">
         <h3 className="widget-title">Community Highlights</h3>
 
