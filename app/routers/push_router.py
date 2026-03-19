@@ -38,8 +38,10 @@ def register_push_token(
         existing.token = payload.token
         existing.updated_at = datetime.utcnow()
         db.add(existing)
+        print(f"[Push] Token updated for user {current_user.id} ({current_user.email})")
     else:
         db.add(models.PushToken(user_id=current_user.id, token=payload.token))
+        print(f"[Push] Token registered for user {current_user.id} ({current_user.email})")
 
     db.commit()
     return {"message": "Push token registered"}
@@ -58,5 +60,6 @@ def deregister_push_token(
     if existing:
         db.delete(existing)
         db.commit()
+        print(f"[Push] Token removed for user {current_user.id} ({current_user.email})")
 
     return {"message": "Push token removed"}

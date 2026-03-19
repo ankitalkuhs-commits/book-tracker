@@ -34,11 +34,12 @@ def send_push_notification(
 
     try:
         with httpx.Client(timeout=5.0) as client:
-            client.post(
+            r = client.post(
                 EXPO_PUSH_URL,
                 json=payload,
                 headers={"Accept": "application/json", "Content-Type": "application/json"},
             )
+        print(f"[Push] Sent '{title}' to {token[:30]}... — status {r.status_code}")
     except Exception as e:
         print(f"[Push] Failed to send notification: {e}")
 
@@ -68,10 +69,11 @@ def send_push_to_many(tokens: list[str], title: str, body: str, data: Optional[d
         chunk = messages[i : i + 100]
         try:
             with httpx.Client(timeout=10.0) as client:
-                client.post(
+                r = client.post(
                     EXPO_PUSH_URL,
                     json=chunk,
                     headers={"Accept": "application/json", "Content-Type": "application/json"},
                 )
+            print(f"[Push] Batch sent {len(chunk)} notification(s) — status {r.status_code}")
         except Exception as e:
             print(f"[Push] Batch send error: {e}")
