@@ -132,6 +132,15 @@ class Comment(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 
+class PushToken(SQLModel, table=True):
+    """Expo push token for a user device."""
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: int = Field(foreign_key="user.id", index=True)
+    token: str = Field(index=True)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: Optional[datetime] = None
+
+
 # class ReadingActivity(SQLModel, table=True):
 #    """User reading activity log."""
 #    id: Optional[int] = Field(default=None, primary_key=True)

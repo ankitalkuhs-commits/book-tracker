@@ -4,6 +4,7 @@ from pydantic import BaseModel
 from sqlmodel import Session, select
 from ..deps import get_db, get_current_user
 from .. import models
+from ..utils.push import send_push_notification
 
 router = APIRouter(prefix="/notes", tags=["likes-comments"])
 
@@ -83,7 +84,21 @@ def create_comment(
     db.add(comment)
     db.commit()
     db.refresh(comment)
-    
+
+    # Send push notification to note owner (skip if commenting on own post)
+    if note.user_id != current_user.id:
+        push_token_row = db.exec(
+            select(models.PushToken).where(models.PushToken.user_id == note.user_id)
+        ).first()
+        if push_token_row:
+            commenter_name = current_user.name or current_user.username or "Someone"
+            send_push_notification(
+                token=push_token_row.token,
+                title="💬 New comment on your post",
+                body=f"{commenter_name} commented: {payload.text[:80]}",
+                data={"type": "comment", "note_id": note_id},
+            )
+
     return {
         "id": comment.id,
         "text": comment.text,

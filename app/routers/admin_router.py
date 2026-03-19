@@ -11,6 +11,7 @@ from datetime import datetime, timedelta
 from ..database import get_session
 from ..deps import get_admin_user
 from .. import models
+from ..utils.push import send_push_to_many
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -375,3 +376,34 @@ def trigger_editorial_bot(
         raise HTTPException(status_code=504, detail="Bot timed out after 60 seconds")
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ─── Push notification broadcast ─────────────────────────────────────────────
+
+class BroadcastPayload(BaseModel):
+    title: str
+    body: str
+    data: dict | None = None
+
+
+@router.post("/push/broadcast")
+def broadcast_push_notification(
+    payload: BroadcastPayload,
+    db: Session = Depends(get_session),
+    admin_user=Depends(get_admin_user),
+):
+    """
+    Send a custom push notification to ALL registered devices.
+    Admin only. Use for book launches, quizzes, announcements, etc.
+    """
+    tokens = db.exec(select(models.PushToken)).all()
+    if not tokens:
+        return {"message": "No registered push tokens found", "sent_to": 0}
+
+    token_list = [t.token for t in tokens]
+    send_push_to_many(token_list, title=payload.title, body=payload.body, data=payload.data)
+
+    return {
+        "message": f"Broadcast sent to {len(token_list)} device(s)",
+        "sent_to": len(token_list),
+    }
