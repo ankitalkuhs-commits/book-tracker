@@ -21,15 +21,18 @@ from app.database import engine
 
 
 def column_exists(conn, table_name: str, column_name: str) -> bool:
-    result = conn.execute(text(f"PRAGMA table_info({table_name})"))
-    return any(row[1] == column_name for row in result)
+    result = conn.execute(text("""
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = :table AND column_name = :column
+    """), {"table": table_name, "column": column_name})
+    return result.fetchone() is not None
 
 
 def table_exists(conn, table_name: str) -> bool:
-    result = conn.execute(
-        text("SELECT name FROM sqlite_master WHERE type='table' AND name=:name"),
-        {"name": table_name}
-    )
+    result = conn.execute(text("""
+        SELECT 1 FROM information_schema.tables
+        WHERE table_name = :name
+    """), {"name": table_name})
     return result.fetchone() is not None
 
 
@@ -66,7 +69,7 @@ def run():
             print("  Creating notificationlog table ...")
             conn.execute(text("""
                 CREATE TABLE notificationlog (
-                    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                    id          SERIAL PRIMARY KEY,
                     user_id     INTEGER NOT NULL REFERENCES "user"(id),
                     actor_id    INTEGER,
                     event_type  TEXT    NOT NULL,
@@ -74,7 +77,7 @@ def run():
                     body        TEXT    NOT NULL,
                     data        TEXT,
                     is_read     INTEGER NOT NULL DEFAULT 0,
-                    sent_at     DATETIME DEFAULT CURRENT_TIMESTAMP
+                    sent_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """))
             conn.execute(text(
