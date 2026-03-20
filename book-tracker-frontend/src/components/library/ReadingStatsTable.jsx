@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { apiFetch } from '../../services/api';
 
-export default function ReadingStatsTable({ library }) {
+export default function ReadingStatsTable({ library, userStats }) {
   const [stats, setStats] = useState({
     booksThisYear: 0,
     currentlyReading: 0,
@@ -12,7 +12,8 @@ export default function ReadingStatsTable({ library }) {
   });
 
   useEffect(() => {
-    if (!library || !Array.isArray(library)) return;
+    // Skip until library has actually loaded (avoids double-fire with empty initial array)
+    if (!library || !Array.isArray(library) || library.length === 0) return;
 
     const currentYear = new Date().getFullYear();
     const booksThisYear = library.filter((ub) => {
@@ -26,12 +27,10 @@ export default function ReadingStatsTable({ library }) {
     // Fetch pages read from backend (uses reading_activity or fallback calculation)
     const fetchStats = async () => {
       try {
-        const [profile, notes] = await Promise.all([
-          apiFetch('/profile/me'),
-          apiFetch('/notes/me'),
-        ]);
-        
-        const pagesRead = profile?.stats?.total_pages_read || 0;
+        // Use pre-loaded userStats prop — avoids redundant /profile/me call
+        const pagesRead = userStats?.total_pages_read ?? userStats?.totalPagesRead ?? 0;
+
+        const notes = await apiFetch('/notes/me');
         const emotionsLogged = Array.isArray(notes) ? notes.length : 0;
         
         setStats({
@@ -64,7 +63,7 @@ export default function ReadingStatsTable({ library }) {
     };
 
     fetchStats();
-  }, [library]);
+  }, [library, userStats]);
 
   const statItems = [
     { label: 'Books This Year', value: stats.booksThisYear, icon: '📚' },

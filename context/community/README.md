@@ -1,7 +1,7 @@
 # Community Features Context
 
 **Feature Owner:** Social & Community  
-**Last Updated:** March 14, 2026
+**Last Updated:** March 19, 2026
 
 ---
 
@@ -19,14 +19,14 @@ Handles social interactions including following users, activity feeds, likes, co
 - `app/routers/profile_router.py` - User profiles and public info
 
 ### Frontend - Web
-- `book-tracker-frontend/src/pages/HomePage.jsx` - Main social feed
-- `book-tracker-frontend/src/components/Feed.jsx` - Activity feed display
-- `book-tracker-frontend/src/components/FollowPanel.jsx` - Follow suggestions
-- `book-tracker-frontend/src/components/Profile.jsx` - User profile view
+- `book-tracker-frontend/src/pages/HomePage.jsx` - Social feed, Community/Your Friends pill tab switcher (no sidebar)
 - `book-tracker-frontend/src/components/home/CommunityPulseFeed.jsx` - Community feed
-- `book-tracker-frontend/src/components/home/PulsePost.jsx` - Individual post (has `onError` image hiding)
-- `book-tracker-frontend/src/components/home/UserSearchModal.jsx` - Find users
-- `book-tracker-frontend/src/components/bookpulse/` - BookPulse specific components
+- `book-tracker-frontend/src/components/home/PulsePost.jsx` - Individual post (avatar+name always shown, `getAvatarColor()` helper)
+- `book-tracker-frontend/src/components/home/YourFriendsTab.jsx` - **NEW** Your Friends tab: Find Friends search + What Friends Are Reading
+- `book-tracker-frontend/src/components/home/HomeSidebar.jsx` - Sidebar ("What Friends Are Reading" widget removed March 2026 — redundant)
+- `book-tracker-frontend/src/components/home/UserSearchModal.jsx` - Find users modal
+- `book-tracker-frontend/src/components/shared/ModernHeader.jsx` - Nav: large screen pill icon+label row, small screen stacked icon/label
+- `book-tracker-frontend/src/bookpulse.css` - Nav responsive styles, chart overflow fix
 
 ### Frontend - Mobile
 - `book-tracker-mobile/src/screens/FeedScreen.js` - Community feed + friend search

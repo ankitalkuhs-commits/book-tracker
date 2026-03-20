@@ -151,7 +151,7 @@ function AppContent(){
       
       {/* New BookPulse Pages - Full Width */}
       {route==="home" && <HomePage user={user} onRoute={navigateToRoute} />}
-      {route==="my-library" && <LibraryPage />}
+      {route==="my-library" && <LibraryPage userStats={user?.stats} />}
       {route==="admin" && <AdminPage />}
       {route==="about" && <AboutPage onRoute={navigateToRoute} />}
       {route==="privacy" && <PrivacyPage />}

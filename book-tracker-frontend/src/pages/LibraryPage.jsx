@@ -7,7 +7,7 @@ import AddBookModal from '../components/library/AddBookModal';
 import BookDetailModal from '../components/library/BookDetailModal';
 import { apiFetch } from '../services/api';
 
-export default function LibraryPage() {
+export default function LibraryPage({ userStats }) {
   const [activeTab, setActiveTab] = useState('all');
   const [library, setLibrary] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -506,7 +506,7 @@ export default function LibraryPage() {
 
             {/* Reading Stats */}
             <div className="sidebar-widget">
-              <ReadingStatsTable library={library} />
+              <ReadingStatsTable library={library} userStats={userStats} />
             </div>
           </div>
         </div>

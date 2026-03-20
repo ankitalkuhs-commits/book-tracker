@@ -1,6 +1,6 @@
 # Book Tracker - Context Index
 
-**Last Updated:** March 14, 2026
+**Last Updated:** March 19, 2026
 
 ## Overview
 This index maps all context files for the Book Tracker project. Use this as your starting point to navigate project documentation and AI context.
@@ -51,12 +51,14 @@ This index maps all context files for the Book Tracker project. Use this as your
 - `app/routers/follow_router.py` - Follow/unfollow system
 - `app/routers/likes_comments.py` - Social interactions
 - `app/routers/journals.py` - Reading journals
-- `app/routers/notes_router.py` - Notes/posts + feed (fixed delete endpoint March 2026)
-- `book-tracker-frontend/src/pages/HomePage.jsx` - Social feed
-- `book-tracker-frontend/src/components/home/` - Community components (PulsePost has image error handling)
+- `app/routers/notes_router.py` - Notes/posts + feed
+- `book-tracker-frontend/src/pages/HomePage.jsx` - Social feed (Community/Your Friends pill tabs, no sidebar)
+- `book-tracker-frontend/src/components/home/YourFriendsTab.jsx` - **NEW** Find Friends search + What Friends Are Reading
+- `book-tracker-frontend/src/components/home/HomeSidebar.jsx` - Sidebar (friends widget removed, now empty)
+- `book-tracker-frontend/src/components/home/` - Community components
 - `book-tracker-mobile/src/screens/FeedScreen.js` - Mobile feed (PostImage component, friend search, clear button)
 - `book-tracker-mobile/src/screens/ProfileScreen.js` - Mobile profile (bio editing)
-- `book-tracker-mobile/src/services/NotificationService.js` - Daily 9PM nudge notifications (fixed March 2026)
+- `book-tracker-mobile/src/services/NotificationService.js` - Daily 9PM nudge notifications
 
 **Key Decisions:** See [community/README.md](community/README.md)
 

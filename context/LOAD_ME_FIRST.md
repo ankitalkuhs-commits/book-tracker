@@ -72,20 +72,19 @@ When user says **"wrap up"**, Claude automatically:
 ## Project Status
 
 **Current Version:** 1.0.0  
-**Last Updated:** March 14, 2026  
+**Last Updated:** March 19, 2026  
 **Active Development:** Yes
 
-**Recently Added (March 2026):**
+**Recently Added/Fixed (March 2026):**
 - Mobile app (React Native / Expo) at `book-tracker-mobile/`
-- Dev testing via EAS dev-client APK + `npx expo start --dev-client --tunnel`
-- Fixed: delete post endpoint (was admin-only, now owner/admin, was misplaced before router init)
-- Fixed: `updated_at` now returned in note responses + set on edit
-- Fixed: notification service logic — nudge now fires correctly (always reschedule on app open)
-- Fixed: bio editing on mobile ProfileScreen
-- Fixed: community feed images on mobile (PostImage + dimension check for 1×1 placeholders)
-- Fixed: library tabs show live book counts; search has clear button (mobile)
-- Fixed: feed "Following" tab renamed "Your Friends"; friend search crash fixed
-- Fixed: post timestamp shows "Edited X ago" using `updated_at`
+- Fixed: `note.updated_at` missing column in PostgreSQL — ALTER TABLE migration added to `app/main.py` startup event
+- Fixed: WeeklyPulseChart bars no longer overflow into chart title (CSS flex fix)
+- Added: "Your Friends" tab to webapp homepage (Find Friends search + What Friends Are Reading)
+- UI: Homepage Community/Your Friends tabs are now a pill switcher
+- UI: Nav buttons — large screen = icon+label side by side (pill active), small screen (≤768px) = icon above label (blue text active)
+- Removed: "What Friends Are Reading" widget from HomeSidebar (redundant with Your Friends tab)
+- Fixed: delete post endpoint (was admin-only, now owner/admin)
+- Fixed: notification service logic, bio editing, community feed images, library tabs
 
 **Tech Stack:**
 - Backend: FastAPI (Python) + SQLite (dev) / PostgreSQL (prod)
