@@ -27,8 +27,14 @@ def register_push_token(
     Register (or update) the Expo push token for the current user's device.
     Call this once after login from the mobile app.
     """
-    if not payload.token or not payload.token.startswith("ExponentPushToken"):
-        return {"message": "Invalid token format — must start with ExponentPushToken"}
+    valid_prefixes = ("ExponentPushToken", "ExpoPushToken")
+    if not payload.token or not payload.token.startswith(valid_prefixes):
+        print(
+            f"[Push] Invalid token format from user {current_user.id} ({current_user.email}): {payload.token}"
+        )
+        return {
+            "message": "Invalid token format — must start with ExponentPushToken or ExpoPushToken"
+        }
 
     existing = db.exec(
         select(models.PushToken).where(models.PushToken.user_id == current_user.id)

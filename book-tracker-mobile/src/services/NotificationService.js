@@ -26,15 +26,24 @@ export async function requestNotificationPermission() {
   }
 
   const { status: existingStatus } = await Notifications.getPermissionsAsync();
-  if (existingStatus === 'granted') return true;
+  if (existingStatus === 'granted') {
+    console.log('[Push] Notification permission already granted');
+    return true;
+  }
 
   const { status } = await Notifications.requestPermissionsAsync();
+  console.log('[Push] Notification permission result:', status);
   return status === 'granted';
 }
 
 // ─── Get Expo push token and register it with the backend ────────────────────
 export async function registerExpoPushToken(authToken) {
   try {
+    if (!authToken) {
+      console.warn('[Push] No auth token available — skipping push token registration');
+      return;
+    }
+
     const hasPermission = await requestNotificationPermission();
     if (!hasPermission) {
       console.log('[Push] Permission denied — token not registered');
@@ -50,7 +59,9 @@ export async function registerExpoPushToken(authToken) {
       return;
     }
 
-    await fetch(`${API_BASE_URL}/push-tokens/`, {
+    console.log('[Push] Expo token generated:', expoPushToken);
+
+    const response = await fetch(`${API_BASE_URL}/push-tokens/`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -59,7 +70,13 @@ export async function registerExpoPushToken(authToken) {
       body: JSON.stringify({ token: expoPushToken }),
     });
 
-    console.log('[Push] Token registered:', expoPushToken);
+    const responseText = await response.text();
+    if (!response.ok) {
+      console.warn('[Push] Backend registration failed:', response.status, responseText);
+      return;
+    }
+
+    console.log('[Push] Token registered with backend:', responseText || 'OK');
   } catch (err) {
     console.warn('[Push] Error registering push token:', err);
   }
@@ -68,11 +85,20 @@ export async function registerExpoPushToken(authToken) {
 // ─── Remove token from backend on logout ─────────────────────────────────────
 export async function deregisterPushToken(authToken) {
   try {
-    await fetch(`${API_BASE_URL}/push-tokens/`, {
+    if (!authToken) return;
+
+    const response = await fetch(`${API_BASE_URL}/push-tokens/`, {
       method: 'DELETE',
       headers: { Authorization: `Bearer ${authToken}` },
     });
-    console.log('[Push] Token deregistered');
+
+    const responseText = await response.text();
+    if (!response.ok) {
+      console.warn('[Push] Backend deregistration failed:', response.status, responseText);
+      return;
+    }
+
+    console.log('[Push] Token deregistered:', responseText || 'OK');
   } catch (err) {
     console.warn('[Push] Error deregistering push token:', err);
   }
