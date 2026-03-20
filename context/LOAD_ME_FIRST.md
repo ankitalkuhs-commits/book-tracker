@@ -72,12 +72,17 @@ When user says **"wrap up"**, Claude automatically:
 ## Project Status
 
 **Current Version:** 1.0.0  
-**Last Updated:** March 19, 2026  
+**Last Updated:** March 20, 2026  
 **Active Development:** Yes
 
 **Recently Added/Fixed (March 2026):**
 - Mobile app (React Native / Expo) at `book-tracker-mobile/`
 - Fixed: `note.updated_at` missing column in PostgreSQL — ALTER TABLE migration added to `app/main.py` startup event
+- Fixed: Push notification race condition — `handleLoginSuccess` now stores token in `authTokenRef` BEFORE calling `setIsLoggedIn(true)`
+- Fixed: Added `google-services.json` (Firebase Android config) — was missing, causing `getExpoPushTokenAsync` to silently fail
+- Fixed: `app.json` wired with `android.googleServicesFile: "./google-services.json"`
+- Added: Diagnostic logging throughout `NotificationService.js` to expose future FCM failures
+- Note: EAS build from `book-tracker-mobile/` subdirectory requires running from the sub-repo root, not the parent monorepo root
 - Fixed: WeeklyPulseChart bars no longer overflow into chart title (CSS flex fix)
 - Added: "Your Friends" tab to webapp homepage (Find Friends search + What Friends Are Reading)
 - UI: Homepage Community/Your Friends tabs are now a pill switcher

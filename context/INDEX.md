@@ -1,6 +1,6 @@
 # Book Tracker - Context Index
 
-**Last Updated:** March 19, 2026
+**Last Updated:** March 20, 2026
 
 ## Overview
 This index maps all context files for the Book Tracker project. Use this as your starting point to navigate project documentation and AI context.
@@ -58,7 +58,8 @@ This index maps all context files for the Book Tracker project. Use this as your
 - `book-tracker-frontend/src/components/home/` - Community components
 - `book-tracker-mobile/src/screens/FeedScreen.js` - Mobile feed (PostImage component, friend search, clear button)
 - `book-tracker-mobile/src/screens/ProfileScreen.js` - Mobile profile (bio editing)
-- `book-tracker-mobile/src/services/NotificationService.js` - Daily 9PM nudge notifications
+- `book-tracker-mobile/src/services/NotificationService.js` - Push token registration + daily 9PM nudge notifications; includes `registrationInProgress` + `lastRegisteredExpoToken` dedup guards and full diagnostic logging
+- `book-tracker-mobile/App.js` - Root app; `authTokenRef` + `safePushRegistration()` fix for push race condition on login
 
 **Key Decisions:** See [community/README.md](community/README.md)
 
@@ -80,6 +81,7 @@ This index maps all context files for the Book Tracker project. Use this as your
 - `migrations/` - Database migration scripts
 - Environment variables configuration
 - `book-tracker-mobile/eas.json` - EAS build profiles (development APK, preview APK, production AAB)
+- `book-tracker-mobile/google-services.json` - Firebase Android config (required for FCM push token generation)
 
 **Mobile Build Commands:**
 ```powershell

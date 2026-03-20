@@ -441,6 +441,40 @@ engine = create_engine(
 
 ---
 
+## Mobile App (EAS Build)
+
+### Build Profiles (`eas.json`)
+- `preview` → Internal APK (`buildType: "apk"`, `distribution: "internal"`) — for sideloading
+- `production` → Play Store AAB (`buildType: "app-bundle"`, `autoIncrement: true`)
+- `development` → Dev client APK (hot-reload via `npx expo start --dev-client --tunnel`)
+
+### Build Command
+**CRITICAL:** Run from the `book-tracker-mobile` sub-directory, NOT the monorepo root.
+```powershell
+Set-Location C:\Users\sonal\Documents\projects\book-tracker\book-tracker-mobile
+eas build --platform android --profile preview
+```
+
+### Firebase / FCM Setup (Android Push Notifications)
+**Required files:**
+- `book-tracker-mobile/google-services.json` — Firebase Android config (Firebase project: `trackmyread2504`, package: `com.bookpulse.mobile`)
+- `book-tracker-mobile/app.json` must include `android.googleServicesFile: "./google-services.json"`
+
+Without `google-services.json`, `getExpoPushTokenAsync()` silently fails — `POST /push-tokens/` never fires.
+
+FCM V1 service account key must also be uploaded to:
+**Expo Dashboard → Projects → book-tracker-mobile → Credentials → Android → FCM V1**
+
+### Push Token Architecture (`App.js` / `NotificationService.js`)
+- `authTokenRef` (useRef) — caches JWT token so retry `useEffect` never races against AsyncStorage
+- `registrationInProgressRef` (useRef) — in-App layer guard against concurrent calls
+- `safePushRegistration(label)` — unified push call, reads token from ref, logs label
+- `handleLoginSuccess` stores token in ref BEFORE `setIsLoggedIn(true)` (fixes silent registration miss)
+- `NotificationService.js` module-level `registrationInProgress` + `lastRegisteredExpoToken` dedup guards
+- Push backend endpoints: `POST /push-tokens/` (register), `DELETE /push-tokens/` (deregister on logout)
+
+---
+
 ## Related Context
 
 - See [../PROJECT_CONTEXT.md](../PROJECT_CONTEXT.md) for architecture
