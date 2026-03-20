@@ -11,6 +11,7 @@ from pydantic import BaseModel
 from app.models import UserBookProgress
 from app.database import get_db
 from sqlalchemy.orm import Session
+from ..notifications.dispatcher import fire_event, get_follower_ids
 
 
 router = APIRouter(prefix="/userbooks", tags=["userbooks"])
@@ -38,19 +39,25 @@ def update_progress(userbook_id: int, data: UserBookProgress, db: Session = Depe
     total_pages = book.total_pages if book and book.total_pages else None
 
     # ✅ Auto-update status based on current progress
+    _fire_completed = False
     if userbook.current_page <= 0:
         userbook.status = "to-read"
 
     elif total_pages:
         if userbook.current_page >= total_pages:
             userbook.current_page = total_pages
+            # Only fire event if this is a status transition to 'finished'
+            if userbook.status != "finished":
+                _fire_completed = True
             userbook.status = "finished"
         else:
             userbook.status = "reading"
+            _fire_completed = False
 
     else:
         # If we don't have total_pages but user started reading
         userbook.status = "reading"
+        _fire_completed = False
 
     # ✅ Always update timestamp
     userbook.updated_at = datetime.utcnow()
@@ -89,6 +96,21 @@ def update_progress(userbook_id: int, data: UserBookProgress, db: Session = Depe
     db.commit()
     db.refresh(userbook)
 
+    # Fire book_completed if status transitioned to 'finished' via progress update
+    if _fire_completed:
+        book_title = book.title if book else "a book"
+        actor = db.get(models.User, userbook.user_id)
+        if actor:
+            follower_ids = get_follower_ids(db, userbook.user_id)
+            fire_event(
+                db=db,
+                event_type="book_completed",
+                actor_id=userbook.user_id,
+                actor_name=actor.name or actor.username or "Someone",
+                recipient_ids=follower_ids,
+                extra={"book_title": book_title},
+            )
+
     return userbook
 
 @router.post("/{userbook_id}/finish", status_code=200)
@@ -117,6 +139,21 @@ def mark_userbook_finished(userbook_id: int, db: Session = Depends(get_db)):
     db.add(ub)
     db.commit()
     db.refresh(ub)
+
+    # Notify followers that this user finished a book
+    book = db.get(Book, ub.book_id) if ub.book_id else None
+    book_title = book.title if book else "a book"
+    actor = db.get(models.User, ub.user_id)
+    if actor:
+        follower_ids = get_follower_ids(db, ub.user_id)
+        fire_event(
+            db=db,
+            event_type="book_completed",
+            actor_id=ub.user_id,
+            actor_name=actor.name or actor.username or "Someone",
+            recipient_ids=follower_ids,
+            extra={"book_title": book_title},
+        )
 
     return {"ok": True, "userbook": ub}
 
@@ -177,6 +214,19 @@ def add_userbook(payload: dict, db: Session = Depends(get_db), current_user: mod
         borrowed_from=borrowed_from,
         loaned_to=loaned_to
     )
+
+    # Notify followers that this user added a book
+    follower_ids = get_follower_ids(db, current_user.id)
+    actor_name = current_user.name or current_user.username or "Someone"
+    fire_event(
+        db=db,
+        event_type="book_added",
+        actor_id=current_user.id,
+        actor_name=actor_name,
+        recipient_ids=follower_ids,
+        extra={"book_title": book.title},
+    )
+
     return {"status": "ok", "userbook": ub}
 
 
@@ -230,7 +280,25 @@ def patch_userbook(userbook_id: int, payload: dict, db: Session = Depends(get_db
     update_fields = {k: v for k, v in payload.items() if k in allowed}
     if not update_fields:
         raise HTTPException(status_code=400, detail="No valid fields to update")
+
+    old_status = ub.status
     ub = crud.update_userbook(db, ub, **update_fields)
+
+    # Notify followers when status manually changed to 'finished'
+    if update_fields.get("status") == "finished" and old_status != "finished":
+        book = db.get(Book, ub.book_id) if ub.book_id else None
+        book_title = book.title if book else "a book"
+        follower_ids = get_follower_ids(db, current_user.id)
+        actor_name = current_user.name or current_user.username or "Someone"
+        fire_event(
+            db=db,
+            event_type="book_completed",
+            actor_id=current_user.id,
+            actor_name=actor_name,
+            recipient_ids=follower_ids,
+            extra={"book_title": book_title},
+        )
+
     return {"status": "ok", "userbook": ub}
 
 

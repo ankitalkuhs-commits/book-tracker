@@ -7,7 +7,7 @@ This version matches your existing DB which uses `password_hash`.
 from typing import Optional, List
 from datetime import datetime
 from sqlmodel import Field, Relationship, SQLModel
-from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey
+from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, JSON
 from sqlalchemy.sql import func
 from .database import Base
 
@@ -133,12 +133,27 @@ class Comment(SQLModel, table=True):
 
 
 class PushToken(SQLModel, table=True):
-    """Expo push token for a user device."""
+    """Push token for a user device — supports both Expo (mobile) and Web Push (PWA)."""
     id: Optional[int] = Field(default=None, primary_key=True)
     user_id: int = Field(foreign_key="user.id", index=True)
     token: str = Field(index=True)
+    token_type: str = Field(default="expo")   # 'expo' (mobile) | 'web' (PWA browser)
+    device_info: Optional[str] = None         # e.g. 'Android 14', 'Chrome/Windows'
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: Optional[datetime] = None
+
+
+class NotificationLog(SQLModel, table=True):
+    """Record of every push notification sent — used for in-app history + unread count."""
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: int = Field(foreign_key="user.id", index=True)    # recipient
+    actor_id: Optional[int] = Field(default=None)              # who triggered it (None = system)
+    event_type: str = Field(index=True)                        # e.g. 'book_completed'
+    title: str
+    body: str
+    data: Optional[dict] = Field(default=None, sa_column=Column(JSON, nullable=True))
+    is_read: bool = Field(default=False)
+    sent_at: datetime = Field(default_factory=datetime.utcnow)
 
 
 # class ReadingActivity(SQLModel, table=True):

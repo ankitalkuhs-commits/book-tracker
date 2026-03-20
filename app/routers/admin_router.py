@@ -11,7 +11,7 @@ from datetime import datetime, timedelta
 from ..database import get_session
 from ..deps import get_admin_user
 from .. import models
-from ..utils.push import send_push_to_many
+from ..utils.push import send_push_to_many, send_push_notification_to_user
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -407,3 +407,28 @@ def broadcast_push_notification(
         "message": f"Broadcast sent to {len(token_list)} device(s)",
         "sent_to": len(token_list),
     }
+
+
+@router.post("/push/test/{user_id}")
+def test_push_notification(
+    user_id: int,
+    db: Session = Depends(get_session),
+    admin_user=Depends(get_admin_user),
+):
+    """
+    Send a test notification to a specific user.
+    Admin only. Useful for debugging push notifications.
+    """
+    user = db.get(models.User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    send_push_notification_to_user(
+        db=db,
+        user_id=user_id,
+        title="Test Notification 🔔",
+        body=f"Push notifications are working for {user.name or user.username or user.email}!",
+        data={"type": "test"}
+    )
+
+    return {"message": f"Test notification sent to user {user_id} ({user.email})"}
