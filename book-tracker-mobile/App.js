@@ -1,6 +1,6 @@
-import React, { useState, useEffect, createContext } from 'react';
+import React, { useState, useEffect, useRef, createContext } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, View, ActivityIndicator, Text, Animated, TouchableOpacity } from 'react-native';
+import { StyleSheet, View, Text, Animated, TouchableOpacity } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
@@ -15,28 +15,27 @@ import UserProfileScreen from './src/screens/UserProfileScreen';
 import SearchScreen from './src/screens/SearchScreen';
 import BookDetailScreen from './src/screens/BookDetailScreen';
 
-// Create context for preloaded data
 export const PreloadContext = createContext(null);
 
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
 
-// Library Stack (Library + Detail + Search)
+// ─── Library Stack ────────────────────────────────────────────────────────────
 function LibraryStack() {
   return (
     <Stack.Navigator>
-      <Stack.Screen 
-        name="LibraryMain" 
+      <Stack.Screen
+        name="LibraryMain"
         component={LibraryScreen}
         options={{ headerShown: false }}
       />
-      <Stack.Screen 
-        name="BookDetail" 
+      <Stack.Screen
+        name="BookDetail"
         component={BookDetailScreen}
         options={{ title: 'Book Details' }}
       />
-      <Stack.Screen 
-        name="Search" 
+      <Stack.Screen
+        name="Search"
         component={SearchScreen}
         options={{ title: 'Search Books' }}
       />
@@ -44,22 +43,22 @@ function LibraryStack() {
   );
 }
 
-// Home Stack (for future comment/detail screens)
+// ─── Home Stack ───────────────────────────────────────────────────────────────
 function HomeStack() {
   return (
     <Stack.Navigator>
-      <Stack.Screen 
-        name="HomeMain" 
+      <Stack.Screen
+        name="HomeMain"
         component={FeedScreen}
         options={{ headerShown: false }}
       />
-      <Stack.Screen 
-        name="UserProfile" 
+      <Stack.Screen
+        name="UserProfile"
         component={UserProfileScreen}
         options={{ title: 'User Profile' }}
       />
-      <Stack.Screen 
-        name="BookDetail" 
+      <Stack.Screen
+        name="BookDetail"
         component={BookDetailScreen}
         options={{ title: 'Book Details' }}
       />
@@ -67,7 +66,7 @@ function HomeStack() {
   );
 }
 
-// Main App Tabs
+// ─── Main Tabs ────────────────────────────────────────────────────────────────
 function MainTabs({ onLogout }) {
   return (
     <Tab.Navigator
@@ -86,43 +85,43 @@ function MainTabs({ onLogout }) {
         },
       }}
     >
-      <Tab.Screen 
-        name="Home" 
+      <Tab.Screen
+        name="Home"
         component={HomeStack}
         options={{
           tabBarLabel: 'Home',
           tabBarIcon: ({ color, size, focused }) => (
-            <Ionicons 
-              name={focused ? 'home' : 'home-outline'} 
-              size={size} 
-              color={focused ? color : '#666'} 
+            <Ionicons
+              name={focused ? 'home' : 'home-outline'}
+              size={size}
+              color={focused ? color : '#666'}
             />
           ),
         }}
       />
-      <Tab.Screen 
-        name="Library" 
+      <Tab.Screen
+        name="Library"
         component={LibraryStack}
         options={{
           tabBarLabel: 'Library',
           tabBarIcon: ({ color, size, focused }) => (
-            <Ionicons 
-              name={focused ? 'library' : 'library-outline'} 
-              size={size} 
-              color={focused ? color : '#666'} 
+            <Ionicons
+              name={focused ? 'library' : 'library-outline'}
+              size={size}
+              color={focused ? color : '#666'}
             />
           ),
         }}
       />
-      <Tab.Screen 
+      <Tab.Screen
         name="Profile"
         options={{
           tabBarLabel: 'Profile',
           tabBarIcon: ({ color, size, focused }) => (
-            <Ionicons 
-              name={focused ? 'person' : 'person-outline'} 
-              size={size} 
-              color={focused ? color : '#666'} 
+            <Ionicons
+              name={focused ? 'person' : 'person-outline'}
+              size={size}
+              color={focused ? color : '#666'}
             />
           ),
         }}
@@ -133,14 +132,20 @@ function MainTabs({ onLogout }) {
   );
 }
 
+// ─── Root App ─────────────────────────────────────────────────────────────────
 export default function App() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [slideIndex, setSlideIndex] = useState(0);
+  const [isLoggedIn, setIsLoggedIn]       = useState(false);
+  const [loading, setLoading]             = useState(true);
+  const [error, setError]                 = useState(null);
+  const [slideIndex, setSlideIndex]       = useState(0);
   const [preloadedFeed, setPreloadedFeed] = useState(null);
   const [preloadedData, setPreloadedData] = useState({ library: null, profile: null, feed: null });
   const fadeAnim = useState(new Animated.Value(1))[0];
+
+  // ── FIX: Auth token stored in a ref so retry useEffect always has the
+  //    latest value without racing against AsyncStorage writes.
+  const authTokenRef               = useRef(null);
+  const registrationInProgressRef  = useRef(false);
 
   const slides = [
     { icon: '📚', text: 'Track your reading journey' },
@@ -149,105 +154,160 @@ export default function App() {
     { icon: '❤️', text: 'Share your reading moments' },
   ];
 
-  // Check if user is logged in on app start
+  // ── Safe push registration ─────────────────────────────────────────────────
+  // Always reads from authTokenRef (never calls authAPI.getToken() again),
+  // and blocks concurrent calls with registrationInProgressRef.
+  const safePushRegistration = async (label = '') => {
+    if (registrationInProgressRef.current) {
+      console.log(`[App][${label}] Push registration already in progress — skipping`);
+      return;
+    }
+    const token = authTokenRef.current;
+    if (!token) {
+      console.warn(`[App][${label}] No auth token in ref — skipping push registration`);
+      return;
+    }
+    registrationInProgressRef.current = true;
+    console.log(`[App][${label}] Triggering push registration`);
+    try {
+      await registerExpoPushToken(token);
+    } catch (err) {
+      console.warn(`[App][${label}] Push registration error:`, err);
+    } finally {
+      registrationInProgressRef.current = false;
+    }
+  };
+
+  // ── App start ─────────────────────────────────────────────────────────────
   useEffect(() => {
     checkLoginStatus();
   }, []);
 
-  // Auto-advance slides during loading (keeps cycling even if auth takes long)
+  // ── Slide carousel animation ───────────────────────────────────────────────
   useEffect(() => {
     if (!loading) return;
-
     const interval = setInterval(() => {
-      // Fade out
       Animated.timing(fadeAnim, {
         toValue: 0,
         duration: 300,
         useNativeDriver: true,
       }).start(() => {
-        // Change slide
         setSlideIndex((prev) => (prev + 1) % slides.length);
-        // Fade in
         Animated.timing(fadeAnim, {
           toValue: 1,
           duration: 300,
           useNativeDriver: true,
         }).start();
       });
-    }, 1200); // Change slide every 1.2 seconds - keeps cycling indefinitely
-
+    }, 1200);
     return () => clearInterval(interval);
   }, [loading]);
 
-  // Timeout handler - if loading takes more than 20 seconds, show error
+  // ── 20s connection timeout ─────────────────────────────────────────────────
   useEffect(() => {
     if (!loading) return;
-
     const timeout = setTimeout(() => {
       if (loading) {
         setError('Connection timeout. Please check your internet and try again.');
         setLoading(false);
       }
-    }, 20000); // 20 second timeout
-
+    }, 20000);
     return () => clearTimeout(timeout);
   }, [loading]);
 
+  // ── Post-login push retries ────────────────────────────────────────────────
+  // FIX: authTokenRef is populated before setIsLoggedIn(true) in both login
+  // paths, so these retries are guaranteed to find a valid token.
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    let cancelled = false;
+
+    const retry1 = setTimeout(() => {
+      if (!cancelled) safePushRegistration('retry@3s');
+    }, 3000);
+
+    const retry2 = setTimeout(() => {
+      if (!cancelled) safePushRegistration('retry@10s');
+    }, 10000);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(retry1);
+      clearTimeout(retry2);
+    };
+  }, [isLoggedIn]);
+
+  // ── Initial auth check + data preload ─────────────────────────────────────
   const checkLoginStatus = async () => {
     const startTime = Date.now();
-    
     try {
-      // First check auth status
       const loggedIn = await authAPI.isLoggedIn();
-      
-      if (loggedIn) {
-        // User is logged in - preload library, profile, and logged-in feed
-        const token = await authAPI.getToken();
-        registerExpoPushToken(token).catch(err => console.warn('Push token error:', err));
 
-        const headers = { 
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
+      if (loggedIn) {
+        // Store token in ref BEFORE registration or any state change
+        const token = await authAPI.getToken();
+        authTokenRef.current = token;
+        console.log('[App] Startup: auth token present:', !!token);
+
+        safePushRegistration('startup');
+
+        const headers = {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
         };
-        
+
         const [library, profile, feed] = await Promise.all([
           fetch('https://book-tracker-backend-0hiz.onrender.com/userbooks/', { headers })
-            .then(res => res.json())
-            .catch(() => null),
+            .then((res) => res.json()).catch(() => null),
           fetch('https://book-tracker-backend-0hiz.onrender.com/profile/me', { headers })
-            .then(res => res.json())
-            .catch(() => null),
+            .then((res) => res.json()).catch(() => null),
           fetch('https://book-tracker-backend-0hiz.onrender.com/notes/feed?limit=50', { headers })
-            .then(res => res.json())
-            .catch(() => null)
+            .then((res) => res.json()).catch(() => null),
         ]);
-        
+
         setPreloadedData({ library, profile, feed });
       } else {
-        // User not logged in - preload public feed only
-        const feedData = await fetch('https://book-tracker-backend-0hiz.onrender.com/notes/feed?limit=10')
-          .then(res => res.json())
-          .catch(() => []);
-        
+        const feedData = await fetch(
+          'https://book-tracker-backend-0hiz.onrender.com/notes/feed?limit=10'
+        ).then((res) => res.json()).catch(() => []);
         setPreloadedFeed(feedData);
       }
-      
-      // Ensure minimum splash time of 4.8 seconds to show all 4 slides (4 × 1.2s)
-      const elapsedTime = Date.now() - startTime;
-      const minDisplayTime = 4800; // 4.8 seconds - guarantees full cycle through all slides
-      const remainingTime = Math.max(0, minDisplayTime - elapsedTime);
-      
+
+      // Minimum 4.8s splash (4 slides × 1.2s each)
+      const remaining = Math.max(0, 4800 - (Date.now() - startTime));
       setTimeout(() => {
         setIsLoggedIn(loggedIn);
         setLoading(false);
-      }, remainingTime);
-      
+      }, remaining);
+
     } catch (err) {
-      // Immediate network error - no point showing carousel
-      console.error('Auth check failed:', err);
+      console.error('[App] Auth check failed:', err);
       setError('Unable to connect. Please check your internet connection.');
       setLoading(false);
     }
+  };
+
+  // ── Fresh login ────────────────────────────────────────────────────────────
+  // FIX: Token stored in ref FIRST, then setIsLoggedIn(true).
+  // Old code flipped isLoggedIn before the token was ready, so the retry
+  // useEffect fired with authTokenRef still null → silent registration miss.
+  const handleLoginSuccess = async () => {
+    const token = await authAPI.getToken();
+    authTokenRef.current = token;
+    console.log('[App] handleLoginSuccess: auth token present:', !!token);
+
+    setIsLoggedIn(true); // safe — ref is populated before retries can fire
+
+    safePushRegistration('login');
+  };
+
+  // ── Logout ─────────────────────────────────────────────────────────────────
+  const handleLogout = async () => {
+    const token = authTokenRef.current || (await authAPI.getToken());
+    if (token) deregisterPushToken(token).catch(() => {});
+    authTokenRef.current = null;
+    await authAPI.logout();
+    setIsLoggedIn(false);
   };
 
   const handleRetry = () => {
@@ -259,20 +319,7 @@ export default function App() {
     checkLoginStatus();
   };
 
-  const handleLoginSuccess = async () => {
-    setIsLoggedIn(true);
-    const token = await authAPI.getToken();
-    registerExpoPushToken(token).catch(err => console.warn('Push token error:', err));
-  };
-
-  const handleLogout = async () => {
-    const token = await authAPI.getToken();
-    if (token) deregisterPushToken(token).catch(() => {});
-    await authAPI.logout();
-    setIsLoggedIn(false);
-  };
-
-  // Error state - show error with retry option
+  // ── Error screen ───────────────────────────────────────────────────────────
   if (error) {
     return (
       <View style={styles.errorContainer}>
@@ -286,32 +333,23 @@ export default function App() {
     );
   }
 
-  // Loading state - show onboarding carousel (cycles indefinitely until auth completes or times out)
-
+  // ── Splash screen ──────────────────────────────────────────────────────────
   if (loading) {
     const currentSlide = slides[slideIndex];
-    
     return (
       <View style={styles.splashContainer}>
         <View style={styles.splashContent}>
           <Text style={styles.splashLogo}>📚</Text>
           <Text style={styles.splashTitle}>TrackMyRead</Text>
-          
-          {/* Animated Feature Slide */}
           <Animated.View style={[styles.featureSlide, { opacity: fadeAnim }]}>
             <Text style={styles.featureIcon}>{currentSlide.icon}</Text>
             <Text style={styles.featureText}>{currentSlide.text}</Text>
           </Animated.View>
-          
-          {/* Slide Indicators */}
           <View style={styles.indicators}>
             {slides.map((_, index) => (
               <View
                 key={index}
-                style={[
-                  styles.indicator,
-                  index === slideIndex && styles.indicatorActive,
-                ]}
+                style={[styles.indicator, index === slideIndex && styles.indicatorActive]}
               />
             ))}
           </View>
@@ -320,6 +358,7 @@ export default function App() {
     );
   }
 
+  // ── Main app ───────────────────────────────────────────────────────────────
   return (
     <NavigationContainer>
       <View style={styles.container}>
