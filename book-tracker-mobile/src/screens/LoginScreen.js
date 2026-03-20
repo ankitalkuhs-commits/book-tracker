@@ -178,13 +178,7 @@ export default function LoginScreen({ onLoginSuccess, preloadedFeed }) {
               )}
 
               {/* Post Image */}
-              {post.image_url && (
-                <Image 
-                  source={{ uri: post.image_url }} 
-                  style={styles.postImage}
-                  resizeMode="cover"
-                />
-              )}
+              <PostImage uri={post.image_url} style={styles.postImage} />
 
               {/* Quote */}
               {post.quote && (
@@ -354,7 +348,6 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 250,
     borderRadius: 8,
-    backgroundColor: '#e0e0e0',
     marginBottom: 12,
   },
   quoteContainer: {
