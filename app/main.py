@@ -89,6 +89,9 @@ app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 @app.on_event("startup")
 async def startup_event():
     """Initialize database tables on application startup"""
+    # Start the daily inactivity reminder scheduler
+    from .notifications.scheduler import start_scheduler
+    start_scheduler()
     try:
         from sqlmodel import SQLModel
         from .database import engine
@@ -118,6 +121,11 @@ async def startup_event():
             print("ℹ️ note.updated_at already exists, skipping.")
         else:
             print(f"⚠️ note.updated_at migration skipped: {e}")
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    from .notifications.scheduler import stop_scheduler
+    stop_scheduler()
 
 @app.get("/")
 def root():

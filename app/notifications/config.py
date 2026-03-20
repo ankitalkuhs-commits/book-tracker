@@ -57,12 +57,12 @@ NOTIFICATION_EVENTS: dict[str, dict] = {
     #     "daily_cap": False,
     # },
 
-    # "reading_streak_reminder": {
-    #     "title": "Keep your streak alive! 🔥",
-    #     "body": "You haven't logged any reading today. Even 5 pages counts!",
-    #     "is_active": True,
-    #     "daily_cap": True,
-    # },
+    "reading_streak_reminder": {
+        "title": "Keep your streak alive! 🔥",
+        "body": "You haven't logged any reading today. Even 5 pages counts!",
+        "is_active": True,
+        "daily_cap": True,
+    },
 
     # "book_recommended": {
     #     "title": "{actor} recommended a book 💡",

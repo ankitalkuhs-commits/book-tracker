@@ -75,6 +75,15 @@ def get_current_user(
     if user is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
 
+    # Touch last_active once per day — keeps the inactivity reminder accurate
+    # (login only updates it on re-auth; this covers users with existing sessions)
+    from datetime import datetime as _dt
+    today = _dt.utcnow().date()
+    if user.last_active is None or user.last_active.date() < today:
+        user.last_active = _dt.utcnow()
+        db.add(user)
+        db.commit()
+
     return user
 
 
