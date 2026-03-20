@@ -78,6 +78,8 @@ When user says **"wrap up"**, Claude automatically:
 **Recently Added/Fixed (March 2026):**
 - Mobile app (React Native / Expo) at `book-tracker-mobile/`
 - Fixed: `note.updated_at` missing column in PostgreSQL — ALTER TABLE migration added to `app/main.py` startup event
+- **GOTCHA (repeated multiple times):** Migration scripts must use `information_schema` NOT `sqlite_master`/`PRAGMA` — production is PostgreSQL, dev is SQLite. See `context/deployment/README.md` for the correct pattern.
+- Added: Event-driven notification system (`app/notifications/`) — `fire_event()` dispatcher, mobile (Expo) + PWA (VAPID) dual-channel, `NotificationLog` table, admin toggle endpoints
 - Fixed: Push notification race condition — `handleLoginSuccess` now stores token in `authTokenRef` BEFORE calling `setIsLoggedIn(true)`
 - Fixed: Added `google-services.json` (Firebase Android config) — was missing, causing `getExpoPushTokenAsync` to silently fail
 - Fixed: `app.json` wired with `android.googleServicesFile: "./google-services.json"`

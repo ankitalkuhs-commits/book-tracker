@@ -71,6 +71,67 @@ def migrate():
         session.commit()
 ```
 
+---
+
+## ⚠️ CRITICAL: SQLite vs PostgreSQL Migration Differences
+
+**This has caused bugs multiple times. Read before writing any migration.**
+
+Dev uses SQLite. Production (Render) uses PostgreSQL. They have different SQL dialects.
+
+### Table/column existence checks
+
+```python
+# ❌ WRONG — sqlite_master does NOT exist in PostgreSQL
+conn.execute(text("SELECT name FROM sqlite_master WHERE type='table' AND name=:name"), {"name": table_name})
+conn.execute(text(f"PRAGMA table_info({table_name})"))  # SQLite only
+
+# ✅ CORRECT — information_schema works on BOTH SQLite and PostgreSQL
+def table_exists(conn, table_name: str) -> bool:
+    result = conn.execute(text("""
+        SELECT 1 FROM information_schema.tables
+        WHERE table_name = :name
+    """), {"name": table_name})
+    return result.fetchone() is not None
+
+def column_exists(conn, table_name: str, column_name: str) -> bool:
+    result = conn.execute(text("""
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = :table AND column_name = :column
+    """), {"table": table_name, "column": column_name})
+    return result.fetchone() is not None
+```
+
+### CREATE TABLE syntax
+
+```sql
+-- ❌ WRONG (SQLite only)
+CREATE TABLE foo (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ✅ CORRECT (PostgreSQL / Render)
+CREATE TABLE foo (
+    id SERIAL PRIMARY KEY,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+### Summary cheatsheet
+
+| Operation | SQLite (local) | PostgreSQL (Render) | Use this |
+|---|---|---|---|
+| Auto-increment PK | `INTEGER PRIMARY KEY AUTOINCREMENT` | `SERIAL PRIMARY KEY` | `SERIAL` |
+| Datetime type | `DATETIME` | `TIMESTAMP` | `TIMESTAMP` |
+| Table exists? | `sqlite_master` | `information_schema.tables` | `information_schema` |
+| Column exists? | `PRAGMA table_info()` | `information_schema.columns` | `information_schema` |
+| Boolean | `INTEGER (0/1)` | `BOOLEAN` | `INTEGER` (SQLModel handles it) |
+
+**Rule:** Never use `sqlite_master`, `PRAGMA`, or `AUTOINCREMENT` in migration scripts. Always use `information_schema`.
+
+---
+
 ### 3. Environment Variables
 **Decision:** Use `.env` file for local, env vars for production  
 **Why:**
