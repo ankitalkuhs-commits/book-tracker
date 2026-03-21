@@ -76,14 +76,17 @@ function AppContent(){
     if (!localStorage.getItem('bt_token')) return;
     try {
       const reg = await navigator.serviceWorker.ready;
+
+      // Always get a fresh subscription
       let sub = await reg.pushManager.getSubscription();
-      if (!sub) {
-        const { vapid_public_key } = await apiFetch('/notifications/vapid-public-key');
-        sub = await reg.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey: urlBase64ToUint8Array(vapid_public_key),
-        });
-      }
+      if (sub) await sub.unsubscribe();
+
+      const { vapid_public_key } = await apiFetch('/notifications/vapid-public-key');
+      sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(vapid_public_key),
+      });
+
       await apiFetch('/notifications/web-subscribe', {
         method: 'POST',
         body: JSON.stringify({
