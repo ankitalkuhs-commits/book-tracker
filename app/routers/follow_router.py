@@ -5,7 +5,7 @@ from sqlmodel import Session
 from ..database import get_session
 from ..deps import get_current_user
 from .. import models
-from ..utils.push import send_push_notification_to_user
+from ..notifications.dispatcher import fire_event
 
 router = APIRouter(prefix="/follow", tags=["follow"])
 
@@ -35,12 +35,12 @@ def follow_user(followed_id: int, db: Session = Depends(get_session), user = Dep
     
     # Send push notification to the followed user
     follower_name = user.name or user.username or "Someone"
-    send_push_notification_to_user(
+    fire_event(
         db=db,
-        user_id=followed_id,
-        title="New Follower 👥",
-        body=f"{follower_name} started following you",
-        data={"type": "follow", "userId": user.id}
+        event_type="new_follower",
+        actor_id=user.id,
+        actor_name=follower_name,
+        recipient_ids=[followed_id],
     )
     
     return {
