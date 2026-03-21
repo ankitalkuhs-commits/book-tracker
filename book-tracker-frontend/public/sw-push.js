@@ -1,5 +1,10 @@
 self.addEventListener('push', event => {
-  const data = event.data ? event.data.json() : {};
+  let data = {};
+  try {
+    data = event.data ? event.data.json() : {};
+  } catch (e) {
+    data = { title: 'TrackMyRead', body: event.data ? event.data.text() : '' };
+  }
   const title = data.title || 'TrackMyRead';
   const options = {
     body: data.body || '',
