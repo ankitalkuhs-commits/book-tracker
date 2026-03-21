@@ -14,6 +14,24 @@ import {
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { authAPI } from '../services/api';
 
+// Hides itself when the image URL fails to load or resolves to a tiny placeholder.
+const PostImage = ({ uri, style }) => {
+  const [failed, setFailed] = useState(false);
+  if (failed || !uri) return null;
+  return (
+    <Image
+      source={{ uri }}
+      style={style}
+      resizeMode="contain"
+      onError={() => setFailed(true)}
+      onLoad={(e) => {
+        const { width, height } = e.nativeEvent.source;
+        if (width <= 1 || height <= 1) setFailed(true);
+      }}
+    />
+  );
+};
+
 export default function LoginScreen({ onLoginSuccess, preloadedFeed }) {
   const [loading, setLoading] = useState(false);
   const [publicPosts, setPublicPosts] = useState(preloadedFeed || []);
