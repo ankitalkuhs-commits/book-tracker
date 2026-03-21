@@ -76,24 +76,18 @@ function AppContent(){
     if (!localStorage.getItem('bt_token')) return;
     try {
       const reg = await navigator.serviceWorker.ready;
-
-      // Always get a fresh subscription
       let sub = await reg.pushManager.getSubscription();
-      if (sub) await sub.unsubscribe();
-
-      const { public_key } = await apiFetch('/notifications/vapid-public-key');
-      sub = await reg.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(public_key),
-      });
-
-      await apiFetch('/notifications/web-subscribe', {
-        method: 'POST',
-        body: JSON.stringify({
-          subscription: sub.toJSON(),
-          device_info: 'Chrome/Web',
-        }),
-      });
+      if (!sub) {
+        const { public_key } = await apiFetch('/notifications/vapid-public-key');
+        sub = await reg.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(public_key),
+        });
+        await apiFetch('/notifications/web-subscribe', {
+          method: 'POST',
+          body: JSON.stringify({ subscription: sub.toJSON(), device_info: 'Chrome/Web' }),
+        });
+      }
     } catch (err) {
       console.warn('Web push registration failed:', err);
     }
