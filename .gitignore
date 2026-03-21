@@ -45,3 +45,10 @@ uploads/profile_pictures/*
 # Backup files
 *.bak
 *.backup
+
+# Sensitive credentials — never commit these
+firebase-service-account.json
+*-service-account.json
+private_key.pem
+public_key.pem
+*.pem
