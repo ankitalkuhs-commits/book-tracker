@@ -81,10 +81,10 @@ function AppContent(){
       let sub = await reg.pushManager.getSubscription();
       if (sub) await sub.unsubscribe();
 
-      const { vapid_public_key } = await apiFetch('/notifications/vapid-public-key');
+      const { public_key } = await apiFetch('/notifications/vapid-public-key');
       sub = await reg.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(vapid_public_key),
+        applicationServerKey: urlBase64ToUint8Array(public_key),
       });
 
       await apiFetch('/notifications/web-subscribe', {
