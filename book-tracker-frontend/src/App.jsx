@@ -64,10 +64,43 @@ function AppContent(){
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, []);
 
+  function urlBase64ToUint8Array(base64String) {
+    const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+    const rawData = window.atob(base64);
+    return Uint8Array.from([...rawData].map(c => c.charCodeAt(0)));
+  }
+
+  async function registerWebPush() {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+    if (!localStorage.getItem('bt_token')) return;
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      let sub = await reg.pushManager.getSubscription();
+      if (!sub) {
+        const { vapid_public_key } = await apiFetch('/notifications/vapid-public-key');
+        sub = await reg.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(vapid_public_key),
+        });
+      }
+      await apiFetch('/notifications/web-subscribe', {
+        method: 'POST',
+        body: JSON.stringify({
+          subscription: sub.toJSON(),
+          device_info: 'Chrome/Web',
+        }),
+      });
+    } catch (err) {
+      console.warn('Web push registration failed:', err);
+    }
+  }
+
   async function loadCurrentUser() {
     try {
       const userData = await apiFetch("/profile/me");
       setUser(userData);
+      registerWebPush();
     } catch (error) {
       console.error('Error loading user:', error);
       // If token is invalid, clear it
