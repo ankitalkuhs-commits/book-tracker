@@ -11,7 +11,8 @@ from datetime import datetime, timedelta
 from ..database import get_session
 from ..deps import get_admin_user
 from .. import models
-from ..utils.push import send_push_to_many, send_push_notification_to_user
+from ..utils.push import send_push_to_many
+from ..notifications.dispatcher import fire_event
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -423,12 +424,12 @@ def test_push_notification(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    send_push_notification_to_user(
+    fire_event(
         db=db,
-        user_id=user_id,
-        title="Test Notification 🔔",
-        body=f"Push notifications are working for {user.name or user.username or user.email}!",
-        data={"type": "test"}
+        event_type="new_follower",
+        actor_id=0,
+        actor_name="TrackMyRead",
+        recipient_ids=[user_id],
     )
 
     return {"message": f"Test notification sent to user {user_id} ({user.email})"}

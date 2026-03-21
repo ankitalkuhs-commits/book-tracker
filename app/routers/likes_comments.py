@@ -5,6 +5,7 @@ from sqlmodel import Session, select
 from ..deps import get_db, get_current_user
 from .. import models
 from ..utils.push import send_push_notification_to_user
+from ..notifications.dispatcher import fire_event
 
 router = APIRouter(prefix="/notes", tags=["likes-comments"])
 
@@ -39,12 +40,12 @@ def like_note(
     # Send push notification to note owner (skip if liking own post)
     if note.user_id != current_user.id:
         liker_name = current_user.name or current_user.username or "Someone"
-        send_push_notification_to_user(
+        fire_event(
             db=db,
-            user_id=note.user_id,
-            title="New Like ❤️",
-            body=f"{liker_name} liked your note",
-            data={"type": "like", "noteId": note_id}
+            event_type="post_liked",
+            actor_id=current_user.id,
+            actor_name=liker_name,
+            recipient_ids=[note.user_id],
         )
     
     return {"message": "Liked", "liked": True}
