@@ -59,24 +59,24 @@ def web_subscribe(
     """Register a PWA (browser) push subscription for the current user."""
     token_str = json.dumps(payload.subscription)
 
-    # Avoid duplicate registrations for the same endpoint
-    existing = db.exec(
+    # Remove all existing web tokens for this user (replace, don't duplicate)
+    existing_tokens = db.exec(
         select(models.PushToken).where(
             models.PushToken.user_id == current_user.id,
-            models.PushToken.token == token_str,
             models.PushToken.token_type == "web",
         )
-    ).first()
+    ).all()
+    for t in existing_tokens:
+        db.delete(t)
 
-    if not existing:
-        db.add(models.PushToken(
-            user_id=current_user.id,
-            token=token_str,
-            token_type="web",
-            device_info=payload.device_info,
-        ))
-        db.commit()
-        print(f"[Push:Web] PWA subscription registered for user {current_user.id}")
+    db.add(models.PushToken(
+        user_id=current_user.id,
+        token=token_str,
+        token_type="web",
+        device_info=payload.device_info,
+    ))
+    db.commit()
+    print(f"[Push:Web] PWA subscription registered for user {current_user.id}")
 
     return {"message": "Web push subscription registered"}
 
