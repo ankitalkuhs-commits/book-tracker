@@ -1,7 +1,24 @@
 # Community Features Context
 
 **Feature Owner:** Social & Community  
-**Last Updated:** March 19, 2026
+**Last Updated:** March 21, 2026
+
+---
+
+## Push Notification Architecture — CRITICAL
+
+**All push notifications MUST use `fire_event` from `app/notifications/dispatcher.py`.**  
+Never use `send_push_notification_to_user` from `utils/push.py` — it blindly sends all tokens to Expo's API, which rejects web push subscription JSON (`{"endpoint": "https://..."}`), causing `Invalid push token` errors.
+
+| Router | Event type | Status |
+|---|---|---|
+| `follow_router.py` | `new_follower` | ✅ Uses `fire_event` (fixed March 21) |
+| `likes_comments.py` | `post_liked` | ✅ Uses `fire_event` (fixed March 21) |
+| `likes_comments.py` | comment (unused) | ⚠️ Still uses old util — comments not live yet |
+| `admin_router.py` | test push | ✅ Uses `fire_event` (fixed March 21) |
+| `admin_router.py` | broadcast | ⚠️ Still uses `send_push_to_many` — will fail for web users |
+| `userbooks_router.py` | `book_completed`, `book_added` | ✅ Uses `fire_event` |
+| `books_router.py` | `book_added` | ✅ Uses `fire_event` |
 
 ---
 
@@ -26,7 +43,7 @@ Handles social interactions including following users, activity feeds, likes, co
 - `book-tracker-frontend/src/components/home/HomeSidebar.jsx` - Sidebar ("What Friends Are Reading" widget removed March 2026 — redundant)
 - `book-tracker-frontend/src/components/home/UserSearchModal.jsx` - Find users modal
 - `book-tracker-frontend/src/components/shared/ModernHeader.jsx` - Nav: large screen pill icon+label row, small screen stacked icon/label
-- `book-tracker-frontend/src/bookpulse.css` - Nav responsive styles, chart overflow fix
+- `book-tracker-frontend/src/bookpulse.css` - Nav responsive styles, chart overflow fix; `.post-image` background removed to avoid gray-box flash
 
 ### Frontend - Mobile
 - `book-tracker-mobile/src/screens/FeedScreen.js` - Community feed + friend search

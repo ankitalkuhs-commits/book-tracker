@@ -71,13 +71,24 @@ When user says **"wrap up"**, Claude automatically:
 
 ## Project Status
 
-**Current Version:** 1.0.0  
-**Last Updated:** March 20, 2026  
+**Current Version:** 1.1.0
+**Last Updated:** March 21, 2026  
 **Active Development:** Yes
 
-**Recently Added/Fixed (March 2026):**
-- Mobile app (React Native / Expo) at `book-tracker-mobile/`
-- Fixed: `note.updated_at` missing column in PostgreSQL — ALTER TABLE migration added to `app/main.py` startup event
+**Recently Added/Fixed (March 21, 2026):**
+- Fixed: Web push (PWA) notifications fully working ✅ — `registerWebPush()` added to `App.jsx`, called automatically post-login via `loadCurrentUser()`
+- Fixed: ROOT CAUSE of `Invalid push token` — `follow_router.py` was using old `send_push_notification_to_user` (sends all tokens to Expo API, which rejects web push JSON). Fixed by switching to `fire_event` dispatcher which routes Expo tokens → Expo API and web tokens → pywebpush correctly
+- Fixed: Same pattern in `likes_comments.py` (like notification) and `admin_router.py` (test push endpoint) — all now use `fire_event` dispatcher
+- Fixed: `POST /notifications/web-subscribe` payload format — now sends `{subscription: sub.toJSON(), device_info: 'Chrome/Web'}` not raw `sub.toJSON()`
+- Fixed: `vapid_public_key` → `public_key` field name mismatch between backend response and frontend destructuring
+- Fixed: Backend `web_subscribe` now replaces all existing web tokens for user (prevents stale token accumulation)
+- Fixed: `versionCode` field in `app.json` warning (EAS remote versioning ignores this value)
+- Built: Android AAB v1.1.0 (versionCode 44) — logo change, submitted to Play Store
+- **CRITICAL PATTERN:** Always use `fire_event` from `app/notifications/dispatcher.py` for ALL push notifications. Never use the old `send_push_notification_to_user` from `utils/push.py` — it blindly sends all tokens (including web push subscriptions) to Expo's API which rejects them
+- Note: `broadcast_push_notification` in `admin_router.py` still uses `send_push_to_many` — will break for web push users if admin broadcasts. Needs separate fix.
+- Note: `book-tracker-frontend` Vercel project is a dead duplicate (No Production Deployment since Nov 2025) — delete it from Vercel dashboard to reduce noise
+- Fixed: Web feed no longer shows empty gray box for posts with null `image_url` — removed `.post-image` background, added `'null'` string guard and tiny-image `onLoad` check in `PulsePost.jsx`
+- Fixed: Mobile push notifications fully working ✅ — `google-services.json` added, race condition fixed in `App.js`, `fire_event("book_added")` added to `books_router.py`, FCM V1 key uploaded to Expo dashboard. Verified end-to-end March 21.
 - **GOTCHA (repeated multiple times):** Migration scripts must use `information_schema` NOT `sqlite_master`/`PRAGMA` — production is PostgreSQL, dev is SQLite. See `context/deployment/README.md` for the correct pattern.
 - Added: Event-driven notification system (`app/notifications/`) — `fire_event()` dispatcher, mobile (Expo) + PWA (VAPID) dual-channel, `NotificationLog` table, admin toggle endpoints
 - Fixed: Push notification race condition — `handleLoginSuccess` now stores token in `authTokenRef` BEFORE calling `setIsLoggedIn(true)`
