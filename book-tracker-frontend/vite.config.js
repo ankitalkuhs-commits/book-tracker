@@ -36,6 +36,7 @@ export default defineConfig({
         ],
       },
       workbox: {
+        importScripts: ['/sw-push.js'],
         // Don't cache API calls — always fetch fresh from network
         navigateFallback: null,
         runtimeCaching: [
