@@ -7,6 +7,7 @@ from app.deps import get_current_user
 from datetime import datetime
 from pydantic import BaseModel
 from typing import Optional
+from ..notifications.dispatcher import fire_event, get_follower_ids
 
 router = APIRouter(prefix="/books", tags=["Books"])
 
@@ -103,7 +104,19 @@ def add_book_to_library(
     db.add(userbook)
     db.commit()
     db.refresh(userbook)
-    
+
+    # Notify followers that this user added a book
+    follower_ids = get_follower_ids(db, current_user.id)
+    actor_name = current_user.name or getattr(current_user, 'username', None) or "Someone"
+    fire_event(
+        db=db,
+        event_type="book_added",
+        actor_id=current_user.id,
+        actor_name=actor_name,
+        recipient_ids=follower_ids,
+        extra={"book_title": book.title},
+    )
+
     return {
         "message": "Book added to your library successfully",
         "book": {
