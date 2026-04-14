@@ -3,6 +3,11 @@
 @tailwind utilities;
 
 @layer base {
+  html, body {
+    margin: 0;
+    padding: 0;
+  }
+
   html {
     font-family: 'Manrope', system-ui, sans-serif;
     background-color: #fbf9f4;
@@ -12,7 +17,6 @@
   }
 
   body {
-    margin: 0;
     background-color: #fbf9f4;
   }
 

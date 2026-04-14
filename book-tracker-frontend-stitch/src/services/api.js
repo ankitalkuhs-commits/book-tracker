@@ -78,12 +78,12 @@ export const deleteNote = (noteId) =>
 
 // Likes & Comments
 export const likeNote = (noteId) =>
-  apiFetch(`/${noteId}/like`, { method: 'POST' });
+  apiFetch(`/notes/${noteId}/like`, { method: 'POST' });
 export const unlikeNote = (noteId) =>
-  apiFetch(`/${noteId}/like`, { method: 'DELETE' });
-export const getComments = (noteId) => apiFetch(`/${noteId}/comments`);
+  apiFetch(`/notes/${noteId}/like`, { method: 'DELETE' });
+export const getComments = (noteId) => apiFetch(`/notes/${noteId}/comments`);
 export const addComment = (noteId, text) =>
-  apiFetch(`/${noteId}/comments`, { method: 'POST', body: JSON.stringify({ text }) });
+  apiFetch(`/notes/${noteId}/comments`, { method: 'POST', body: JSON.stringify({ text }) });
 
 // Follow
 export const followUser = (userId) =>
@@ -103,10 +103,10 @@ export const getUserActivity = (userId, days = 30) =>
   apiFetch(`/reading-activity/user/${userId}/daily?days=${days}`);
 
 // Notifications
-export const getUnreadCount = () => apiFetch('/notifications/unread');
-export const getNotifications = () => apiFetch('/notifications/list');
-export const markNotificationRead = (id) =>
-  apiFetch(`/notifications/${id}/read`, { method: 'PUT' });
+export const getUnreadCount = () => apiFetch('/notifications/unread-count');
+export const getNotifications = () => apiFetch('/notifications/history');
+export const markAllNotificationsRead = () =>
+  apiFetch('/notifications/mark-read', { method: 'POST' });
 
 // Admin
 export const getAdminStats = () => apiFetch('/admin/stats');

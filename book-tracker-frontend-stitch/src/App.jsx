@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from './context/AuthContext'
+import Nav from './components/Nav'
 
 import LoginPage from './pages/LoginPage'
 import HomePage from './pages/HomePage'
@@ -11,6 +12,16 @@ import NotificationsPage from './pages/NotificationsPage'
 import SettingsPage from './pages/SettingsPage'
 import AdminPage from './pages/AdminPage'
 
+// Wraps all logged-in pages with the Nav bar
+function AppLayout({ children }) {
+  return (
+    <div className="min-h-screen bg-surface">
+      <Nav />
+      <div className="pt-16">{children}</div>
+    </div>
+  )
+}
+
 function PrivateRoute({ children }) {
   const { user, loading } = useAuth()
   if (loading) return (
@@ -18,7 +29,7 @@ function PrivateRoute({ children }) {
       <span className="text-on-surface-variant font-sans">Loading...</span>
     </div>
   )
-  return user ? children : <Navigate to="/" replace />
+  return user ? <AppLayout>{children}</AppLayout> : <Navigate to="/" replace />
 }
 
 function AdminRoute({ children }) {
@@ -26,7 +37,7 @@ function AdminRoute({ children }) {
   if (loading) return null
   if (!user) return <Navigate to="/" replace />
   if (!user.is_admin) return <Navigate to="/home" replace />
-  return children
+  return <AppLayout>{children}</AppLayout>
 }
 
 export default function App() {
