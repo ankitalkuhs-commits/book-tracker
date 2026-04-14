@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
+import { useToast } from '../components/Toast'
 import { getMyProfile, getMyNotes, getMyActivity, getUserBooks, deleteNote } from '../services/api'
 
 function timeAgo(dateStr) {
@@ -43,6 +44,7 @@ function BookCover({ book }) {
 
 export default function ProfilePage() {
   const { user } = useAuth()
+  const toast = useToast()
   const [profile, setProfile] = useState(null)
   const [notes, setNotes] = useState([])
   const [books, setBooks] = useState([])
@@ -70,7 +72,7 @@ export default function ProfilePage() {
       await deleteNote(noteId)
       setNotes(prev => prev.filter(n => n.id !== noteId))
     } catch (e) {
-      alert(e.message)
+      toast(e.message || 'Failed to delete note', 'error')
     }
   }
 

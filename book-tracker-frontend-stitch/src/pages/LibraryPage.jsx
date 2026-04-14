@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { useToast } from '../components/Toast'
 import {
   getMyBooks, updateProgress, markFinished, removeFromLibrary,
   getNotesForBook, createNote, deleteNote,
@@ -85,6 +86,7 @@ function ActivityChart({ data }) {
 // ─── Add Book Modal ───────────────────────────────────────────────────────────
 
 function AddBookModal({ onClose, onAdded }) {
+  const toast = useToast()
   const [query, setQuery] = useState('')
   const [results, setResults] = useState([])
   const [searching, setSearching] = useState(false)
@@ -122,7 +124,7 @@ function AddBookModal({ onClose, onAdded }) {
       onAdded()
       onClose()
     } catch (e) {
-      alert(e.message || 'Failed to add book')
+      toast(e.message || 'Failed to add book', 'error')
     }
     setAdding(null)
   }
@@ -212,6 +214,7 @@ function AddBookModal({ onClose, onAdded }) {
 // ─── Book Detail Panel ────────────────────────────────────────────────────────
 
 function BookDetailPanel({ userbook, onClose, onUpdate, onRemove }) {
+  const toast = useToast()
   const book = userbook.book
   const [page, setPage] = useState(userbook.current_page || '')
   const [savingProgress, setSavingProgress] = useState(false)
@@ -234,9 +237,10 @@ function BookDetailPanel({ userbook, onClose, onUpdate, onRemove }) {
     setSavingProgress(true)
     try {
       await updateProgress(userbook.id, p)
+      toast('Progress saved!', 'success')
       onUpdate()
     } catch (e) {
-      alert(e.message)
+      toast(e.message || 'Something went wrong', 'error')
     }
     setSavingProgress(false)
   }
@@ -245,10 +249,11 @@ function BookDetailPanel({ userbook, onClose, onUpdate, onRemove }) {
     if (!window.confirm('Mark this book as finished?')) return
     try {
       await markFinished(userbook.id)
+      toast('Marked as finished!', 'success')
       onUpdate()
       onClose()
     } catch (e) {
-      alert(e.message)
+      toast(e.message || 'Something went wrong', 'error')
     }
   }
 
@@ -259,7 +264,7 @@ function BookDetailPanel({ userbook, onClose, onUpdate, onRemove }) {
       onRemove(userbook.id)
       onClose()
     } catch (e) {
-      alert(e.message)
+      toast(e.message || 'Something went wrong', 'error')
     }
   }
 
@@ -277,7 +282,7 @@ function BookDetailPanel({ userbook, onClose, onUpdate, onRemove }) {
       setNoteText('')
       setNoteQuote('')
     } catch (e) {
-      alert(e.message)
+      toast(e.message || 'Something went wrong', 'error')
     }
     setPostingNote(false)
   }
@@ -288,7 +293,7 @@ function BookDetailPanel({ userbook, onClose, onUpdate, onRemove }) {
       await deleteNote(noteId)
       setNotes(prev => prev.filter(n => n.id !== noteId))
     } catch (e) {
-      alert(e.message)
+      toast(e.message || 'Something went wrong', 'error')
     }
   }
 

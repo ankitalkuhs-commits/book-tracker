@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { useToast } from '../components/Toast'
 import { getPublicProfile, getUserBooks, getUserActivity, followUser, unfollowUser, getFollowing } from '../services/api'
 
 function timeAgo(dateStr) {
@@ -53,6 +54,7 @@ export default function UserProfilePage() {
   const [followLoading, setFollowLoading] = useState(false)
   const [activeTab, setActiveTab] = useState('books')
 
+  const toast = useToast()
   const isOwnProfile = me?.id?.toString() === userId?.toString()
 
   useEffect(() => {
@@ -78,13 +80,15 @@ export default function UserProfilePage() {
         await unfollowUser(userId)
         setIsFollowing(false)
         setProfile(p => ({ ...p, followers_count: (p?.followers_count || 1) - 1 }))
+        toast('Unfollowed', 'info')
       } else {
         await followUser(userId)
         setIsFollowing(true)
         setProfile(p => ({ ...p, followers_count: (p?.followers_count || 0) + 1 }))
+        toast(`Following ${profile?.name || 'user'}`, 'success')
       }
     } catch (e) {
-      alert(e.message)
+      toast(e.message || 'Failed', 'error')
     }
     setFollowLoading(false)
   }

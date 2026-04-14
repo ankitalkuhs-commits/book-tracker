@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { useToast } from '../components/Toast'
 import {
   getCommunityFeed, getFriendsFeed, createNote,
   likeNote, unlikeNote, getComments, addComment,
-  getFriendReading, getFollowing, searchUsers,
+  getFriendReading, getFollowing, searchUsers, getMyBooks,
 } from '../services/api'
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -38,6 +39,7 @@ function Avatar({ user, size = 10 }) {
 
 function PostCard({ post, currentUserId, onLikeToggle }) {
   const navigate = useNavigate()
+  const toast = useToast()
   const [showComments, setShowComments] = useState(false)
   const [comments, setComments] = useState([])
   const [commentText, setCommentText] = useState('')
@@ -66,7 +68,9 @@ function PostCard({ post, currentUserId, onLikeToggle }) {
       const c = await addComment(post.id, commentText.trim())
       setComments(prev => [...prev, c])
       setCommentText('')
-    } catch { }
+    } catch (e) {
+      toast(e.message || 'Failed to post comment', 'error')
+    }
   }
 
   return (
@@ -193,22 +197,38 @@ function PostCard({ post, currentUserId, onLikeToggle }) {
 // ─── Post Composer ────────────────────────────────────────────────────────────
 
 function PostComposer({ user, onPost }) {
+  const toast = useToast()
   const [text, setText] = useState('')
   const [quote, setQuote] = useState('')
   const [emotion, setEmotion] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [myBooks, setMyBooks] = useState([])
+  const [selectedBook, setSelectedBook] = useState(null)
+  const [showBookPicker, setShowBookPicker] = useState(false)
+
+  useEffect(() => {
+    getMyBooks('reading').then(data => setMyBooks(data || [])).catch(() => {})
+  }, [])
 
   const handleSubmit = async () => {
     if (!text.trim()) return
     setSubmitting(true)
     try {
-      const note = await createNote({ text, quote: quote || null, emotion: emotion || null, is_public: true })
-      onPost(note)
+      const note = await createNote({
+        text,
+        quote: quote || null,
+        emotion: emotion || null,
+        is_public: true,
+        userbook_id: selectedBook?.id || null,
+      })
+      onPost({ ...note, book: selectedBook?.book || null })
       setText('')
       setQuote('')
       setEmotion('')
+      setSelectedBook(null)
+      toast('Reflection posted!', 'success')
     } catch (e) {
-      alert(e.message || 'Failed to post')
+      toast(e.message || 'Failed to post', 'error')
     }
     setSubmitting(false)
   }
@@ -224,6 +244,45 @@ function PostComposer({ user, onPost }) {
             className="w-full bg-surface-container-low rounded-xl p-4 text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:ring-2 focus:ring-primary/20 min-h-[100px] resize-none text-base font-sans border-none"
             placeholder="What are your thoughts on your current read?"
           />
+
+          {/* Book picker */}
+          {myBooks.length > 0 && (
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setShowBookPicker(v => !v)}
+                className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm transition-colors ${
+                  selectedBook
+                    ? 'bg-primary/10 text-primary font-medium'
+                    : 'bg-surface-container-low text-on-surface-variant hover:bg-surface-container'
+                }`}
+              >
+                <span className="material-symbols-outlined text-base">menu_book</span>
+                {selectedBook ? selectedBook.book?.title : 'Tag a book (optional)'}
+                {selectedBook && (
+                  <span
+                    className="material-symbols-outlined text-sm ml-1 text-on-surface-variant hover:text-error"
+                    onClick={e => { e.stopPropagation(); setSelectedBook(null) }}
+                  >close</span>
+                )}
+              </button>
+              {showBookPicker && (
+                <div className="absolute top-full left-0 mt-1 z-20 bg-surface-container-lowest rounded-2xl shadow-float border border-outline-variant/15 overflow-hidden w-64">
+                  {myBooks.map(ub => (
+                    <button
+                      key={ub.id}
+                      onClick={() => { setSelectedBook(ub); setShowBookPicker(false) }}
+                      className="w-full text-left px-4 py-3 text-sm hover:bg-surface-container-low transition-colors flex items-center gap-3"
+                    >
+                      <span className="material-symbols-outlined text-base text-secondary">auto_stories</span>
+                      <span className="truncate font-medium text-on-surface">{ub.book?.title}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div className="relative">
               <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline/60 text-base">format_quote</span>
@@ -382,6 +441,7 @@ function Sidebar() {
 
 export default function HomePage() {
   const { user } = useAuth()
+  const toast = useToast()
   const [activeTab, setActiveTab] = useState('community')
   const [posts, setPosts] = useState([])
   const [loading, setLoading] = useState(true)
@@ -393,7 +453,7 @@ export default function HomePage() {
     try {
       const data = tab === 'community' ? await getCommunityFeed() : await getFriendsFeed()
       setPosts(data || [])
-    } catch (e) {
+    } catch {
       setError('Failed to load feed.')
     }
     setLoading(false)

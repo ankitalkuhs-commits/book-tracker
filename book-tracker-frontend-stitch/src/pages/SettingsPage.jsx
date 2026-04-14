@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { useToast } from '../components/Toast'
 import { getMyProfile, updateMyProfile } from '../services/api'
 
 export default function SettingsPage() {
   const { user, login, logout } = useAuth()
   const navigate = useNavigate()
+  const toast = useToast()
   const [name, setName] = useState('')
   const [bio, setBio] = useState('')
   const [saving, setSaving] = useState(false)
@@ -28,9 +30,11 @@ export default function SettingsPage() {
     try {
       const updated = await updateMyProfile({ name: name.trim(), bio: bio.trim() || null })
       login({ ...user, name: updated.name, bio: updated.bio })
+      toast('Profile saved!', 'success')
       setSaved(true)
       setTimeout(() => setSaved(false), 2500)
     } catch (e) {
+      toast(e.message || 'Failed to save', 'error')
       setError(e.message || 'Failed to save')
     }
     setSaving(false)
