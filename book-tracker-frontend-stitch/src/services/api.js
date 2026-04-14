@@ -91,16 +91,18 @@ export const followUser = (userId) =>
 export const unfollowUser = (userId) =>
   apiFetch(`/follow/${userId}`, { method: 'DELETE' });
 export const getFollowers = () => apiFetch('/follow/followers');
-export const getFollowing = () => apiFetch('/follow/following');
+// /users/following returns full user objects (id, name, username…); /follow/following only returns ids
+export const getFollowing = () => apiFetch('/users/following');
 
 // Users
 export const searchUsers = (q) => apiFetch(`/users/search?q=${encodeURIComponent(q)}`);
+export const getUserStats = (userId) => apiFetch(`/users/${userId}/stats`);
 
-// Reading Activity
+// Reading Activity — API returns { days, data: [...] }, unwrap to array
 export const getMyActivity = (days = 30) =>
-  apiFetch(`/reading-activity/daily?days=${days}`);
+  apiFetch(`/reading-activity/daily?days=${days}`).then(r => r?.data || []);
 export const getUserActivity = (userId, days = 30) =>
-  apiFetch(`/reading-activity/user/${userId}/daily?days=${days}`);
+  apiFetch(`/reading-activity/user/${userId}/daily?days=${days}`).then(r => r?.data || []);
 
 // Notifications
 export const getUnreadCount = () => apiFetch('/notifications/unread-count');

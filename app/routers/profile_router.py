@@ -140,3 +140,39 @@ def update_profile(payload: ProfileUpdate, db: Session = Depends(get_db), curren
         "following_count": len(following),
         "stats": stats,
     }
+
+
+# ---------------------------------
+# ✅ GET /profile/{user_id} - Public profile
+# ---------------------------------
+@router.get("/{user_id}")
+def get_public_profile(user_id: int, db: Session = Depends(get_db), _=Depends(get_current_user)):
+    user = db.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    followers = db.exec(select(Follow).where(Follow.followed_id == user.id)).all()
+    following = db.exec(select(Follow).where(Follow.follower_id == user.id)).all()
+
+    total_books = db.exec(select(UserBook).where(UserBook.user_id == user.id)).all()
+    finished = [b for b in total_books if b.status == "finished"]
+    reading = [b for b in total_books if b.status == "reading"]
+
+    stats = {
+        "total_books": len(total_books),
+        "finished": len(finished),
+        "reading": len(reading),
+        "to_read": len([b for b in total_books if b.status == "to-read"]),
+    }
+
+    return {
+        "id": user.id,
+        "name": user.name,
+        "username": user.username,
+        "bio": user.bio,
+        "profile_picture": user.profile_picture,
+        "created_at": user.created_at,
+        "followers_count": len(followers),
+        "following_count": len(following),
+        "stats": stats,
+    }
