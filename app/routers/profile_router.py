@@ -66,7 +66,7 @@ def get_profile(db: Session = Depends(get_db), current_user=Depends(get_current_
 
     # Log the outgoing profile response for debugging mobile issues
     import logging
-    logging.warning(f"/profile/me response: {repr({
+    _log_data = {
         'id': user.id,
         'name': user.name,
         'email': user.email,
@@ -76,7 +76,8 @@ def get_profile(db: Session = Depends(get_db), current_user=Depends(get_current_
         'following_count': len(following),
         'stats': stats,
         'is_admin': user.is_admin,
-    })}")
+    }
+    logging.warning(f"/profile/me response: {repr(_log_data)}")
 
     return {
         "id": user.id,
