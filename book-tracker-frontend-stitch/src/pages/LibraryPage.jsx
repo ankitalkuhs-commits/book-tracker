@@ -55,31 +55,46 @@ function BookCover({ book, className = '' }) {
   )
 }
 
-// ─── Activity Sparkline (SVG bar chart) ───────────────────────────────────────
+// ─── Weekly Pulse Chart (7-day bar chart with day labels) ─────────────────────
 
-function ActivityChart({ data }) {
-  if (!data || data.length === 0) return null
-  const max = Math.max(...data.map(d => d.pages_read || 0), 1)
-  const bars = data.slice(-30)
-  const barW = 100 / bars.length
+const DAY_LABELS = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
+
+function WeeklyPulseChart({ data }) {
+  // Use last 7 days of activity data
+  const week = data.slice(-7)
+  if (week.length === 0) return null
+  const max = Math.max(...week.map(d => d.pages_read || 0), 1)
+  const todayIdx = week.length - 1
 
   return (
-    <svg viewBox="0 0 100 40" preserveAspectRatio="none" className="w-full h-16">
-      {bars.map((d, i) => {
-        const h = ((d.pages_read || 0) / max) * 36
-        return (
-          <rect
-            key={i}
-            x={i * barW + 0.5}
-            y={40 - h}
-            width={barW - 1}
-            height={h}
-            rx="1"
-            className="fill-primary/30 hover:fill-primary/60 transition-colors"
-          />
-        )
-      })}
-    </svg>
+    <div className="space-y-2">
+      <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/60">Weekly Pulse</p>
+      <div className="flex items-end gap-1 h-20 relative">
+        {week.map((d, i) => {
+          const h = ((d.pages_read || 0) / max) * 100
+          const isToday = i === todayIdx
+          const isActive = (d.pages_read || 0) > 0
+          return (
+            <div key={i} className="flex-1 flex flex-col items-center gap-1 h-full justify-end">
+              {isToday && isActive && (
+                <span className="text-[9px] font-bold text-secondary">{d.pages_read}m</span>
+              )}
+              <div
+                className={`w-full rounded-sm transition-all ${
+                  isToday && isActive ? 'bg-secondary' : isActive ? 'bg-primary/25' : 'bg-surface-container-high'
+                }`}
+                style={{ height: `${Math.max(h, isActive ? 8 : 4)}%` }}
+              />
+            </div>
+          )
+        })}
+      </div>
+      <div className="flex gap-1">
+        {DAY_LABELS.slice(0, week.length).map((l, i) => (
+          <div key={i} className="flex-1 text-center text-[10px] text-on-surface-variant/50 font-medium">{l}</div>
+        ))}
+      </div>
+    </div>
   )
 }
 
@@ -441,37 +456,56 @@ function BookDetailPanel({ userbook, onClose, onUpdate, onRemove }) {
 
 // ─── Book Card ─────────────────────────────────────────────────────────────────
 
+const STATUS_COLOR = {
+  'reading':  'text-primary',
+  'to-read':  'text-tertiary',
+  'finished': 'text-secondary',
+}
+
 function BookCard({ userbook, onClick }) {
   const book = userbook.book
-  const badge = STATUS_BADGE[userbook.status]
   const progress = pct(userbook.current_page, book?.total_pages)
+  const statusLabel = STATUS_BADGE[userbook.status]?.label?.toUpperCase()
+  const statusColor = STATUS_COLOR[userbook.status] || 'text-on-surface-variant'
 
   return (
     <button
       onClick={onClick}
-      className="bg-surface-container-lowest rounded-2xl overflow-hidden hover:shadow-[0_16px_40px_-12px_rgba(0,70,74,0.12)] transition-all group text-left flex flex-col"
+      className="group text-left flex flex-col hover:-translate-y-1 transition-all duration-200"
     >
-      {/* Cover */}
-      <div className="relative w-full">
-        <BookCover book={book} className="!rounded-none w-full" />
-        {userbook.status === 'reading' && book?.total_pages && (
-          <div className="absolute bottom-0 left-0 w-full h-1.5 bg-on-surface/10">
-            <div className="h-full bg-primary transition-all duration-500" style={{ width: `${progress}%` }} />
-          </div>
-        )}
-        {badge && (
-          <span className={`absolute top-2 right-2 text-[10px] font-bold px-2 py-0.5 rounded-full backdrop-blur-sm ${badge.cls}`}>
-            {badge.label}
-          </span>
-        )}
+      {/* Cover — tall, rounded, shadow */}
+      <div className="relative w-full aspect-[2/3] rounded-xl overflow-hidden shadow-[0_8px_24px_rgba(27,28,25,0.10)] group-hover:shadow-[0_16px_40px_rgba(27,28,25,0.16)] transition-shadow bg-surface-container-high flex items-center justify-center">
+        <BookCover book={book} className="!rounded-none !aspect-auto w-full h-full" />
       </div>
 
-      {/* Info */}
-      <div className="p-4 flex-1 flex flex-col">
-        <p className="font-bold text-sm text-on-surface leading-snug line-clamp-2">{book?.title}</p>
-        <p className="text-xs text-on-surface-variant mt-1 line-clamp-1">{book?.author}</p>
-        {userbook.status === 'reading' && book?.total_pages && (
-          <p className="text-xs text-primary font-bold mt-auto pt-2">{progress}% complete</p>
+      {/* Info below cover */}
+      <div className="pt-3 px-0.5 space-y-1.5">
+        <p className="font-serif font-bold text-on-surface leading-snug line-clamp-2 text-sm">{book?.title}</p>
+        <p className={`text-xs font-semibold ${statusColor}`}>{book?.author}</p>
+
+        {/* Progress row */}
+        {userbook.status === 'reading' && (
+          <div className="space-y-1 pt-0.5">
+            <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider">
+              <span className={statusColor}>{statusLabel}</span>
+              <span className="text-on-surface-variant/60">{progress}%</span>
+            </div>
+            <div className="h-1 rounded-full bg-surface-container-high overflow-hidden">
+              <div
+                className="h-full bg-secondary rounded-full transition-all duration-500"
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+            {book?.total_pages && (
+              <p className="text-[10px] text-on-surface-variant/50">
+                {userbook.current_page || 0} / {book.total_pages} pages
+              </p>
+            )}
+          </div>
+        )}
+
+        {userbook.status !== 'reading' && statusLabel && (
+          <p className={`text-[10px] font-bold uppercase tracking-wider ${statusColor}`}>{statusLabel}</p>
         )}
       </div>
     </button>
@@ -480,75 +514,47 @@ function BookCard({ userbook, onClick }) {
 
 // ─── Sidebar ──────────────────────────────────────────────────────────────────
 
-function LibrarySidebar({ library }) {
+function LibrarySidebar({ library, onAddBook }) {
   const [activity, setActivity] = useState([])
 
   useEffect(() => {
-    getMyActivity(30).then(setActivity).catch(() => {})
+    getMyActivity(7).then(setActivity).catch(() => {})
   }, [])
 
   const total = library.length
-  const reading = library.filter(b => b.status === 'reading').length
-  const finished = library.filter(b => b.status === 'finished').length
   const totalPages = activity.reduce((s, d) => s + (d.pages_read || 0), 0)
 
   return (
-    <aside className="hidden lg:flex col-span-3 flex-col space-y-5">
-      {/* Stats */}
-      <section className="bg-surface-container-low rounded-3xl p-6 space-y-4">
-        <h3 className="font-serif text-lg font-bold text-primary">Your Reading</h3>
-        <div className="grid grid-cols-3 gap-3">
-          {[
-            { label: 'Total', value: total },
-            { label: 'Reading', value: reading },
-            { label: 'Finished', value: finished },
-          ].map(({ label, value }) => (
-            <div key={label} className="bg-surface-container-lowest rounded-2xl p-3 text-center">
-              <p className="text-2xl font-bold font-serif text-primary">{value}</p>
-              <p className="text-xs text-on-surface-variant mt-0.5">{label}</p>
-            </div>
-          ))}
+    <aside className="hidden lg:block col-span-3">
+      <div className="bg-surface-container-lowest rounded-3xl p-6 space-y-6 shadow-zen">
+        <h3 className="font-serif text-lg font-bold text-on-surface">Reading Stats</h3>
+
+        {/* Weekly pulse chart */}
+        <WeeklyPulseChart data={activity} />
+
+        {/* Stats grid */}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="bg-surface-container-low rounded-2xl p-4 space-y-1">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/60">Total Books</p>
+            <p className="text-2xl font-bold font-serif text-on-surface">{total}</p>
+          </div>
+          <div className="bg-surface-container-low rounded-2xl p-4 space-y-1">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/60">Pages Read</p>
+            <p className="text-2xl font-bold font-serif text-on-surface">
+              {totalPages >= 1000 ? `${(totalPages / 1000).toFixed(1)}k` : totalPages}
+            </p>
+          </div>
         </div>
-      </section>
 
-      {/* 30-day activity */}
-      {activity.length > 0 && (
-        <section className="bg-surface-container-low rounded-3xl p-6 space-y-3">
-          <div className="flex justify-between items-baseline">
-            <h3 className="font-serif text-base font-bold text-primary">30-Day Pulse</h3>
-            <span className="text-xs text-on-surface-variant">{totalPages} pages</span>
-          </div>
-          <ActivityChart data={activity} />
-          <p className="text-xs text-on-surface-variant/60 text-center">Pages read per day</p>
-        </section>
-      )}
-
-      {/* Currently reading list */}
-      {reading > 0 && (
-        <section className="bg-surface-container-low rounded-3xl p-6 space-y-4">
-          <h3 className="font-serif text-base font-bold text-primary">In Progress</h3>
-          <div className="space-y-3">
-            {library.filter(b => b.status === 'reading').slice(0, 4).map(ub => (
-              <div key={ub.id} className="flex gap-3 items-center">
-                <div className="w-9 shrink-0">
-                  <BookCover book={ub.book} />
-                </div>
-                <div className="flex-1 min-w-0 space-y-1">
-                  <p className="text-xs font-bold text-on-surface truncate">{ub.book?.title}</p>
-                  {ub.book?.total_pages && (
-                    <div className="h-1 bg-surface-container-high rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-primary rounded-full"
-                        style={{ width: `${pct(ub.current_page, ub.book.total_pages)}%` }}
-                      />
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
+        {/* Add new book CTA */}
+        <button
+          onClick={onAddBook}
+          className="btn-primary w-full py-3.5 rounded-2xl text-sm font-bold flex items-center justify-center gap-2"
+        >
+          <span className="material-symbols-outlined text-lg">add</span>
+          Add New Book
+        </button>
+      </div>
     </aside>
   )
 }
@@ -592,65 +598,52 @@ export default function LibraryPage() {
     tab.id === 'all' ? library.length : library.filter(b => b.status === tab.status).length
 
   return (
-    <main className="pb-12 max-w-screen-2xl mx-auto px-4 md:px-8 lg:px-12 pt-8">
+    <main className="pb-16 max-w-screen-2xl mx-auto px-4 md:px-8 lg:px-12 pt-8">
       <div className="grid grid-cols-12 gap-8">
         {/* Main area */}
         <div className="col-span-12 lg:col-span-9 space-y-6">
           {/* Header */}
-          <div className="flex items-center justify-between">
-            <h1 className="font-serif text-3xl font-bold text-primary">My Library</h1>
-            <button
-              onClick={() => setShowAddModal(true)}
-              className="btn-primary px-5 py-2.5 text-sm rounded-xl flex items-center gap-2"
-            >
-              <span className="material-symbols-outlined text-lg">add</span>
-              Add Book
-            </button>
+          <div>
+            <h1 className="font-serif text-4xl md:text-5xl font-bold text-on-surface leading-tight">Your Library</h1>
+            <p className="text-on-surface-variant mt-2 text-sm">Curating your personal journey through words and wisdom.</p>
           </div>
 
-          {/* Tabs */}
-          <div className="flex items-center gap-1 border-b border-outline-variant/15 overflow-x-auto">
+          {/* Pill tabs */}
+          <div className="flex items-center gap-2 flex-wrap">
             {STATUS_TABS.map(tab => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`pb-3 px-4 text-sm font-sans whitespace-nowrap transition-colors flex items-center gap-2 ${
+                className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
                   activeTab === tab.id
-                    ? 'text-primary font-bold border-b-2 border-primary'
-                    : 'text-on-surface-variant/60 font-medium hover:text-on-surface'
+                    ? 'bg-primary text-on-primary font-bold shadow-sm'
+                    : 'bg-surface-container text-on-surface-variant hover:bg-surface-container-high'
                 }`}
               >
                 {tab.label}
-                <span className={`text-xs font-bold px-1.5 py-0.5 rounded-full ${
-                  activeTab === tab.id ? 'bg-primary/10 text-primary' : 'bg-surface-container text-on-surface-variant'
-                }`}>
-                  {tabCount(tab)}
-                </span>
               </button>
             ))}
           </div>
 
-          {/* Search within library */}
+          {/* Search bar — kept as requested */}
           <div className="relative">
             <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline/60 text-base">search</span>
             <input
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Search your library..."
-              className="w-full bg-surface-container-low rounded-xl pl-9 pr-4 py-2.5 text-sm border-none focus:outline-none focus:ring-2 focus:ring-primary/20"
+              className="w-full bg-surface-container-low rounded-2xl pl-9 pr-4 py-3 text-sm border-none focus:outline-none focus:ring-2 focus:ring-primary/20"
             />
           </div>
 
-          {/* Loading */}
+          {/* Loading skeletons */}
           {loading && (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-              {Array.from({ length: 10 }).map((_, i) => (
-                <div key={i} className="rounded-2xl overflow-hidden">
-                  <div className="aspect-[2/3] bg-surface-container animate-pulse" />
-                  <div className="p-4 space-y-2">
-                    <div className="h-3 bg-surface-container animate-pulse rounded" />
-                    <div className="h-2 w-2/3 bg-surface-container animate-pulse rounded" />
-                  </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-6">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="space-y-3">
+                  <div className="aspect-[2/3] bg-surface-container animate-pulse rounded-xl" />
+                  <div className="h-3 bg-surface-container animate-pulse rounded w-3/4" />
+                  <div className="h-2 bg-surface-container animate-pulse rounded w-1/2" />
                 </div>
               ))}
             </div>
@@ -658,18 +651,18 @@ export default function LibraryPage() {
 
           {/* Empty state */}
           {!loading && filtered.length === 0 && (
-            <div className="text-center py-20 text-on-surface-variant">
-              <span className="material-symbols-outlined text-6xl text-outline/40 block mb-4">auto_stories</span>
-              <p className="font-serif text-xl text-on-surface mb-2">
+            <div className="text-center py-20">
+              <span className="material-symbols-outlined text-6xl text-outline/30 block mb-4">auto_stories</span>
+              <p className="font-serif text-xl text-on-surface mb-1">
                 {search ? 'No matching books' : activeTab === 'all' ? 'Your library is empty' : `No ${STATUS_TABS.find(t => t.id === activeTab)?.label} books`}
               </p>
-              <p className="text-sm">
-                {!search && activeTab === 'all' && 'Start building your collection!'}
+              <p className="text-sm text-on-surface-variant mt-1">
+                {!search && activeTab === 'all' && 'Start building your collection.'}
               </p>
               {!search && activeTab === 'all' && (
                 <button
                   onClick={() => setShowAddModal(true)}
-                  className="btn-primary mt-5 px-6 py-2.5 text-sm rounded-xl"
+                  className="btn-primary mt-6 px-6 py-2.5 text-sm rounded-xl"
                 >
                   Add your first book
                 </button>
@@ -677,9 +670,9 @@ export default function LibraryPage() {
             </div>
           )}
 
-          {/* Book grid */}
+          {/* Book grid — 3 columns matching the design */}
           {!loading && filtered.length > 0 && (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-6 md:gap-8">
               {filtered.map(ub => (
                 <BookCard
                   key={ub.id}
@@ -692,7 +685,7 @@ export default function LibraryPage() {
         </div>
 
         {/* Sidebar */}
-        <LibrarySidebar library={library} />
+        <LibrarySidebar library={library} onAddBook={() => setShowAddModal(true)} />
       </div>
 
       {/* Modals */}
