@@ -95,7 +95,15 @@ class CreatePostBody(BaseModel):
     userbook_id: Optional[int] = None
 
 class SetBookBody(BaseModel):
-    book_id: int
+    book_id: Optional[int] = None
+    # Google Books fallback — provide these if no local book_id yet
+    google_books_id: Optional[str] = None
+    title: Optional[str] = None
+    author: Optional[str] = None
+    cover_url: Optional[str] = None
+    isbn: Optional[str] = None
+    total_pages: Optional[int] = None
+    description: Optional[str] = None
 
 
 # ─── List / Discover ──────────────────────────────────────────────────────────
@@ -675,10 +683,37 @@ def set_group_book(
     if not _is_curator(db, group_id, me.id):
         raise HTTPException(status_code=403, detail="Curator only")
     g = _group_or_404(db, group_id)
-    book = db.get(models.Book, body.book_id)
-    if not book:
-        raise HTTPException(status_code=404, detail="Book not found")
-    g.current_book_id = body.book_id
+
+    if body.book_id:
+        book = db.get(models.Book, body.book_id)
+        if not book:
+            raise HTTPException(status_code=404, detail="Book not found")
+    elif body.title:
+        # Find or create from Google Books data
+        book = None
+        if body.isbn:
+            book = db.exec(select(models.Book).where(models.Book.isbn == body.isbn)).first()
+        if not book and body.google_books_id:
+            book = db.exec(select(models.Book).where(models.Book.google_books_id == body.google_books_id)).first()
+        if not book:
+            from datetime import datetime as _dt
+            book = models.Book(
+                title=body.title,
+                author=body.author or "Unknown",
+                isbn=body.isbn,
+                cover_url=body.cover_url,
+                description=body.description,
+                total_pages=body.total_pages,
+                google_books_id=body.google_books_id,
+                created_at=_dt.utcnow(),
+            )
+            db.add(book)
+            db.commit()
+            db.refresh(book)
+    else:
+        raise HTTPException(status_code=400, detail="book_id or book title required")
+
+    g.current_book_id = book.id
     db.add(g)
     db.commit()
     return {"id": book.id, "title": book.title, "author": book.author, "cover_url": book.cover_url}

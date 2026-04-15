@@ -82,8 +82,10 @@ def get_profile(db: Session = Depends(get_db), current_user=Depends(get_current_
     return {
         "id": user.id,
         "name": user.name,
+        "username": user.username,
         "email": user.email,
         "bio": user.bio,
+        "profile_picture": getattr(user, "profile_picture", None),
         "created_at": user.created_at,
         "followers_count": len(followers),
         "following_count": len(following),
@@ -133,12 +135,15 @@ def update_profile(payload: ProfileUpdate, db: Session = Depends(get_db), curren
     return {
         "id": user.id,
         "name": user.name,
+        "username": user.username,
         "email": user.email,
         "bio": user.bio,
+        "profile_picture": getattr(user, "profile_picture", None),
         "created_at": user.created_at,
         "followers_count": len(followers),
         "following_count": len(following),
         "stats": stats,
+        "is_admin": user.is_admin,
     }
 
 

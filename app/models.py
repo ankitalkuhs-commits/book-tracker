@@ -31,6 +31,7 @@ class User(SQLModel, table=True):
     # Use the same column name as existing DB:
     password_hash: str = Field(nullable=False)
     bio: Optional[str] = None
+    profile_picture: Optional[str] = None
     is_admin: bool = Field(default=False)
     created_at: datetime = Field(default_factory=datetime.utcnow)
     last_active: Optional[datetime] = None
@@ -56,6 +57,7 @@ class Book(SQLModel, table=True):
     published_date: Optional[str] = None
     format: Optional[str] = None
     pages_source: Optional[str] = None
+    google_books_id: Optional[str] = None
     created_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
 
     # Relationships

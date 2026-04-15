@@ -433,18 +433,8 @@ export default function GroupDetailPage() {
   }
 
   const handleSetBook = async (book) => {
-    // book comes from Google Books search — we need its DB id
-    // We search our library first; if not found, book is added via add-to-library
-    // For simplicity, use the book's DB id if it has one, otherwise handle gracefully
     try {
-      // The setGroupBook endpoint expects a book_id (DB id)
-      // If it's a Google Books result without a local id, we can't set it
-      // We'll only allow books from local library in this MVP
-      if (!book.id) {
-        toast('This book is not in the library yet. Add it to your library first.', 'info')
-        return
-      }
-      const result = await setGroupBook(parseInt(groupId), book.id)
+      const result = await setGroupBook(parseInt(groupId), book)
       setGroup(prev => ({ ...prev, current_book: result }))
       toast(`Group book set to "${result.title}"`, 'success')
       setShowSetBook(false)

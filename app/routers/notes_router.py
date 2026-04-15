@@ -45,18 +45,20 @@ class NoteCreateSchema(BaseModel):
 
 class NoteOutSchema(BaseModel):
     id: int
+    user_id: Optional[int] = None
     text: Optional[str]
     emotion: Optional[str]
-    page_number: Optional[int] = None  # New field
-    chapter: Optional[str] = None  # New field
-    image_url: Optional[str] = None  # New field
-    quote: Optional[str] = None  # New field
+    page_number: Optional[int] = None
+    chapter: Optional[str] = None
+    image_url: Optional[str] = None
+    quote: Optional[str] = None
     is_public: bool
     created_at: Optional[str]
     updated_at: Optional[str] = None
-    likes_count: Optional[int] = 0  # New field
-    comments_count: Optional[int] = 0  # New field
-    user_has_liked: Optional[bool] = False  # New field
+    likes_count: Optional[int] = 0
+    comments_count: Optional[int] = 0
+    user_has_liked: Optional[bool] = False
+    liked_by_me: Optional[bool] = False
     user: Optional[dict] = None
     book: Optional[dict] = None
 
@@ -239,6 +241,7 @@ def get_feed(limit: int = 50, db: Session = Depends(get_db), current_user: Optio
         
         result.append({
             "id": n.id,
+            "user_id": n.user_id,
             "text": n.text,
             "emotion": n.emotion,
             "page_number": n.page_number,
@@ -249,22 +252,39 @@ def get_feed(limit: int = 50, db: Session = Depends(get_db), current_user: Optio
             "created_at": format_timestamp(n.created_at),
             "likes_count": likes_count,
             "comments_count": comments_count,
+            "liked_by_me": user_has_liked,
             "user_has_liked": user_has_liked,
-            "user": {"id": user.id, "name": user.name} if user else None,
-            "book": {"id": book.id, "title": book.title, "author": book.author} if book else None
+            "user": {
+                "id": user.id,
+                "name": user.name,
+                "username": getattr(user, "username", None),
+                "profile_picture": getattr(user, "profile_picture", None),
+            } if user else None,
+            "book": {
+                "id": book.id, "title": book.title,
+                "author": book.author, "cover_url": book.cover_url,
+            } if book else None
         })
     return result
 
 
 @router.get("/me", status_code=status.HTTP_200_OK, response_model=List[NoteOutSchema])
 def get_my_notes(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    from sqlmodel import select, func
     notes = crud.get_notes_for_user(db, user_id=current_user.id)
     out = []
     for n in notes:
         book = n.userbook.book if n.userbook else None
         user = n.user
+        likes_count = db.exec(
+            select(func.count(models.Like.id)).where(models.Like.note_id == n.id)
+        ).one()
+        comments_count = db.exec(
+            select(func.count(models.Comment.id)).where(models.Comment.note_id == n.id)
+        ).one()
         out.append({
             "id": n.id,
+            "user_id": n.user_id,
             "text": n.text,
             "emotion": n.emotion,
             "page_number": n.page_number,
@@ -273,8 +293,19 @@ def get_my_notes(db: Session = Depends(get_db), current_user: models.User = Depe
             "quote": n.quote,
             "is_public": n.is_public,
             "created_at": format_timestamp(n.created_at),
-            "user": {"id": user.id, "name": user.name} if user else None,
-            "book": {"id": book.id, "title": book.title, "author": book.author, "cover_url": book.cover_url} if book else None
+            "updated_at": format_timestamp(n.updated_at),
+            "likes_count": likes_count,
+            "comments_count": comments_count,
+            "liked_by_me": True,  # own notes — always liked by current user semantically (not needed but safe)
+            "user": {
+                "id": user.id, "name": user.name,
+                "username": getattr(user, "username", None),
+                "profile_picture": getattr(user, "profile_picture", None),
+            } if user else None,
+            "book": {
+                "id": book.id, "title": book.title,
+                "author": book.author, "cover_url": book.cover_url,
+            } if book else None
         })
     return out
 
@@ -431,6 +462,7 @@ def get_friends_feed(
         
         result.append({
             "id": n.id,
+            "user_id": n.user_id,
             "text": n.text,
             "emotion": n.emotion,
             "page_number": n.page_number,
@@ -441,14 +473,19 @@ def get_friends_feed(
             "created_at": format_timestamp(n.created_at),
             "likes_count": likes_count,
             "comments_count": comments_count,
+            "liked_by_me": user_has_liked,
             "user_has_liked": user_has_liked,
             "user": {
                 "id": user.id,
                 "name": user.name,
-                "username": user.username,
-                "is_mutual": user.id in mutual_ids
+                "username": getattr(user, "username", None),
+                "profile_picture": getattr(user, "profile_picture", None),
+                "is_mutual": user.id in mutual_ids,
             } if user else None,
-            "book": {"id": book.id, "title": book.title, "author": book.author} if book else None
+            "book": {
+                "id": book.id, "title": book.title,
+                "author": book.author, "cover_url": book.cover_url,
+            } if book else None
         })
     
     # Sort: mutual follows' posts first, then by created_at descending

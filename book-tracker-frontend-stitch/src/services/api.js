@@ -149,13 +149,29 @@ export const createGroupPost = (id, data) => apiFetch(`/groups/${id}/posts`, { m
 export const deleteGroupPost = (id, postId) => apiFetch(`/groups/${id}/posts/${postId}`, { method: 'DELETE' });
 export const getGroupLeaderboard = (id, period = 'monthly') => apiFetch(`/groups/${id}/leaderboard?period=${period}`);
 export const getGroupGoal = (id) => apiFetch(`/groups/${id}/goal`);
-export const setGroupBook = (id, bookId) => apiFetch(`/groups/${id}/book`, { method: 'PUT', body: JSON.stringify({ book_id: bookId }) });
+export const setGroupBook = (id, book) => apiFetch(`/groups/${id}/book`, {
+  method: 'PUT',
+  body: JSON.stringify(
+    typeof book === 'number'
+      ? { book_id: book }
+      : {
+          book_id: book.id || null,
+          google_books_id: book.google_books_id || null,
+          title: book.title,
+          author: book.author,
+          cover_url: book.cover_url || null,
+          isbn: book.isbn || null,
+          total_pages: book.total_pages || null,
+          description: book.description || null,
+        }
+  ),
+});
 export const clearGroupBook = (id) => apiFetch(`/groups/${id}/book`, { method: 'DELETE' });
 export const getMyGroupInvites = () => apiFetch('/groups/invites/pending');
 export const searchUsersForInvite = (q) => apiFetch(`/users/search?q=${encodeURIComponent(q)}`);
 
 // Account
-export const deleteAccount = () => apiFetch('/auth/delete-account', { method: 'POST' });
+export const deleteAccount = () => apiFetch('/auth/delete-account/me', { method: 'POST' });
 
 // Admin
 export const getAdminStats = () => apiFetch('/admin/stats');

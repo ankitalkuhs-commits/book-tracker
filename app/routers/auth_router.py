@@ -1,10 +1,11 @@
 # app/routers/auth_router.py
 from fastapi import APIRouter, Depends, HTTPException
-from sqlmodel import Session
+from sqlmodel import Session, select
 from google.oauth2 import id_token
 from google.auth.transport import requests
 from ..database import get_session
-from .. import crud, auth
+from ..deps import get_db, get_current_user
+from .. import crud, auth, models
 from pydantic import BaseModel
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -194,35 +195,85 @@ def demo_login(payload: DemoLoginIn, db: Session = Depends(get_session)):
 
 @router.post("/delete-account")
 def request_account_deletion(payload: AccountDeletionRequest, db: Session = Depends(get_session)):
-    """
-    Request account deletion. User can submit via web form.
-    """
+    """Legacy form-based deletion request (marks account, does not delete immediately)."""
     from datetime import datetime
-    
-    # Check if user exists
     user = crud.get_user_by_email(db, payload.email)
     if not user:
-        # Return success even if user doesn't exist (privacy - don't reveal if email is registered)
         return {"message": "Account deletion request received"}
-    
-    # Mark account for deletion
     user.deletion_requested_at = datetime.utcnow()
     user.deletion_reason = payload.reason
     db.add(user)
     db.commit()
-    
-    # Log the request
-    print(f"🗑️ Account deletion requested for {payload.email}")
-    print(f"   Reason: {payload.reason or 'Not provided'}")
-    print(f"   Requested at: {user.deletion_requested_at}")
-    
-    # TODO: Production enhancements:
-    # - Send confirmation email to user
-    # - Create scheduled job to auto-delete after 30 days
-    # - Add endpoint to cancel deletion request
-    
-    return {
-        "message": "Account deletion request received",
-        "email": payload.email,
-        "note": "Your account will be deleted within 30 days"
-    }
+    return {"message": "Account deletion request received"}
+
+
+@router.post("/delete-account/me")
+def delete_own_account(
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Authenticated endpoint: immediately and permanently deletes the calling user's account
+    and all associated data (userbooks, notes, follows, likes, comments, push tokens,
+    notification logs, group memberships, group posts).
+    """
+    uid = current_user.id
+
+    # Delete in dependency order to avoid FK violations
+    for model_cls, col in [
+        (models.NotificationLog, models.NotificationLog.user_id),
+        (models.GroupPost,        models.GroupPost.user_id),
+        (models.GroupMember,      models.GroupMember.user_id),
+    ]:
+        for row in db.exec(select(model_cls).where(col == uid)).all():
+            db.delete(row)
+
+    # Groups created by this user — delete members + posts first, then the group
+    created_groups = db.exec(
+        select(models.ReadingGroup).where(models.ReadingGroup.created_by == uid)
+    ).all()
+    for g in created_groups:
+        for m in db.exec(select(models.GroupMember).where(models.GroupMember.group_id == g.id)).all():
+            db.delete(m)
+        for p in db.exec(select(models.GroupPost).where(models.GroupPost.group_id == g.id)).all():
+            db.delete(p)
+        db.delete(g)
+
+    # Push tokens
+    for row in db.exec(select(models.PushToken).where(models.PushToken.user_id == uid)).all():
+        db.delete(row)
+
+    # Social graph
+    for row in db.exec(select(models.Follow).where(
+        (models.Follow.follower_id == uid) | (models.Follow.followed_id == uid)
+    )).all():
+        db.delete(row)
+
+    # Notes, likes, comments
+    note_ids = [n.id for n in db.exec(select(models.Note).where(models.Note.user_id == uid)).all()]
+    for nid in note_ids:
+        for row in db.exec(select(models.Like).where(models.Like.note_id == nid)).all():
+            db.delete(row)
+        for row in db.exec(select(models.Comment).where(models.Comment.note_id == nid)).all():
+            db.delete(row)
+    for row in db.exec(select(models.Note).where(models.Note.user_id == uid)).all():
+        db.delete(row)
+    # Likes/comments the user left on other notes
+    for row in db.exec(select(models.Like).where(models.Like.user_id == uid)).all():
+        db.delete(row)
+    for row in db.exec(select(models.Comment).where(models.Comment.user_id == uid)).all():
+        db.delete(row)
+
+    # Reading activity + userbooks
+    for row in db.exec(select(models.ReadingActivity).where(models.ReadingActivity.user_id == uid)).all():
+        db.delete(row)
+    for row in db.exec(select(models.UserBook).where(models.UserBook.user_id == uid)).all():
+        db.delete(row)
+
+    # Finally delete the user
+    user = db.get(models.User, uid)
+    if user:
+        db.delete(user)
+    db.commit()
+
+    return {"message": "Account deleted"}

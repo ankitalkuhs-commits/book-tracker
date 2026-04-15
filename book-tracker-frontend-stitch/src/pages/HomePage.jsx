@@ -101,7 +101,7 @@ function PostCard({ post, currentUserId, onLikeToggle }) {
         <div className="flex justify-between items-start">
           <button
             className="flex items-center space-x-3 hover:opacity-80 transition-opacity"
-            onClick={() => navigate(`/profile/${post.user_id}`)}
+            onClick={() => navigate(`/profile/${post.user?.id || post.user_id}`)}
           >
             <Avatar user={post.user} size={10} />
             <div className="text-left">

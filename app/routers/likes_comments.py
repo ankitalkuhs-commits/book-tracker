@@ -135,7 +135,12 @@ def get_comments(
             "id": c.id,
             "text": c.text,
             "created_at": c.created_at.isoformat() + 'Z',
-            "user": {"id": user.id, "name": user.name} if user else None
+            "user": {
+                "id": user.id,
+                "name": user.name,
+                "username": getattr(user, "username", None),
+                "profile_picture": getattr(user, "profile_picture", None),
+            } if user else None
         })
     
     return result

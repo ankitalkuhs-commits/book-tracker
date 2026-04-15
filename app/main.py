@@ -108,20 +108,29 @@ async def startup_event():
         # Don't crash the app - tables likely already exist
 
     # Run column migrations that create_all won't handle (adding columns to existing tables)
+    _migrations = [
+        ("ALTER TABLE note ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP", "note.updated_at"),
+        ("ALTER TABLE \"user\" ADD COLUMN IF NOT EXISTS profile_picture TEXT", "user.profile_picture"),
+        ("ALTER TABLE \"user\" ADD COLUMN IF NOT EXISTS username VARCHAR UNIQUE", "user.username"),
+        ("ALTER TABLE book ADD COLUMN IF NOT EXISTS google_books_id TEXT", "book.google_books_id"),
+    ]
     try:
         from .database import engine
         from sqlalchemy import text
         with engine.connect() as conn:
-            conn.execute(text("ALTER TABLE note ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP"))
-            conn.commit()
-            print("✅ note.updated_at column ensured.")
+            for sql, label in _migrations:
+                try:
+                    conn.execute(text(sql))
+                    conn.commit()
+                    print(f"✅ {label} column ensured.")
+                except Exception as col_e:
+                    err = str(col_e).lower()
+                    if "duplicate column" in err or "already exists" in err or "multiple primary keys" in err:
+                        print(f"ℹ️ {label} already exists, skipping.")
+                    else:
+                        print(f"⚠️ {label} migration skipped: {col_e}")
     except Exception as e:
-        # SQLite doesn't support IF NOT EXISTS on ALTER TABLE — silently skip if column exists
-        err = str(e).lower()
-        if "duplicate column" in err or "already exists" in err:
-            print("ℹ️ note.updated_at already exists, skipping.")
-        else:
-            print(f"⚠️ note.updated_at migration skipped: {e}")
+        print(f"⚠️ Migration block failed: {e}")
 
 @app.on_event("shutdown")
 async def shutdown_event():

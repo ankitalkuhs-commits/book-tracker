@@ -231,12 +231,17 @@ def add_userbook(payload: dict, db: Session = Depends(get_db), current_user: mod
 
 
 @router.get("/", response_model=List[dict])
-def list_userbooks(db: Session = Depends(get_db), current_user = Depends(get_current_user)):
+def list_userbooks(
+    status: Optional[str] = None,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user),
+):
     # fetch userbooks for current user, most recently updated/added first
+    q = select(UserBook).where(UserBook.user_id == current_user.id)
+    if status:
+        q = q.where(UserBook.status == status)
     userbooks = db.exec(
-        select(UserBook)
-        .where(UserBook.user_id == current_user.id)
-        .order_by(UserBook.updated_at.desc().nulls_last(), UserBook.created_at.desc())
+        q.order_by(UserBook.updated_at.desc().nulls_last(), UserBook.created_at.desc())
     ).all()
 
     results = []
