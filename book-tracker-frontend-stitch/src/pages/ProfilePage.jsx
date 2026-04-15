@@ -497,7 +497,7 @@ export default function ProfilePage() {
             <h2 className="font-serif text-base font-bold text-primary">Reading Analytics</h2>
 
             <div className="space-y-3">
-              <div className="bg-surface-container rounded-2xl p-4 flex items-center justify-between">
+              <div className="bg-surface-container-lowest rounded-2xl p-4 flex items-center justify-between">
                 <div>
                   <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/60">Total Books</p>
                   <p className="font-serif text-3xl font-bold text-on-surface mt-0.5">{stats?.total_books ?? books.length}</p>
@@ -505,7 +505,7 @@ export default function ProfilePage() {
                 <span className="material-symbols-outlined text-3xl text-on-surface-variant/20">auto_stories</span>
               </div>
 
-              <div className="bg-surface-container rounded-2xl p-4 flex items-center justify-between">
+              <div className="bg-surface-container-lowest rounded-2xl p-4 flex items-center justify-between">
                 <div>
                   <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/60">Pages Read</p>
                   <p className="font-serif text-3xl font-bold text-on-surface mt-0.5">
