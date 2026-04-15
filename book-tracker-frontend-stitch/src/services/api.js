@@ -45,7 +45,16 @@ export const updateMyProfile = (data) =>
 export const getPublicProfile = (userId) => apiFetch(`/profile/${userId}`);
 
 // Books
-export const searchGoogleBooks = (q) => apiFetch(`/googlebooks/search?q=${encodeURIComponent(q)}`);
+export const searchGoogleBooks = (q) =>
+  apiFetch(`/googlebooks/search?q=${encodeURIComponent(q)}`).then(res => {
+    const items = res?.results || res || []
+    return items.map(b => ({
+      ...b,
+      google_books_id: b.google_id || b.google_books_id,
+      author: Array.isArray(b.authors) ? b.authors.join(', ') : (b.author || ''),
+      isbn: b.isbn_13 || b.isbn_10 || b.isbn || null,
+    }))
+  });
 export const addToLibrary = (data) =>
   apiFetch('/books/add-to-library', { method: 'POST', body: JSON.stringify(data) });
 
