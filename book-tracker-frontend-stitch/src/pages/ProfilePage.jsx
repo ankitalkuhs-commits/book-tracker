@@ -59,7 +59,7 @@ function ActivityChart({ data }) {
           <p className="text-xs text-on-surface-variant mt-0.5">Consistent daily habits tracked in pages</p>
         </div>
         {streak > 0 && (
-          <span className="flex items-center gap-1.5 bg-secondary/15 text-secondary text-[11px] font-bold uppercase tracking-wider px-3 py-1.5 rounded-full">
+          <span className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider px-3 py-1.5 rounded-full" style={{ background: 'rgba(115,92,0,0.12)', color: '#735c00' }}>
             <span className="material-symbols-outlined text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>local_fire_department</span>
             Active Streak: {streak} {streak === 1 ? 'Day' : 'Days'}
           </span>
@@ -79,10 +79,10 @@ function ActivityChart({ data }) {
               style={{
                 height: `${Math.max(h, isActive ? 6 : 3)}%`,
                 background: isToday && isActive
-                  ? 'var(--color-secondary, #735c00)'
+                  ? '#735c00'
                   : isActive
-                    ? 'color-mix(in srgb, var(--color-primary, #00464a) 35%, transparent)'
-                    : 'color-mix(in srgb, var(--color-on-surface, #191c1c) 8%, transparent)',
+                    ? 'rgba(0,70,74,0.30)'
+                    : 'rgba(27,28,25,0.08)',
               }}
               title={isActive ? `${d.pages_read} pages` : 'No activity'}
             />

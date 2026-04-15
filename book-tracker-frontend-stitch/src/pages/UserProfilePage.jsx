@@ -72,12 +72,12 @@ function VelocityChart({ activity30, activity90 }) {
                   style={{
                     height: `${Math.max(h, isActive ? 5 : 2)}%`,
                     background: isToday && isActive
-                      ? 'var(--color-secondary, #735c00)'
+                      ? '#735c00'
                       : isHighlight
-                        ? 'color-mix(in srgb, var(--color-secondary, #735c00) 55%, transparent)'
+                        ? 'rgba(115,92,0,0.55)'
                         : isActive
-                          ? 'color-mix(in srgb, var(--color-primary, #00464a) 30%, transparent)'
-                          : 'color-mix(in srgb, var(--color-on-surface, #191c1c) 7%, transparent)',
+                          ? 'rgba(0,70,74,0.30)'
+                          : 'rgba(27,28,25,0.08)',
                   }}
                   title={isActive ? `${d.pages_read} pages` : ''}
                 />
