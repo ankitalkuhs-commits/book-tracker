@@ -279,6 +279,49 @@ def get_my_notes(db: Session = Depends(get_db), current_user: models.User = Depe
     return out
 
 
+@router.get("/user/{user_id}", status_code=status.HTTP_200_OK, response_model=List[NoteOutSchema])
+def get_public_notes_for_user(
+    user_id: int,
+    db: Session = Depends(get_db),
+    _: models.User = Depends(get_current_user)
+):
+    """Get public notes for a specific user (for their public profile)"""
+    from sqlmodel import select, func
+    notes = db.exec(
+        select(models.Note)
+        .where(models.Note.user_id == user_id)
+        .where(models.Note.is_public == True)
+        .order_by(models.Note.created_at.desc())
+        .limit(20)
+    ).all()
+    out = []
+    for n in notes:
+        book = n.userbook.book if n.userbook else None
+        user = n.user
+        likes_count = db.exec(
+            select(func.count(models.Like.id)).where(models.Like.note_id == n.id)
+        ).one()
+        comments_count = db.exec(
+            select(func.count(models.Comment.id)).where(models.Comment.note_id == n.id)
+        ).one()
+        out.append({
+            "id": n.id,
+            "text": n.text,
+            "emotion": n.emotion,
+            "page_number": n.page_number,
+            "chapter": n.chapter,
+            "image_url": n.image_url,
+            "quote": n.quote,
+            "is_public": n.is_public,
+            "created_at": format_timestamp(n.created_at),
+            "user": {"id": user.id, "name": user.name} if user else None,
+            "book": {"id": book.id, "title": book.title, "author": book.author} if book else None,
+            "likes_count": likes_count,
+            "comments_count": comments_count,
+        })
+    return out
+
+
 @router.get("/userbook/{userbook_id}", status_code=status.HTTP_200_OK, response_model=List[NoteOutSchema])
 def get_notes_for_userbook(
     userbook_id: int,

@@ -78,6 +78,7 @@ export const getCommunityFeed = () => apiFetch('/notes/feed');
 export const getFriendsFeed = () => apiFetch('/notes/friends-feed');
 export const getMyNotes = () => apiFetch('/notes/me');
 export const getNotesForBook = (userbookId) => apiFetch(`/notes/userbook/${userbookId}`);
+export const getUserNotes = (userId) => apiFetch(`/notes/user/${userId}`);
 export const createNote = (data) =>
   apiFetch('/notes/', { method: 'POST', body: JSON.stringify(data) });
 export const updateNote = (noteId, data) =>
