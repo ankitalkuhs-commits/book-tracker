@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../components/Toast'
-import { getMyProfile, updateMyProfile } from '../services/api'
+import { getMyProfile, updateMyProfile, deleteAccount } from '../services/api'
 
 export default function SettingsPage() {
   const { user, login, logout } = useAuth()
@@ -13,6 +13,8 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState(null)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
   useEffect(() => {
     getMyProfile().then(p => {
@@ -43,6 +45,18 @@ export default function SettingsPage() {
   const handleSignOut = () => {
     logout()
     navigate('/')
+  }
+
+  const handleDeleteAccount = async () => {
+    setDeleting(true)
+    try {
+      await deleteAccount()
+      logout()
+      navigate('/')
+    } catch (e) {
+      toast(e.message || 'Failed to delete account', 'error')
+    }
+    setDeleting(false)
   }
 
   const initials = user?.name?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() || '?'
@@ -129,7 +143,7 @@ export default function SettingsPage() {
             </div>
           </div>
 
-          <div className="border-t border-outline-variant/15 pt-4">
+          <div className="border-t border-outline-variant/15 pt-4 space-y-3">
             <button
               onClick={handleSignOut}
               className="flex items-center gap-2 text-sm text-error font-medium hover:text-error/80 transition-colors"
@@ -137,9 +151,44 @@ export default function SettingsPage() {
               <span className="material-symbols-outlined text-base">logout</span>
               Sign out
             </button>
+            <button
+              onClick={() => setShowDeleteConfirm(true)}
+              className="flex items-center gap-2 text-sm text-error/60 hover:text-error transition-colors"
+            >
+              <span className="material-symbols-outlined text-base">delete_forever</span>
+              Delete account
+            </button>
           </div>
         </div>
       </section>
+
+      {/* Delete account confirmation modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+          <div className="bg-surface-container-lowest rounded-3xl p-6 w-full max-w-sm shadow-float space-y-4 text-center">
+            <span className="material-symbols-outlined text-4xl text-error block">warning</span>
+            <h3 className="font-serif text-xl font-bold text-on-surface">Delete Account?</h3>
+            <p className="text-sm text-on-surface-variant leading-relaxed">
+              This will permanently delete your account, library, notes, and all data. This cannot be undone.
+            </p>
+            <div className="flex gap-3 pt-2">
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                className="flex-1 py-2.5 text-sm font-bold border border-outline-variant rounded-xl hover:bg-surface-container transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteAccount}
+                disabled={deleting}
+                className="flex-1 py-2.5 text-sm font-bold bg-error text-on-error rounded-xl hover:bg-error/90 transition-colors disabled:opacity-50"
+              >
+                {deleting ? 'Deleting...' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* About */}
       <section className="bg-surface-container-lowest rounded-3xl p-8 space-y-3">

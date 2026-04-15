@@ -14,6 +14,7 @@ import AdminPage from './pages/AdminPage'
 import GroupsPage from './pages/GroupsPage'
 import CreateGroupPage from './pages/CreateGroupPage'
 import GroupDetailPage from './pages/GroupDetailPage'
+import JoinGroupPage from './pages/JoinGroupPage'
 
 // Wraps all logged-in pages with the Nav bar
 function AppLayout({ children }) {
@@ -66,6 +67,7 @@ export default function App() {
       <Route path="/groups" element={<PrivateRoute><GroupsPage /></PrivateRoute>} />
       <Route path="/groups/new" element={<PrivateRoute><CreateGroupPage /></PrivateRoute>} />
       <Route path="/groups/:groupId" element={<PrivateRoute><GroupDetailPage /></PrivateRoute>} />
+      <Route path="/join/:inviteCode" element={<PrivateRoute><JoinGroupPage /></PrivateRoute>} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )

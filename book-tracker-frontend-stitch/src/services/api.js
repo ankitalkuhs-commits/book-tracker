@@ -119,6 +119,12 @@ export const getUnreadCount = () => apiFetch('/notifications/unread-count');
 export const getNotifications = () => apiFetch('/notifications/history');
 export const markAllNotificationsRead = () =>
   apiFetch('/notifications/mark-read', { method: 'POST' });
+export const getVapidPublicKey = () => apiFetch('/notifications/vapid-public-key');
+export const webSubscribe = (subscription, deviceInfo = 'Chrome/Web') =>
+  apiFetch('/notifications/web-subscribe', {
+    method: 'POST',
+    body: JSON.stringify({ subscription, device_info: deviceInfo }),
+  });
 
 // Groups
 export const getMyGroups = () => apiFetch('/groups/my');
@@ -148,6 +154,9 @@ export const clearGroupBook = (id) => apiFetch(`/groups/${id}/book`, { method: '
 export const getMyGroupInvites = () => apiFetch('/groups/invites/pending');
 export const searchUsersForInvite = (q) => apiFetch(`/users/search?q=${encodeURIComponent(q)}`);
 
+// Account
+export const deleteAccount = () => apiFetch('/auth/delete-account', { method: 'POST' });
+
 // Admin
 export const getAdminStats = () => apiFetch('/admin/stats');
 export const getAdminUsers = () => apiFetch('/admin/users');
@@ -157,3 +166,4 @@ export const sendTestPush = (userId) =>
   apiFetch(`/admin/push/test/${userId}`, { method: 'POST' });
 export const broadcastPush = (data) =>
   apiFetch('/admin/push/broadcast', { method: 'POST', body: JSON.stringify(data) });
+export const triggerBot = () => apiFetch('/admin/bot/trigger', { method: 'POST' });

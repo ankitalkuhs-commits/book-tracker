@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { getAdminStats, getAdminUsers, sendTestPush, broadcastPush } from '../services/api'
+import { getAdminStats, getAdminUsers, sendTestPush, broadcastPush, setAdminRole, triggerBot } from '../services/api'
 
 function StatCard({ label, value, sub }) {
   return (
@@ -28,6 +28,13 @@ export default function AdminPage() {
   const [testLoading, setTestLoading] = useState(false)
   const [testResult, setTestResult] = useState(null)
 
+  // Bot trigger
+  const [botLoading, setBotLoading] = useState(false)
+  const [botResult, setBotResult] = useState(null)
+
+  // Make admin
+  const [makingAdmin, setMakingAdmin] = useState(null)
+
   useEffect(() => {
     Promise.all([
       getAdminStats(),
@@ -52,6 +59,27 @@ export default function AdminPage() {
       setBroadcastResult({ ok: false, msg: e.message })
     }
     setBroadcasting(false)
+  }
+
+  const handleMakeAdmin = async (userId) => {
+    setMakingAdmin(userId)
+    try {
+      await setAdminRole(userId)
+      setUsers(prev => prev.map(u => u.id === userId ? { ...u, is_admin: true } : u))
+    } catch { }
+    setMakingAdmin(null)
+  }
+
+  const handleBotTrigger = async () => {
+    setBotLoading(true)
+    setBotResult(null)
+    try {
+      const res = await triggerBot()
+      setBotResult({ ok: true, msg: res.message || 'Bot triggered!' })
+    } catch (e) {
+      setBotResult({ ok: false, msg: e.message })
+    }
+    setBotLoading(false)
   }
 
   const handleTestPush = async () => {
@@ -148,7 +176,7 @@ export default function AdminPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-outline-variant/15">
-                    {['Name', 'Email', 'Books', 'Followers', 'Admin', 'Joined'].map(h => (
+                    {['Name', 'Email', 'Books', 'Followers', 'Admin', 'Joined', ''].map(h => (
                       <th key={h} className="text-left px-5 py-3 text-xs font-bold uppercase tracking-wider text-on-surface-variant">
                         {h}
                       </th>
@@ -177,6 +205,17 @@ export default function AdminPage() {
                       <td className="px-5 py-3 text-on-surface-variant text-xs">
                         {u.created_at ? new Date(u.created_at).toLocaleDateString() : '—'}
                       </td>
+                      <td className="px-5 py-3">
+                        {!u.is_admin && (
+                          <button
+                            onClick={() => handleMakeAdmin(u.id)}
+                            disabled={makingAdmin === u.id}
+                            className="text-xs font-bold text-primary hover:text-primary/70 transition-colors whitespace-nowrap"
+                          >
+                            {makingAdmin === u.id ? '...' : 'Make Admin'}
+                          </button>
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -189,6 +228,28 @@ export default function AdminPage() {
       {/* Push tab */}
       {!loading && activeTab === 'push' && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+          {/* Bot trigger */}
+          <section className="bg-surface-container-lowest rounded-3xl p-6 space-y-4 md:col-span-2">
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              <div>
+                <h2 className="font-serif text-lg font-bold text-primary">Editorial Bot</h2>
+                <p className="text-sm text-on-surface-variant">Manually trigger the editorial bot to post community content.</p>
+              </div>
+              <button
+                onClick={handleBotTrigger}
+                disabled={botLoading}
+                className="btn-primary px-6 py-2.5 text-sm rounded-xl"
+              >
+                {botLoading ? 'Triggering...' : 'Trigger Bot'}
+              </button>
+            </div>
+            {botResult && (
+              <p className={`text-sm ${botResult.ok ? 'text-secondary' : 'text-error'}`}>
+                {botResult.msg}
+              </p>
+            )}
+          </section>
           {/* Broadcast */}
           <section className="bg-surface-container-lowest rounded-3xl p-6 space-y-4">
             <h2 className="font-serif text-lg font-bold text-primary">Broadcast Push</h2>
