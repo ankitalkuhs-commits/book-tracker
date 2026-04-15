@@ -81,8 +81,8 @@ function ActivityChart({ data }) {
                 background: isToday && isActive
                   ? '#735c00'
                   : isActive
-                    ? 'rgba(0,70,74,0.30)'
-                    : 'rgba(27,28,25,0.08)',
+                    ? 'rgba(0,70,74,0.35)'
+                    : 'rgba(0,70,74,0.10)',
               }}
               title={isActive ? `${d.pages_read} pages` : 'No activity'}
             />
@@ -277,6 +277,18 @@ function EditBioModal({ profile, onClose, onSaved }) {
 
 // ─── Note Card ────────────────────────────────────────────────────────────────
 
+function NoteCoverThumb({ book }) {
+  const [broken, setBroken] = useState(false)
+  return (
+    <div className="w-10 shrink-0 aspect-[2/3] rounded-md overflow-hidden bg-surface-container-high flex items-center justify-center">
+      {book?.cover_url && !broken
+        ? <img src={book.cover_url} alt={book.title} className="w-full h-full object-cover" onError={() => setBroken(true)} />
+        : <span className="material-symbols-outlined text-base text-outline/30">menu_book</span>
+      }
+    </div>
+  )
+}
+
 function NoteCard({ note, onDelete }) {
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef()
@@ -289,25 +301,19 @@ function NoteCard({ note, onDelete }) {
 
   return (
     <article className="bg-surface-container-lowest rounded-2xl p-5 space-y-3 border border-outline-variant/10">
-      {/* Top row */}
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
+      {/* Top row: cover + title/date + menu */}
+      <div className="flex items-start gap-3">
+        {note.book && <NoteCoverThumb book={note.book} />}
+        <div className="flex-1 min-w-0">
           {note.book && (
-            <p className="font-bold text-sm text-on-surface truncate">
-              {note.book.title.startsWith("'") || note.book.title.startsWith('"')
-                ? note.book.title
-                : `'${note.book.title}'`}
-            </p>
+            <p className="font-bold text-sm text-on-surface leading-snug line-clamp-1">{note.book.title}</p>
           )}
-          <p className="text-xs text-on-surface-variant mt-0.5">
-            {formatDate(note.created_at)}
-            {note.userbook?.collection && <span> • {note.userbook.collection}</span>}
-          </p>
+          <p className="text-xs text-on-surface-variant mt-0.5">{formatDate(note.created_at)}</p>
         </div>
         <div className="relative shrink-0" ref={menuRef}>
           <button
             onClick={() => setMenuOpen(o => !o)}
-            className="text-on-surface-variant/50 hover:text-on-surface transition-colors p-1 -m-1"
+            className="text-on-surface-variant/40 hover:text-on-surface transition-colors p-1 -m-1"
           >
             <span className="material-symbols-outlined text-lg">more_vert</span>
           </button>
@@ -324,27 +330,27 @@ function NoteCard({ note, onDelete }) {
         </div>
       </div>
 
-      {/* Quote block */}
+      {/* Quote — italic, serif, primary-tinted */}
       {note.quote && (
-        <blockquote className="border-l-4 border-secondary/40 pl-4 italic text-sm text-on-surface-variant font-serif leading-relaxed">
+        <p className="font-serif italic text-sm text-primary/80 leading-relaxed">
           "{note.quote}"
-        </blockquote>
+        </p>
       )}
 
-      {/* Note text */}
+      {/* Body text */}
       {note.text && (
         <p className="text-sm text-on-surface leading-relaxed">{note.text}</p>
       )}
 
       {/* Footer: hearts + comments */}
       <div className="flex items-center gap-5 pt-1 border-t border-outline-variant/10">
-        <span className="flex items-center gap-1.5 text-xs font-bold text-on-surface-variant/60">
-          <span className="material-symbols-outlined text-sm text-error/60" style={{ fontVariationSettings: "'FILL' 1" }}>favorite</span>
-          {note.likes_count || 0} {note.likes_count === 1 ? 'Heart' : 'Hearts'}
+        <span className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-on-surface-variant/50">
+          <span className="material-symbols-outlined text-sm text-error/50">favorite</span>
+          {note.likes_count || 0} Hearts
         </span>
-        <span className="flex items-center gap-1.5 text-xs font-bold text-on-surface-variant/60">
+        <span className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-on-surface-variant/50">
           <span className="material-symbols-outlined text-sm">chat_bubble</span>
-          {note.comments_count || 0} {note.comments_count === 1 ? 'Comment' : 'Comments'}
+          {note.comments_count || 0} Comments
         </span>
         <span className="ml-auto text-xs text-on-surface-variant/40">{timeAgo(note.created_at)}</span>
       </div>
@@ -488,7 +494,7 @@ export default function ProfilePage() {
 
           {/* Reading Analytics */}
           <section className="bg-surface-container-lowest rounded-3xl p-6 space-y-4">
-            <h2 className="font-sans text-sm font-bold uppercase tracking-widest text-on-surface">Reading Analytics</h2>
+            <h2 className="font-serif text-base font-bold text-primary">Reading Analytics</h2>
 
             <div className="space-y-3">
               <div className="bg-surface-container-low rounded-2xl p-4 flex items-center justify-between">
@@ -535,7 +541,7 @@ export default function ProfilePage() {
           {/* Currently Reading */}
           {currentlyReading.length > 0 && (
             <section className="bg-surface-container-lowest rounded-3xl p-6 space-y-4">
-              <h2 className="font-sans text-sm font-bold uppercase tracking-widest text-on-surface">Currently Reading</h2>
+              <h2 className="font-serif text-base font-bold text-primary">Currently Reading</h2>
               <div className="space-y-4">
                 {currentlyReading.map(ub => {
                   const progress = pct(ub.current_page, ub.book?.total_pages)

@@ -274,7 +274,7 @@ def get_my_notes(db: Session = Depends(get_db), current_user: models.User = Depe
             "is_public": n.is_public,
             "created_at": format_timestamp(n.created_at),
             "user": {"id": user.id, "name": user.name} if user else None,
-            "book": {"id": book.id, "title": book.title, "author": book.author} if book else None
+            "book": {"id": book.id, "title": book.title, "author": book.author, "cover_url": book.cover_url} if book else None
         })
     return out
 
@@ -315,7 +315,7 @@ def get_public_notes_for_user(
             "is_public": n.is_public,
             "created_at": format_timestamp(n.created_at),
             "user": {"id": user.id, "name": user.name} if user else None,
-            "book": {"id": book.id, "title": book.title, "author": book.author} if book else None,
+            "book": {"id": book.id, "title": book.title, "author": book.author, "cover_url": book.cover_url} if book else None,
             "likes_count": likes_count,
             "comments_count": comments_count,
         })
