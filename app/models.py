@@ -32,6 +32,7 @@ class User(SQLModel, table=True):
     password_hash: str = Field(nullable=False)
     bio: Optional[str] = None
     profile_picture: Optional[str] = None
+    yearly_goal: Optional[int] = None          # target books per year
     is_admin: bool = Field(default=False)
     created_at: datetime = Field(default_factory=datetime.utcnow)
     last_active: Optional[datetime] = None
@@ -69,7 +70,7 @@ class UserBook(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     user_id: int = Field(foreign_key="user.id", index=True)
     book_id: int = Field(foreign_key="book.id", index=True)
-    status: str = Field(default="to-read")  # 'to-read' | 'reading' | 'finished'
+    status: str = Field(default="to-read", index=True)  # 'to-read' | 'reading' | 'finished'
     current_page: Optional[int] = None
     rating: Optional[int] = None
     private_notes: Optional[str] = None
@@ -96,12 +97,12 @@ class Note(SQLModel, table=True):
     user_id: int = Field(foreign_key="user.id", index=True)
     text: Optional[str] = None
     emotion: Optional[str] = None
-    page_number: Optional[int] = None  # New: track which page the note is about
-    chapter: Optional[str] = None  # New: track which chapter the note is about
-    image_url: Optional[str] = None  # New: store uploaded image URL
-    quote: Optional[str] = None  # New: store book quotes
-    is_public: bool = Field(default=True)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    page_number: Optional[int] = None
+    chapter: Optional[str] = None
+    image_url: Optional[str] = None
+    quote: Optional[str] = None
+    is_public: bool = Field(default=True, index=True)
+    created_at: datetime = Field(default_factory=datetime.utcnow, index=True)
     updated_at: Optional[datetime] = None
 
     # Relationships
@@ -174,11 +175,11 @@ class ReadingActivity(SQLModel, table=True):
 
     id: Optional[int] = Field(default=None, primary_key=True)
 
-    user_id: int = Field(foreign_key="user.id")
+    user_id: int = Field(foreign_key="user.id", index=True)
     userbook_id: int = Field(foreign_key="userbook.id", index=True)
 
     # date used for stats queries
-    date: datetime = Field(default_factory=datetime.utcnow)
+    date: datetime = Field(default_factory=datetime.utcnow, index=True)
 
     pages_read: Optional[int] = Field(default=0)
     current_page: Optional[int] = None

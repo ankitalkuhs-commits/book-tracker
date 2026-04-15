@@ -29,18 +29,29 @@ def format_timestamp(dt):
 
 
 class NoteCreateSchema(BaseModel):
-    """
-    Request body schema for creating a note.
-    Fields are optional to keep it flexible for quick posts.
-    """
     text: Optional[str] = None
     emotion: Optional[str] = None
-    page_number: Optional[int] = None  # New field
-    chapter: Optional[str] = None  # New field
-    image_url: Optional[str] = None  # New field for image URL
-    quote: Optional[str] = None  # New field for book quotes
+    page_number: Optional[int] = None
+    chapter: Optional[str] = None
+    image_url: Optional[str] = None
+    quote: Optional[str] = None
     userbook_id: Optional[int] = None
     is_public: Optional[bool] = True
+
+    @classmethod
+    def __get_validators__(cls):
+        yield cls._validate_content
+
+    @classmethod
+    def _validate_content(cls, v):
+        return v
+
+    def has_content(self) -> bool:
+        return bool(
+            (self.text and self.text.strip()) or
+            (self.quote and self.quote.strip()) or
+            self.image_url
+        )
 
 
 class NoteOutSchema(BaseModel):
@@ -118,6 +129,9 @@ def create_note(payload: NoteCreateSchema, db: Session = Depends(get_db), curren
     quote = payload.quote
     userbook_id = payload.userbook_id
     is_public = payload.is_public if payload.is_public is not None else True
+
+    if not payload.has_content():
+        raise HTTPException(status_code=400, detail="Post must have text, a quote, or an image")
 
     # if userbook_id provided, ensure it belongs to current_user
     if userbook_id:

@@ -188,6 +188,132 @@ def add_book(book_data: dict, db: Session = Depends(get_db)):
 
 
 # --- GET a single book by ID ---
+@router.get("/recommendations")
+def get_recommendations(limit: int = 12, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    """
+    Returns book recommendations for the current user.
+    Strategy (in order of priority):
+    1. Books currently being read by people you follow (social signal)
+    2. Books finished and rated 4+ by people you follow (peer endorsement)
+    3. Other books by authors you've already read (author affinity)
+    Excludes books already in the user's library.
+    """
+    from sqlalchemy import or_
+
+    # Books already in user's library
+    my_book_ids = set(
+        ub.book_id for ub in db.exec(select(UserBook).where(UserBook.user_id == current_user.id)).all()
+    )
+
+    # Users the current user follows
+    following_ids = [
+        row for row in db.exec(
+            select(UserBook.user_id)
+            .where(UserBook.user_id != current_user.id)
+            .join(UserBook, UserBook.user_id == UserBook.user_id)  # noqa — will use Follow below
+        ).all()
+    ]
+    from ..models import Follow
+    following_ids = [
+        r for r in db.exec(select(Follow.followed_id).where(Follow.follower_id == current_user.id)).all()
+    ]
+
+    recs = {}  # book_id -> {"book": Book, "reason": str, "score": int}
+
+    def add_rec(book, reason, score):
+        if book.id not in my_book_ids and book.id not in recs:
+            recs[book.id] = {"book": book, "reason": reason, "score": score}
+        elif book.id in recs:
+            recs[book.id]["score"] = max(recs[book.id]["score"], score)
+
+    # 1. Books friends are currently reading
+    if following_ids:
+        friend_reading = db.exec(
+            select(UserBook).where(
+                UserBook.user_id.in_(following_ids),
+                UserBook.status == "reading",
+            ).limit(30)
+        ).all()
+        for ub in friend_reading:
+            book = db.get(Book, ub.book_id)
+            if book:
+                add_rec(book, "friends_reading", 3)
+
+    # 2. Books friends finished with rating >= 4
+    if following_ids:
+        friend_loved = db.exec(
+            select(UserBook).where(
+                UserBook.user_id.in_(following_ids),
+                UserBook.status == "finished",
+                UserBook.rating >= 4,
+            ).limit(30)
+        ).all()
+        for ub in friend_loved:
+            book = db.get(Book, ub.book_id)
+            if book:
+                add_rec(book, "friends_loved", 4)
+
+    # 3. Author affinity — other books by authors I've read
+    my_ubs = db.exec(select(UserBook).where(UserBook.user_id == current_user.id)).all()
+    my_authors = set()
+    for ub in my_ubs:
+        b = db.get(Book, ub.book_id)
+        if b and b.author:
+            my_authors.add(b.author.split(',')[0].strip())  # first listed author
+
+    if my_authors:
+        author_books = db.exec(
+            select(Book).where(
+                or_(*[Book.author.ilike(f"%{a}%") for a in list(my_authors)[:5]])
+            ).limit(40)
+        ).all()
+        for book in author_books:
+            add_rec(book, "author_affinity", 2)
+
+    # Sort by score desc, return top N
+    sorted_recs = sorted(recs.values(), key=lambda r: r["score"], reverse=True)[:limit]
+
+    return [
+        {
+            "id": r["book"].id,
+            "title": r["book"].title,
+            "author": r["book"].author,
+            "cover_url": r["book"].cover_url,
+            "total_pages": r["book"].total_pages,
+            "description": r["book"].description,
+            "reason": r["reason"],
+        }
+        for r in sorted_recs
+    ]
+
+
+@router.get("/search")
+def search_books(q: str, limit: int = 20, db: Session = Depends(get_db), _=Depends(get_current_user)):
+    """Search the local book catalog by title or author."""
+    from sqlalchemy import or_
+    results = db.exec(
+        select(Book).where(
+            or_(
+                Book.title.ilike(f"%{q}%"),
+                Book.author.ilike(f"%{q}%"),
+            )
+        ).order_by(Book.title).limit(limit)
+    ).all()
+    return [
+        {
+            "id": b.id,
+            "title": b.title,
+            "author": b.author,
+            "cover_url": b.cover_url,
+            "total_pages": b.total_pages,
+            "isbn": b.isbn,
+            "description": b.description,
+            "published_date": b.published_date,
+        }
+        for b in results
+    ]
+
+
 @router.get("/{book_id}")
 def get_book(book_id: int, db: Session = Depends(get_db)):
     book = db.get(Book, book_id)

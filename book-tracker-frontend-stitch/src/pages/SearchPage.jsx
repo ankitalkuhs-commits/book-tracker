@@ -1,5 +1,6 @@
-import { useState } from 'react'
-import { searchGoogleBooks, addToLibrary } from '../services/api'
+import { useState, useEffect, useRef } from 'react'
+import { searchGoogleBooks, searchLocalBooks, addToLibrary } from '../services/api'
+import { useToast } from '../components/Toast'
 
 const STATUS_OPTIONS = [
   { value: 'to-read',  label: 'Want to Read' },
@@ -12,12 +13,7 @@ function BookCover({ book }) {
   return (
     <div className="aspect-[2/3] rounded-lg overflow-hidden bg-surface-container-high flex items-center justify-center">
       {book?.cover_url && !broken ? (
-        <img
-          src={book.cover_url}
-          alt={book.title}
-          className="w-full h-full object-cover"
-          onError={() => setBroken(true)}
-        />
+        <img src={book.cover_url} alt={book.title} className="w-full h-full object-cover" onError={() => setBroken(true)} />
       ) : (
         <span className="material-symbols-outlined text-3xl text-outline/40">menu_book</span>
       )}
@@ -30,6 +26,7 @@ function BookResult({ book }) {
   const [adding, setAdding] = useState(false)
   const [added, setAdded] = useState(false)
   const [error, setError] = useState(null)
+  const toast = useToast()
 
   const handleAdd = async () => {
     setAdding(true)
@@ -47,37 +44,27 @@ function BookResult({ book }) {
         status,
       })
       setAdded(true)
+      toast(`"${book.title}" added to library`, 'success')
     } catch (e) {
-      setError(e.message || 'Failed to add')
+      const msg = e.message || 'Failed to add'
+      setError(msg)
+      toast(msg, 'error')
     }
     setAdding(false)
   }
 
   return (
     <div className="bg-surface-container-lowest rounded-2xl p-5 flex gap-5 hover:shadow-[0_12px_32px_-8px_rgba(0,70,74,0.08)] transition-all">
-      {/* Cover */}
-      <div className="w-20 shrink-0">
-        <BookCover book={book} />
-      </div>
-
-      {/* Info */}
+      <div className="w-20 shrink-0"><BookCover book={book} /></div>
       <div className="flex-1 min-w-0 space-y-2">
         <h3 className="font-bold text-on-surface leading-snug">{book.title}</h3>
         <p className="text-sm text-on-surface-variant">{book.author}</p>
-        {book.published_date && (
-          <p className="text-xs text-on-surface-variant/60">{book.published_date?.slice(0, 4)}</p>
-        )}
-        {book.description && (
-          <p className="text-xs text-on-surface-variant/70 line-clamp-2 leading-relaxed">{book.description}</p>
-        )}
-        {book.total_pages && (
-          <p className="text-xs text-on-surface-variant/50">{book.total_pages} pages</p>
-        )}
-
-        {/* Add controls */}
+        {book.published_date && <p className="text-xs text-on-surface-variant/60">{book.published_date?.slice(0, 4)}</p>}
+        {book.description && <p className="text-xs text-on-surface-variant/70 line-clamp-2 leading-relaxed">{book.description}</p>}
+        {book.total_pages && <p className="text-xs text-on-surface-variant/50">{book.total_pages} pages</p>}
         {added ? (
           <div className="flex items-center gap-2 pt-1">
-            <span className="material-symbols-outlined text-secondary text-lg">check_circle</span>
+            <span className="material-symbols-outlined text-secondary text-lg" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
             <span className="text-sm font-medium text-secondary">Added to library</span>
           </div>
         ) : (
@@ -87,15 +74,9 @@ function BookResult({ book }) {
               onChange={e => setStatus(e.target.value)}
               className="bg-surface-container-low rounded-xl px-3 py-2 text-sm border-none focus:outline-none focus:ring-2 focus:ring-primary/20"
             >
-              {STATUS_OPTIONS.map(o => (
-                <option key={o.value} value={o.value}>{o.label}</option>
-              ))}
+              {STATUS_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
-            <button
-              onClick={handleAdd}
-              disabled={adding}
-              className="btn-primary px-4 py-2 text-sm rounded-xl"
-            >
+            <button onClick={handleAdd} disabled={adding} className="btn-primary px-4 py-2 text-sm rounded-xl">
               {adding ? 'Adding...' : 'Add to Library'}
             </button>
             {error && <span className="text-xs text-error">{error}</span>}
@@ -106,33 +87,68 @@ function BookResult({ book }) {
   )
 }
 
+function SkeletonList() {
+  return (
+    <div className="space-y-4">
+      {Array.from({ length: 4 }).map((_, i) => (
+        <div key={i} className="bg-surface-container-lowest rounded-2xl p-5 flex gap-5">
+          <div className="w-20 aspect-[2/3] bg-surface-container animate-pulse rounded-lg shrink-0" />
+          <div className="flex-1 space-y-3 pt-1">
+            <div className="h-4 bg-surface-container animate-pulse rounded w-3/4" />
+            <div className="h-3 bg-surface-container animate-pulse rounded w-1/2" />
+            <div className="h-3 bg-surface-container animate-pulse rounded w-full" />
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 export default function SearchPage() {
   const [query, setQuery] = useState('')
-  const [results, setResults] = useState([])
+  const [tab, setTab] = useState('google') // 'google' | 'community'
+  const [googleResults, setGoogleResults] = useState([])
+  const [localResults, setLocalResults] = useState([])
   const [loading, setLoading] = useState(false)
   const [searched, setSearched] = useState(false)
+  const debounceRef = useRef()
 
-  const doSearch = async () => {
-    if (!query.trim()) return
+  const doSearch = async (q = query) => {
+    if (!q.trim()) return
     setLoading(true)
     setSearched(true)
     try {
-      const data = await searchGoogleBooks(query)
-      setResults(data || [])
+      const [google, local] = await Promise.allSettled([
+        searchGoogleBooks(q),
+        searchLocalBooks(q),
+      ])
+      setGoogleResults(google.status === 'fulfilled' ? (google.value || []) : [])
+      setLocalResults(local.status === 'fulfilled' ? (local.value || []) : [])
     } catch {
-      setResults([])
+      setGoogleResults([])
+      setLocalResults([])
     }
     setLoading(false)
   }
 
+  // Debounce local search as user types (community tab)
+  useEffect(() => {
+    if (tab !== 'community' || !query.trim()) return
+    clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(() => doSearch(query), 350)
+    return () => clearTimeout(debounceRef.current)
+  }, [query, tab])
+
   const handleKey = (e) => { if (e.key === 'Enter') doSearch() }
+
+  const activeResults = tab === 'google' ? googleResults : localResults
 
   return (
     <main className="pb-12 max-w-screen-lg mx-auto px-4 md:px-8 pt-8 space-y-8">
       {/* Header */}
-      <div className="space-y-2">
+      <div>
         <h1 className="font-serif text-3xl font-bold text-primary">Find Books</h1>
-        <p className="text-on-surface-variant text-sm">Search the Google Books catalog and add to your library.</p>
+        <p className="text-on-surface-variant text-sm mt-1">Search Google Books or see what the community is reading.</p>
       </div>
 
       {/* Search bar */}
@@ -148,37 +164,50 @@ export default function SearchPage() {
             autoFocus
           />
         </div>
-        <button
-          onClick={doSearch}
-          disabled={loading}
-          className="btn-primary px-7 py-3.5 text-base rounded-2xl shrink-0"
-        >
+        <button onClick={() => doSearch()} disabled={loading} className="btn-primary px-7 py-3.5 text-base rounded-2xl shrink-0">
           {loading ? 'Searching...' : 'Search'}
         </button>
       </div>
 
+      {/* Tabs */}
+      <div className="flex gap-2">
+        <button
+          onClick={() => setTab('google')}
+          className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${tab === 'google' ? 'bg-primary text-on-primary font-bold' : 'bg-surface-container text-on-surface-variant hover:bg-surface-container-high'}`}
+        >
+          Google Books
+          {searched && googleResults.length > 0 && (
+            <span className="ml-1.5 text-[10px] bg-on-primary/20 rounded-full px-1.5 py-0.5">{googleResults.length}</span>
+          )}
+        </button>
+        <button
+          onClick={() => setTab('community')}
+          className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${tab === 'community' ? 'bg-primary text-on-primary font-bold' : 'bg-surface-container text-on-surface-variant hover:bg-surface-container-high'}`}
+        >
+          Community Library
+          {searched && localResults.length > 0 && (
+            <span className="ml-1.5 text-[10px] bg-on-primary/20 rounded-full px-1.5 py-0.5">{localResults.length}</span>
+          )}
+        </button>
+      </div>
+
       {/* Loading */}
-      {loading && (
-        <div className="space-y-4">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="bg-surface-container-lowest rounded-2xl p-5 flex gap-5">
-              <div className="w-20 aspect-[2/3] bg-surface-container animate-pulse rounded-lg shrink-0" />
-              <div className="flex-1 space-y-3 pt-1">
-                <div className="h-4 bg-surface-container animate-pulse rounded w-3/4" />
-                <div className="h-3 bg-surface-container animate-pulse rounded w-1/2" />
-                <div className="h-3 bg-surface-container animate-pulse rounded w-full" />
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+      {loading && <SkeletonList />}
 
       {/* No results */}
-      {!loading && searched && results.length === 0 && (
+      {!loading && searched && activeResults.length === 0 && (
         <div className="text-center py-20">
-          <span className="material-symbols-outlined text-6xl text-outline/40 block mb-4">search_off</span>
-          <p className="font-serif text-xl text-on-surface">No books found</p>
-          <p className="text-sm text-on-surface-variant mt-1">Try a different title or author name.</p>
+          <span className="material-symbols-outlined text-6xl text-outline/40 block mb-4">
+            {tab === 'community' ? 'library_books' : 'search_off'}
+          </span>
+          <p className="font-serif text-xl text-on-surface">
+            {tab === 'community' ? 'Not in the community catalog yet' : 'No books found'}
+          </p>
+          <p className="text-sm text-on-surface-variant mt-1">
+            {tab === 'community'
+              ? 'Be the first to add this book via Google Books.'
+              : 'Try a different title or author name.'}
+          </p>
         </div>
       )}
 
@@ -187,16 +216,21 @@ export default function SearchPage() {
         <div className="text-center py-20">
           <span className="material-symbols-outlined text-6xl text-outline/30 block mb-4">auto_stories</span>
           <p className="font-serif text-xl text-on-surface/60">Search for any book</p>
-          <p className="text-sm text-on-surface-variant/60 mt-1">Powered by Google Books</p>
+          <p className="text-sm text-on-surface-variant/60 mt-1">
+            {tab === 'community' ? 'Find books already in the TrackMyRead community' : 'Powered by Google Books — millions of titles'}
+          </p>
         </div>
       )}
 
       {/* Results */}
-      {!loading && results.length > 0 && (
+      {!loading && activeResults.length > 0 && (
         <div className="space-y-4">
-          <p className="text-sm text-on-surface-variant">{results.length} result{results.length !== 1 ? 's' : ''} for "{query}"</p>
-          {results.map((book, i) => (
-            <BookResult key={book.isbn || book.google_books_id || i} book={book} />
+          <p className="text-sm text-on-surface-variant">
+            {activeResults.length} result{activeResults.length !== 1 ? 's' : ''} for &ldquo;{query}&rdquo;
+            {tab === 'community' && <span className="ml-2 text-xs bg-secondary/10 text-secondary px-2 py-0.5 rounded-full">Community catalog</span>}
+          </p>
+          {activeResults.map((book, i) => (
+            <BookResult key={book.isbn || book.google_books_id || book.id || i} book={book} />
           ))}
         </div>
       )}

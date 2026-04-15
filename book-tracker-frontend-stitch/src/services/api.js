@@ -42,9 +42,23 @@ export const demoLogin = () =>
 export const getMyProfile = () => apiFetch('/profile/me');
 export const updateMyProfile = (data) =>
   apiFetch('/profile/me', { method: 'PUT', body: JSON.stringify(data) });
+export const uploadProfilePicture = async (file) => {
+  const token = getToken();
+  const form = new FormData();
+  form.append('file', file);
+  const res = await fetch(`${API_BASE}/profile/me/picture`, {
+    method: 'POST',
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: form,
+  });
+  if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.detail || 'Upload failed'); }
+  return res.json();
+};
 export const getPublicProfile = (userId) => apiFetch(`/profile/${userId}`);
 
 // Books
+export const searchLocalBooks = (q) => apiFetch(`/books/search?q=${encodeURIComponent(q)}`);
+export const getRecommendations = () => apiFetch('/books/recommendations');
 export const searchGoogleBooks = (q) =>
   apiFetch(`/googlebooks/search?query=${encodeURIComponent(q)}`).then(res => {
     const items = res?.results || res || []
@@ -62,6 +76,8 @@ export const addToLibrary = (data) =>
 export const getMyBooks = (status = '') =>
   apiFetch(`/userbooks/${status ? `?status=${status}` : ''}`);
 export const getUserBooks = (userId) => apiFetch(`/userbooks/user/${userId}`);
+export const updateUserBook = (userbookId, data) =>
+  apiFetch(`/userbooks/${userbookId}`, { method: 'PATCH', body: JSON.stringify(data) });
 export const updateProgress = (userbookId, currentPage) =>
   apiFetch(`/userbooks/${userbookId}/progress`, {
     method: 'PUT',
@@ -113,6 +129,7 @@ export const getMyActivity = (days = 30) =>
   apiFetch(`/reading-activity/daily?days=${days}`).then(r => r?.data || []);
 export const getUserActivity = (userId, days = 30) =>
   apiFetch(`/reading-activity/user/${userId}/daily?days=${days}`).then(r => r?.data || []);
+export const getReadingInsights = () => apiFetch('/reading-activity/insights');
 
 // Notifications
 export const getUnreadCount = () => apiFetch('/notifications/unread-count');

@@ -31,6 +31,13 @@ NOTIFICATION_EVENTS: dict[str, dict] = {
         "daily_cap": False,
     },
 
+    "post_commented": {
+        "title": "{actor} commented on your post 💬",
+        "body": "{actor}: {preview}",
+        "is_active": True,
+        "daily_cap": False,
+    },
+
     # ── Reading activity events ───────────────────────────────────────────────
 
     "book_completed": {

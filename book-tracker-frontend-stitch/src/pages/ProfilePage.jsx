@@ -5,6 +5,7 @@ import { useToast } from '../components/Toast'
 import {
   getMyProfile, getMyNotes, getMyActivity, getUserBooks,
   createNote, deleteNote, updateMyProfile, getMyBooks,
+  getReadingInsights,
 } from '../services/api'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -40,7 +41,7 @@ function pct(current, total) {
 
 // ─── Activity Chart ───────────────────────────────────────────────────────────
 
-function ActivityChart({ data }) {
+function ActivityChart({ data, insights }) {
   if (!data || data.length === 0) return (
     <div className="h-32 flex items-center justify-center text-sm text-on-surface-variant/50">
       No reading activity yet
@@ -48,22 +49,31 @@ function ActivityChart({ data }) {
   )
   const bars = data.slice(-30)
   const max = Math.max(...bars.map(d => d.pages_read || 0), 1)
-  const streak = calcStreak(bars)
+  // Prefer accurate streak from insights endpoint; fall back to local calc
+  const currentStreak = insights?.current_streak ?? calcStreak(bars)
+  const longestStreak = insights?.longest_streak ?? currentStreak
 
   return (
     <div className="space-y-3">
       {/* Header row */}
-      <div className="flex items-start justify-between">
+      <div className="flex items-start justify-between flex-wrap gap-2">
         <div>
           <h3 className="font-serif text-lg font-bold text-on-surface">30-Day Activity</h3>
           <p className="text-xs text-on-surface-variant mt-0.5">Consistent daily habits tracked in pages</p>
         </div>
-        {streak > 0 && (
-          <span className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider px-3 py-1.5 rounded-full" style={{ background: 'rgba(115,92,0,0.12)', color: '#735c00' }}>
-            <span className="material-symbols-outlined text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>local_fire_department</span>
-            Active Streak: {streak} {streak === 1 ? 'Day' : 'Days'}
-          </span>
-        )}
+        <div className="flex items-center gap-2 flex-wrap">
+          {currentStreak > 0 && (
+            <span className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider px-3 py-1.5 rounded-full" style={{ background: 'rgba(115,92,0,0.12)', color: '#735c00' }}>
+              <span className="material-symbols-outlined text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>local_fire_department</span>
+              {currentStreak} {currentStreak === 1 ? 'Day' : 'Days'}
+            </span>
+          )}
+          {longestStreak > 0 && longestStreak !== currentStreak && (
+            <span className="text-[10px] text-on-surface-variant/50 font-medium">
+              Best: {longestStreak}d
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Bars */}
@@ -368,6 +378,7 @@ export default function ProfilePage() {
   const [notes, setNotes] = useState([])
   const [books, setBooks] = useState([])
   const [activity, setActivity] = useState([])
+  const [insights, setInsights] = useState(null)
   const [loading, setLoading] = useState(true)
   const [showNewNote, setShowNewNote] = useState(false)
   const [showEditBio, setShowEditBio] = useState(false)
@@ -377,11 +388,13 @@ export default function ProfilePage() {
     getMyNotes(),
     getUserBooks(user?.id),
     getMyActivity(30),
-  ]).then(([p, n, b, a]) => {
+    getReadingInsights(),
+  ]).then(([p, n, b, a, ins]) => {
     setProfile(p)
     setNotes(n || [])
     setBooks(b || [])
     setActivity(a || [])
+    setInsights(ins || null)
   }).catch(() => {}).finally(() => setLoading(false))
 
   useEffect(() => { load() }, [user?.id])
@@ -516,6 +529,59 @@ export default function ProfilePage() {
               </div>
             </div>
 
+            {/* Streak card */}
+            {insights?.current_streak > 0 && (
+              <div className="bg-surface-container-lowest rounded-2xl p-4 flex items-center justify-between">
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/60">Current Streak</p>
+                  <div className="flex items-center gap-1 mt-0.5">
+                    <span className="material-symbols-outlined text-secondary" style={{ fontVariationSettings: "'FILL' 1", fontSize: '20px' }}>local_fire_department</span>
+                    <p className="font-serif text-3xl font-bold text-on-surface">{insights.current_streak}</p>
+                    <p className="text-sm text-on-surface-variant/60 self-end pb-1">days</p>
+                  </div>
+                  {insights.longest_streak > insights.current_streak && (
+                    <p className="text-[10px] text-on-surface-variant/40 mt-0.5">Best: {insights.longest_streak} days</p>
+                  )}
+                </div>
+                <span className="material-symbols-outlined text-3xl text-on-surface-variant/20">calendar_today</span>
+              </div>
+            )}
+
+            {/* Yearly goal mini-ring */}
+            {insights?.yearly_goal && (
+              <div className="bg-surface-container-lowest rounded-2xl p-4">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/60 mb-3">
+                  {new Date().getFullYear()} Goal
+                </p>
+                <div className="flex items-center gap-4">
+                  <div className="relative shrink-0">
+                    {(() => {
+                      const r = 28, circ = 2 * Math.PI * r
+                      const dash = circ * (insights.yearly_goal.pct / 100)
+                      return (
+                        <svg width="68" height="68" viewBox="0 0 68 68">
+                          <circle cx="34" cy="34" r={r} fill="none" stroke="currentColor" strokeWidth="6" className="text-surface-container-high" />
+                          <circle cx="34" cy="34" r={r} fill="none" stroke="currentColor" strokeWidth="6"
+                            strokeDasharray={`${dash} ${circ - dash}`} strokeLinecap="round"
+                            transform="rotate(-90 34 34)" className="text-primary transition-all" />
+                        </svg>
+                      )
+                    })()}
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <span className="text-sm font-bold text-on-surface">{insights.yearly_goal.pct}%</span>
+                    </div>
+                  </div>
+                  <div>
+                    <p className="font-bold text-on-surface">{insights.yearly_goal.completed} / {insights.yearly_goal.goal}</p>
+                    <p className="text-xs text-on-surface-variant/60">books this year</p>
+                    <p className={`text-[10px] font-bold mt-1 ${insights.yearly_goal.on_track ? 'text-primary' : 'text-secondary'}`}>
+                      {insights.yearly_goal.on_track ? 'On track' : 'Behind pace'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Account links */}
             <div className="border-t border-outline-variant/15 pt-3 space-y-1">
               <button
@@ -576,7 +642,7 @@ export default function ProfilePage() {
 
           {/* 30-Day Activity */}
           <section className="bg-surface-container-low rounded-3xl p-6">
-            <ActivityChart data={activity} />
+            <ActivityChart data={activity} insights={insights} />
           </section>
 
           {/* My Notes */}

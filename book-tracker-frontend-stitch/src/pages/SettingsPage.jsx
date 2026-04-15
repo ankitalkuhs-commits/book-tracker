@@ -1,18 +1,23 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../components/Toast'
-import { getMyProfile, updateMyProfile, deleteAccount } from '../services/api'
+import { getMyProfile, updateMyProfile, uploadProfilePicture, deleteAccount } from '../services/api'
 
 export default function SettingsPage() {
   const { user, login, logout } = useAuth()
   const navigate = useNavigate()
   const toast = useToast()
+  const avatarInputRef = useRef()
+
   const [name, setName] = useState('')
   const [bio, setBio] = useState('')
+  const [yearlyGoal, setYearlyGoal] = useState('')
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState(null)
+  const [avatarPreview, setAvatarPreview] = useState(null)
+  const [uploadingAvatar, setUploadingAvatar] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [deleting, setDeleting] = useState(false)
 
@@ -20,8 +25,25 @@ export default function SettingsPage() {
     getMyProfile().then(p => {
       setName(p.name || '')
       setBio(p.bio || '')
+      setYearlyGoal(p.yearly_goal || '')
     }).catch(() => {})
   }, [])
+
+  const handleAvatarChange = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setAvatarPreview(URL.createObjectURL(file))
+    setUploadingAvatar(true)
+    try {
+      const { profile_picture } = await uploadProfilePicture(file)
+      login({ ...user, profile_picture })
+      toast('Profile picture updated!', 'success')
+    } catch (e) {
+      toast(e.message || 'Upload failed', 'error')
+      setAvatarPreview(null)
+    }
+    setUploadingAvatar(false)
+  }
 
   const handleSave = async (e) => {
     e.preventDefault()
@@ -30,8 +52,13 @@ export default function SettingsPage() {
     setError(null)
     setSaved(false)
     try {
-      const updated = await updateMyProfile({ name: name.trim(), bio: bio.trim() || null })
-      login({ ...user, name: updated.name, bio: updated.bio })
+      const payload = {
+        name: name.trim(),
+        bio: bio.trim() || null,
+        yearly_goal: yearlyGoal ? parseInt(yearlyGoal, 10) : null,
+      }
+      const updated = await updateMyProfile(payload)
+      login({ ...user, name: updated.name, bio: updated.bio, yearly_goal: updated.yearly_goal })
       toast('Profile saved!', 'success')
       setSaved(true)
       setTimeout(() => setSaved(false), 2500)
@@ -59,6 +86,7 @@ export default function SettingsPage() {
     setDeleting(false)
   }
 
+  const currentPicture = avatarPreview || user?.profile_picture
   const initials = user?.name?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() || '?'
 
   return (
@@ -69,22 +97,40 @@ export default function SettingsPage() {
       <section className="bg-surface-container-lowest rounded-3xl p-8 space-y-6">
         <h2 className="font-sans text-base font-bold text-on-surface uppercase tracking-wider">Profile</h2>
 
-        {/* Avatar preview */}
-        <div className="flex items-center gap-4">
-          <div className="w-16 h-16 rounded-full overflow-hidden border-4 border-primary-fixed-dim bg-primary flex items-center justify-center shrink-0">
-            {user?.profile_picture ? (
-              <img src={user.profile_picture} alt={user.name} className="w-full h-full object-cover"
-                onError={e => { e.target.style.display = 'none' }} />
-            ) : (
-              <span className="text-on-primary text-xl font-bold font-sans">{initials}</span>
+        {/* Avatar upload */}
+        <div className="flex items-center gap-5">
+          <div className="relative group shrink-0">
+            <button
+              type="button"
+              onClick={() => avatarInputRef.current?.click()}
+              className="w-20 h-20 rounded-full overflow-hidden border-4 border-primary-fixed-dim bg-primary flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-primary"
+            >
+              {currentPicture ? (
+                <img src={currentPicture} alt={user?.name} className="w-full h-full object-cover" />
+              ) : (
+                <span className="text-on-primary text-2xl font-bold">{initials}</span>
+              )}
+              <div className="absolute inset-0 rounded-full bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                <span className="material-symbols-outlined text-white text-xl">photo_camera</span>
+              </div>
+            </button>
+            {uploadingAvatar && (
+              <div className="absolute inset-0 rounded-full bg-black/50 flex items-center justify-center">
+                <span className="text-white text-xs font-bold">...</span>
+              </div>
             )}
+            <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
           </div>
           <div>
             <p className="font-bold text-on-surface">{user?.name}</p>
             <p className="text-sm text-on-surface-variant">{user?.email}</p>
-            <p className="text-xs text-on-surface-variant/60 mt-0.5">
-              Avatar is synced from your Google account
-            </p>
+            <button
+              type="button"
+              onClick={() => avatarInputRef.current?.click()}
+              className="text-xs text-primary hover:underline mt-1"
+            >
+              Change photo
+            </button>
           </div>
         </div>
 
@@ -112,6 +158,22 @@ export default function SettingsPage() {
             />
           </div>
 
+          <div className="space-y-1.5">
+            <label className="block text-sm font-medium text-on-surface-variant">
+              Yearly Reading Goal
+              <span className="text-xs text-on-surface-variant/50 ml-2">books per year</span>
+            </label>
+            <input
+              type="number"
+              min="1"
+              max="365"
+              value={yearlyGoal}
+              onChange={e => setYearlyGoal(e.target.value)}
+              placeholder="e.g. 24"
+              className="w-32 bg-surface-container-low rounded-xl px-4 py-3 text-sm border-none focus:outline-none focus:ring-2 focus:ring-primary/20"
+            />
+          </div>
+
           <div className="flex items-center gap-3">
             <button
               type="submit"
@@ -134,7 +196,6 @@ export default function SettingsPage() {
       {/* Account section */}
       <section className="bg-surface-container-lowest rounded-3xl p-8 space-y-4">
         <h2 className="font-sans text-base font-bold text-on-surface uppercase tracking-wider">Account</h2>
-
         <div className="space-y-3">
           <div className="flex items-center justify-between py-2">
             <div>
@@ -142,7 +203,6 @@ export default function SettingsPage() {
               <p className="text-sm text-on-surface-variant">{user?.email}</p>
             </div>
           </div>
-
           <div className="border-t border-outline-variant/15 pt-4 space-y-3">
             <button
               onClick={handleSignOut}
@@ -162,7 +222,7 @@ export default function SettingsPage() {
         </div>
       </section>
 
-      {/* Delete account confirmation modal */}
+      {/* Delete confirmation modal */}
       {showDeleteConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
           <div className="bg-surface-container-lowest rounded-3xl p-6 w-full max-w-sm shadow-float space-y-4 text-center">

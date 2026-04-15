@@ -97,15 +97,16 @@ def create_comment(
     db.commit()
     db.refresh(comment)
 
-    # Send push notification to note owner (skip if commenting on own post)
+    # Notify post owner via dispatcher (writes to NotificationLog + sends push)
     if note.user_id != current_user.id:
         commenter_name = current_user.name or current_user.username or "Someone"
-        send_push_notification_to_user(
+        fire_event(
             db=db,
-            user_id=note.user_id,
-            title="💬 New comment on your post",
-            body=f"{commenter_name} commented: {payload.text[:80]}",
-            data={"type": "comment", "note_id": note_id}
+            event_type="post_commented",
+            actor_id=current_user.id,
+            actor_name=commenter_name,
+            recipient_ids=[note.user_id],
+            extra={"preview": payload.text[:80], "note_id": note_id},
         )
 
     return {

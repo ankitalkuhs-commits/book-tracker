@@ -1,10 +1,21 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from sqlmodel import Session, select, func
 from pydantic import BaseModel
 from datetime import datetime
+import os
+import uuid
+
+import cloudinary
+import cloudinary.uploader
 
 from ..models import User, UserBook, Follow, ReadingActivity, Book
 from ..deps import get_db, get_current_user
+
+cloudinary.config(
+    cloud_name=os.getenv("CLOUDINARY_CLOUD_NAME"),
+    api_key=os.getenv("CLOUDINARY_API_KEY"),
+    api_secret=os.getenv("CLOUDINARY_API_SECRET"),
+)
 
 router = APIRouter(prefix="/profile", tags=["profile"])
 
@@ -15,6 +26,7 @@ router = APIRouter(prefix="/profile", tags=["profile"])
 class ProfileUpdate(BaseModel):
     name: str | None = None
     bio: str | None = None
+    yearly_goal: int | None = None
 
 
 # ---------------------------------
@@ -86,6 +98,7 @@ def get_profile(db: Session = Depends(get_db), current_user=Depends(get_current_
         "email": user.email,
         "bio": user.bio,
         "profile_picture": getattr(user, "profile_picture", None),
+        "yearly_goal": getattr(user, "yearly_goal", None),
         "created_at": user.created_at,
         "followers_count": len(followers),
         "following_count": len(following),
@@ -109,6 +122,8 @@ def update_profile(payload: ProfileUpdate, db: Session = Depends(get_db), curren
         user.name = payload.name
     if payload.bio is not None:
         user.bio = payload.bio
+    if payload.yearly_goal is not None:
+        user.yearly_goal = payload.yearly_goal
 
     db.add(user)
     db.commit()
@@ -139,12 +154,49 @@ def update_profile(payload: ProfileUpdate, db: Session = Depends(get_db), curren
         "email": user.email,
         "bio": user.bio,
         "profile_picture": getattr(user, "profile_picture", None),
+        "yearly_goal": getattr(user, "yearly_goal", None),
         "created_at": user.created_at,
         "followers_count": len(followers),
         "following_count": len(following),
         "stats": stats,
         "is_admin": user.is_admin,
     }
+
+
+# ---------------------------------
+# ✅ POST /profile/me/picture - Upload avatar
+# ---------------------------------
+@router.post("/me/picture")
+async def upload_profile_picture(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if not file.content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="File must be an image")
+    if not all([os.getenv("CLOUDINARY_CLOUD_NAME"), os.getenv("CLOUDINARY_API_KEY"), os.getenv("CLOUDINARY_API_SECRET")]):
+        raise HTTPException(status_code=500, detail="Cloudinary not configured")
+
+    try:
+        contents = await file.read()
+        result = cloudinary.uploader.upload(
+            contents,
+            folder="book_tracker/avatars",
+            public_id=f"user_{current_user.id}_{uuid.uuid4().hex[:8]}",
+            resource_type="image",
+            transformation=[{"width": 256, "height": 256, "crop": "fill", "gravity": "face"}],
+        )
+        url = result.get("secure_url")
+        if not url:
+            raise Exception("No URL returned from Cloudinary")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Upload failed: {e}")
+
+    user = db.get(User, current_user.id)
+    user.profile_picture = url
+    db.add(user)
+    db.commit()
+    return {"profile_picture": url}
 
 
 # ---------------------------------

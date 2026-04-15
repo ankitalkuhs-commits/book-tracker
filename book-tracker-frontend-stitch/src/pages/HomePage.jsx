@@ -6,6 +6,7 @@ import {
   getCommunityFeed, getFriendsFeed, createNote,
   likeNote, unlikeNote, getComments, addComment,
   getFriendReading, getFollowing, searchUsers, getMyBooks,
+  getRecommendations, addToLibrary,
 } from '../services/api'
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -318,6 +319,77 @@ function PostComposer({ user, onPost }) {
   )
 }
 
+// ─── Recommendations Shelf ────────────────────────────────────────────────────
+
+const REASON_LABEL = {
+  friends_reading: 'Friend is reading',
+  friends_loved:   'Friend loved it',
+  author_affinity: 'From an author you like',
+}
+
+function RecommendationsShelf() {
+  const toast = useToast()
+  const [recs, setRecs] = useState([])
+  const [adding, setAdding] = useState(null)
+
+  useEffect(() => {
+    getRecommendations().then(setRecs).catch(() => {})
+  }, [])
+
+  if (!recs.length) return null
+
+  const handleAdd = async (book) => {
+    setAdding(book.id)
+    try {
+      await addToLibrary({
+        title: book.title, author: book.author,
+        cover_url: book.cover_url, total_pages: book.total_pages,
+        description: book.description, status: 'to-read',
+      })
+      toast(`"${book.title}" added to library`, 'success')
+      setRecs(prev => prev.filter(r => r.id !== book.id))
+    } catch (e) {
+      toast(e.message || 'Already in library', 'info')
+    }
+    setAdding(null)
+  }
+
+  return (
+    <section className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h2 className="font-serif text-xl font-bold text-on-surface">For You</h2>
+        <span className="text-xs text-on-surface-variant/50 font-medium">Based on your network</span>
+      </div>
+      <div className="flex gap-4 overflow-x-auto pb-2 -mx-1 px-1 scrollbar-hide">
+        {recs.slice(0, 8).map(book => (
+          <div key={book.id} className="shrink-0 w-28 space-y-2 group">
+            <div className="relative aspect-[2/3] rounded-xl overflow-hidden bg-surface-container-high shadow-md group-hover:shadow-xl transition-shadow">
+              {book.cover_url ? (
+                <img src={book.cover_url} alt={book.title} className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center">
+                  <span className="material-symbols-outlined text-2xl text-outline/40">menu_book</span>
+                </div>
+              )}
+              <button
+                onClick={() => handleAdd(book)}
+                disabled={adding === book.id}
+                className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+              >
+                <span className="text-white text-[10px] font-bold text-center px-2">
+                  {adding === book.id ? '...' : '+ Add to Library'}
+                </span>
+              </button>
+            </div>
+            <p className="text-xs font-bold text-on-surface line-clamp-2 leading-snug">{book.title}</p>
+            <p className="text-[10px] text-secondary font-medium">{REASON_LABEL[book.reason] || ''}</p>
+          </div>
+        ))}
+      </div>
+    </section>
+  )
+}
+
 // ─── Sidebar ─────────────────────────────────────────────────────────────────
 
 function Sidebar() {
@@ -488,6 +560,8 @@ export default function HomePage() {
       {/* Center feed */}
       <div className="col-span-12 lg:col-span-7 space-y-8">
         <PostComposer user={user} onPost={handleNewPost} />
+
+        <RecommendationsShelf />
 
         {/* Feed tabs */}
         <div className="flex items-center space-x-8 border-b border-outline-variant/15">

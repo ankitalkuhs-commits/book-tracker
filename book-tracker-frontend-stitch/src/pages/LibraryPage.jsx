@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useToast } from '../components/Toast'
 import {
-  getMyBooks, updateProgress, markFinished, removeFromLibrary,
+  getMyBooks, updateProgress, updateUserBook, markFinished, removeFromLibrary,
   getNotesForBook, createNote, deleteNote,
   searchGoogleBooks, addToLibrary, getMyActivity,
 } from '../services/api'
@@ -51,6 +51,33 @@ function BookCover({ book, className = '' }) {
       ) : (
         <span className="material-symbols-outlined text-3xl text-outline/40">menu_book</span>
       )}
+    </div>
+  )
+}
+
+// ─── Star Rating ─────────────────────────────────────────────────────────────
+
+function StarRating({ value, onChange, readonly = false, size = 'md' }) {
+  const [hovered, setHovered] = useState(null)
+  const sz = size === 'sm' ? 'text-base' : 'text-xl'
+  return (
+    <div className="flex items-center gap-0.5">
+      {[1, 2, 3, 4, 5].map(star => {
+        const filled = (hovered ?? value ?? 0) >= star
+        return (
+          <button
+            key={star}
+            type="button"
+            disabled={readonly}
+            onClick={() => !readonly && onChange?.(star === value ? 0 : star)}
+            onMouseEnter={() => !readonly && setHovered(star)}
+            onMouseLeave={() => !readonly && setHovered(null)}
+            className={`${sz} transition-colors ${readonly ? 'cursor-default' : 'cursor-pointer hover:scale-110'} ${filled ? 'text-secondary' : 'text-outline/30'}`}
+          >
+            <span className="material-symbols-outlined" style={{ fontVariationSettings: filled ? "'FILL' 1" : "'FILL' 0" }}>star</span>
+          </button>
+        )
+      })}
     </div>
   )
 }
@@ -233,6 +260,7 @@ function BookDetailPanel({ userbook, onClose, onUpdate, onRemove }) {
   const book = userbook.book
   const [page, setPage] = useState(userbook.current_page || '')
   const [savingProgress, setSavingProgress] = useState(false)
+  const [rating, setRating] = useState(userbook.rating || 0)
   const [notes, setNotes] = useState([])
   const [loadingNotes, setLoadingNotes] = useState(true)
   const [noteText, setNoteText] = useState('')
@@ -283,6 +311,17 @@ function BookDetailPanel({ userbook, onClose, onUpdate, onRemove }) {
     }
   }
 
+  const handleRating = async (stars) => {
+    setRating(stars)
+    try {
+      await updateUserBook(userbook.id, { rating: stars })
+      toast(stars ? `Rated ${stars} star${stars > 1 ? 's' : ''}` : 'Rating removed', 'success')
+      onUpdate()
+    } catch (e) {
+      toast(e.message || 'Failed to save rating', 'error')
+    }
+  }
+
   const postNote = async () => {
     if (!noteText.trim()) return
     setPostingNote(true)
@@ -330,6 +369,11 @@ function BookDetailPanel({ userbook, onClose, onUpdate, onRemove }) {
                 <span className={`inline-block mt-2 text-xs font-bold px-2.5 py-0.5 rounded-full ${STATUS_BADGE[userbook.status]?.cls}`}>
                   {STATUS_BADGE[userbook.status]?.label}
                 </span>
+              )}
+              {userbook.status === 'finished' && (
+                <div className="mt-2">
+                  <StarRating value={rating} onChange={handleRating} size="sm" />
+                </div>
               )}
             </div>
           </div>
@@ -564,7 +608,15 @@ function BookCard({ userbook, onClick }) {
           </div>
         )}
 
-        {userbook.status !== 'reading' && statusLabel && (
+        {userbook.status === 'finished' && (
+          <div className="flex items-center gap-0.5 mt-0.5">
+            {[1,2,3,4,5].map(s => (
+              <span key={s} className={`material-symbols-outlined text-xs ${(userbook.rating||0) >= s ? 'text-secondary' : 'text-outline/20'}`}
+                style={{ fontVariationSettings: (userbook.rating||0) >= s ? "'FILL' 1" : "'FILL' 0", fontSize: '12px' }}>star</span>
+            ))}
+          </div>
+        )}
+        {userbook.status !== 'reading' && userbook.status !== 'finished' && statusLabel && (
           <p className={`text-[10px] font-bold uppercase tracking-wider ${statusColor}`}>{statusLabel}</p>
         )}
       </div>

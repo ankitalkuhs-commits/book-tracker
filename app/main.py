@@ -112,7 +112,16 @@ async def startup_event():
         ("ALTER TABLE note ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP", "note.updated_at"),
         ("ALTER TABLE \"user\" ADD COLUMN IF NOT EXISTS profile_picture TEXT", "user.profile_picture"),
         ("ALTER TABLE \"user\" ADD COLUMN IF NOT EXISTS username VARCHAR UNIQUE", "user.username"),
+        ("ALTER TABLE \"user\" ADD COLUMN IF NOT EXISTS yearly_goal INTEGER", "user.yearly_goal"),
         ("ALTER TABLE book ADD COLUMN IF NOT EXISTS google_books_id TEXT", "book.google_books_id"),
+        ("CREATE INDEX IF NOT EXISTS idx_note_is_public ON note (is_public)", "idx_note_is_public"),
+        ("CREATE INDEX IF NOT EXISTS idx_note_created_at ON note (created_at)", "idx_note_created_at"),
+        ("CREATE INDEX IF NOT EXISTS idx_note_user_id ON note (user_id)", "idx_note_user_id"),
+        ("CREATE INDEX IF NOT EXISTS idx_userbook_status ON userbook (status)", "idx_userbook_status"),
+        ("CREATE INDEX IF NOT EXISTS idx_reading_activity_user ON reading_activity (user_id)", "idx_reading_activity_user"),
+        ("CREATE INDEX IF NOT EXISTS idx_reading_activity_date ON reading_activity (date)", "idx_reading_activity_date"),
+        ("CREATE INDEX IF NOT EXISTS idx_follow_follower ON follow (follower_id)", "idx_follow_follower"),
+        ("CREATE INDEX IF NOT EXISTS idx_follow_followed ON follow (followed_id)", "idx_follow_followed"),
     ]
     try:
         from .database import engine
