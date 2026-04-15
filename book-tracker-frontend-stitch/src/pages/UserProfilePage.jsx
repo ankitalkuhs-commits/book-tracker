@@ -185,13 +185,15 @@ export default function UserProfilePage() {
   useEffect(() => {
     if (isOwnProfile) { navigate('/profile', { replace: true }); return }
 
+    const safe = (p) => p.catch(() => null)
+
     Promise.all([
       getPublicProfile(userId),
-      getUserBooks(userId),
-      getUserNotes(userId),
-      getUserActivity(userId, 30),
-      getUserActivity(userId, 90),
-      getFollowing(),
+      safe(getUserBooks(userId)),
+      safe(getUserNotes(userId)),
+      safe(getUserActivity(userId, 30)),
+      safe(getUserActivity(userId, 90)),
+      safe(getFollowing()),
     ]).then(([p, b, n, a30, a90, following]) => {
       setProfile(p)
       setBooks(b || [])
