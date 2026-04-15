@@ -493,7 +493,7 @@ export default function ProfilePage() {
         <div className="lg:col-span-4 space-y-5">
 
           {/* Reading Analytics */}
-          <section className="bg-surface-container-lowest rounded-3xl p-6 space-y-4">
+          <section className="bg-surface-container-low rounded-3xl p-6 space-y-4">
             <h2 className="font-serif text-base font-bold text-primary">Reading Analytics</h2>
 
             <div className="space-y-3">
@@ -540,7 +540,7 @@ export default function ProfilePage() {
 
           {/* Currently Reading */}
           {currentlyReading.length > 0 && (
-            <section className="bg-surface-container-lowest rounded-3xl p-6 space-y-4">
+            <section className="bg-surface-container-low rounded-3xl p-6 space-y-4">
               <h2 className="font-serif text-base font-bold text-primary">Currently Reading</h2>
               <div className="space-y-4">
                 {currentlyReading.map(ub => {
