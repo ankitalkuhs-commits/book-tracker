@@ -456,6 +456,16 @@ function BookDetailPanel({ userbook, onClose, onUpdate, onRemove }) {
 
 // ─── Book Card ─────────────────────────────────────────────────────────────────
 
+// Muted palette for tile backgrounds — deterministic by book id
+const TILE_PALETTES = [
+  { bg: '#e8e0d4', shadow: 'rgba(139,109,67,0.25)' },   // warm sand
+  { bg: '#d4dde0', shadow: 'rgba(60,90,100,0.22)' },     // slate blue
+  { bg: '#dde8df', shadow: 'rgba(60,100,70,0.22)' },     // sage green
+  { bg: '#e8dde0', shadow: 'rgba(120,70,80,0.22)' },     // dusty rose
+  { bg: '#e4e0d8', shadow: 'rgba(90,80,60,0.22)' },      // parchment
+  { bg: '#d8dde8', shadow: 'rgba(60,70,120,0.22)' },     // periwinkle
+]
+
 const STATUS_COLOR = {
   'reading':  'text-primary',
   'to-read':  'text-tertiary',
@@ -467,23 +477,76 @@ function BookCard({ userbook, onClick }) {
   const progress = pct(userbook.current_page, book?.total_pages)
   const statusLabel = STATUS_BADGE[userbook.status]?.label?.toUpperCase()
   const statusColor = STATUS_COLOR[userbook.status] || 'text-on-surface-variant'
+  const palette = TILE_PALETTES[(userbook.id || 0) % TILE_PALETTES.length]
+  const [imgBroken, setImgBroken] = useState(false)
 
   return (
     <button
       onClick={onClick}
       className="group text-left flex flex-col hover:-translate-y-1 transition-all duration-200"
     >
-      {/* Cover — tall, rounded, shadow */}
-      <div className="relative w-full aspect-[2/3] rounded-xl overflow-hidden shadow-[0_8px_24px_rgba(27,28,25,0.10)] group-hover:shadow-[0_16px_40px_rgba(27,28,25,0.16)] transition-shadow bg-surface-container-high flex items-center justify-center">
-        <BookCover book={book} className="!rounded-none !aspect-auto w-full h-full" />
+      {/* Tile — colored bg, perspective 3-D book */}
+      <div
+        className="relative w-full rounded-2xl overflow-visible flex items-center justify-center"
+        style={{
+          background: palette.bg,
+          paddingTop: '16px',
+          paddingBottom: '16px',
+          aspectRatio: '3/4',
+        }}
+      >
+        {/* 3-D angled book */}
+        <div
+          className="relative"
+          style={{
+            width: '58%',
+            perspective: '600px',
+          }}
+        >
+          {/* Main face */}
+          <div
+            className="relative overflow-hidden rounded-r-sm"
+            style={{
+              aspectRatio: '2/3',
+              transform: 'rotateY(-18deg)',
+              transformOrigin: 'left center',
+              transformStyle: 'preserve-3d',
+              boxShadow: `6px 12px 32px ${palette.shadow}, 2px 4px 8px rgba(0,0,0,0.15)`,
+            }}
+          >
+            {book?.cover_url && !imgBroken ? (
+              <img
+                src={book.cover_url}
+                alt={book.title}
+                className="w-full h-full object-cover"
+                onError={() => setImgBroken(true)}
+              />
+            ) : (
+              <div className="w-full h-full flex flex-col items-center justify-center gap-2 bg-surface-container-high px-3 text-center">
+                <span className="material-symbols-outlined text-3xl text-outline/40">menu_book</span>
+                <p className="text-[10px] font-bold text-on-surface-variant/60 line-clamp-3">{book?.title}</p>
+              </div>
+            )}
+          </div>
+
+          {/* Spine — thin dark sliver on the left */}
+          <div
+            className="absolute top-0 left-0 h-full rounded-l-sm"
+            style={{
+              width: '10px',
+              background: 'linear-gradient(to right, rgba(0,0,0,0.35), rgba(0,0,0,0.10))',
+              transform: 'rotateY(72deg) translateX(-5px)',
+              transformOrigin: 'left center',
+            }}
+          />
+        </div>
       </div>
 
-      {/* Info below cover */}
+      {/* Info below tile */}
       <div className="pt-3 px-0.5 space-y-1.5">
         <p className="font-serif font-bold text-on-surface leading-snug line-clamp-2 text-sm">{book?.title}</p>
         <p className={`text-xs font-semibold ${statusColor}`}>{book?.author}</p>
 
-        {/* Progress row */}
         {userbook.status === 'reading' && (
           <div className="space-y-1 pt-0.5">
             <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider">
@@ -491,10 +554,7 @@ function BookCard({ userbook, onClick }) {
               <span className="text-on-surface-variant/60">{progress}%</span>
             </div>
             <div className="h-1 rounded-full bg-surface-container-high overflow-hidden">
-              <div
-                className="h-full bg-secondary rounded-full transition-all duration-500"
-                style={{ width: `${progress}%` }}
-              />
+              <div className="h-full bg-secondary rounded-full transition-all duration-500" style={{ width: `${progress}%` }} />
             </div>
             {book?.total_pages && (
               <p className="text-[10px] text-on-surface-variant/50">
@@ -638,10 +698,10 @@ export default function LibraryPage() {
 
           {/* Loading skeletons */}
           {loading && (
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-6">
-              {Array.from({ length: 6 }).map((_, i) => (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-5">
+              {Array.from({ length: 10 }).map((_, i) => (
                 <div key={i} className="space-y-3">
-                  <div className="aspect-[2/3] bg-surface-container animate-pulse rounded-xl" />
+                  <div className="aspect-[3/4] bg-surface-container animate-pulse rounded-2xl" />
                   <div className="h-3 bg-surface-container animate-pulse rounded w-3/4" />
                   <div className="h-2 bg-surface-container animate-pulse rounded w-1/2" />
                 </div>
@@ -670,9 +730,9 @@ export default function LibraryPage() {
             </div>
           )}
 
-          {/* Book grid — 3 columns matching the design */}
+          {/* Book grid */}
           {!loading && filtered.length > 0 && (
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-6 md:gap-8">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-5">
               {filtered.map(ub => (
                 <BookCard
                   key={ub.id}
