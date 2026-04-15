@@ -11,6 +11,9 @@ import UserProfilePage from './pages/UserProfilePage'
 import NotificationsPage from './pages/NotificationsPage'
 import SettingsPage from './pages/SettingsPage'
 import AdminPage from './pages/AdminPage'
+import GroupsPage from './pages/GroupsPage'
+import CreateGroupPage from './pages/CreateGroupPage'
+import GroupDetailPage from './pages/GroupDetailPage'
 
 // Wraps all logged-in pages with the Nav bar
 function AppLayout({ children }) {
@@ -60,6 +63,9 @@ export default function App() {
       <Route path="/notifications" element={<PrivateRoute><NotificationsPage /></PrivateRoute>} />
       <Route path="/settings" element={<PrivateRoute><SettingsPage /></PrivateRoute>} />
       <Route path="/admin" element={<AdminRoute><AdminPage /></AdminRoute>} />
+      <Route path="/groups" element={<PrivateRoute><GroupsPage /></PrivateRoute>} />
+      <Route path="/groups/new" element={<PrivateRoute><CreateGroupPage /></PrivateRoute>} />
+      <Route path="/groups/:groupId" element={<PrivateRoute><GroupDetailPage /></PrivateRoute>} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )

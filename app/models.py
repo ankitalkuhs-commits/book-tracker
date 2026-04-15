@@ -188,3 +188,53 @@ from sqlmodel import SQLModel
 
 class UserBookProgress(SQLModel):
     current_page : Optional[int] = 0
+
+
+# ─── Groups ───────────────────────────────────────────────────────────────────
+
+import secrets
+
+class ReadingGroup(SQLModel, table=True):
+    """A reading group / literary circle."""
+    __tablename__ = "reading_group"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    name: str = Field(nullable=False)
+    description: Optional[str] = None
+    is_private: bool = Field(default=False)
+    invite_code: str = Field(default_factory=lambda: secrets.token_urlsafe(8))
+    cover_preset: str = Field(default="teal")   # maps to a CSS gradient preset
+    created_by: int = Field(foreign_key="user.id")
+    # Collective reading goal
+    goal_pages: Optional[int] = None
+    goal_period: Optional[str] = None           # 'monthly' | 'yearly'
+    goal_start_date: Optional[datetime] = None
+    # Current group book
+    current_book_id: Optional[int] = Field(default=None, foreign_key="book.id")
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class GroupMember(SQLModel, table=True):
+    """Membership record — also used for pending invites."""
+    __tablename__ = "group_member"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    group_id: int = Field(foreign_key="reading_group.id", index=True)
+    user_id: int = Field(foreign_key="user.id", index=True)
+    role: str = Field(default="member")         # 'curator' | 'member'
+    status: str = Field(default="active")       # 'active' | 'pending'
+    invited_by: Optional[int] = Field(default=None, foreign_key="user.id")
+    joined_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class GroupPost(SQLModel, table=True):
+    """A post scoped to a reading group."""
+    __tablename__ = "group_post"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    group_id: int = Field(foreign_key="reading_group.id", index=True)
+    user_id: int = Field(foreign_key="user.id", index=True)
+    text: str
+    quote: Optional[str] = None
+    userbook_id: Optional[int] = Field(default=None, foreign_key="userbook.id")
+    created_at: datetime = Field(default_factory=datetime.utcnow)

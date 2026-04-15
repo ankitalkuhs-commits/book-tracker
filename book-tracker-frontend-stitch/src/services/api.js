@@ -120,6 +120,34 @@ export const getNotifications = () => apiFetch('/notifications/history');
 export const markAllNotificationsRead = () =>
   apiFetch('/notifications/mark-read', { method: 'POST' });
 
+// Groups
+export const getMyGroups = () => apiFetch('/groups/my');
+export const discoverGroups = (q = '') => apiFetch(`/groups/discover${q ? `?q=${encodeURIComponent(q)}` : ''}`);
+export const getGroup = (id) => apiFetch(`/groups/${id}`);
+export const createGroup = (data) => apiFetch('/groups/', { method: 'POST', body: JSON.stringify(data) });
+export const updateGroup = (id, data) => apiFetch(`/groups/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+export const deleteGroup = (id) => apiFetch(`/groups/${id}`, { method: 'DELETE' });
+export const joinGroup = (id) => apiFetch(`/groups/${id}/join`, { method: 'POST' });
+export const leaveGroup = (id) => apiFetch(`/groups/${id}/leave`, { method: 'DELETE' });
+export const getGroupMembers = (id) => apiFetch(`/groups/${id}/members`);
+export const getPendingMembers = (id) => apiFetch(`/groups/${id}/pending`);
+export const approveGroupMember = (id, userId) => apiFetch(`/groups/${id}/approve/${userId}`, { method: 'POST' });
+export const rejectGroupMember = (id, userId) => apiFetch(`/groups/${id}/reject/${userId}`, { method: 'POST' });
+export const removeGroupMember = (id, userId) => apiFetch(`/groups/${id}/remove/${userId}`, { method: 'DELETE' });
+export const inviteToGroup = (id, userId) => apiFetch(`/groups/${id}/invite/${userId}`, { method: 'POST' });
+export const joinByInviteCode = (code) => apiFetch(`/groups/join/${code}`, { method: 'POST' });
+export const acceptGroupInvite = (id) => apiFetch(`/groups/${id}/accept`, { method: 'POST' });
+export const declineGroupInvite = (id) => apiFetch(`/groups/${id}/decline`, { method: 'DELETE' });
+export const getGroupPosts = (id) => apiFetch(`/groups/${id}/posts`);
+export const createGroupPost = (id, data) => apiFetch(`/groups/${id}/posts`, { method: 'POST', body: JSON.stringify(data) });
+export const deleteGroupPost = (id, postId) => apiFetch(`/groups/${id}/posts/${postId}`, { method: 'DELETE' });
+export const getGroupLeaderboard = (id, period = 'monthly') => apiFetch(`/groups/${id}/leaderboard?period=${period}`);
+export const getGroupGoal = (id) => apiFetch(`/groups/${id}/goal`);
+export const setGroupBook = (id, bookId) => apiFetch(`/groups/${id}/book`, { method: 'PUT', body: JSON.stringify({ book_id: bookId }) });
+export const clearGroupBook = (id) => apiFetch(`/groups/${id}/book`, { method: 'DELETE' });
+export const getMyGroupInvites = () => apiFetch('/groups/invites/pending');
+export const searchUsersForInvite = (q) => apiFetch(`/users/search?q=${encodeURIComponent(q)}`);
+
 // Admin
 export const getAdminStats = () => apiFetch('/admin/stats');
 export const getAdminUsers = () => apiFetch('/admin/users');
