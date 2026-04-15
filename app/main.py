@@ -31,24 +31,24 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 # Step 3: Allow CORS (so frontends can talk to it)
 # ---------------------
 # Read comma-separated origins from env var (set this in Render)
+_localhost_origins = [
+    "http://localhost:5173",
+    "http://localhost:5174",
+    "http://localhost:5175",
+    "http://localhost:5176",
+    "http://localhost:5177",
+    "http://127.0.0.1:5173",
+    "http://127.0.0.1:5174",
+    "http://127.0.0.1:5175",
+    "http://127.0.0.1:5176",
+    "http://127.0.0.1:5177",
+]
 cors_env = os.getenv("CORS_ORIGINS", "")
 if cors_env:
-    # split by comma and strip whitespace
-    origins = [o.strip() for o in cors_env.split(",") if o.strip()]
+    _env_origins = [o.strip() for o in cors_env.split(",") if o.strip()]
+    origins = list(dict.fromkeys(_env_origins + _localhost_origins))  # env first, no dupes
 else:
-    # fallback during local dev
-    origins = [
-        "http://localhost:5173",
-        "http://localhost:5174",
-        "http://localhost:5175",
-        "http://localhost:5176",
-        "http://localhost:5177",
-        "http://127.0.0.1:5173",
-        "http://127.0.0.1:5174",
-        "http://127.0.0.1:5175",
-        "http://127.0.0.1:5176",
-        "http://127.0.0.1:5177",
-    ]
+    origins = _localhost_origins
 
 app.add_middleware(
     CORSMiddleware,

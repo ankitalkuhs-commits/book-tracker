@@ -2,13 +2,13 @@
 """
 Router for Google Books API integration.
 """
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException
 from typing import List, Optional
 import httpx
 import os
 from pydantic import BaseModel
 
-router = APIRouter(prefix="/api/googlebooks", tags=["Google Books"])
+router = APIRouter(prefix="/googlebooks", tags=["Google Books"])
 
 # Google Books API Key - read from environment variable
 GOOGLE_BOOKS_API_KEY = os.getenv("GOOGLE_BOOKS_API_KEY")
