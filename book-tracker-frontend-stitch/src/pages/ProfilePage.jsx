@@ -575,7 +575,7 @@ export default function ProfilePage() {
         <div className="lg:col-span-8 space-y-6">
 
           {/* 30-Day Activity */}
-          <section className="bg-surface-container-lowest rounded-3xl p-6">
+          <section className="bg-surface-container-low rounded-3xl p-6">
             <ActivityChart data={activity} />
           </section>
 
