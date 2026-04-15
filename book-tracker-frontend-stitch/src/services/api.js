@@ -46,7 +46,7 @@ export const getPublicProfile = (userId) => apiFetch(`/profile/${userId}`);
 
 // Books
 export const searchGoogleBooks = (q) =>
-  apiFetch(`/googlebooks/search?q=${encodeURIComponent(q)}`).then(res => {
+  apiFetch(`/googlebooks/search?query=${encodeURIComponent(q)}`).then(res => {
     const items = res?.results || res || []
     return items.map(b => ({
       ...b,
