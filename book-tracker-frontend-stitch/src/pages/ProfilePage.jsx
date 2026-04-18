@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext'
 import { useToast } from '../components/Toast'
 import {
   getMyProfile, getMyNotes, getMyActivity, getUserBooks,
-  createNote, deleteNote, updateMyProfile, getMyBooks,
+  createNote, deleteNote, updateNote, updateMyProfile, getMyBooks,
   getReadingInsights,
 } from '../services/api'
 
@@ -299,8 +299,13 @@ function NoteCoverThumb({ book }) {
   )
 }
 
-function NoteCard({ note, onDelete }) {
+function NoteCard({ note, onDelete, onEdit }) {
+  const toast = useToast()
   const [menuOpen, setMenuOpen] = useState(false)
+  const [editing, setEditing] = useState(false)
+  const [editText, setEditText] = useState(note.text || '')
+  const [editQuote, setEditQuote] = useState(note.quote || '')
+  const [saving, setSaving] = useState(false)
   const menuRef = useRef()
 
   useEffect(() => {
@@ -308,6 +313,23 @@ function NoteCard({ note, onDelete }) {
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
   }, [])
+
+  const handleSave = async () => {
+    if (!editText.trim() && !editQuote.trim()) return
+    setSaving(true)
+    try {
+      const updated = await updateNote(note.id, {
+        text: editText.trim(),
+        quote: editQuote.trim() || null,
+      })
+      onEdit(note.id, updated)
+      setEditing(false)
+      toast('Note updated', 'success')
+    } catch (e) {
+      toast(e.message || 'Failed to save', 'error')
+    }
+    setSaving(false)
+  }
 
   return (
     <article className="bg-surface-container-lowest rounded-2xl p-5 space-y-3 border border-outline-variant/10">
@@ -330,9 +352,17 @@ function NoteCard({ note, onDelete }) {
           {menuOpen && (
             <div className="absolute right-0 top-8 bg-surface-container-lowest rounded-xl shadow-float py-1 w-36 z-10 border border-outline-variant/15">
               <button
-                onClick={() => { setMenuOpen(false); onDelete(note.id) }}
-                className="w-full text-left px-4 py-2 text-sm text-error hover:bg-error-container/20 transition-colors"
+                onClick={() => { setMenuOpen(false); setEditing(true) }}
+                className="w-full text-left px-4 py-2 text-sm text-on-surface hover:bg-surface-container transition-colors flex items-center gap-2"
               >
+                <span className="material-symbols-outlined text-sm">edit</span>
+                Edit
+              </button>
+              <button
+                onClick={() => { setMenuOpen(false); onDelete(note.id) }}
+                className="w-full text-left px-4 py-2 text-sm text-error hover:bg-error-container/20 transition-colors flex items-center gap-2"
+              >
+                <span className="material-symbols-outlined text-sm">delete</span>
                 Delete
               </button>
             </div>
@@ -340,16 +370,45 @@ function NoteCard({ note, onDelete }) {
         </div>
       </div>
 
-      {/* Quote — italic, serif, primary-tinted */}
-      {note.quote && (
-        <p className="font-serif italic text-sm text-primary/80 leading-relaxed">
-          "{note.quote}"
-        </p>
-      )}
-
-      {/* Body text */}
-      {note.text && (
-        <p className="text-sm text-on-surface leading-relaxed">{note.text}</p>
+      {editing ? (
+        <div className="space-y-2">
+          <div className="relative">
+            <span className="material-symbols-outlined absolute left-2.5 top-2.5 text-outline/60 text-sm">format_quote</span>
+            <input
+              value={editQuote}
+              onChange={e => setEditQuote(e.target.value)}
+              placeholder="Quote (optional)..."
+              className="w-full bg-surface-container-low rounded-xl pl-8 pr-3 py-2 text-sm border-none focus:outline-none focus:ring-2 focus:ring-primary/20"
+            />
+          </div>
+          <textarea
+            value={editText}
+            onChange={e => setEditText(e.target.value)}
+            rows={3}
+            placeholder="Your reflection..."
+            className="w-full bg-surface-container-low rounded-xl p-3 text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none border-none"
+          />
+          <div className="flex gap-2">
+            <button onClick={handleSave} disabled={saving} className="btn-primary px-4 py-1.5 text-xs rounded-lg">
+              {saving ? 'Saving…' : 'Save'}
+            </button>
+            <button
+              onClick={() => { setEditing(false); setEditText(note.text || ''); setEditQuote(note.quote || '') }}
+              className="px-4 py-1.5 text-xs rounded-lg border border-outline-variant/30 text-on-surface-variant hover:bg-surface-container transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      ) : (
+        <>
+          {note.quote && (
+            <p className="font-serif italic text-sm text-primary/80 leading-relaxed">"{note.quote}"</p>
+          )}
+          {note.text && (
+            <p className="text-sm text-on-surface leading-relaxed">{note.text}</p>
+          )}
+        </>
       )}
 
       {/* Footer: hearts + comments */}
@@ -408,6 +467,10 @@ export default function ProfilePage() {
     } catch (e) {
       toast(e.message || 'Failed to delete', 'error')
     }
+  }
+
+  const handleEditNote = (noteId, updated) => {
+    setNotes(prev => prev.map(n => n.id === noteId ? { ...n, ...updated } : n))
   }
 
   const handleSignOut = () => { logout(); navigate('/') }
@@ -673,7 +736,7 @@ export default function ProfilePage() {
             ) : (
               <div className="space-y-4">
                 {notes.map(note => (
-                  <NoteCard key={note.id} note={note} onDelete={handleDeleteNote} />
+                  <NoteCard key={note.id} note={note} onDelete={handleDeleteNote} onEdit={handleEditNote} />
                 ))}
               </div>
             )}
