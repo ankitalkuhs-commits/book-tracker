@@ -243,6 +243,13 @@ function AddBookModal({ onClose, onAdded }) {
                   >
                     Reading Now
                   </button>
+                  <button
+                    onClick={() => handleAdd(book, 'finished')}
+                    disabled={isAdding}
+                    className="border border-secondary text-secondary px-3 py-1.5 text-xs rounded-lg whitespace-nowrap hover:bg-secondary/5 transition-colors"
+                  >
+                    Completed
+                  </button>
                 </div>
               </div>
             )
