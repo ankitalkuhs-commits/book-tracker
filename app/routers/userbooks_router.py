@@ -12,6 +12,7 @@ from app.models import UserBookProgress
 from app.database import get_db
 from sqlalchemy.orm import Session
 from ..notifications.dispatcher import fire_event, get_follower_ids
+from ..group_activity import fire_group_activity_for_user
 
 
 router = APIRouter(prefix="/userbooks", tags=["userbooks"])
@@ -96,7 +97,7 @@ def update_progress(userbook_id: int, data: UserBookProgress, db: Session = Depe
     db.commit()
     db.refresh(userbook)
 
-    # Fire book_completed if status transitioned to 'finished' via progress update
+    # Fire book_completed / milestone events
     if _fire_completed:
         book_title = book.title if book else "a book"
         actor = db.get(models.User, userbook.user_id)
@@ -110,6 +111,24 @@ def update_progress(userbook_id: int, data: UserBookProgress, db: Session = Depe
                 recipient_ids=follower_ids,
                 extra={"book_title": book_title},
             )
+        fire_group_activity_for_user(
+            db, userbook.user_id, "book_finished",
+            {"book_title": book_title, "book_id": userbook.book_id},
+        )
+    elif total_pages and new_page > old_page:
+        # Check if user crossed a 25/50/75% milestone
+        book_title = book.title if book else "a book"
+        MILESTONES = [25, 50, 75]
+        old_pct = int((old_page / total_pages) * 100)
+        new_pct = int((new_page / total_pages) * 100)
+        for m in MILESTONES:
+            if old_pct < m <= new_pct:
+                fire_group_activity_for_user(
+                    db, userbook.user_id, "milestone_reached",
+                    {"book_title": book_title, "book_id": userbook.book_id,
+                     "pct": m, "current_page": new_page, "total_pages": total_pages},
+                )
+                break  # only fire the highest crossed milestone
 
     return userbook
 
@@ -154,6 +173,10 @@ def mark_userbook_finished(userbook_id: int, db: Session = Depends(get_db)):
             recipient_ids=follower_ids,
             extra={"book_title": book_title},
         )
+    fire_group_activity_for_user(
+        db, ub.user_id, "book_finished",
+        {"book_title": book_title, "book_id": ub.book_id},
+    )
 
     return {"ok": True, "userbook": ub}
 
@@ -289,10 +312,12 @@ def patch_userbook(userbook_id: int, payload: dict, db: Session = Depends(get_db
     old_status = ub.status
     ub = crud.update_userbook(db, ub, **update_fields)
 
+    new_status = update_fields.get("status")
+    book = db.get(Book, ub.book_id) if ub.book_id else None
+    book_title = book.title if book else "a book"
+
     # Notify followers when status manually changed to 'finished'
-    if update_fields.get("status") == "finished" and old_status != "finished":
-        book = db.get(Book, ub.book_id) if ub.book_id else None
-        book_title = book.title if book else "a book"
+    if new_status == "finished" and old_status != "finished":
         follower_ids = get_follower_ids(db, current_user.id)
         actor_name = current_user.name or current_user.username or "Someone"
         fire_event(
@@ -302,6 +327,15 @@ def patch_userbook(userbook_id: int, payload: dict, db: Session = Depends(get_db
             actor_name=actor_name,
             recipient_ids=follower_ids,
             extra={"book_title": book_title},
+        )
+        fire_group_activity_for_user(
+            db, current_user.id, "book_finished",
+            {"book_title": book_title, "book_id": ub.book_id},
+        )
+    elif new_status == "reading" and old_status != "reading":
+        fire_group_activity_for_user(
+            db, current_user.id, "book_started",
+            {"book_title": book_title, "book_id": ub.book_id},
         )
 
     return {"status": "ok", "userbook": ub}

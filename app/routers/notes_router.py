@@ -5,6 +5,7 @@ from pydantic import BaseModel
 from sqlmodel import Session
 from ..deps import get_db, get_current_user, get_current_user_optional
 from .. import crud, models
+from ..group_activity import fire_group_activity_for_user
 import os
 import uuid
 from pathlib import Path
@@ -142,6 +143,14 @@ def create_note(payload: NoteCreateSchema, db: Session = Depends(get_db), curren
         chapter=chapter,
         image_url=image_url,
         quote=quote
+    )
+
+    # Fire group activity for note posted
+    book_for_activity = note.userbook.book if note.userbook else None
+    fire_group_activity_for_user(
+        db, current_user.id, "note_posted",
+        {"note_id": note.id,
+         "book_title": book_for_activity.title if book_for_activity else None},
     )
 
     # Build response shape (include basic user and book info for convenience)

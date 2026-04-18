@@ -241,3 +241,17 @@ class GroupPost(SQLModel, table=True):
     quote: Optional[str] = None
     userbook_id: Optional[int] = Field(default=None, foreign_key="userbook.id")
     created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class GroupActivity(SQLModel, table=True):
+    """Activity feed events scoped to a reading group."""
+    __tablename__ = "group_activity"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    group_id: int = Field(foreign_key="reading_group.id", index=True)
+    user_id: int = Field(foreign_key="user.id", index=True)
+    # event_type: member_joined | book_started | book_finished |
+    #              milestone_reached | note_posted | group_book_changed
+    event_type: str = Field(nullable=False)
+    payload: Optional[str] = Field(default=None)   # JSON string
+    created_at: datetime = Field(default_factory=datetime.utcnow)

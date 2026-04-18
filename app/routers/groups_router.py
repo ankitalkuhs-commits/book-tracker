@@ -10,6 +10,7 @@ from pydantic import BaseModel
 
 from ..deps import get_db, get_current_user
 from .. import models
+from ..group_activity import fire_group_activity
 
 router = APIRouter(prefix="/groups", tags=["groups"])
 
@@ -276,6 +277,8 @@ def join_group(
     member_status = "pending" if g.is_private else "active"
     db.add(models.GroupMember(group_id=group_id, user_id=me.id, role="member", status=member_status))
     db.commit()
+    if member_status == "active":
+        fire_group_activity(db, group_id, me.id, "member_joined")
     return {"status": member_status}
 
 
@@ -458,6 +461,7 @@ def accept_invite(
     m.status = "active"
     db.add(m)
     db.commit()
+    fire_group_activity(db, group_id, me.id, "member_joined")
     return {"ok": True}
 
 
@@ -716,6 +720,7 @@ def set_group_book(
     g.current_book_id = book.id
     db.add(g)
     db.commit()
+    fire_group_activity(db, group_id, me.id, "group_book_changed", {"book_title": book.title})
     return {"id": book.id, "title": book.title, "author": book.author, "cover_url": book.cover_url}
 
 
@@ -757,4 +762,45 @@ def get_my_pending_invites(
                 **_serialize_group(db, g, me.id),
                 "invited_by_name": inviter.name if inviter else None,
             })
+    return result
+
+
+# ─── Group Activity Feed ──────────────────────────────────────────────────────
+
+@router.get("/{group_id}/activity")
+def get_group_activity(
+    group_id: int,
+    limit: int = 50,
+    db: Session = Depends(get_db),
+    me: models.User = Depends(get_current_user),
+):
+    """Return the activity feed for a group (most recent first)."""
+    g = _group_or_404(db, group_id)
+    if g.is_private and not _is_member(db, group_id, me.id):
+        raise HTTPException(status_code=403, detail="Members only")
+
+    events = db.exec(
+        select(models.GroupActivity)
+        .where(models.GroupActivity.group_id == group_id)
+        .order_by(models.GroupActivity.created_at.desc())
+        .limit(limit)
+    ).all()
+
+    import json as _json
+    result = []
+    for ev in events:
+        user = db.get(models.User, ev.user_id)
+        payload = _json.loads(ev.payload) if ev.payload else {}
+        result.append({
+            "id": ev.id,
+            "event_type": ev.event_type,
+            "payload": payload,
+            "created_at": ev.created_at,
+            "user": {
+                "id": user.id,
+                "name": user.name or user.username,
+                "username": user.username,
+                "avatar_url": getattr(user, "avatar_url", None),
+            } if user else None,
+        })
     return result

@@ -128,5 +128,17 @@ SELECT setval('reading_group_id_seq',   COALESCE((SELECT MAX(id) FROM reading_gr
 SELECT setval('group_member_id_seq',    COALESCE((SELECT MAX(id) FROM group_member), 1));
 SELECT setval('group_post_id_seq',      COALESCE((SELECT MAX(id) FROM group_post), 1));
 
+-- ── group_activity ────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS group_activity (
+    id          SERIAL PRIMARY KEY,
+    group_id    INTEGER NOT NULL REFERENCES reading_group(id) ON DELETE CASCADE,
+    user_id     INTEGER NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
+    event_type  VARCHAR(50) NOT NULL,
+    payload     TEXT DEFAULT '{}',
+    created_at  TIMESTAMP DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_group_activity_group ON group_activity(group_id);
+SELECT setval('group_activity_id_seq',  COALESCE((SELECT MAX(id) FROM group_activity), 1));
+
 -- ── Done ──────────────────────────────────────────────────
 SELECT 'Migration complete' AS status;

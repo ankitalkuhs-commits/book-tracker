@@ -8,7 +8,7 @@ import {
   getPendingMembers, approveGroupMember, rejectGroupMember, removeGroupMember,
   inviteToGroup, leaveGroup, deleteGroup, updateGroup,
   setGroupBook, clearGroupBook, searchUsersForInvite, searchGoogleBooks,
-  joinByInviteCode,
+  joinByInviteCode, apiFetch,
 } from '../services/api'
 import { GroupCover } from './GroupsPage'
 
@@ -52,6 +52,46 @@ function RankBadge({ rank }) {
     <span className="w-7 h-7 flex items-center justify-center rounded-full bg-surface-container text-xs font-bold text-on-surface-variant">
       {rank}
     </span>
+  )
+}
+
+// ─── Activity Row ─────────────────────────────────────────────────────────────
+
+const ACTIVITY_ICON = {
+  member_joined:      { icon: 'person_add',    color: 'text-primary' },
+  book_started:       { icon: 'menu_book',     color: 'text-tertiary' },
+  book_finished:      { icon: 'check_circle',  color: 'text-secondary' },
+  milestone_reached:  { icon: 'flag',          color: 'text-primary' },
+  note_posted:        { icon: 'edit_note',     color: 'text-secondary' },
+  group_book_changed: { icon: 'auto_stories',  color: 'text-primary' },
+}
+
+function activityLabel(event) {
+  const name = event.user?.name || 'Someone'
+  const p = event.payload || {}
+  switch (event.event_type) {
+    case 'member_joined':      return <><strong>{name}</strong> joined the group</>
+    case 'book_started':       return <><strong>{name}</strong> started reading <em>{p.book_title || 'a book'}</em></>
+    case 'book_finished':      return <><strong>{name}</strong> finished <em>{p.book_title || 'a book'}</em> 🎉</>
+    case 'milestone_reached':  return <><strong>{name}</strong> is {p.pct}% through <em>{p.book_title || 'a book'}</em></>
+    case 'note_posted':        return <><strong>{name}</strong> shared a note{p.book_title ? <> on <em>{p.book_title}</em></> : ''}</>
+    case 'group_book_changed': return <><strong>{name}</strong> set the group book to <em>{p.book_title || 'a new book'}</em></>
+    default:                   return <><strong>{name}</strong> did something</>
+  }
+}
+
+function ActivityRow({ event }) {
+  const meta = ACTIVITY_ICON[event.event_type] || { icon: 'circle', color: 'text-outline' }
+  return (
+    <div className="flex items-start gap-3 py-2.5 border-b border-outline-variant/10 last:border-0">
+      <div className={`shrink-0 mt-0.5 ${meta.color}`}>
+        <span className="material-symbols-outlined text-lg">{meta.icon}</span>
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm text-on-surface leading-snug">{activityLabel(event)}</p>
+        <p className="text-xs text-on-surface-variant/50 mt-0.5">{timeAgo(event.created_at)}</p>
+      </div>
+    </div>
   )
 }
 
@@ -297,6 +337,7 @@ export default function GroupDetailPage() {
   const [leaderPeriod, setLeaderPeriod] = useState('monthly')
   const [goal, setGoal] = useState(null)
   const [posts, setPosts] = useState([])
+  const [activity, setActivity] = useState([])
   const [pending, setPending] = useState([])
   const [loading, setLoading] = useState(true)
 
@@ -325,16 +366,18 @@ export default function GroupDetailPage() {
       const g = await getGroup(parseInt(groupId))
       setGroup(g)
 
-      const [m, lb, gl, p] = await Promise.all([
+      const [m, lb, gl, p, act] = await Promise.all([
         safe(getGroupMembers(parseInt(groupId))),
         safe(getGroupLeaderboard(parseInt(groupId), leaderPeriod)),
         safe(getGroupGoal(parseInt(groupId))),
         safe(getGroupPosts(parseInt(groupId))),
+        safe(apiFetch(`/groups/${parseInt(groupId)}/activity`)),
       ])
       setMembers(m || [])
       setLeaderboard(lb || [])
       setGoal(gl || null)
       setPosts(p || [])
+      setActivity(act || [])
 
       if (g?.membership_role === 'curator') {
         const pend = await safe(getPendingMembers(parseInt(groupId)))
@@ -609,12 +652,32 @@ export default function GroupDetailPage() {
             )}
           </div>
 
+          {/* ── Member Activity Feed ── */}
+          <div className="bg-surface-container-lowest rounded-3xl p-6 space-y-4">
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-secondary">What's happening</p>
+              <h2 className="font-serif text-xl font-bold text-primary">Member Activity</h2>
+            </div>
+            {activity.length === 0 ? (
+              <div className="text-center py-8 text-on-surface-variant/50">
+                <span className="material-symbols-outlined text-4xl block mb-2">timeline</span>
+                <p className="text-sm">No activity yet — start reading!</p>
+              </div>
+            ) : (
+              <div className="space-y-1">
+                {activity.map(ev => (
+                  <ActivityRow key={ev.id} event={ev} />
+                ))}
+              </div>
+            )}
+          </div>
+
           {/* Group Feed */}
           <div className="bg-surface-container-lowest rounded-3xl p-6 space-y-5">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-[10px] font-bold uppercase tracking-widest text-secondary">Discussions</p>
-                <h2 className="font-serif text-xl font-bold text-on-surface">Group Activity</h2>
+                <h2 className="font-serif text-xl font-bold text-on-surface">Group Posts</h2>
               </div>
               {isMember && (
                 <button
