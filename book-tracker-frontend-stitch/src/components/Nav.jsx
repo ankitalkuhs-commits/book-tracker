@@ -19,9 +19,13 @@ export default function Nav() {
   const [menuOpen, setMenuOpen] = useState(false)
 
   useEffect(() => {
-    getUnreadCount()
-      .then((data) => setUnread(data?.unread || 0))
-      .catch(() => {})
+    const fetch = () =>
+      getUnreadCount()
+        .then((data) => setUnread(data?.count ?? data?.unread ?? 0))
+        .catch(() => {})
+    fetch()
+    const interval = setInterval(fetch, 60_000)
+    return () => clearInterval(interval)
   }, [])
 
   const handleLogout = () => {

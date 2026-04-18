@@ -86,9 +86,9 @@ function PushPermissionBanner() {
         <span className="material-symbols-outlined text-xl">notifications_active</span>
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-bold text-on-surface">Stay in the loop</p>
+        <p className="text-sm font-bold text-on-surface">Don't miss a thing</p>
         <p className="text-sm text-on-surface-variant mt-0.5">
-          Get notified when someone likes your post, follows you, or finishes a book.
+          Your friends are reading, finishing books, and sharing notes right now. Enable notifications so you're never the last to know.
         </p>
       </div>
       <button
@@ -107,11 +107,19 @@ export default function NotificationsPage() {
   const [notifications, setNotifications] = useState([])
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
+  const fetchNotifications = () =>
     getNotifications()
       .then(data => setNotifications(data || []))
       .catch(() => {})
       .finally(() => setLoading(false))
+
+  useEffect(() => {
+    fetchNotifications()
+
+    // Re-fetch when the tab regains focus (user switches back)
+    const onFocus = () => fetchNotifications()
+    window.addEventListener('focus', onFocus)
+    return () => window.removeEventListener('focus', onFocus)
   }, [])
 
   const handleMarkAll = async () => {
