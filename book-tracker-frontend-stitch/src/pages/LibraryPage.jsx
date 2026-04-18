@@ -273,6 +273,7 @@ function BookDetailPanel({ userbook, onClose, onUpdate, onRemove }) {
   const [noteText, setNoteText] = useState('')
   const [noteQuote, setNoteQuote] = useState('')
   const [postingNote, setPostingNote] = useState(false)
+  const [startPage, setStartPage] = useState('')
 
   useEffect(() => {
     getNotesForBook(userbook.id)
@@ -310,6 +311,10 @@ function BookDetailPanel({ userbook, onClose, onUpdate, onRemove }) {
   const changeStatus = async (newStatus) => {
     try {
       await updateUserBook(userbook.id, { status: newStatus })
+      if (newStatus === 'reading') {
+        const p = parseInt(startPage, 10)
+        if (!isNaN(p) && p > 0) await updateProgress(userbook.id, p)
+      }
       toast(`Moved to ${STATUS_BADGE[newStatus]?.label || newStatus}`, 'success')
       onUpdate()
     } catch (e) {
@@ -405,7 +410,16 @@ function BookDetailPanel({ userbook, onClose, onUpdate, onRemove }) {
           {userbook.status !== 'reading' && userbook.status !== 'finished' && (
             <section className="space-y-2">
               <h3 className="text-sm font-bold text-on-surface uppercase tracking-wider">Move to</h3>
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-wrap items-center">
+                <input
+                  type="number"
+                  value={startPage}
+                  onChange={e => setStartPage(e.target.value)}
+                  min="0"
+                  max={book?.total_pages || undefined}
+                  placeholder="Current page (optional)"
+                  className="w-44 bg-surface-container-low rounded-xl px-3 py-2 text-sm border-none focus:outline-none focus:ring-2 focus:ring-primary/20"
+                />
                 <button
                   onClick={() => changeStatus('reading')}
                   className="btn-primary px-4 py-2 text-sm rounded-xl"
