@@ -110,11 +110,35 @@ function BookCover({ book }) {
 
 // ─── Public Note Card ─────────────────────────────────────────────────────────
 
-function PublicNoteCard({ note }) {
+function PublicNoteCard({ note, profileUrl }) {
+  const toast = useToast()
+
+  const handleShare = async () => {
+    const text = note.quote ? `"${note.quote}"` : note.text || ''
+    const bookLabel = note.book ? ` — ${note.book.title}` : ''
+    const shareData = {
+      title: `Note on TrackMyRead${bookLabel}`,
+      text: text,
+      url: profileUrl || window.location.href,
+    }
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData)
+      } else {
+        await navigator.clipboard.writeText(`${text}\n${shareData.url}`)
+        toast('Copied to clipboard', 'success')
+      }
+    } catch { /* user cancelled share */ }
+  }
+
   return (
     <article className="bg-surface-container-low rounded-2xl p-5 space-y-3 relative">
       {/* Share icon */}
-      <button className="absolute top-4 right-4 text-on-surface-variant/30 hover:text-on-surface-variant transition-colors">
+      <button
+        onClick={handleShare}
+        className="absolute top-4 right-4 text-on-surface-variant/30 hover:text-on-surface-variant transition-colors"
+        title="Share this note"
+      >
         <span className="material-symbols-outlined text-base">ios_share</span>
       </button>
 
@@ -403,7 +427,7 @@ export default function UserProfilePage() {
           ) : (
             <div className="space-y-4">
               {notes.map(note => (
-                <PublicNoteCard key={note.id} note={note} />
+                <PublicNoteCard key={note.id} note={note} profileUrl={`${window.location.origin}/profile/${userId}`} />
               ))}
             </div>
           )}
