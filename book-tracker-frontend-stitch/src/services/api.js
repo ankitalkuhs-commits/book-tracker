@@ -127,7 +127,7 @@ export const updateProgress = (userbookId, currentPage) =>
     body: JSON.stringify({ current_page: currentPage }),
   }).then(r => { invalidateUserBooks(); return r; });
 export const markFinished = (userbookId) =>
-  apiFetch(`/userbooks/${userbookId}/finish`, { method: 'PUT' })
+  apiFetch(`/userbooks/${userbookId}/finish`, { method: 'POST' })
     .then(r => { invalidateUserBooks(); return r; });
 export const removeFromLibrary = (userbookId) =>
   apiFetch(`/userbooks/${userbookId}`, { method: 'DELETE' })
