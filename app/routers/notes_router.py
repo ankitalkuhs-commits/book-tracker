@@ -38,14 +38,6 @@ class NoteCreateSchema(BaseModel):
     userbook_id: Optional[int] = None
     is_public: Optional[bool] = True
 
-    @classmethod
-    def __get_validators__(cls):
-        yield cls._validate_content
-
-    @classmethod
-    def _validate_content(cls, v):
-        return v
-
     def has_content(self) -> bool:
         return bool(
             (self.text and self.text.strip()) or
