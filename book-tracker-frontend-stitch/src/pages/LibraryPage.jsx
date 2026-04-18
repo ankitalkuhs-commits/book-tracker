@@ -265,15 +265,16 @@ function AddBookModal({ onClose, onAdded }) {
 function BookDetailPanel({ userbook, onClose, onUpdate, onRemove }) {
   const toast = useToast()
   const book = userbook.book
+  const [status, setStatus] = useState(userbook.status)
   const [page, setPage] = useState(userbook.current_page || '')
   const [savingProgress, setSavingProgress] = useState(false)
+  const [changingStatus, setChangingStatus] = useState(false)
   const [rating, setRating] = useState(userbook.rating || 0)
   const [notes, setNotes] = useState([])
   const [loadingNotes, setLoadingNotes] = useState(true)
   const [noteText, setNoteText] = useState('')
   const [noteQuote, setNoteQuote] = useState('')
   const [postingNote, setPostingNote] = useState(false)
-  const [startPage, setStartPage] = useState('')
 
   useEffect(() => {
     getNotesForBook(userbook.id)
@@ -281,6 +282,32 @@ function BookDetailPanel({ userbook, onClose, onUpdate, onRemove }) {
       .catch(() => {})
       .finally(() => setLoadingNotes(false))
   }, [userbook.id])
+
+  const handleStatusChange = async (newStatus) => {
+    if (newStatus === status) return
+    // Warn if moving away from reading (progress may be discarded)
+    if (status === 'reading' && newStatus === 'to-read') {
+      if (!window.confirm('Moving back to "Want to Read" will clear your reading progress. Continue?')) return
+    }
+    setChangingStatus(true)
+    try {
+      if (newStatus === 'finished') {
+        await markFinished(userbook.id)
+      } else {
+        await updateUserBook(userbook.id, { status: newStatus })
+        if (newStatus === 'reading') {
+          const p = parseInt(page, 10)
+          if (!isNaN(p) && p > 0) await updateProgress(userbook.id, p)
+        }
+      }
+      setStatus(newStatus)
+      toast(`Moved to ${STATUS_BADGE[newStatus]?.label || newStatus}`, 'success')
+      onUpdate()
+    } catch (e) {
+      toast(e.message || 'Something went wrong', 'error')
+    }
+    setChangingStatus(false)
+  }
 
   const saveProgress = async () => {
     const p = parseInt(page, 10)
@@ -294,32 +321,6 @@ function BookDetailPanel({ userbook, onClose, onUpdate, onRemove }) {
       toast(e.message || 'Something went wrong', 'error')
     }
     setSavingProgress(false)
-  }
-
-  const finish = async () => {
-    if (!window.confirm('Mark this book as finished?')) return
-    try {
-      await markFinished(userbook.id)
-      toast('Marked as finished!', 'success')
-      onUpdate()
-      onClose()
-    } catch (e) {
-      toast(e.message || 'Something went wrong', 'error')
-    }
-  }
-
-  const changeStatus = async (newStatus) => {
-    try {
-      await updateUserBook(userbook.id, { status: newStatus })
-      if (newStatus === 'reading') {
-        const p = parseInt(startPage, 10)
-        if (!isNaN(p) && p > 0) await updateProgress(userbook.id, p)
-      }
-      toast(`Moved to ${STATUS_BADGE[newStatus]?.label || newStatus}`, 'success')
-      onUpdate()
-    } catch (e) {
-      toast(e.message || 'Something went wrong', 'error')
-    }
   }
 
   const remove = async () => {
@@ -375,6 +376,12 @@ function BookDetailPanel({ userbook, onClose, onUpdate, onRemove }) {
 
   const progress = pct(userbook.current_page, book?.total_pages)
 
+  const STATUS_SEGMENTS = [
+    { key: 'to-read',  label: 'Want to Read' },
+    { key: 'reading',  label: 'Reading' },
+    { key: 'finished', label: 'Finished' },
+  ]
+
   return (
     <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center p-0 md:p-4 bg-on-surface/20 backdrop-blur-sm">
       <div className="bg-surface-container-lowest rounded-t-3xl md:rounded-3xl shadow-float w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
@@ -387,12 +394,7 @@ function BookDetailPanel({ userbook, onClose, onUpdate, onRemove }) {
             <div className="min-w-0">
               <h2 className="font-serif text-lg font-bold text-primary leading-snug">{book?.title}</h2>
               <p className="text-sm text-on-surface-variant mt-0.5">{book?.author}</p>
-              {userbook.status && (
-                <span className={`inline-block mt-2 text-xs font-bold px-2.5 py-0.5 rounded-full ${STATUS_BADGE[userbook.status]?.cls}`}>
-                  {STATUS_BADGE[userbook.status]?.label}
-                </span>
-              )}
-              {userbook.status === 'finished' && (
+              {status === 'finished' && (
                 <div className="mt-2">
                   <StarRating value={rating} onChange={handleRating} size="sm" />
                 </div>
@@ -406,49 +408,34 @@ function BookDetailPanel({ userbook, onClose, onUpdate, onRemove }) {
 
         {/* Scrollable content */}
         <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
-          {/* Change status */}
-          {userbook.status !== 'reading' && userbook.status !== 'finished' && (
-            <section className="space-y-2">
-              <h3 className="text-sm font-bold text-on-surface uppercase tracking-wider">Move to</h3>
-              <div className="flex gap-2 flex-wrap items-center">
-                <input
-                  type="number"
-                  value={startPage}
-                  onChange={e => setStartPage(e.target.value)}
-                  min="0"
-                  max={book?.total_pages || undefined}
-                  placeholder="Current page (optional)"
-                  className="w-44 bg-surface-container-low rounded-xl px-3 py-2 text-sm border-none focus:outline-none focus:ring-2 focus:ring-primary/20"
-                />
-                <button
-                  onClick={() => changeStatus('reading')}
-                  className="btn-primary px-4 py-2 text-sm rounded-xl"
-                >
-                  Start Reading
-                </button>
-                <button
-                  onClick={() => changeStatus('finished')}
-                  className="border border-secondary text-secondary px-4 py-2 text-sm rounded-xl hover:bg-secondary/5 transition-colors"
-                >
-                  Mark Finished
-                </button>
-              </div>
-            </section>
-          )}
-          {userbook.status === 'finished' && (
-            <section className="space-y-2">
-              <h3 className="text-sm font-bold text-on-surface uppercase tracking-wider">Move to</h3>
-              <button
-                onClick={() => changeStatus('reading')}
-                className="border border-primary text-primary px-4 py-2 text-sm rounded-xl hover:bg-primary/5 transition-colors"
-              >
-                Reading Again
-              </button>
-            </section>
-          )}
 
-          {/* Progress */}
-          {userbook.status === 'reading' && (
+          {/* ── Unified status selector ── */}
+          <section className="space-y-3">
+            <h3 className="text-sm font-bold text-on-surface uppercase tracking-wider">Status</h3>
+            <div className="flex rounded-2xl overflow-hidden border border-outline-variant/20 divide-x divide-outline-variant/20">
+              {STATUS_SEGMENTS.map(seg => (
+                <button
+                  key={seg.key}
+                  onClick={() => handleStatusChange(seg.key)}
+                  disabled={changingStatus}
+                  className={`flex-1 py-2.5 text-sm font-semibold transition-all ${
+                    status === seg.key
+                      ? seg.key === 'finished'
+                        ? 'bg-secondary text-on-secondary'
+                        : seg.key === 'reading'
+                          ? 'bg-primary text-on-primary'
+                          : 'bg-tertiary text-on-tertiary'
+                      : 'bg-surface-container-low text-on-surface-variant hover:bg-surface-container-high'
+                  }`}
+                >
+                  {changingStatus && status !== seg.key ? '…' : seg.label}
+                </button>
+              ))}
+            </div>
+          </section>
+
+          {/* ── Reading progress (shown when Reading) ── */}
+          {status === 'reading' && (
             <section className="space-y-3">
               <h3 className="text-sm font-bold text-on-surface uppercase tracking-wider">Reading Progress</h3>
               {book?.total_pages && (
@@ -470,7 +457,7 @@ function BookDetailPanel({ userbook, onClose, onUpdate, onRemove }) {
                   min="0"
                   max={book?.total_pages || undefined}
                   placeholder="Current page"
-                  className="w-32 bg-surface-container-low rounded-xl px-3 py-2 text-sm border-none focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  className="w-36 bg-surface-container-low rounded-xl px-3 py-2 text-sm border-none focus:outline-none focus:ring-2 focus:ring-primary/20"
                 />
                 <button
                   onClick={saveProgress}
@@ -479,14 +466,23 @@ function BookDetailPanel({ userbook, onClose, onUpdate, onRemove }) {
                 >
                   {savingProgress ? 'Saving...' : 'Update'}
                 </button>
-                <button
-                  onClick={finish}
-                  className="border border-secondary text-secondary px-5 py-2 text-sm rounded-xl hover:bg-secondary/5 transition-colors"
-                >
-                  Mark Finished
-                </button>
               </div>
             </section>
+          )}
+
+          {/* ── Page input when not currently reading (for switching to Reading) ── */}
+          {status !== 'reading' && (
+            <div className="flex items-center gap-3 -mt-2">
+              <input
+                type="number"
+                value={page}
+                onChange={e => setPage(e.target.value)}
+                min="0"
+                placeholder="Currently on page… (optional)"
+                className="w-56 bg-surface-container-low rounded-xl px-3 py-2 text-sm border-none focus:outline-none focus:ring-2 focus:ring-primary/20"
+              />
+              <p className="text-xs text-on-surface-variant/60">Used when switching to Reading</p>
+            </div>
           )}
 
           {/* Notes */}
