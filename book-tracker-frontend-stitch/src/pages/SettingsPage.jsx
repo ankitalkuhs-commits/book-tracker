@@ -4,6 +4,87 @@ import { useAuth } from '../context/AuthContext'
 import { useToast } from '../components/Toast'
 import { getMyProfile, updateMyProfile, uploadProfilePicture, deleteAccount } from '../services/api'
 
+// Illustrated preset avatars via DiceBear adventurer style
+const PRESET_AVATARS = [
+  { id: 'sage',     url: 'https://api.dicebear.com/9.x/adventurer/svg?seed=sage&backgroundColor=b6e3f4' },
+  { id: 'luna',     url: 'https://api.dicebear.com/9.x/adventurer/svg?seed=luna&backgroundColor=c0aede' },
+  { id: 'felix',    url: 'https://api.dicebear.com/9.x/adventurer/svg?seed=felix&backgroundColor=d1d4f9' },
+  { id: 'nova',     url: 'https://api.dicebear.com/9.x/adventurer/svg?seed=nova&backgroundColor=ffdfbf' },
+  { id: 'arlo',     url: 'https://api.dicebear.com/9.x/adventurer/svg?seed=arlo&backgroundColor=ffd5dc' },
+  { id: 'quinn',    url: 'https://api.dicebear.com/9.x/adventurer/svg?seed=quinn&backgroundColor=b6e3f4' },
+  { id: 'ember',    url: 'https://api.dicebear.com/9.x/adventurer/svg?seed=ember&backgroundColor=c0aede' },
+  { id: 'river',    url: 'https://api.dicebear.com/9.x/adventurer/svg?seed=river&backgroundColor=d1f9e0' },
+  { id: 'blake',    url: 'https://api.dicebear.com/9.x/adventurer/svg?seed=blake&backgroundColor=ffeaad' },
+  { id: 'cedar',    url: 'https://api.dicebear.com/9.x/adventurer/svg?seed=cedar&backgroundColor=e0d5f9' },
+  { id: 'haven',    url: 'https://api.dicebear.com/9.x/adventurer/svg?seed=haven&backgroundColor=d1f9f4' },
+  { id: 'lyric',    url: 'https://api.dicebear.com/9.x/adventurer/svg?seed=lyric&backgroundColor=f9d5d5' },
+]
+
+function AvatarPickerModal({ current, onSelect, onClose }) {
+  const [selected, setSelected] = useState(current)
+  const [applying, setApplying] = useState(false)
+
+  const handleApply = async () => {
+    if (!selected || selected === current) { onClose(); return }
+    setApplying(true)
+    await onSelect(selected)
+    setApplying(false)
+    onClose()
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={onClose}>
+      <div
+        className="bg-surface-container-lowest rounded-3xl w-full max-w-sm shadow-float overflow-hidden"
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 pt-6 pb-4">
+          <h3 className="font-serif text-xl font-bold text-on-surface">Choose Avatar</h3>
+          <button onClick={onClose} className="text-on-surface-variant hover:text-on-surface transition-colors">
+            <span className="material-symbols-outlined">close</span>
+          </button>
+        </div>
+
+        {/* Avatar grid */}
+        <div className="px-6 pb-6">
+          <div className="grid grid-cols-4 gap-3 mb-6">
+            {PRESET_AVATARS.map(av => (
+              <button
+                key={av.id}
+                type="button"
+                onClick={() => setSelected(av.url)}
+                className={`relative w-full aspect-square rounded-2xl overflow-hidden border-3 transition-all focus:outline-none ${
+                  selected === av.url
+                    ? 'border-primary scale-105 shadow-md'
+                    : 'border-transparent hover:border-primary/40 hover:scale-102'
+                }`}
+                style={{ borderWidth: selected === av.url ? 3 : 2 }}
+              >
+                <img src={av.url} alt={av.id} className="w-full h-full object-cover" loading="lazy" />
+                {selected === av.url && (
+                  <div className="absolute inset-0 bg-primary/10 flex items-end justify-end p-1">
+                    <span className="material-symbols-outlined text-sm text-primary bg-surface rounded-full p-0.5 leading-none" style={{ fontVariationSettings: "'FILL' 1", fontSize: '14px' }}>check_circle</span>
+                  </div>
+                )}
+              </button>
+            ))}
+          </div>
+
+          <button
+            type="button"
+            onClick={handleApply}
+            disabled={applying || !selected || selected === current}
+            className="w-full btn-primary py-3 text-sm font-bold rounded-xl disabled:opacity-50 transition-opacity"
+          >
+            {applying ? 'Applying...' : 'Use This Avatar'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function SettingsPage() {
   const { user, login, logout } = useAuth()
   const navigate = useNavigate()
@@ -18,6 +99,7 @@ export default function SettingsPage() {
   const [error, setError] = useState(null)
   const [avatarPreview, setAvatarPreview] = useState(null)
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
+  const [showAvatarPicker, setShowAvatarPicker] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [deleting, setDeleting] = useState(false)
 
@@ -28,6 +110,19 @@ export default function SettingsPage() {
       setYearlyGoal(p.yearly_goal || '')
     }).catch(() => {})
   }, [])
+
+  const handlePresetSelect = async (url) => {
+    setUploadingAvatar(true)
+    try {
+      await updateMyProfile({ profile_picture: url })
+      login({ ...user, profile_picture: url })
+      setAvatarPreview(url)
+      toast('Avatar updated!', 'success')
+    } catch (e) {
+      toast(e.message || 'Failed to update avatar', 'error')
+    }
+    setUploadingAvatar(false)
+  }
 
   const handleAvatarChange = async (e) => {
     const file = e.target.files?.[0]
@@ -97,42 +192,47 @@ export default function SettingsPage() {
       <section className="bg-surface-container-lowest rounded-3xl p-8 space-y-6">
         <h2 className="font-sans text-base font-bold text-on-surface uppercase tracking-wider">Profile</h2>
 
-        {/* Avatar upload */}
+        {/* Avatar */}
         <div className="flex items-center gap-5">
-          <div className="relative group shrink-0">
-            <button
-              type="button"
-              onClick={() => avatarInputRef.current?.click()}
-              className="w-20 h-20 rounded-full overflow-hidden border-4 border-primary-fixed-dim bg-primary flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-primary"
-            >
+          <div className="relative shrink-0">
+            <div className="w-20 h-20 rounded-full overflow-hidden border-4 border-primary-fixed-dim bg-primary flex items-center justify-center">
               {currentPicture ? (
                 <img src={currentPicture} alt={user?.name} className="w-full h-full object-cover" />
               ) : (
                 <span className="text-on-primary text-2xl font-bold">{initials}</span>
               )}
-              <div className="absolute inset-0 rounded-full bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                <span className="material-symbols-outlined text-white text-xl">photo_camera</span>
-              </div>
-            </button>
+            </div>
             {uploadingAvatar && (
               <div className="absolute inset-0 rounded-full bg-black/50 flex items-center justify-center">
-                <span className="text-white text-xs font-bold">...</span>
+                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
               </div>
             )}
-            <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
           </div>
-          <div>
-            <p className="font-bold text-on-surface">{user?.name}</p>
-            <p className="text-sm text-on-surface-variant">{user?.email}</p>
-            <button
-              type="button"
-              onClick={() => avatarInputRef.current?.click()}
-              className="text-xs text-primary hover:underline mt-1"
-            >
-              Change photo
-            </button>
+          <div className="flex-1 min-w-0">
+            <p className="font-bold text-on-surface truncate">{user?.name}</p>
+            <p className="text-sm text-on-surface-variant truncate">{user?.email}</p>
+            <div className="flex items-center gap-3 mt-2">
+              <button
+                type="button"
+                onClick={() => setShowAvatarPicker(true)}
+                className="flex items-center gap-1 text-xs font-medium text-primary hover:text-primary/80 transition-colors"
+              >
+                <span className="material-symbols-outlined text-sm">face</span>
+                Choose avatar
+              </button>
+              <span className="text-outline-variant text-xs">·</span>
+              <button
+                type="button"
+                onClick={() => avatarInputRef.current?.click()}
+                className="flex items-center gap-1 text-xs font-medium text-on-surface-variant hover:text-on-surface transition-colors"
+              >
+                <span className="material-symbols-outlined text-sm">upload</span>
+                Upload photo
+              </button>
+            </div>
           </div>
         </div>
+        <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
 
         {/* Edit form */}
         <form onSubmit={handleSave} className="space-y-4">
@@ -221,6 +321,15 @@ export default function SettingsPage() {
           </div>
         </div>
       </section>
+
+      {/* Avatar picker modal */}
+      {showAvatarPicker && (
+        <AvatarPickerModal
+          current={currentPicture}
+          onSelect={handlePresetSelect}
+          onClose={() => setShowAvatarPicker(false)}
+        />
+      )}
 
       {/* Delete confirmation modal */}
       {showDeleteConfirm && (

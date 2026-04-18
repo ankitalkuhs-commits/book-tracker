@@ -232,7 +232,7 @@ export default function InsightsPage() {
     <main className="max-w-screen-lg mx-auto px-4 md:px-8 pt-8 pb-16 space-y-8">
       {/* Header */}
       <div>
-        <h1 className="font-serif text-4xl md:text-5xl font-bold text-on-surface leading-tight">Reading Insights</h1>
+        <h1 className="font-serif text-4xl md:text-5xl font-bold text-primary leading-tight">Reading Insights</h1>
         <p className="text-on-surface-variant mt-2 text-sm">Your reading life, quantified.</p>
       </div>
 

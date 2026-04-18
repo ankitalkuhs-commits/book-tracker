@@ -456,7 +456,7 @@ export default function ProfilePage() {
           {/* Info */}
           <div className="flex-1 min-w-0 space-y-2">
             <div className="flex items-center gap-3 flex-wrap">
-              <h1 className="font-serif text-3xl font-bold text-on-surface">{profile?.name || user?.name}</h1>
+              <h1 className="font-serif text-3xl font-bold text-primary">{profile?.name || user?.name}</h1>
               <button
                 onClick={() => setShowEditBio(true)}
                 className="flex items-center gap-1 text-xs font-bold text-secondary hover:text-secondary/80 transition-colors uppercase tracking-wider"

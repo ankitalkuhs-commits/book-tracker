@@ -716,7 +716,7 @@ export default function LibraryPage() {
         <div className="col-span-12 lg:col-span-9 space-y-6">
           {/* Header */}
           <div>
-            <h1 className="font-serif text-4xl md:text-5xl font-bold text-on-surface leading-tight">Your Library</h1>
+            <h1 className="font-serif text-4xl md:text-5xl font-bold text-primary leading-tight">Your Library</h1>
             <p className="text-on-surface-variant mt-2 text-sm">Curating your personal journey through words and wisdom.</p>
           </div>
 

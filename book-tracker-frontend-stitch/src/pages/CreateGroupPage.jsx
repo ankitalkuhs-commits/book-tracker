@@ -81,13 +81,12 @@ export default function CreateGroupPage() {
     <main className="max-w-screen-lg mx-auto px-4 md:px-8 pt-8 pb-16">
       {/* Header */}
       <div className="mb-8 space-y-1">
-        <p className="text-xs font-bold uppercase tracking-widest text-secondary">New Literary Circle</p>
-        <h1 className="font-serif text-4xl md:text-5xl font-bold text-on-surface leading-tight">
-          Manifest a New<br />Sanctuary
+        <p className="text-xs font-bold uppercase tracking-widest text-secondary">Groups</p>
+        <h1 className="font-serif text-4xl md:text-5xl font-bold text-primary leading-tight">
+          Create a New Group
         </h1>
         <p className="text-on-surface-variant text-sm max-w-md mt-2">
-          Every collection starts with a shared vision. Curate your circle, define
-          your ethos, and invite those who read with purpose.
+          Start a reading group, invite friends, and read together.
         </p>
       </div>
 
@@ -98,7 +97,7 @@ export default function CreateGroupPage() {
 
           {/* Cover preset picker */}
           <div className="bg-surface-container-lowest rounded-3xl p-6 space-y-4">
-            <h2 className="font-serif text-base font-bold text-primary">Cover</h2>
+            <h2 className="text-xs font-bold uppercase tracking-widest text-secondary">Cover</h2>
             <div className="grid grid-cols-4 gap-3">
               {COVER_PRESETS.map(p => (
                 <button
@@ -128,24 +127,23 @@ export default function CreateGroupPage() {
           {/* Name + Description */}
           <div className="bg-surface-container-lowest rounded-3xl p-6 space-y-5">
             <div className="space-y-2">
-              <label className="text-xs font-bold uppercase tracking-widest text-secondary">The Identifier</label>
+              <label className="text-xs font-bold uppercase tracking-widest text-secondary">Group Name</label>
               <input
                 value={name}
                 onChange={e => setName(e.target.value)}
-                placeholder="A Title for Your Collective..."
+                placeholder="e.g. Classic Fiction Club"
                 className="w-full bg-transparent border-none focus:outline-none font-serif text-2xl text-on-surface placeholder:text-on-surface-variant/40 italic"
               />
             </div>
             <div className="border-t border-outline-variant/15 pt-5 space-y-2">
-              <label className="text-xs font-bold uppercase tracking-widest text-secondary">The Group Manifesto</label>
+              <label className="text-xs font-bold uppercase tracking-widest text-secondary">Description</label>
               <textarea
                 value={description}
                 onChange={e => setDescription(e.target.value)}
-                placeholder="Articulate the purpose of this assembly. Is it a gathering for lost classics, or a forum for contemporary inquiry?"
+                placeholder="What's this group about? What are you reading together?"
                 rows={5}
                 className="w-full bg-surface-container-low rounded-xl px-4 py-3 text-sm border-none focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none text-on-surface"
               />
-              <p className="text-xs text-on-surface-variant/50 italic">Inspired prose encourages thoughtful members.</p>
             </div>
           </div>
 
@@ -158,9 +156,9 @@ export default function CreateGroupPage() {
               }`}
             >
               <span className="material-symbols-outlined text-2xl text-primary mb-2 block">public</span>
-              <p className="font-bold text-on-surface">Public Forum</p>
+              <p className="font-bold text-on-surface">Public</p>
               <p className="text-xs text-on-surface-variant mt-1 leading-relaxed">
-                Visible to the community. Any wanderer may request entry or join the conversation.
+                Anyone can find and request to join this group.
               </p>
               <div className={`mt-4 py-2 text-center text-sm font-bold rounded-xl border ${
                 !isPrivate ? 'bg-primary text-on-primary border-primary' : 'border-outline-variant text-on-surface-variant'
@@ -176,9 +174,9 @@ export default function CreateGroupPage() {
               }`}
             >
               <span className="material-symbols-outlined text-2xl text-primary mb-2 block">lock</span>
-              <p className="font-bold text-on-surface">Private Sanctum</p>
+              <p className="font-bold text-on-surface">Private</p>
               <p className="text-xs text-on-surface-variant mt-1 leading-relaxed">
-                Hidden from search. Membership is purely by curator's invitation or secret link.
+                Hidden from search. Members join via invitation or invite link only.
               </p>
               <div className={`mt-4 py-2 text-center text-sm font-bold rounded-xl border ${
                 isPrivate ? 'bg-primary text-on-primary border-primary' : 'border-outline-variant text-on-surface-variant'
@@ -190,7 +188,7 @@ export default function CreateGroupPage() {
 
           {/* Reading Goal */}
           <div className="bg-surface-container-lowest rounded-3xl p-6 space-y-4">
-            <h2 className="font-serif text-base font-bold text-primary">Reading Goal <span className="text-on-surface-variant/50 font-sans text-xs font-normal">(optional)</span></h2>
+            <h2 className="text-xs font-bold uppercase tracking-widest text-secondary">Reading Goal <span className="text-on-surface-variant/50 normal-case text-xs font-normal">(optional)</span></h2>
             <div className="flex gap-3 items-center">
               <div className="flex-1">
                 <input
@@ -227,7 +225,7 @@ export default function CreateGroupPage() {
 
           {/* Invite panel */}
           <div className="bg-surface-container-lowest rounded-3xl p-6 space-y-4">
-            <h2 className="font-serif text-xl font-bold text-on-surface">Gather the Circle</h2>
+            <h2 className="font-serif text-xl font-bold text-on-surface">Invite Members</h2>
 
             {/* Search */}
             <div className="relative">
@@ -280,16 +278,16 @@ export default function CreateGroupPage() {
 
           {/* CTA */}
           <div className="bg-primary rounded-3xl p-6 space-y-3">
-            <h3 className="font-serif text-xl font-bold text-on-primary">Ready to Curate?</h3>
+            <h3 className="font-serif text-xl font-bold text-on-primary">Ready to go?</h3>
             <p className="text-sm text-on-primary/70 leading-relaxed">
-              By finalizing, you establish yourself as the primary curator of this group.
+              You'll be the admin of this group.
             </p>
             <button
               onClick={handleSubmit}
               disabled={submitting || !name.trim()}
               className="w-full bg-surface-container-lowest text-primary font-bold py-3.5 rounded-2xl text-sm hover:bg-surface-container transition-colors disabled:opacity-50 mt-2"
             >
-              {submitting ? 'Establishing...' : 'Establish Group'}
+              {submitting ? 'Creating...' : 'Create Group'}
             </button>
           </div>
 

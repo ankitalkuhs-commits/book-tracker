@@ -5,7 +5,43 @@ export const getToken = () => localStorage.getItem(TOKEN_KEY);
 export const setToken = (token) => localStorage.setItem(TOKEN_KEY, token);
 export const clearToken = () => localStorage.removeItem(TOKEN_KEY);
 
+// Simple in-memory cache for GET requests — TTL 60s
+const _cache = new Map();
+const CACHE_TTL = 60_000;
+
+function cacheGet(key) {
+  const entry = _cache.get(key);
+  if (!entry) return null;
+  if (Date.now() - entry.ts > CACHE_TTL) { _cache.delete(key); return null; }
+  return entry.data;
+}
+function cacheSet(key, data) { _cache.set(key, { data, ts: Date.now() }); }
+export function cacheClear(prefix) {
+  for (const key of _cache.keys()) {
+    if (!prefix || key.startsWith(prefix)) _cache.delete(key);
+  }
+}
+
 export async function apiFetch(path, options = {}) {
+  const method = (options.method || 'GET').toUpperCase();
+  const cacheKey = path;
+
+  // Serve GET from cache immediately, revalidate in background
+  if (method === 'GET') {
+    const cached = cacheGet(cacheKey);
+    if (cached !== null) {
+      // Revalidate in background without blocking
+      apiFetchRaw(path, options).then(fresh => cacheSet(cacheKey, fresh)).catch(() => {});
+      return cached;
+    }
+  }
+
+  const data = await apiFetchRaw(path, options);
+  if (method === 'GET') cacheSet(cacheKey, data);
+  return data;
+}
+
+async function apiFetchRaw(path, options = {}) {
   const token = getToken();
   const headers = {
     'Content-Type': 'application/json',
@@ -26,7 +62,6 @@ export async function apiFetch(path, options = {}) {
     throw new Error(err.detail || 'Request failed');
   }
 
-  // 204 No Content
   if (res.status === 204) return null;
   return res.json();
 }
@@ -38,10 +73,16 @@ export const googleLogin = (token) =>
 export const demoLogin = () =>
   apiFetch('/auth/demo-login', { method: 'POST' });
 
+// Invalidate caches that depend on mutated data
+function invalidateUserBooks() { cacheClear('/userbooks'); cacheClear('/notes'); }
+function invalidateFeed() { cacheClear('/notes'); }
+function invalidateProfile() { cacheClear('/profile'); }
+
 // Profile
 export const getMyProfile = () => apiFetch('/profile/me');
 export const updateMyProfile = (data) =>
-  apiFetch('/profile/me', { method: 'PUT', body: JSON.stringify(data) });
+  apiFetch('/profile/me', { method: 'PUT', body: JSON.stringify(data) })
+    .then(r => { invalidateProfile(); return r; });
 export const uploadProfilePicture = async (file) => {
   const token = getToken();
   const form = new FormData();
@@ -70,23 +111,27 @@ export const searchGoogleBooks = (q) =>
     }))
   });
 export const addToLibrary = (data) =>
-  apiFetch('/books/add-to-library', { method: 'POST', body: JSON.stringify(data) });
+  apiFetch('/books/add-to-library', { method: 'POST', body: JSON.stringify(data) })
+    .then(r => { invalidateUserBooks(); return r; });
 
 // User Books
 export const getMyBooks = (status = '') =>
   apiFetch(`/userbooks/${status ? `?status=${status}` : ''}`);
 export const getUserBooks = (userId) => apiFetch(`/userbooks/user/${userId}`);
 export const updateUserBook = (userbookId, data) =>
-  apiFetch(`/userbooks/${userbookId}`, { method: 'PATCH', body: JSON.stringify(data) });
+  apiFetch(`/userbooks/${userbookId}`, { method: 'PATCH', body: JSON.stringify(data) })
+    .then(r => { invalidateUserBooks(); return r; });
 export const updateProgress = (userbookId, currentPage) =>
   apiFetch(`/userbooks/${userbookId}/progress`, {
     method: 'PUT',
     body: JSON.stringify({ current_page: currentPage }),
-  });
+  }).then(r => { invalidateUserBooks(); return r; });
 export const markFinished = (userbookId) =>
-  apiFetch(`/userbooks/${userbookId}/finish`, { method: 'PUT' });
+  apiFetch(`/userbooks/${userbookId}/finish`, { method: 'PUT' })
+    .then(r => { invalidateUserBooks(); return r; });
 export const removeFromLibrary = (userbookId) =>
-  apiFetch(`/userbooks/${userbookId}`, { method: 'DELETE' });
+  apiFetch(`/userbooks/${userbookId}`, { method: 'DELETE' })
+    .then(r => { invalidateUserBooks(); return r; });
 export const getFriendReading = () => apiFetch('/userbooks/friends/currently-reading');
 
 // Notes / Feed
@@ -96,11 +141,14 @@ export const getMyNotes = () => apiFetch('/notes/me');
 export const getNotesForBook = (userbookId) => apiFetch(`/notes/userbook/${userbookId}`);
 export const getUserNotes = (userId) => apiFetch(`/notes/user/${userId}`);
 export const createNote = (data) =>
-  apiFetch('/notes/', { method: 'POST', body: JSON.stringify(data) });
+  apiFetch('/notes/', { method: 'POST', body: JSON.stringify(data) })
+    .then(r => { invalidateFeed(); return r; });
 export const updateNote = (noteId, data) =>
-  apiFetch(`/notes/${noteId}`, { method: 'PUT', body: JSON.stringify(data) });
+  apiFetch(`/notes/${noteId}`, { method: 'PUT', body: JSON.stringify(data) })
+    .then(r => { invalidateFeed(); return r; });
 export const deleteNote = (noteId) =>
-  apiFetch(`/notes/${noteId}`, { method: 'DELETE' });
+  apiFetch(`/notes/${noteId}`, { method: 'DELETE' })
+    .then(r => { invalidateFeed(); return r; });
 
 // Likes & Comments
 export const likeNote = (noteId) =>

@@ -272,7 +272,7 @@ export default function UserProfilePage() {
 
           {/* Info */}
           <div className="flex-1 min-w-0 space-y-2">
-            <h1 className="font-serif text-3xl md:text-4xl font-bold text-on-surface">{profile.name}</h1>
+            <h1 className="font-serif text-3xl md:text-4xl font-bold text-primary">{profile.name}</h1>
             {profile.username && (
               <p className="text-sm font-medium text-on-surface-variant">@{profile.username}</p>
             )}

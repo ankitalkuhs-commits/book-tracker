@@ -211,7 +211,7 @@ export default function GroupsPage() {
       {/* ── Header ─────────────────────────────────────── */}
       <div className="flex items-end justify-between">
         <div className="space-y-1">
-          <h1 className="font-serif text-4xl md:text-5xl font-bold text-on-surface">Literary Circles</h1>
+          <h1 className="font-serif text-4xl md:text-5xl font-bold text-primary">Literary Circles</h1>
           <p className="text-on-surface-variant text-sm max-w-lg">
             Discover niche reading communities, discuss your favourite chapters,
             and join global conversations curated for the discerning reader.
@@ -243,7 +243,7 @@ export default function GroupsPage() {
 
       {/* ── Your Groups ────────────────────────────────── */}
       <section className="space-y-4">
-        <h2 className="font-serif text-2xl font-bold text-on-surface">Your Groups</h2>
+        <h2 className="font-serif text-2xl font-bold text-primary">Your Groups</h2>
         {loading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {[1, 2].map(i => <div key={i} className="h-28 bg-surface-container-lowest rounded-2xl animate-pulse" />)}
@@ -267,7 +267,7 @@ export default function GroupsPage() {
       <section className="space-y-5">
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div>
-            <h2 className="font-serif text-2xl font-bold text-on-surface">Discover Groups</h2>
+            <h2 className="font-serif text-2xl font-bold text-primary">Discover Groups</h2>
             <p className="text-sm text-on-surface-variant mt-0.5">Find your next intellectual sanctuary.</p>
           </div>
           <div className="relative">
