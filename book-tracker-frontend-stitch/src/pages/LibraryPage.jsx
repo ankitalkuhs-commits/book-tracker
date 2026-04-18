@@ -307,6 +307,16 @@ function BookDetailPanel({ userbook, onClose, onUpdate, onRemove }) {
     }
   }
 
+  const changeStatus = async (newStatus) => {
+    try {
+      await updateUserBook(userbook.id, { status: newStatus })
+      toast(`Moved to ${STATUS_BADGE[newStatus]?.label || newStatus}`, 'success')
+      onUpdate()
+    } catch (e) {
+      toast(e.message || 'Something went wrong', 'error')
+    }
+  }
+
   const remove = async () => {
     if (!window.confirm('Remove this book from your library?')) return
     try {
@@ -391,6 +401,38 @@ function BookDetailPanel({ userbook, onClose, onUpdate, onRemove }) {
 
         {/* Scrollable content */}
         <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
+          {/* Change status */}
+          {userbook.status !== 'reading' && userbook.status !== 'finished' && (
+            <section className="space-y-2">
+              <h3 className="text-sm font-bold text-on-surface uppercase tracking-wider">Move to</h3>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => changeStatus('reading')}
+                  className="btn-primary px-4 py-2 text-sm rounded-xl"
+                >
+                  Start Reading
+                </button>
+                <button
+                  onClick={() => changeStatus('finished')}
+                  className="border border-secondary text-secondary px-4 py-2 text-sm rounded-xl hover:bg-secondary/5 transition-colors"
+                >
+                  Mark Finished
+                </button>
+              </div>
+            </section>
+          )}
+          {userbook.status === 'finished' && (
+            <section className="space-y-2">
+              <h3 className="text-sm font-bold text-on-surface uppercase tracking-wider">Move to</h3>
+              <button
+                onClick={() => changeStatus('reading')}
+                className="border border-primary text-primary px-4 py-2 text-sm rounded-xl hover:bg-primary/5 transition-colors"
+              >
+                Reading Again
+              </button>
+            </section>
+          )}
+
           {/* Progress */}
           {userbook.status === 'reading' && (
             <section className="space-y-3">
