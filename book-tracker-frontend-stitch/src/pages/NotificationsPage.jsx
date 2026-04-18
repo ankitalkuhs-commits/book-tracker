@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { getNotifications, markAllNotificationsRead } from '../services/api'
 
 function timeAgo(dateStr) {
@@ -19,7 +20,26 @@ const EVENT_ICON = {
   default:          { icon: 'notifications', cls: 'text-on-surface-variant', fill: false },
 }
 
+function getDestination(n) {
+  const data = n.data || {}
+  const actorId = data.actor_id || n.actor_id
+  switch (n.event_type) {
+    case 'new_follower':
+    case 'post_liked':
+    case 'book_completed':
+    case 'book_added':
+      return actorId ? `/profile/${actorId}` : null
+    case 'post_commented':
+      return actorId ? `/profile/${actorId}` : null
+    case 'reading_streak_reminder':
+      return '/insights'
+    default:
+      return actorId ? `/profile/${actorId}` : null
+  }
+}
+
 export default function NotificationsPage() {
+  const navigate = useNavigate()
   const [notifications, setNotifications] = useState([])
   const [loading, setLoading] = useState(true)
 
@@ -79,10 +99,19 @@ export default function NotificationsPage() {
         <div className="space-y-2">
           {notifications.map(n => {
             const { icon, cls, fill } = EVENT_ICON[n.event_type] || EVENT_ICON.default
+            const dest = getDestination(n)
             return (
               <div
                 key={n.id}
+                onClick={() => {
+                  if (!n.is_read) {
+                    setNotifications(prev => prev.map(x => x.id === n.id ? { ...x, is_read: true } : x))
+                  }
+                  if (dest) navigate(dest)
+                }}
                 className={`flex items-start gap-4 p-5 rounded-2xl transition-all ${
+                  dest ? 'cursor-pointer hover:shadow-md hover:-translate-y-0.5' : ''
+                } ${
                   n.is_read
                     ? 'bg-surface-container-lowest'
                     : 'bg-primary/5 border border-primary/10'
@@ -109,10 +138,11 @@ export default function NotificationsPage() {
                   <p className="text-xs text-on-surface-variant/60">{timeAgo(n.sent_at)}</p>
                 </div>
 
-                {/* Unread dot */}
-                {!n.is_read && (
-                  <div className="w-2 h-2 rounded-full bg-primary shrink-0 mt-2" />
-                )}
+                {/* Unread dot / nav arrow */}
+                <div className="shrink-0 mt-1 flex flex-col items-center gap-1">
+                  {!n.is_read && <div className="w-2 h-2 rounded-full bg-primary" />}
+                  {dest && <span className="material-symbols-outlined text-sm text-on-surface-variant/30">chevron_right</span>}
+                </div>
               </div>
             )
           })}
