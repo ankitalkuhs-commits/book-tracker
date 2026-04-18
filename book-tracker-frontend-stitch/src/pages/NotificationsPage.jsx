@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { getNotifications, markAllNotificationsRead } from '../services/api'
+import { getNotifications, markAllNotificationsRead, getVapidPublicKey, webSubscribe } from '../services/api'
 
 function timeAgo(dateStr) {
   if (!dateStr) return ''
@@ -36,6 +36,70 @@ function getDestination(n) {
     default:
       return actorId ? `/profile/${actorId}` : null
   }
+}
+
+// ─── Push Permission Banner ───────────────────────────────────────────────────
+
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - (base64String.length % 4)) % 4)
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/')
+  const rawData = atob(base64)
+  return Uint8Array.from([...rawData].map(c => c.charCodeAt(0)))
+}
+
+function PushPermissionBanner() {
+  const [status, setStatus] = useState(() => {
+    if (!('Notification' in window) || !('serviceWorker' in navigator)) return 'unsupported'
+    return Notification.permission // 'default' | 'granted' | 'denied'
+  })
+  const [enabling, setEnabling] = useState(false)
+
+  if (status !== 'default') return null
+
+  const handleEnable = async () => {
+    setEnabling(true)
+    try {
+      const permission = await Notification.requestPermission()
+      if (permission !== 'granted') { setStatus(permission); setEnabling(false); return }
+
+      const reg = await navigator.serviceWorker.register('/sw-push.js')
+      await navigator.serviceWorker.ready
+
+      const { public_key } = await getVapidPublicKey()
+      const subscription = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(public_key),
+      })
+
+      await webSubscribe(subscription.toJSON(), navigator.userAgent.slice(0, 120))
+      setStatus('granted')
+    } catch (e) {
+      console.error('Push subscription failed:', e)
+      setStatus(Notification.permission)
+    }
+    setEnabling(false)
+  }
+
+  return (
+    <div className="flex items-start gap-4 p-5 bg-primary/5 border border-primary/15 rounded-2xl">
+      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0 text-primary">
+        <span className="material-symbols-outlined text-xl">notifications_active</span>
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-bold text-on-surface">Stay in the loop</p>
+        <p className="text-sm text-on-surface-variant mt-0.5">
+          Get notified when someone likes your post, follows you, or finishes a book.
+        </p>
+      </div>
+      <button
+        onClick={handleEnable}
+        disabled={enabling}
+        className="btn-primary px-4 py-2 text-sm rounded-xl shrink-0 disabled:opacity-60"
+      >
+        {enabling ? 'Enabling…' : 'Enable'}
+      </button>
+    </div>
+  )
 }
 
 export default function NotificationsPage() {
@@ -78,6 +142,8 @@ export default function NotificationsPage() {
           </button>
         )}
       </div>
+
+      <PushPermissionBanner />
 
       {loading && (
         <div className="space-y-3">
