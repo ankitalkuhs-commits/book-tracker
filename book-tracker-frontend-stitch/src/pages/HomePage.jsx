@@ -6,7 +6,7 @@ import {
   getCommunityFeed, getFriendsFeed, createNote,
   likeNote, unlikeNote, getComments, addComment,
   getFriendReading, getFollowing, searchUsers, getMyBooks,
-  getRecommendations, addToLibrary,
+  getRecommendations, addToLibrary, updateNote, deleteNote,
 } from '../services/api'
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -38,17 +38,46 @@ function Avatar({ user, size = 10 }) {
 
 // ─── Post Card ───────────────────────────────────────────────────────────────
 
-function PostCard({ post, currentUserId, onLikeToggle }) {
+function PostCard({ post, currentUserId, onLikeToggle, onDelete, onEdit }) {
   const navigate = useNavigate()
   const toast = useToast()
   const [showComments, setShowComments] = useState(false)
   const [comments, setComments] = useState([])
   const [commentText, setCommentText] = useState('')
   const [loadingComments, setLoadingComments] = useState(false)
+  const [showMenu, setShowMenu] = useState(false)
+  const [editing, setEditing] = useState(false)
+  const [editText, setEditText] = useState(post.text || '')
+  const [saving, setSaving] = useState(false)
 
+  const isOwn = post.user?.id === currentUserId || post.user_id === currentUserId
   const isEdited = post.updated_at && post.updated_at !== post.created_at
   const book = post.book
   const coverUrl = book?.cover_url
+
+  const handleDelete = async () => {
+    setShowMenu(false)
+    if (!window.confirm('Delete this post?')) return
+    try {
+      await deleteNote(post.id)
+      onDelete(post.id)
+    } catch (e) {
+      toast(e.message || 'Failed to delete', 'error')
+    }
+  }
+
+  const handleSaveEdit = async () => {
+    if (!editText.trim()) return
+    setSaving(true)
+    try {
+      const updated = await updateNote(post.id, { text: editText.trim() })
+      onEdit(post.id, updated)
+      setEditing(false)
+    } catch (e) {
+      toast(e.message || 'Failed to save', 'error')
+    }
+    setSaving(false)
+  }
 
   const toggleComments = async () => {
     if (!showComments && comments.length === 0) {
@@ -109,10 +138,39 @@ function PostCard({ post, currentUserId, onLikeToggle }) {
               <h4 className="font-bold text-on-surface text-sm">{post.user?.name || 'User'}</h4>
               <p className="text-xs text-on-surface-variant/60">
                 {timeAgo(post.created_at)}
-                {isEdited && <span className="ml-1 italic">· Edited {timeAgo(post.updated_at)}</span>}
+                {isEdited && <span className="ml-1 italic">· Edited</span>}
               </p>
             </div>
           </button>
+
+          {isOwn && (
+            <div className="relative">
+              <button
+                onClick={() => setShowMenu(v => !v)}
+                className="text-on-surface-variant hover:text-on-surface transition-colors p-1 rounded-lg hover:bg-surface-container"
+              >
+                <span className="material-symbols-outlined text-lg">more_horiz</span>
+              </button>
+              {showMenu && (
+                <div className="absolute right-0 top-8 bg-surface-container-lowest rounded-2xl shadow-float border border-outline-variant/15 z-10 min-w-[130px] overflow-hidden">
+                  <button
+                    onClick={() => { setShowMenu(false); setEditing(true) }}
+                    className="flex items-center gap-2 w-full px-4 py-2.5 text-sm text-on-surface hover:bg-surface-container transition-colors"
+                  >
+                    <span className="material-symbols-outlined text-sm">edit</span>
+                    Edit
+                  </button>
+                  <button
+                    onClick={handleDelete}
+                    className="flex items-center gap-2 w-full px-4 py-2.5 text-sm text-error hover:bg-error/5 transition-colors"
+                  >
+                    <span className="material-symbols-outlined text-sm">delete</span>
+                    Delete
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Book title */}
@@ -122,10 +180,27 @@ function PostCard({ post, currentUserId, onLikeToggle }) {
           </p>
         )}
 
-        {/* Note text */}
-        {post.text && (
+        {/* Note text / inline edit */}
+        {editing ? (
+          <div className="space-y-2">
+            <textarea
+              value={editText}
+              onChange={e => setEditText(e.target.value)}
+              rows={3}
+              className="w-full bg-surface-container-low rounded-xl p-3 text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none border-none"
+            />
+            <div className="flex gap-2">
+              <button onClick={handleSaveEdit} disabled={saving} className="btn-primary px-4 py-1.5 text-xs rounded-lg">
+                {saving ? 'Saving…' : 'Save'}
+              </button>
+              <button onClick={() => { setEditing(false); setEditText(post.text || '') }} className="px-4 py-1.5 text-xs rounded-lg border border-outline-variant/30 text-on-surface-variant hover:bg-surface-container transition-colors">
+                Cancel
+              </button>
+            </div>
+          </div>
+        ) : post.text ? (
           <p className="text-on-surface leading-relaxed font-sans">{post.text}</p>
-        )}
+        ) : null}
 
         {/* Quote */}
         {post.quote && (
@@ -552,6 +627,14 @@ export default function HomePage() {
     setPosts(prev => [{ ...note, user, likes_count: 0, comments_count: 0, liked_by_me: false }, ...prev])
   }
 
+  const handleDeletePost = (postId) => {
+    setPosts(prev => prev.filter(p => p.id !== postId))
+  }
+
+  const handleEditPost = (postId, updated) => {
+    setPosts(prev => prev.map(p => p.id === postId ? { ...p, ...updated } : p))
+  }
+
   return (
     <main className="pb-12 max-w-screen-2xl mx-auto px-4 md:px-8 lg:px-12 pt-8 grid grid-cols-12 gap-8">
       {/* Left spacer */}
@@ -612,6 +695,8 @@ export default function HomePage() {
             post={post}
             currentUserId={user?.id}
             onLikeToggle={handleLikeToggle}
+            onDelete={handleDeletePost}
+            onEdit={handleEditPost}
           />
         ))}
       </div>
