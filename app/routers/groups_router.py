@@ -531,6 +531,7 @@ def get_pending(
         select(models.GroupMember).where(
             models.GroupMember.group_id == group_id,
             models.GroupMember.status == "pending",
+            models.GroupMember.invited_by == None,  # self-join requests only; curator invites are accepted by the invitee
         )
     ).all()
     if not pending:
