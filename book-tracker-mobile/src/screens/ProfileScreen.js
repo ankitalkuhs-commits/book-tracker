@@ -24,6 +24,7 @@ const ProfileScreen = ({ navigation, onLogout }) => {
   const [refreshing, setRefreshing] = useState(false);
   const [editingBio, setEditingBio] = useState(false);
   const [bioText, setBioText] = useState('');
+  const [savingBio, setSavingBio] = useState(false);
 
   useEffect(() => {
     if (preloaded?.profile && preloaded?.library) {
@@ -90,6 +91,7 @@ const ProfileScreen = ({ navigation, onLogout }) => {
   };
 
   const saveBio = async () => {
+    setSavingBio(true);
     try {
       await userAPI.updateProfile({ bio: bioText });
       setProfile(prev => ({ ...prev, bio: bioText }));
@@ -97,6 +99,7 @@ const ProfileScreen = ({ navigation, onLogout }) => {
     } catch (err) {
       Alert.alert('Error', 'Failed to save bio');
     }
+    setSavingBio(false);
   };
 
   const handleLogout = async () => {
@@ -179,8 +182,11 @@ const ProfileScreen = ({ navigation, onLogout }) => {
                 <TouchableOpacity onPress={() => setEditingBio(false)} style={styles.bioCancelBtn}>
                   <Text style={styles.bioCancelText}>Cancel</Text>
                 </TouchableOpacity>
-                <TouchableOpacity onPress={saveBio} style={styles.bioSaveBtn}>
-                  <Text style={styles.bioSaveText}>Save</Text>
+                <TouchableOpacity onPress={saveBio} disabled={savingBio} style={[styles.bioSaveBtn, savingBio && { opacity: 0.6 }]}>
+                  {savingBio
+                    ? <ActivityIndicator size="small" color="#fff" />
+                    : <Text style={styles.bioSaveText}>Save</Text>
+                  }
                 </TouchableOpacity>
               </View>
             </View>

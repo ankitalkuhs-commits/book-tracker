@@ -103,8 +103,8 @@ function WeeklyPulseChart({ data }) {
           const isActive = (d.pages_read || 0) > 0
           return (
             <div key={i} className="flex-1 flex flex-col items-center gap-1 h-full justify-end">
-              {isToday && isActive && (
-                <span className="text-[9px] font-bold text-secondary">{d.pages_read}m</span>
+              {isActive && (
+                <span className={`text-[9px] font-bold ${isToday ? 'text-secondary' : 'text-primary/60'}`}>{d.pages_read}m</span>
               )}
               <div
                 className={`w-full rounded-sm transition-all ${
@@ -275,6 +275,7 @@ function BookDetailPanel({ userbook, onClose, onUpdate, onRemove }) {
   const [noteText, setNoteText] = useState('')
   const [noteQuote, setNoteQuote] = useState('')
   const [postingNote, setPostingNote] = useState(false)
+  const [removing, setRemoving] = useState(false)
 
   useEffect(() => {
     getNotesForBook(userbook.id)
@@ -325,6 +326,7 @@ function BookDetailPanel({ userbook, onClose, onUpdate, onRemove }) {
 
   const remove = async () => {
     if (!window.confirm('Remove this book from your library?')) return
+    setRemoving(true)
     try {
       await removeFromLibrary(userbook.id)
       onRemove(userbook.id)
@@ -332,6 +334,7 @@ function BookDetailPanel({ userbook, onClose, onUpdate, onRemove }) {
     } catch (e) {
       toast(e.message || 'Something went wrong', 'error')
     }
+    setRemoving(false)
   }
 
   const handleRating = async (stars) => {
@@ -545,10 +548,11 @@ function BookDetailPanel({ userbook, onClose, onUpdate, onRemove }) {
           <section className="border-t border-outline-variant/15 pt-4">
             <button
               onClick={remove}
-              className="text-sm text-error/70 hover:text-error transition-colors flex items-center gap-1"
+              disabled={removing}
+              className="text-sm text-error/70 hover:text-error transition-colors flex items-center gap-1 disabled:opacity-50"
             >
-              <span className="material-symbols-outlined text-base">delete</span>
-              Remove from library
+              <span className="material-symbols-outlined text-base">{removing ? 'progress_activity' : 'delete'}</span>
+              {removing ? 'Removing...' : 'Remove from library'}
             </button>
           </section>
         </div>

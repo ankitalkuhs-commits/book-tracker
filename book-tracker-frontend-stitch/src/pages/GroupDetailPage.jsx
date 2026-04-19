@@ -337,9 +337,13 @@ export default function GroupDetailPage() {
   const [leaderPeriod, setLeaderPeriod] = useState('monthly')
   const [goal, setGoal] = useState(null)
   const [posts, setPosts] = useState([])
+  const [visiblePosts, setVisiblePosts] = useState(10)
   const [activity, setActivity] = useState([])
+  const [visibleActivity, setVisibleActivity] = useState(8)
   const [pending, setPending] = useState([])
   const [loading, setLoading] = useState(true)
+  const [loadingLeader, setLoadingLeader] = useState(false)
+  const [actionUsers, setActionUsers] = useState(new Set()) // user IDs with in-flight approve/reject/remove
 
   // Invite panel
   const [inviteQuery, setInviteQuery] = useState('')
@@ -394,10 +398,12 @@ export default function GroupDetailPage() {
 
   const loadLeaderboard = async (period) => {
     setLeaderPeriod(period)
+    setLoadingLeader(true)
     try {
       const lb = await getGroupLeaderboard(parseInt(groupId), period)
       setLeaderboard(lb || [])
     } catch { }
+    setLoadingLeader(false)
   }
 
   const handleInviteSearch = async (q) => {
@@ -425,28 +431,34 @@ export default function GroupDetailPage() {
   }
 
   const handleApprove = async (userId) => {
+    setActionUsers(s => new Set(s).add(userId))
     try {
       await approveGroupMember(parseInt(groupId), userId)
       toast('Member approved!', 'success')
       setPending(prev => prev.filter(p => p.user_id !== userId))
       load()
     } catch (e) { toast(e.message || 'Failed', 'error') }
+    setActionUsers(s => { const n = new Set(s); n.delete(userId); return n })
   }
 
   const handleReject = async (userId) => {
+    setActionUsers(s => new Set(s).add(userId))
     try {
       await rejectGroupMember(parseInt(groupId), userId)
       setPending(prev => prev.filter(p => p.user_id !== userId))
       toast('Request declined', 'info')
     } catch (e) { toast(e.message || 'Failed', 'error') }
+    setActionUsers(s => { const n = new Set(s); n.delete(userId); return n })
   }
 
   const handleRemoveMember = async (userId) => {
+    setActionUsers(s => new Set(s).add(userId))
     try {
       await removeGroupMember(parseInt(groupId), userId)
       setMembers(prev => prev.filter(m => m.user_id !== userId))
       toast('Member removed', 'info')
     } catch (e) { toast(e.message || 'Failed', 'error') }
+    setActionUsers(s => { const n = new Set(s); n.delete(userId); return n })
   }
 
   const handleLeave = async () => {
@@ -601,7 +613,8 @@ export default function GroupDetailPage() {
                   <button
                     key={p}
                     onClick={() => loadLeaderboard(p)}
-                    className={`px-4 py-1.5 rounded-lg text-xs font-bold capitalize transition-all ${
+                    disabled={loadingLeader}
+                    className={`px-4 py-1.5 rounded-lg text-xs font-bold capitalize transition-all disabled:opacity-60 ${
                       leaderPeriod === p
                         ? 'bg-surface-container-lowest text-primary shadow-sm'
                         : 'text-on-surface-variant hover:text-on-surface'
@@ -613,7 +626,21 @@ export default function GroupDetailPage() {
               </div>
             </div>
 
-            {leaderboard.length === 0 ? (
+            {loadingLeader ? (
+              <div className="space-y-3">
+                {[1, 2, 3].map(i => (
+                  <div key={i} className="flex items-center gap-4 p-3 rounded-2xl animate-pulse">
+                    <div className="w-7 h-7 bg-surface-container rounded-full shrink-0" />
+                    <div className="w-10 h-10 bg-surface-container rounded-full shrink-0" />
+                    <div className="flex-1 space-y-1.5">
+                      <div className="h-3 bg-surface-container rounded w-1/3" />
+                      <div className="h-2 bg-surface-container rounded w-1/4" />
+                    </div>
+                    <div className="h-4 bg-surface-container rounded w-16" />
+                  </div>
+                ))}
+              </div>
+            ) : leaderboard.length === 0 ? (
               <div className="text-center py-8 text-on-surface-variant/50">
                 <span className="material-symbols-outlined text-4xl block mb-2">emoji_events</span>
                 <p className="text-sm">No activity yet — start reading!</p>
@@ -665,9 +692,17 @@ export default function GroupDetailPage() {
               </div>
             ) : (
               <div className="space-y-1">
-                {activity.map(ev => (
+                {activity.slice(0, visibleActivity).map(ev => (
                   <ActivityRow key={ev.id} event={ev} />
                 ))}
+                {activity.length > visibleActivity && (
+                  <button
+                    onClick={() => setVisibleActivity(v => v + 8)}
+                    className="w-full py-3 text-sm font-bold text-primary hover:text-primary/80 border border-outline-variant/20 rounded-xl hover:bg-surface-container-low transition-colors"
+                  >
+                    Load more ({activity.length - visibleActivity} remaining)
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -698,7 +733,7 @@ export default function GroupDetailPage() {
               </div>
             ) : (
               <div className="space-y-4">
-                {posts.map(post => (
+                {posts.slice(0, visiblePosts).map(post => (
                   <PostCard
                     key={post.id}
                     post={post}
@@ -707,6 +742,14 @@ export default function GroupDetailPage() {
                     onDelete={handleDeletePost}
                   />
                 ))}
+                {posts.length > visiblePosts && (
+                  <button
+                    onClick={() => setVisiblePosts(v => v + 10)}
+                    className="w-full py-3 text-sm font-bold text-primary hover:text-primary/80 border border-outline-variant/20 rounded-xl hover:bg-surface-container-low transition-colors"
+                  >
+                    Load more ({posts.length - visiblePosts} remaining)
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -732,10 +775,14 @@ export default function GroupDetailPage() {
                   {isCurator && m.user_id !== user?.id && m.role !== 'curator' && (
                     <button
                       onClick={() => handleRemoveMember(m.user_id)}
-                      className="text-on-surface-variant/30 hover:text-error transition-colors"
+                      disabled={actionUsers.has(m.user_id)}
+                      className="text-on-surface-variant/30 hover:text-error transition-colors disabled:opacity-40"
                       title="Remove member"
                     >
-                      <span className="material-symbols-outlined text-base">person_remove</span>
+                      {actionUsers.has(m.user_id)
+                        ? <span className="material-symbols-outlined text-base animate-spin">progress_activity</span>
+                        : <span className="material-symbols-outlined text-base">person_remove</span>
+                      }
                     </button>
                   )}
                 </div>
@@ -842,17 +889,25 @@ export default function GroupDetailPage() {
                     <div className="flex gap-1.5 shrink-0">
                       <button
                         onClick={() => handleReject(p.user_id)}
-                        className="p-1.5 rounded-lg border border-outline-variant text-on-surface-variant hover:bg-surface-container transition-colors"
+                        disabled={actionUsers.has(p.user_id)}
+                        className="p-1.5 rounded-lg border border-outline-variant text-on-surface-variant hover:bg-surface-container transition-colors disabled:opacity-40"
                         title="Decline"
                       >
-                        <span className="material-symbols-outlined text-base">close</span>
+                        {actionUsers.has(p.user_id)
+                          ? <span className="material-symbols-outlined text-base animate-spin">progress_activity</span>
+                          : <span className="material-symbols-outlined text-base">close</span>
+                        }
                       </button>
                       <button
                         onClick={() => handleApprove(p.user_id)}
-                        className="p-1.5 rounded-lg bg-primary text-on-primary hover:bg-primary/90 transition-colors"
+                        disabled={actionUsers.has(p.user_id)}
+                        className="p-1.5 rounded-lg bg-primary text-on-primary hover:bg-primary/90 transition-colors disabled:opacity-40"
                         title="Approve"
                       >
-                        <span className="material-symbols-outlined text-base">check</span>
+                        {actionUsers.has(p.user_id)
+                          ? <span className="material-symbols-outlined text-base animate-spin">progress_activity</span>
+                          : <span className="material-symbols-outlined text-base">check</span>
+                        }
                       </button>
                     </div>
                   </div>
