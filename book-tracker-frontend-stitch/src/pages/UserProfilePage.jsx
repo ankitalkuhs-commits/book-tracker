@@ -364,7 +364,7 @@ export default function UserProfilePage() {
       )}
 
       {/* ── Progress + Velocity ─────────────────────────────────── */}
-      {!profile.locked && <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-start">
+      {!profile.locked && <><div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-start">
 
         {/* Progress card */}
         <div className="md:col-span-4">
@@ -399,7 +399,7 @@ export default function UserProfilePage() {
         <div className="md:col-span-8">
           <VelocityChart activity30={activity30} activity90={activity90} />
         </div>
-      </div>}
+      </div>
 
       {/* ── Library + Notes ─────────────────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
@@ -456,7 +456,7 @@ export default function UserProfilePage() {
             </div>
           )}
         </div>
-      </div>}
+      </div></>}
     </main>
   )
 }
