@@ -1,7 +1,7 @@
 # Book Tracker - Project Context
 
-**Last Updated:** January 13, 2026  
-**Project Version:** 1.2.0
+**Last Updated:** April 19, 2026  
+**Project Version:** 1.3.0 (stitch-experiment branch)
 
 ---
 
@@ -27,14 +27,22 @@ A social book tracking platform where users can:
 - **File Uploads:** Profile pictures, note attachments
 - **Deployment:** Render (auto-deploy from GitHub)
 
-### Frontend Stack
+### Frontend Stack (Web — Stitch)
 - **Framework:** React 18
 - **Build Tool:** Vite
-- **Styling:** TailwindCSS + inline styles
-- **State Management:** React useState/useEffect (no Context API)
-- **Routing:** Hash-based routing (#/route)
-- **API Client:** Custom fetch wrapper
-- **Deployment:** Vercel (auto-deploy from GitHub)
+- **Styling:** TailwindCSS (custom design tokens — teal primary #00464a)
+- **State Management:** React useState/useEffect + AuthContext
+- **Routing:** React Router v6
+- **API Client:** Custom fetch wrapper (`book-tracker-frontend-stitch/src/services/api.js`)
+- **Deployment:** Render (auto-deploy from `stitch-experiment` branch)
+
+### Mobile Stack
+- **Framework:** React Native (Expo SDK)
+- **Build System:** EAS (NOT Expo Go — uses native modules)
+- **Styling:** `src/theme.js` design tokens matching Stitch palette
+- **Navigation:** React Navigation (bottom tabs + stacks)
+- **API Client:** `book-tracker-mobile/src/services/api.js` → `https://book-tracker-stitch.onrender.com`
+- **Push:** Expo FCM (Android) + VAPID (web)
 
 ### Data Flow
 ```
@@ -215,8 +223,7 @@ npm run dev
 ### Features
 - Email notifications
 - Reading challenges
-- Book recommendations
-- Mobile app (React Native)
+- EAS production build + Play Store release
 - Export data (CSV, JSON)
 
 ### Technical Debt
