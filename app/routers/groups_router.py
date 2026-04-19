@@ -122,15 +122,65 @@ def get_my_pending_invites(
             models.GroupMember.invited_by != None,
         )
     ).all()
+    if not pending:
+        return []
+
+    # Batch fetch groups
+    group_ids = list({m.group_id for m in pending})
+    groups_map = {g.id: g for g in db.exec(select(models.ReadingGroup).where(models.ReadingGroup.id.in_(group_ids))).all()}
+
+    # Batch fetch inviters
+    inviter_ids = list({m.invited_by for m in pending if m.invited_by})
+    inviters_map = {u.id: u for u in db.exec(select(models.User).where(models.User.id.in_(inviter_ids))).all()} if inviter_ids else {}
+
+    # Batch fetch current books + creators
+    book_ids = list({g.current_book_id for g in groups_map.values() if g.current_book_id})
+    books_map = {b.id: b for b in db.exec(select(models.Book).where(models.Book.id.in_(book_ids))).all()} if book_ids else {}
+    creator_ids = list({g.created_by for g in groups_map.values()})
+    creators_map = {u.id: u for u in db.exec(select(models.User).where(models.User.id.in_(creator_ids))).all()} if creator_ids else {}
+
+    # Batch member counts
+    count_rows = db.exec(
+        select(models.GroupMember.group_id, func.count(models.GroupMember.id))
+        .where(models.GroupMember.group_id.in_(group_ids), models.GroupMember.status == "active")
+        .group_by(models.GroupMember.group_id)
+    ).all()
+    member_counts = {r[0]: r[1] for r in count_rows}
+
+    # My memberships for these groups
+    my_memberships = {m.group_id: m for m in pending}
+
     result = []
     for m in pending:
-        g = db.get(models.ReadingGroup, m.group_id)
-        if g:
-            inviter = db.get(models.User, m.invited_by) if m.invited_by else None
-            result.append({
-                **_serialize_group(db, g, me.id),
-                "invited_by_name": inviter.name if inviter else None,
-            })
+        g = groups_map.get(m.group_id)
+        if not g:
+            continue
+        inviter = inviters_map.get(m.invited_by) if m.invited_by else None
+        book = books_map.get(g.current_book_id) if g.current_book_id else None
+        creator = creators_map.get(g.created_by)
+        membership = my_memberships.get(g.id)
+        result.append({
+            "id": g.id,
+            "name": g.name,
+            "description": g.description,
+            "is_private": g.is_private,
+            "invite_code": g.invite_code,
+            "cover_preset": g.cover_preset,
+            "created_by": g.created_by,
+            "creator_name": creator.name if creator else None,
+            "goal_pages": g.goal_pages,
+            "goal_period": g.goal_period,
+            "goal_start_date": g.goal_start_date.isoformat() if g.goal_start_date else None,
+            "current_book": {
+                "id": book.id, "title": book.title,
+                "author": book.author, "cover_url": book.cover_url,
+            } if book else None,
+            "member_count": member_counts.get(g.id, 0),
+            "membership_status": membership.status if membership else None,
+            "membership_role": membership.role if membership else None,
+            "created_at": g.created_at.isoformat(),
+            "invited_by_name": inviter.name if inviter else None,
+        })
     return result
 
 
@@ -151,8 +201,48 @@ def get_my_groups(
     if not memberships:
         return []
     group_ids = [m.group_id for m in memberships]
+    membership_map = {m.group_id: m for m in memberships}
     all_groups = db.exec(select(models.ReadingGroup).where(models.ReadingGroup.id.in_(group_ids))).all()
-    return [_serialize_group(db, g, me.id) for g in all_groups]
+
+    # Batch fetch books + creators + member counts
+    book_ids = list({g.current_book_id for g in all_groups if g.current_book_id})
+    books_map = {b.id: b for b in db.exec(select(models.Book).where(models.Book.id.in_(book_ids))).all()} if book_ids else {}
+    creator_ids = list({g.created_by for g in all_groups})
+    creators_map = {u.id: u for u in db.exec(select(models.User).where(models.User.id.in_(creator_ids))).all()} if creator_ids else {}
+    count_rows = db.exec(
+        select(models.GroupMember.group_id, func.count(models.GroupMember.id))
+        .where(models.GroupMember.group_id.in_(group_ids), models.GroupMember.status == "active")
+        .group_by(models.GroupMember.group_id)
+    ).all()
+    member_counts = {r[0]: r[1] for r in count_rows}
+
+    result = []
+    for g in all_groups:
+        membership = membership_map.get(g.id)
+        book = books_map.get(g.current_book_id) if g.current_book_id else None
+        creator = creators_map.get(g.created_by)
+        result.append({
+            "id": g.id,
+            "name": g.name,
+            "description": g.description,
+            "is_private": g.is_private,
+            "invite_code": g.invite_code,
+            "cover_preset": g.cover_preset,
+            "created_by": g.created_by,
+            "creator_name": creator.name if creator else None,
+            "goal_pages": g.goal_pages,
+            "goal_period": g.goal_period,
+            "goal_start_date": g.goal_start_date.isoformat() if g.goal_start_date else None,
+            "current_book": {
+                "id": book.id, "title": book.title,
+                "author": book.author, "cover_url": book.cover_url,
+            } if book else None,
+            "member_count": member_counts.get(g.id, 0),
+            "membership_status": membership.status if membership else None,
+            "membership_role": membership.role if membership else None,
+            "created_at": g.created_at.isoformat(),
+        })
+    return result
 
 
 @router.get("/discover")
@@ -162,16 +252,83 @@ def discover_groups(
     me: models.User = Depends(get_current_user),
 ):
     """Public groups the user has not joined, optionally filtered by name."""
-    query = select(models.ReadingGroup).where(models.ReadingGroup.is_private == False)
-    groups = db.exec(query).all()
-    result = []
+    groups = db.exec(select(models.ReadingGroup).where(models.ReadingGroup.is_private == False)).all()
+    if not groups:
+        return []
+
+    group_ids = [g.id for g in groups]
+
+    # Batch fetch my active memberships so we can filter without per-group queries
+    my_active_group_ids = {
+        m.group_id for m in db.exec(
+            select(models.GroupMember).where(
+                models.GroupMember.group_id.in_(group_ids),
+                models.GroupMember.user_id == me.id,
+                models.GroupMember.status == "active",
+            )
+        ).all()
+    }
+
+    # Filter: name/description match + not already an active member
+    visible = []
     for g in groups:
+        if g.id in my_active_group_ids:
+            continue
         if q and q.lower() not in g.name.lower() and (not g.description or q.lower() not in g.description.lower()):
             continue
-        membership = _is_member(db, g.id, me.id)
-        if membership:
-            continue  # already a member — show in "my groups"
-        result.append(_serialize_group(db, g, me.id))
+        visible.append(g)
+
+    if not visible:
+        return []
+
+    visible_ids = [g.id for g in visible]
+
+    # Batch fetch books + creators + member counts
+    book_ids = list({g.current_book_id for g in visible if g.current_book_id})
+    books_map = {b.id: b for b in db.exec(select(models.Book).where(models.Book.id.in_(book_ids))).all()} if book_ids else {}
+    creator_ids = list({g.created_by for g in visible})
+    creators_map = {u.id: u for u in db.exec(select(models.User).where(models.User.id.in_(creator_ids))).all()} if creator_ids else {}
+    count_rows = db.exec(
+        select(models.GroupMember.group_id, func.count(models.GroupMember.id))
+        .where(models.GroupMember.group_id.in_(visible_ids), models.GroupMember.status == "active")
+        .group_by(models.GroupMember.group_id)
+    ).all()
+    member_counts = {r[0]: r[1] for r in count_rows}
+
+    # My non-active memberships (pending/invited) for these groups
+    my_memberships = {m.group_id: m for m in db.exec(
+        select(models.GroupMember).where(
+            models.GroupMember.group_id.in_(visible_ids),
+            models.GroupMember.user_id == me.id,
+        )
+    ).all()}
+
+    result = []
+    for g in visible:
+        book = books_map.get(g.current_book_id) if g.current_book_id else None
+        creator = creators_map.get(g.created_by)
+        membership = my_memberships.get(g.id)
+        result.append({
+            "id": g.id,
+            "name": g.name,
+            "description": g.description,
+            "is_private": g.is_private,
+            "invite_code": g.invite_code,
+            "cover_preset": g.cover_preset,
+            "created_by": g.created_by,
+            "creator_name": creator.name if creator else None,
+            "goal_pages": g.goal_pages,
+            "goal_period": g.goal_period,
+            "goal_start_date": g.goal_start_date.isoformat() if g.goal_start_date else None,
+            "current_book": {
+                "id": book.id, "title": book.title,
+                "author": book.author, "cover_url": book.cover_url,
+            } if book else None,
+            "member_count": member_counts.get(g.id, 0),
+            "membership_status": membership.status if membership else None,
+            "membership_role": membership.role if membership else None,
+            "created_at": g.created_at.isoformat(),
+        })
     return result
 
 
@@ -346,9 +503,13 @@ def get_members(
             models.GroupMember.status == "active",
         )
     ).all()
+    if not members:
+        return []
+    user_ids = [m.user_id for m in members]
+    users_map = {u.id: u for u in db.exec(select(models.User).where(models.User.id.in_(user_ids))).all()}
     result = []
     for m in members:
-        u = db.get(models.User, m.user_id)
+        u = users_map.get(m.user_id)
         if u:
             result.append({
                 "user_id": u.id, "name": u.name, "username": u.username,
@@ -372,9 +533,13 @@ def get_pending(
             models.GroupMember.status == "pending",
         )
     ).all()
+    if not pending:
+        return []
+    user_ids = [m.user_id for m in pending]
+    users_map = {u.id: u for u in db.exec(select(models.User).where(models.User.id.in_(user_ids))).all()}
     result = []
     for m in pending:
-        u = db.get(models.User, m.user_id)
+        u = users_map.get(m.user_id)
         if u:
             result.append({
                 "user_id": u.id, "name": u.name, "username": u.username,

@@ -227,8 +227,10 @@ def get_recommendations(limit: int = 12, db: Session = Depends(get_db), current_
                 UserBook.status == "reading",
             ).limit(30)
         ).all()
+        fr_book_ids = [ub.book_id for ub in friend_reading if ub.book_id]
+        fr_books = {b.id: b for b in db.exec(select(Book).where(Book.id.in_(fr_book_ids))).all()} if fr_book_ids else {}
         for ub in friend_reading:
-            book = db.get(Book, ub.book_id)
+            book = fr_books.get(ub.book_id)
             if book:
                 add_rec(book, "friends_reading", 3)
 
@@ -241,18 +243,22 @@ def get_recommendations(limit: int = 12, db: Session = Depends(get_db), current_
                 UserBook.rating >= 4,
             ).limit(30)
         ).all()
+        fl_book_ids = [ub.book_id for ub in friend_loved if ub.book_id]
+        fl_books = {b.id: b for b in db.exec(select(Book).where(Book.id.in_(fl_book_ids))).all()} if fl_book_ids else {}
         for ub in friend_loved:
-            book = db.get(Book, ub.book_id)
+            book = fl_books.get(ub.book_id)
             if book:
                 add_rec(book, "friends_loved", 4)
 
     # 3. Author affinity — other books by authors I've read
     my_ubs = db.exec(select(UserBook).where(UserBook.user_id == current_user.id)).all()
+    my_ub_book_ids = [ub.book_id for ub in my_ubs if ub.book_id]
+    my_ub_books = {b.id: b for b in db.exec(select(Book).where(Book.id.in_(my_ub_book_ids))).all()} if my_ub_book_ids else {}
     my_authors = set()
     for ub in my_ubs:
-        b = db.get(Book, ub.book_id)
+        b = my_ub_books.get(ub.book_id)
         if b and b.author:
-            my_authors.add(b.author.split(',')[0].strip())  # first listed author
+            my_authors.add(b.author.split(',')[0].strip())
 
     if my_authors:
         author_books = db.exec(
