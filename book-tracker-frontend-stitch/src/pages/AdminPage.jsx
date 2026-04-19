@@ -35,6 +35,10 @@ export default function AdminPage() {
   // Make admin
   const [makingAdmin, setMakingAdmin] = useState(null)
 
+  // User search/sort
+  const [userSearch, setUserSearch] = useState('')
+  const [userSort, setUserSort] = useState('joined_desc')
+
   useEffect(() => {
     Promise.all([
       getAdminStats(),
@@ -170,21 +174,61 @@ export default function AdminPage() {
       {/* Users tab */}
       {!loading && activeTab === 'users' && (
         <div className="space-y-4">
-          <p className="text-sm text-on-surface-variant">{users.length} users registered</p>
-          <div className="bg-surface-container-lowest rounded-2xl overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-outline-variant/15">
-                    {['Name', 'Email', 'Books', 'Followers', 'Admin', 'Joined', ''].map(h => (
-                      <th key={h} className="text-left px-5 py-3 text-xs font-bold uppercase tracking-wider text-on-surface-variant">
-                        {h}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {users.map(u => (
+          {/* Search + Sort bar */}
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="relative flex-1">
+              <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline/50 text-base">search</span>
+              <input
+                value={userSearch}
+                onChange={e => setUserSearch(e.target.value)}
+                placeholder="Search by name or email..."
+                className="w-full bg-surface-container-low rounded-xl pl-10 pr-4 py-2.5 text-sm border-none focus:outline-none focus:ring-2 focus:ring-primary/20"
+              />
+            </div>
+            <select
+              value={userSort}
+              onChange={e => setUserSort(e.target.value)}
+              className="bg-surface-container-low rounded-xl px-4 py-2.5 text-sm border-none focus:outline-none focus:ring-2 focus:ring-primary/20"
+            >
+              <option value="joined_desc">Newest first</option>
+              <option value="joined_asc">Oldest first</option>
+              <option value="name_asc">Name A→Z</option>
+              <option value="books_desc">Most books</option>
+              <option value="followers_desc">Most followers</option>
+            </select>
+          </div>
+
+          {(() => {
+            const q = userSearch.toLowerCase()
+            const filtered = users.filter(u =>
+              !q || (u.name || '').toLowerCase().includes(q) || (u.email || '').toLowerCase().includes(q)
+            )
+            const sorted = [...filtered].sort((a, b) => {
+              if (userSort === 'joined_asc') return new Date(a.created_at) - new Date(b.created_at)
+              if (userSort === 'name_asc') return (a.name || '').localeCompare(b.name || '')
+              if (userSort === 'books_desc') return (b.books_count || 0) - (a.books_count || 0)
+              if (userSort === 'followers_desc') return (b.followers_count || 0) - (a.followers_count || 0)
+              return new Date(b.created_at) - new Date(a.created_at) // joined_desc
+            })
+            return (
+              <>
+                <p className="text-sm text-on-surface-variant">
+                  {sorted.length} of {users.length} users
+                </p>
+                <div className="bg-surface-container-lowest rounded-2xl overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-outline-variant/15">
+                          {['Name', 'Email', 'Books', 'Followers', 'Admin', 'Joined', ''].map(h => (
+                            <th key={h} className="text-left px-5 py-3 text-xs font-bold uppercase tracking-wider text-on-surface-variant">
+                              {h}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {sorted.map(u => (
                     <tr key={u.id} className="border-b border-outline-variant/10 hover:bg-surface-container-low transition-colors">
                       <td className="px-5 py-3">
                         <div>
@@ -216,12 +260,15 @@ export default function AdminPage() {
                           </button>
                         )}
                       </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
+                        </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </>
+            )
+          })()}
         </div>
       )}
 

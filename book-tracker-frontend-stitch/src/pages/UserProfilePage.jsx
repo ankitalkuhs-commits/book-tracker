@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext'
 import { useToast } from '../components/Toast'
 import {
   getPublicProfile, getUserBooks, getUserActivity, getUserNotes,
-  followUser, unfollowUser, getFollowing,
+  followUser, unfollowUser,
 } from '../services/api'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -211,21 +211,22 @@ export default function UserProfilePage() {
 
     const safe = (p) => p.catch(() => null)
 
-    Promise.all([
-      getPublicProfile(userId),
-      safe(getUserBooks(userId)),
-      safe(getUserNotes(userId)),
-      safe(getUserActivity(userId, 30)),
-      safe(getUserActivity(userId, 90)),
-      safe(getFollowing()),
-    ]).then(([p, b, n, a30, a90, following]) => {
+    getPublicProfile(userId).then(p => {
       setProfile(p)
-      setBooks(b || [])
-      setNotes(n || [])
-      setActivity30(a30 || [])
-      setActivity90(a90 || [])
-      const followingIds = (following || []).map(u => u.id?.toString())
-      setIsFollowing(followingIds.includes(userId?.toString()))
+      setIsFollowing(p.is_following || false)
+      // If profile is locked, don't bother fetching books/notes/activity
+      if (p.locked) { setLoading(false); return }
+      return Promise.all([
+        safe(getUserBooks(userId)),
+        safe(getUserNotes(userId)),
+        safe(getUserActivity(userId, 30)),
+        safe(getUserActivity(userId, 90)),
+      ]).then(([b, n, a30, a90]) => {
+        setBooks(b || [])
+        setNotes(n || [])
+        setActivity30(a30 || [])
+        setActivity90(a90 || [])
+      })
     }).catch(() => {}).finally(() => setLoading(false))
   }, [userId, isOwnProfile])
 
@@ -235,13 +236,25 @@ export default function UserProfilePage() {
       if (isFollowing) {
         await unfollowUser(userId)
         setIsFollowing(false)
-        setProfile(p => ({ ...p, followers_count: Math.max(0, (p?.followers_count || 1) - 1) }))
+        setProfile(p => ({ ...p, followers_count: Math.max(0, (p?.followers_count || 1) - 1), is_following: false }))
         toast('Unfollowed', 'info')
       } else {
         await followUser(userId)
         setIsFollowing(true)
-        setProfile(p => ({ ...p, followers_count: (p?.followers_count || 0) + 1 }))
+        setProfile(p => ({ ...p, followers_count: (p?.followers_count || 0) + 1, is_following: true, locked: false }))
         toast(`Following ${profile?.name || 'user'}`, 'success')
+        // Load content now that we have access
+        const safe = (p) => p.catch(() => null)
+        const [b, n, a30, a90] = await Promise.all([
+          safe(getUserBooks(userId)),
+          safe(getUserNotes(userId)),
+          safe(getUserActivity(userId, 30)),
+          safe(getUserActivity(userId, 90)),
+        ])
+        setBooks(b || [])
+        setNotes(n || [])
+        setActivity30(a30 || [])
+        setActivity90(a90 || [])
       }
     } catch (e) {
       toast(e.message || 'Failed', 'error')
@@ -271,7 +284,7 @@ export default function UserProfilePage() {
   }
 
   const initials = profile.name?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() || '?'
-  const stats = profile.stats
+  const stats = profile.stats || {}
   const totalPages = activity90.reduce((s, d) => s + (d.pages_read || 0), 0)
   const displayBooks = showAllBooks ? books : books.slice(0, 6)
 
@@ -339,8 +352,19 @@ export default function UserProfilePage() {
         </div>
       </section>
 
+      {/* ── Locked profile state ────────────────────────────────── */}
+      {profile.locked && (
+        <div className="flex flex-col items-center justify-center py-20 space-y-4 text-center bg-surface-container-lowest rounded-3xl">
+          <span className="material-symbols-outlined text-5xl text-outline/40" style={{ fontVariationSettings: "'FILL' 1" }}>lock</span>
+          <p className="font-serif text-xl font-bold text-on-surface">This profile is private</p>
+          <p className="text-sm text-on-surface-variant max-w-xs">
+            Follow {profile.name?.split(' ')[0] || 'this user'} to see their library and reading notes.
+          </p>
+        </div>
+      )}
+
       {/* ── Progress + Velocity ─────────────────────────────────── */}
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-start">
+      {!profile.locked && <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-start">
 
         {/* Progress card */}
         <div className="md:col-span-4">
@@ -432,7 +456,7 @@ export default function UserProfilePage() {
             </div>
           )}
         </div>
-      </div>
+      </div>}
     </main>
   )
 }

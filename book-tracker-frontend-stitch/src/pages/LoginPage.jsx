@@ -1,6 +1,7 @@
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { googleLogin, demoLogin, setToken } from '../services/api'
+import { googleLogin, setToken } from '../services/api'
 import { GoogleLogin } from '@react-oauth/google'
 
 const HERO_IMAGE = 'https://images.unsplash.com/photo-1507842217343-583bb7270b66?w=800&q=80'
@@ -8,8 +9,10 @@ const HERO_IMAGE = 'https://images.unsplash.com/photo-1507842217343-583bb7270b66
 export default function LoginPage() {
   const { login } = useAuth()
   const navigate = useNavigate()
+  const [signingIn, setSigningIn] = useState(false)
 
   const handleGoogleCredential = async (credentialResponse) => {
+    setSigningIn(true)
     try {
       const data = await googleLogin(credentialResponse.credential)
       setToken(data.access_token)
@@ -18,20 +21,19 @@ export default function LoginPage() {
     } catch (err) {
       console.error('Google login failed:', err)
       alert('Sign in failed. Please try again.')
+      setSigningIn(false)
     }
   }
 
-  const handleDemoLogin = async () => {
-    try {
-      const data = await demoLogin()
-      setToken(data.access_token)
-      login(data.user)
-      navigate('/home')
-    } catch (err) {
-      console.error('Demo login failed:', err)
-      alert('Demo login failed. Please try again.')
-    }
-  }
+  if (signingIn) return (
+    <div className="min-h-screen bg-surface flex flex-col items-center justify-center gap-6">
+      <div className="w-14 h-14 rounded-full border-4 border-primary/20 border-t-primary animate-spin" />
+      <div className="text-center space-y-1">
+        <p className="font-serif text-xl font-bold text-primary">Signing you in…</p>
+        <p className="text-sm text-on-surface-variant">Setting up your reading space</p>
+      </div>
+    </div>
+  )
 
   return (
     <div
@@ -89,16 +91,6 @@ export default function LoginPage() {
                 </button>
               </div>
 
-              {/* Demo Account */}
-              <button
-                onClick={handleDemoLogin}
-                className="text-tertiary font-bold hover:text-on-surface transition-colors flex items-center gap-1 group"
-              >
-                Try Demo Account
-                <span className="material-symbols-outlined text-sm transition-transform group-hover:translate-x-1">
-                  arrow_forward
-                </span>
-              </button>
             </div>
 
             {/* Trust Badge */}

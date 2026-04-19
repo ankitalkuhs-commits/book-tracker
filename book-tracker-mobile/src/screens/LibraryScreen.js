@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { userbooksAPI, authAPI } from '../services/api';
 import { PreloadContext } from '../../App';
+import { colors, radius, shadow } from '../theme';
 
 export default function LibraryScreen({ navigation, onLogout }) {
   const preloaded = useContext(PreloadContext);
@@ -96,9 +97,9 @@ export default function LibraryScreen({ navigation, onLogout }) {
           {item.book?.author || 'Unknown Author'}
         </Text>
         {item.status && (
-          <View style={styles.statusBadge}>
-            <Text style={styles.statusText}>
-              {item.status === 'to-read' ? '📚 To Read' : item.status === 'reading' ? '📖 Reading' : '✅ Finished'}
+          <View style={[styles.statusBadge, { backgroundColor: STATUS_COLOR[item.status]?.bg || colors.surfaceContainerHigh }]}>
+            <Text style={[styles.statusText, { color: STATUS_COLOR[item.status]?.text || colors.onSurfaceVariant }]}>
+              {item.status === 'to-read' ? 'Want to Read' : item.status === 'reading' ? 'Reading' : 'Finished'}
             </Text>
           </View>
         )}
@@ -201,186 +202,72 @@ export default function LibraryScreen({ navigation, onLogout }) {
   );
 }
 
+const STATUS_COLOR = {
+  'reading':  { bg: colors.primary + '15',   text: colors.primary },
+  'to-read':  { bg: colors.tertiary + '15',  text: colors.tertiary },
+  'finished': { bg: colors.secondary + '15', text: colors.secondary },
+};
+
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f5f5f5',
-  },
-  centered: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
+  container: { flex: 1, backgroundColor: colors.surface },
+  centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   headerContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 60,
-    paddingBottom: 16,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    paddingHorizontal: 20, paddingTop: 56, paddingBottom: 14,
+    backgroundColor: colors.surface,
   },
-  header: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#333',
-  },
+  header: { fontSize: 28, fontWeight: '800', color: colors.primary },
   addButton: {
-    backgroundColor: '#0066cc',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
+    backgroundColor: colors.primary, paddingHorizontal: 16,
+    paddingVertical: 8, borderRadius: radius.md,
   },
-  addButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
-  },
+  addButtonText: { color: colors.onPrimary, fontSize: 13, fontWeight: '700' },
   tabBar: {
-    flexDirection: 'row',
-    backgroundColor: '#fff',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    flexDirection: 'row', backgroundColor: colors.surface,
+    paddingHorizontal: 16, paddingBottom: 10, gap: 6,
   },
   tab: {
-    flex: 1,
-    paddingVertical: 8,
-    paddingHorizontal: 4,
-    alignItems: 'center',
-    borderBottomWidth: 2,
-    borderBottomColor: 'transparent',
+    paddingVertical: 7, paddingHorizontal: 14, alignItems: 'center',
+    borderRadius: 999, backgroundColor: colors.surfaceContainerHigh,
   },
-  activeTab: {
-    borderBottomColor: '#4285F4',
-  },
-  tabText: {
-    fontSize: 13,
-    color: '#666',
-    fontWeight: '500',
-  },
-  tabCount: {
-    fontSize: 12,
-    color: '#999',
-    marginTop: 2,
-  },
-  activeTabText: {
-    color: '#4285F4',
-    fontWeight: '700',
-  },
+  activeTab: { backgroundColor: colors.primary },
+  tabText: { fontSize: 12, color: colors.onSurfaceVariant, fontWeight: '600' },
+  tabCount: { fontSize: 11, color: colors.outline, marginTop: 1 },
+  activeTabText: { color: colors.onPrimary, fontWeight: '700' },
   searchContainer: {
-    backgroundColor: '#fff',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
-    flexDirection: 'row',
-    alignItems: 'center',
+    backgroundColor: colors.surface, paddingHorizontal: 16, paddingBottom: 10,
+    flexDirection: 'row', alignItems: 'center',
   },
   searchInput: {
-    flex: 1,
-    backgroundColor: '#f5f5f5',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 8,
-    fontSize: 15,
-    color: '#333',
-    borderWidth: 1,
-    borderColor: '#ddd',
+    flex: 1, backgroundColor: colors.surfaceContainerLow,
+    paddingHorizontal: 16, paddingVertical: 10, borderRadius: radius.lg,
+    fontSize: 14, color: colors.onSurface,
+    borderWidth: 1, borderColor: colors.outlineVariant + '60',
   },
-  clearButton: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    marginLeft: 8,
-  },
-  clearButtonText: {
-    fontSize: 18,
-    color: '#999',
-  },
+  clearButton: { paddingHorizontal: 8, paddingVertical: 4, marginLeft: 8 },
+  clearButtonText: { fontSize: 18, color: colors.outline },
   searchHeader: {
-    backgroundColor: '#fff',
-    paddingTop: 50,
-    paddingBottom: 15,
-    paddingHorizontal: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    backgroundColor: colors.surface, paddingTop: 50, paddingBottom: 14,
+    paddingHorizontal: 16, borderBottomWidth: 1, borderBottomColor: colors.outlineVariant + '40',
   },
-  backButton: {
-    padding: 5,
-  },
-  backButtonText: {
-    fontSize: 16,
-    color: '#4285F4',
-  },
-  list: {
-    padding: 16,
-  },
+  backButton: { padding: 5 },
+  backButtonText: { fontSize: 16, color: colors.primary },
+  list: { padding: 14 },
   bookCard: {
-    flexDirection: 'row',
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 2,
+    flexDirection: 'row', backgroundColor: colors.surfaceContainerLowest,
+    borderRadius: radius.lg, padding: 14, marginBottom: 10, ...shadow.card,
   },
-  bookCover: {
-    width: 80,
-    height: 120,
-    borderRadius: 8,
-    backgroundColor: '#e0e0e0',
-  },
-  bookInfo: {
-    flex: 1,
-    marginLeft: 12,
-    justifyContent: 'center',
-  },
-  bookTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 4,
-  },
-  bookAuthor: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 8,
-  },
+  bookCover: { width: 80, height: 120, borderRadius: radius.md, backgroundColor: colors.surfaceContainerHigh },
+  bookInfo: { flex: 1, marginLeft: 14, justifyContent: 'center' },
+  bookTitle: { fontSize: 15, fontWeight: '700', color: colors.onSurface, marginBottom: 3 },
+  bookAuthor: { fontSize: 13, color: colors.onSurfaceVariant, marginBottom: 8 },
   statusBadge: {
-    alignSelf: 'flex-start',
-    backgroundColor: '#f0f0f0',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    marginBottom: 4,
+    alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 4,
+    borderRadius: 999, marginBottom: 4,
   },
-  statusText: {
-    fontSize: 12,
-    color: '#555',
-  },
-  progress: {
-    fontSize: 12,
-    color: '#999',
-    marginTop: 4,
-  },
-  emptyIcon: {
-    fontSize: 64,
-    marginBottom: 16,
-  },
-  emptyText: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 8,
-  },
-  emptySubtext: {
-    fontSize: 14,
-    color: '#666',
-  },
+  statusText: { fontSize: 11, fontWeight: '600' },
+  progress: { fontSize: 11, color: colors.outline, marginTop: 4 },
+  emptyIcon: { fontSize: 64, marginBottom: 16 },
+  emptyText: { fontSize: 18, fontWeight: '700', color: colors.onSurface, marginBottom: 8 },
+  emptySubtext: { fontSize: 14, color: colors.onSurfaceVariant },
 });

@@ -13,6 +13,8 @@ ALTER TABLE "user" ADD COLUMN IF NOT EXISTS is_admin BOOLEAN DEFAULT FALSE;
 ALTER TABLE "user" ADD COLUMN IF NOT EXISTS last_active TIMESTAMP;
 ALTER TABLE "user" ADD COLUMN IF NOT EXISTS deletion_requested_at TIMESTAMP;
 ALTER TABLE "user" ADD COLUMN IF NOT EXISTS deletion_reason TEXT;
+ALTER TABLE "user" ADD COLUMN IF NOT EXISTS is_private_profile BOOLEAN DEFAULT FALSE;
+ALTER TABLE "user" ADD COLUMN IF NOT EXISTS notification_prefs TEXT DEFAULT NULL;
 
 -- ── book ──────────────────────────────────────────────────
 ALTER TABLE book ADD COLUMN IF NOT EXISTS tags TEXT;

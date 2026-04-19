@@ -172,20 +172,20 @@ export default function SearchPage() {
       {/* Tabs */}
       <div className="flex gap-2">
         <button
-          onClick={() => setTab('google')}
+          onClick={() => { setTab('google'); setSearched(false); setQuery(''); setGoogleResults([]); setLocalResults([]) }}
           className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${tab === 'google' ? 'bg-primary text-on-primary font-bold' : 'bg-surface-container text-on-surface-variant hover:bg-surface-container-high'}`}
         >
           Google Books
-          {searched && googleResults.length > 0 && (
+          {searched && tab === 'google' && googleResults.length > 0 && (
             <span className="ml-1.5 text-[10px] bg-on-primary/20 rounded-full px-1.5 py-0.5">{googleResults.length}</span>
           )}
         </button>
         <button
-          onClick={() => setTab('community')}
+          onClick={() => { setTab('community'); setSearched(false); setQuery(''); setGoogleResults([]); setLocalResults([]) }}
           className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${tab === 'community' ? 'bg-primary text-on-primary font-bold' : 'bg-surface-container text-on-surface-variant hover:bg-surface-container-high'}`}
         >
           Community Library
-          {searched && localResults.length > 0 && (
+          {searched && tab === 'community' && localResults.length > 0 && (
             <span className="ml-1.5 text-[10px] bg-on-primary/20 rounded-full px-1.5 py-0.5">{localResults.length}</span>
           )}
         </button>

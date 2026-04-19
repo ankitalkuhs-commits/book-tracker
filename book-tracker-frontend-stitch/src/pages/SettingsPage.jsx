@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../components/Toast'
-import { getMyProfile, updateMyProfile, uploadProfilePicture, deleteAccount } from '../services/api'
+import { getMyProfile, updateMyProfile, uploadProfilePicture, deleteAccount, getNotificationPrefs, updateNotificationPrefs } from '../services/api'
 
 // Illustrated preset avatars via DiceBear adventurer style
 const PRESET_AVATARS = [
@@ -102,13 +102,25 @@ export default function SettingsPage() {
   const [showAvatarPicker, setShowAvatarPicker] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [isPrivate, setIsPrivate] = useState(false)
+  const [savingPrivacy, setSavingPrivacy] = useState(false)
+  const [notifPrefs, setNotifPrefs] = useState({
+    new_follower: true,
+    post_liked: true,
+    post_commented: true,
+    book_completed: true,
+    reading_streak_reminder: true,
+  })
+  const [savingPref, setSavingPref] = useState(null) // key of pref currently saving
 
   useEffect(() => {
     getMyProfile().then(p => {
       setName(p.name || '')
       setBio(p.bio || '')
       setYearlyGoal(p.yearly_goal || '')
+      setIsPrivate(p.is_private_profile || false)
     }).catch(() => {})
+    getNotificationPrefs().then(p => setNotifPrefs(prev => ({ ...prev, ...p }))).catch(() => {})
   }, [])
 
   const handlePresetSelect = async (url) => {
@@ -162,6 +174,32 @@ export default function SettingsPage() {
       setError(e.message || 'Failed to save')
     }
     setSaving(false)
+  }
+
+  const handleNotifPref = async (key, val) => {
+    setNotifPrefs(prev => ({ ...prev, [key]: val }))
+    setSavingPref(key)
+    try {
+      const updated = { ...notifPrefs, [key]: val }
+      await updateNotificationPrefs(updated)
+    } catch (e) {
+      setNotifPrefs(prev => ({ ...prev, [key]: !val }))
+      toast(e.message || 'Failed to update preference', 'error')
+    }
+    setSavingPref(null)
+  }
+
+  const handlePrivacyToggle = async (val) => {
+    setIsPrivate(val)
+    setSavingPrivacy(true)
+    try {
+      await updateMyProfile({ is_private_profile: val })
+      toast(val ? 'Profile set to private' : 'Profile set to public', 'success')
+    } catch (e) {
+      setIsPrivate(!val)
+      toast(e.message || 'Failed to update privacy', 'error')
+    }
+    setSavingPrivacy(false)
   }
 
   const handleSignOut = () => {
@@ -291,6 +329,73 @@ export default function SettingsPage() {
             {error && <span className="text-sm text-error">{error}</span>}
           </div>
         </form>
+      </section>
+
+      {/* Privacy section */}
+      <section className="bg-surface-container-lowest rounded-3xl p-8 space-y-5">
+        <h2 className="font-sans text-base font-bold text-on-surface uppercase tracking-wider">Privacy</h2>
+
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-on-surface">Private Profile</p>
+            <p className="text-sm text-on-surface-variant mt-0.5 leading-relaxed">
+              Only your followers can see your library and notes. Your name and avatar remain visible.
+            </p>
+          </div>
+          <button
+            type="button"
+            disabled={savingPrivacy}
+            onClick={() => handlePrivacyToggle(!isPrivate)}
+            className={`relative shrink-0 w-12 h-6 rounded-full transition-colors duration-200 focus:outline-none disabled:opacity-60 ${
+              isPrivate ? 'bg-primary' : 'bg-outline-variant'
+            }`}
+            aria-label="Toggle private profile"
+          >
+            <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${
+              isPrivate ? 'translate-x-6' : 'translate-x-0'
+            }`} />
+          </button>
+        </div>
+
+        {isPrivate && (
+          <div className="flex items-center gap-2 text-xs text-on-surface-variant bg-surface-container-low rounded-xl px-4 py-3">
+            <span className="material-symbols-outlined text-sm text-secondary">lock</span>
+            Your profile is private. Non-followers see a locked view.
+          </div>
+        )}
+      </section>
+
+      {/* Notifications section */}
+      <section className="bg-surface-container-lowest rounded-3xl p-8 space-y-5">
+        <h2 className="font-sans text-base font-bold text-on-surface uppercase tracking-wider">Notifications</h2>
+
+        {[
+          { key: 'new_follower',             label: 'New followers',         desc: 'When someone starts following you' },
+          { key: 'post_liked',               label: 'Likes',                 desc: 'When someone likes your post' },
+          { key: 'post_commented',           label: 'Comments',              desc: 'When someone comments on your post' },
+          { key: 'book_completed',           label: 'Friend activity',       desc: 'When friends add or finish books' },
+          { key: 'reading_streak_reminder',  label: 'Streak reminders',      desc: 'Daily reminder to keep your reading streak' },
+        ].map(({ key, label, desc }) => (
+          <div key={key} className="flex items-start justify-between gap-4">
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-on-surface">{label}</p>
+              <p className="text-sm text-on-surface-variant mt-0.5">{desc}</p>
+            </div>
+            <button
+              type="button"
+              disabled={savingPref === key}
+              onClick={() => handleNotifPref(key, !notifPrefs[key])}
+              className={`relative shrink-0 w-12 h-6 rounded-full transition-colors duration-200 focus:outline-none disabled:opacity-60 ${
+                notifPrefs[key] ? 'bg-primary' : 'bg-outline-variant'
+              }`}
+              aria-label={`Toggle ${label}`}
+            >
+              <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${
+                notifPrefs[key] ? 'translate-x-6' : 'translate-x-0'
+              }`} />
+            </button>
+          </div>
+        ))}
       </section>
 
       {/* Account section */}

@@ -190,6 +190,9 @@ export const webSubscribe = (subscription, deviceInfo = 'Chrome/Web') =>
     method: 'POST',
     body: JSON.stringify({ subscription, device_info: deviceInfo }),
   });
+export const getNotificationPrefs = () => apiFetch('/notifications/prefs');
+export const updateNotificationPrefs = (prefs) =>
+  apiFetch('/notifications/prefs', { method: 'PATCH', body: JSON.stringify(prefs) });
 
 // Groups
 export const getMyGroups = () => apiFetch('/groups/my');

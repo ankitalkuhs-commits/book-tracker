@@ -218,7 +218,7 @@ function PostCard({ post, currentUserId, onLikeToggle, onDelete, onEdit }) {
           <img
             src={post.image_url}
             alt="Post"
-            className="rounded-2xl max-h-64 object-cover w-full"
+            className="rounded-xl max-h-48 object-cover max-w-[160px]"
             onError={e => { e.target.parentElement.style.display = 'none' }}
           />
         )}

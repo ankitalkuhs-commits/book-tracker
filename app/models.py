@@ -34,6 +34,8 @@ class User(SQLModel, table=True):
     profile_picture: Optional[str] = None
     yearly_goal: Optional[int] = None          # target books per year
     is_admin: bool = Field(default=False)
+    is_private_profile: bool = Field(default=False)
+    notification_prefs: Optional[str] = Field(default=None)  # JSON: {"new_follower": true, ...}
     created_at: datetime = Field(default_factory=datetime.utcnow)
     last_active: Optional[datetime] = None
     deletion_requested_at: Optional[datetime] = None

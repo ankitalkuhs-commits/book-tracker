@@ -85,6 +85,23 @@ def _render_template(template: str, vars: dict) -> str:
         return template
 
 
+def _user_wants_event(db: Session, user_id: int, event_type: str) -> bool:
+    """
+    Returns True if the user has not explicitly disabled this event type.
+    Missing key = enabled (opt-out model, not opt-in).
+    """
+    import json
+    from ..models import User
+    user = db.get(User, user_id)
+    if not user or not getattr(user, "notification_prefs", None):
+        return True  # no prefs set = all enabled
+    try:
+        prefs = json.loads(user.notification_prefs)
+        return prefs.get(event_type, True)
+    except (json.JSONDecodeError, TypeError):
+        return True
+
+
 # ── Main dispatcher ───────────────────────────────────────────────────────────
 
 def fire_event(
@@ -133,6 +150,11 @@ def fire_event(
         # Never notify someone about their own action
         if user_id == actor_id:
             skipped_self += 1
+            continue
+
+        # Check user's personal notification preferences
+        if not _user_wants_event(db, user_id, event_type):
+            print(f"[Notify] User {user_id} has disabled '{event_type}' — skipping")
             continue
 
         # Enforce daily cap if configured for this event type

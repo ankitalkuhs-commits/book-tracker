@@ -5,7 +5,7 @@ import { useToast } from '../components/Toast'
 import {
   getMyProfile, getMyNotes, getMyActivity, getUserBooks,
   createNote, deleteNote, updateNote, updateMyProfile, getMyBooks,
-  getReadingInsights,
+  getReadingInsights, uploadProfilePicture,
 } from '../services/api'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -430,9 +430,10 @@ function NoteCard({ note, onDelete, onEdit }) {
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 export default function ProfilePage() {
-  const { user, logout } = useAuth()
+  const { user, login, logout } = useAuth()
   const navigate = useNavigate()
   const toast = useToast()
+  const avatarInputRef = useRef()
   const [profile, setProfile] = useState(null)
   const [notes, setNotes] = useState([])
   const [books, setBooks] = useState([])
@@ -441,6 +442,7 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true)
   const [showNewNote, setShowNewNote] = useState(false)
   const [showEditBio, setShowEditBio] = useState(false)
+  const [uploadingAvatar, setUploadingAvatar] = useState(false)
 
   const load = () => Promise.all([
     getMyProfile(),
@@ -471,6 +473,22 @@ export default function ProfilePage() {
 
   const handleEditNote = (noteId, updated) => {
     setNotes(prev => prev.map(n => n.id === noteId ? { ...n, ...updated } : n))
+  }
+
+  const handleAvatarChange = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploadingAvatar(true)
+    try {
+      const { profile_picture } = await uploadProfilePicture(file)
+      login({ ...user, profile_picture })
+      setProfile(prev => prev ? { ...prev, profile_picture } : prev)
+      toast('Profile picture updated!', 'success')
+    } catch (e) {
+      toast(e.message || 'Upload failed', 'error')
+    }
+    setUploadingAvatar(false)
+    e.target.value = ''
   }
 
   const handleSignOut = () => { logout(); navigate('/') }
@@ -506,7 +524,13 @@ export default function ProfilePage() {
               ) : (
                 <span className="text-on-primary text-3xl font-bold font-sans">{initials}</span>
               )}
+              {uploadingAvatar && (
+                <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-2xl">
+                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                </div>
+              )}
             </div>
+            {/* Edit bio button */}
             <button
               onClick={() => setShowEditBio(true)}
               className="absolute -bottom-2 -right-2 w-8 h-8 bg-primary text-on-primary rounded-full flex items-center justify-center shadow-md hover:bg-primary/90 transition-colors"
@@ -514,6 +538,15 @@ export default function ProfilePage() {
             >
               <span className="material-symbols-outlined text-sm">edit</span>
             </button>
+            {/* Upload photo button */}
+            <button
+              onClick={() => avatarInputRef.current?.click()}
+              className="absolute -bottom-2 -left-2 w-8 h-8 bg-surface-container-high text-on-surface-variant rounded-full flex items-center justify-center shadow-md hover:bg-surface-container-highest transition-colors"
+              title="Change photo"
+            >
+              <span className="material-symbols-outlined text-sm">photo_camera</span>
+            </button>
+            <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
           </div>
 
           {/* Info */}
