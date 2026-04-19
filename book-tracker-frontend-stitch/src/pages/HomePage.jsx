@@ -45,6 +45,7 @@ function PostCard({ post, currentUserId, onLikeToggle, onDelete, onEdit }) {
   const [comments, setComments] = useState([])
   const [commentText, setCommentText] = useState('')
   const [loadingComments, setLoadingComments] = useState(false)
+  const [submittingComment, setSubmittingComment] = useState(false)
   const [showMenu, setShowMenu] = useState(false)
   const [editing, setEditing] = useState(false)
   const [editText, setEditText] = useState(post.text || '')
@@ -93,13 +94,16 @@ function PostCard({ post, currentUserId, onLikeToggle, onDelete, onEdit }) {
 
   const submitComment = async (e) => {
     e.preventDefault()
-    if (!commentText.trim()) return
+    if (!commentText.trim() || submittingComment) return
+    setSubmittingComment(true)
     try {
       const c = await addComment(post.id, commentText.trim())
       setComments(prev => [...prev, c])
       setCommentText('')
     } catch (e) {
       toast(e.message || 'Failed to post comment', 'error')
+    } finally {
+      setSubmittingComment(false)
     }
   }
 
@@ -261,7 +265,9 @@ function PostCard({ post, currentUserId, onLikeToggle, onDelete, onEdit }) {
                 placeholder="Add a comment..."
                 className="flex-1 bg-surface-container-low rounded-xl px-3 py-2 text-sm border-none focus:outline-none focus:ring-2 focus:ring-primary/20"
               />
-              <button type="submit" className="btn-primary px-4 py-2 text-xs rounded-xl">Post</button>
+              <button type="submit" disabled={submittingComment || !commentText.trim()} className="btn-primary px-4 py-2 text-xs rounded-xl disabled:opacity-50">
+                {submittingComment ? '...' : 'Post'}
+              </button>
             </form>
           </div>
         )}

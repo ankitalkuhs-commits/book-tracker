@@ -129,9 +129,13 @@ def get_comments(
         .order_by(models.Comment.created_at.asc())
     ).all()
     
+    if not comments:
+        return []
+    user_ids = list({c.user_id for c in comments})
+    users_map = {u.id: u for u in db.exec(select(models.User).where(models.User.id.in_(user_ids))).all()}
     result = []
     for c in comments:
-        user = db.get(models.User, c.user_id)
+        user = users_map.get(c.user_id)
         result.append({
             "id": c.id,
             "text": c.text,
@@ -143,5 +147,5 @@ def get_comments(
                 "profile_picture": getattr(user, "profile_picture", None),
             } if user else None
         })
-    
+
     return result
