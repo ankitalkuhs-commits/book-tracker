@@ -108,11 +108,11 @@ function PostCard({ post, currentUserId, onLikeToggle, onDelete, onEdit }) {
   }
 
   return (
-    <article className="bg-surface-container-lowest rounded-3xl p-6 md:p-8 flex flex-col md:flex-row gap-6 md:gap-8 transition-all hover:shadow-[0_20px_50px_-20px_rgba(0,70,74,0.1)]">
-      {/* Book cover */}
+    <article className="bg-surface-container-lowest rounded-3xl p-5 md:p-8 flex flex-row gap-4 md:gap-8 transition-all hover:shadow-[0_20px_50px_-20px_rgba(0,70,74,0.1)]">
+      {/* Book cover — small thumbnail */}
       {book && (
-        <div className="w-full md:w-28 shrink-0">
-          <div className="aspect-[2/3] rounded-xl overflow-hidden shadow-xl shadow-on-surface/5 bg-surface-container-high">
+        <div className="shrink-0 w-12 md:w-20" style={{ alignSelf: 'flex-start' }}>
+          <div className="w-12 h-[72px] md:w-20 md:h-[120px] rounded-lg overflow-hidden shadow-md bg-surface-container-high">
             {coverUrl ? (
               <img
                 src={coverUrl}
@@ -122,7 +122,7 @@ function PostCard({ post, currentUserId, onLikeToggle, onDelete, onEdit }) {
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center">
-                <span className="material-symbols-outlined text-4xl text-outline">menu_book</span>
+                <span className="material-symbols-outlined text-lg text-outline">menu_book</span>
               </div>
             )}
           </div>
@@ -289,7 +289,7 @@ function PostComposer({ user, onPost }) {
   const [showBookPicker, setShowBookPicker] = useState(false)
 
   useEffect(() => {
-    getMyBooks('reading').then(data => setMyBooks(data || [])).catch(() => {})
+    getMyBooks().then(data => setMyBooks(data || [])).catch(() => {})
   }, [])
 
   const handleSubmit = async () => {
