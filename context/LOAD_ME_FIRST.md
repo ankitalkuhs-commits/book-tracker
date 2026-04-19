@@ -143,14 +143,19 @@ When user says **"wrap up"**, Claude automatically:
   - `books_router.py`: recommendations endpoint — 3 loops fixed (friends_reading, friends_loved, author_affinity)
   - `likes_comments.py`: GET /notes/{id}/comments — batch user lookup (was missed in first audit pass)
 - **Fix:** Book cover in feed posts now shows as small thumbnail (48×72px mobile / 80×120px desktop) instead of full-width portrait — `PostCard` changed from `flex-col md:flex-row` to always `flex-row`
+- **Fix:** `post.image_url` (used by editorial bot) now constrained to `max-w-[160px] max-h-48` instead of `w-full max-h-64` — prevents bot book covers from going full-width
 - **Fix:** Post composer book picker now loads ALL library books (was filtered to `status=reading` only)
 - **Fix:** Group invitation bug — `GET /{group_id}/pending` was returning curator-invited members alongside self-join requests; now filters `invited_by IS NULL` so only join requests appear for curator approval
+- **Fix:** JSX syntax error in `UserProfilePage.jsx` line 402 — missing closing `}` for `{!profile.locked && <div>}` conditional caused Vercel build to fail
 - **Feat:** Loading states added across web + mobile:
   - Leaderboard period switch: skeleton rows while loading
   - Approve/reject/remove member: spinner + disabled per user
   - Remove book from library: "Removing..." disabled state
   - Mobile bio save: ActivityIndicator spinner on Save button
+- **Feat:** Recommendation confirmation modal — clicking a book in "For You" now opens bottom sheet with cover, title, author, reason; user picks "Want to Read" or "Start Reading Now"; spinner → success → auto-dismiss
 - **CRITICAL PATTERN:** `GET /{group_id}/pending` = self-join requests (invited_by IS NULL). `GET /invites/pending` = curator-sent invites for the current user. Never mix them.
+- **CRITICAL PATTERN:** Never push `app/models.py` changes without confirming Supabase migration has been run. New model fields with no matching DB column will crash the entire backend (every User query fails). Run `context/supabase_migration.sql` in Supabase SQL Editor BEFORE or simultaneously with the push.
+- **GOTCHA — Vercel deployment:** `book-tracker-stitch` Vercel project production branch is set to `master`. Pushing to `stitch-experiment` creates a Preview deployment only. To update `book-tracker-stitch.vercel.app`, go to Overview → Active Branches → `...` next to `stitch-experiment` → Promote to Production. (Or change production branch in Settings → General.)
 
 **Next Priorities:**
 - EAS build + Play Store release (Phase 3)
