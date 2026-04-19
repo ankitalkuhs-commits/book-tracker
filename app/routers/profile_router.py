@@ -27,6 +27,8 @@ class ProfileUpdate(BaseModel):
     name: str | None = None
     bio: str | None = None
     yearly_goal: int | None = None
+    profile_picture: str | None = None
+    is_private_profile: bool | None = None
 
 
 # ---------------------------------
@@ -50,15 +52,15 @@ def get_profile(db: Session = Depends(get_db), current_user=Depends(get_current_
     reading = [b for b in total_books if b.status == "reading"]
     to_read = [b for b in total_books if b.status == "to-read"]
 
-    # Calculate total pages read from book data (ReadingActivity.pages_read no longer exists)
+    # Calculate total pages read — batch-fetch books instead of N individual lookups
+    _book_ids = [ub.book_id for ub in total_books if ub.book_id]
+    _books_map = {b.id: b for b in db.exec(select(Book).where(Book.id.in_(_book_ids))).all()} if _book_ids else {}
     total_pages_read = 0
     for ub in total_books:
         if ub.status == "finished":
-            # Finished: use total_pages, fallback to current_page
-            book = db.get(Book, ub.book_id)
+            book = _books_map.get(ub.book_id)
             total_pages_read += (book.total_pages if book and book.total_pages else 0) or (ub.current_page or 0)
         elif ub.status == "reading":
-            # Reading: use current progress
             total_pages_read += ub.current_page or 0
 
     # NOTE: For cross-platform compatibility, we return both snake_case and camelCase keys in the stats object.
@@ -104,6 +106,7 @@ def get_profile(db: Session = Depends(get_db), current_user=Depends(get_current_
         "following_count": len(following),
         "stats": stats,
         "is_admin": user.is_admin,
+        "is_private_profile": getattr(user, "is_private_profile", False),
     }
 
 
@@ -124,6 +127,10 @@ def update_profile(payload: ProfileUpdate, db: Session = Depends(get_db), curren
         user.bio = payload.bio
     if payload.yearly_goal is not None:
         user.yearly_goal = payload.yearly_goal
+    if payload.profile_picture is not None:
+        user.profile_picture = payload.profile_picture
+    if payload.is_private_profile is not None:
+        user.is_private_profile = payload.is_private_profile
 
     db.add(user)
     db.commit()
@@ -160,6 +167,7 @@ def update_profile(payload: ProfileUpdate, db: Session = Depends(get_db), curren
         "following_count": len(following),
         "stats": stats,
         "is_admin": user.is_admin,
+        "is_private_profile": getattr(user, "is_private_profile", False),
     }
 
 
@@ -203,26 +211,25 @@ async def upload_profile_picture(
 # ✅ GET /profile/{user_id} - Public profile
 # ---------------------------------
 @router.get("/{user_id}")
-def get_public_profile(user_id: int, db: Session = Depends(get_db), _=Depends(get_current_user)):
+def get_public_profile(user_id: int, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
     user = db.get(User, user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
+    # Self-view always allowed
+    is_self = current_user.id == user.id
+
+    # Check if the requesting user follows this profile
+    is_following = bool(db.exec(
+        select(Follow).where(Follow.follower_id == current_user.id, Follow.followed_id == user.id)
+    ).first())
+
+    is_private = getattr(user, "is_private_profile", False)
+
     followers = db.exec(select(Follow).where(Follow.followed_id == user.id)).all()
     following = db.exec(select(Follow).where(Follow.follower_id == user.id)).all()
 
-    total_books = db.exec(select(UserBook).where(UserBook.user_id == user.id)).all()
-    finished = [b for b in total_books if b.status == "finished"]
-    reading = [b for b in total_books if b.status == "reading"]
-
-    stats = {
-        "total_books": len(total_books),
-        "finished": len(finished),
-        "reading": len(reading),
-        "to_read": len([b for b in total_books if b.status == "to-read"]),
-    }
-
-    return {
+    base = {
         "id": user.id,
         "name": user.name,
         "username": user.username,
@@ -231,5 +238,25 @@ def get_public_profile(user_id: int, db: Session = Depends(get_db), _=Depends(ge
         "created_at": user.created_at,
         "followers_count": len(followers),
         "following_count": len(following),
-        "stats": stats,
+        "is_private": is_private,
+        "is_following": is_following,
     }
+
+    # Private profile — only followers (and self) see stats + content
+    if is_private and not is_self and not is_following:
+        base["stats"] = None
+        base["locked"] = True
+        return base
+
+    total_books = db.exec(select(UserBook).where(UserBook.user_id == user.id)).all()
+    finished = [b for b in total_books if b.status == "finished"]
+    reading = [b for b in total_books if b.status == "reading"]
+
+    base["stats"] = {
+        "total_books": len(total_books),
+        "finished": len(finished),
+        "reading": len(reading),
+        "to_read": len([b for b in total_books if b.status == "to-read"]),
+    }
+    base["locked"] = False
+    return base

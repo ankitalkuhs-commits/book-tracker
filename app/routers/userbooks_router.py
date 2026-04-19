@@ -5,7 +5,7 @@ from sqlmodel import Session, select
 from ..deps import get_db, get_current_user
 from .. import crud, models
 from typing import List
-from ..models import UserBook, Book   # adjust import path if different
+from ..models import UserBook, Book, Follow   # adjust import path if different
 from datetime import datetime
 from pydantic import BaseModel
 from app.models import UserBookProgress
@@ -267,9 +267,14 @@ def list_userbooks(
         q.order_by(UserBook.updated_at.desc().nulls_last(), UserBook.created_at.desc())
     ).all()
 
+    book_ids = [ub.book_id for ub in userbooks if ub.book_id]
+    books_map = {}
+    if book_ids:
+        books_map = {b.id: b for b in db.exec(select(Book).where(Book.id.in_(book_ids))).all()}
+
     results = []
     for ub in userbooks:
-        book = db.get(Book, ub.book_id)
+        book = books_map.get(ub.book_id)
         results.append({
             "id": ub.id,
             "user_id": ub.user_id,
@@ -284,7 +289,6 @@ def list_userbooks(
             "loaned_to": ub.loaned_to,
             "created_at": ub.created_at,
             "updated_at": ub.updated_at,
-            # embed book details (or null)
             "book": {
                 "id": book.id,
                 "title": book.title,
@@ -369,6 +373,14 @@ def get_user_books(
     user = db.get(models.User, user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
+
+    # Enforce private profile — non-followers cannot see books
+    if getattr(user, "is_private_profile", False) and current_user.id != user_id:
+        is_following = bool(db.exec(
+            select(Follow).where(Follow.follower_id == current_user.id, Follow.followed_id == user_id)
+        ).first())
+        if not is_following:
+            raise HTTPException(status_code=403, detail="This profile is private")
     
     # Get user's books, most recently updated/added first
     userbooks = db.exec(
@@ -377,9 +389,14 @@ def get_user_books(
         .order_by(UserBook.updated_at.desc().nulls_last(), UserBook.created_at.desc())
     ).all()
     
+    book_ids = [ub.book_id for ub in userbooks if ub.book_id]
+    books_map = {}
+    if book_ids:
+        books_map = {b.id: b for b in db.exec(select(Book).where(Book.id.in_(book_ids))).all()}
+
     results = []
     for ub in userbooks:
-        book = db.get(Book, ub.book_id)
+        book = books_map.get(ub.book_id)
         results.append({
             "id": ub.id,
             "user_id": ub.user_id,
@@ -389,7 +406,6 @@ def get_user_books(
             "rating": ub.rating,
             "created_at": ub.created_at,
             "updated_at": ub.updated_at,
-            # embed book details (or null)
             "book": {
                 "id": book.id,
                 "title": book.title,
@@ -451,11 +467,15 @@ def get_friends_currently_reading(
         .limit(limit)
     ).all()
     
+    user_ids = list({ub.user_id for ub in userbooks})
+    book_ids = list({ub.book_id for ub in userbooks if ub.book_id})
+    users_map = {u.id: u for u in db.exec(select(models.User).where(models.User.id.in_(user_ids))).all()} if user_ids else {}
+    books_map = {b.id: b for b in db.exec(select(Book).where(Book.id.in_(book_ids))).all()} if book_ids else {}
+
     results = []
     for ub in userbooks:
-        user = db.get(models.User, ub.user_id)
-        book = db.get(Book, ub.book_id)
-        
+        user = users_map.get(ub.user_id)
+        book = books_map.get(ub.book_id)
         if user and book:
             results.append({
                 "id": ub.id,
@@ -475,5 +495,5 @@ def get_friends_currently_reading(
                 "current_page": ub.current_page,
                 "updated_at": ub.updated_at
             })
-    
+
     return results

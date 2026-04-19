@@ -206,13 +206,6 @@ def get_recommendations(limit: int = 12, db: Session = Depends(get_db), current_
     )
 
     # Users the current user follows
-    following_ids = [
-        row for row in db.exec(
-            select(UserBook.user_id)
-            .where(UserBook.user_id != current_user.id)
-            .join(UserBook, UserBook.user_id == UserBook.user_id)  # noqa — will use Follow below
-        ).all()
-    ]
     from ..models import Follow
     following_ids = [
         r for r in db.exec(select(Follow.followed_id).where(Follow.follower_id == current_user.id)).all()

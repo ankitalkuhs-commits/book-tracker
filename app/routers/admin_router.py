@@ -5,7 +5,7 @@ Security: Only accessible by admin users (ankitalkuhs@gmail.com)
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, select, func
-from typing import List, Dict, Any
+from typing import List, Dict
 from pydantic import BaseModel
 from datetime import datetime, timedelta
 from ..database import get_session
@@ -178,41 +178,41 @@ def get_all_users(
         .limit(limit)
     ).all()
     
+    user_ids = [u.id for u in users]
+
+    books_counts = {r[0]: r[1] for r in db.exec(
+        select(models.UserBook.user_id, func.count(models.UserBook.id))
+        .where(models.UserBook.user_id.in_(user_ids))
+        .group_by(models.UserBook.user_id)
+    ).all()}
+    followers_counts = {r[0]: r[1] for r in db.exec(
+        select(models.Follow.followed_id, func.count(models.Follow.id))
+        .where(models.Follow.followed_id.in_(user_ids))
+        .group_by(models.Follow.followed_id)
+    ).all()}
+    following_counts = {r[0]: r[1] for r in db.exec(
+        select(models.Follow.follower_id, func.count(models.Follow.id))
+        .where(models.Follow.follower_id.in_(user_ids))
+        .group_by(models.Follow.follower_id)
+    ).all()}
+
     result = []
     for user in users:
-        # Count user's books
-        books_count = db.exec(
-            select(func.count(models.UserBook.id))
-            .where(models.UserBook.user_id == user.id)
-        ).one() or 0
-        
-        # Count followers
-        followers_count = db.exec(
-            select(func.count(models.Follow.id))
-            .where(models.Follow.followed_id == user.id)
-        ).one() or 0
-        
-        # Count following
-        following_count = db.exec(
-            select(func.count(models.Follow.id))
-            .where(models.Follow.follower_id == user.id)
-        ).one() or 0
-        
         result.append(UserSummary(
             id=user.id,
             name=user.name,
             username=user.username,
             email=user.email,
             is_admin=user.is_admin,
-            books_count=books_count,
-            followers_count=followers_count,
-            following_count=following_count,
+            books_count=books_counts.get(user.id, 0),
+            followers_count=followers_counts.get(user.id, 0),
+            following_count=following_counts.get(user.id, 0),
             created_at=user.created_at,
             last_active=user.last_active,
             deletion_requested_at=user.deletion_requested_at,
             deletion_reason=user.deletion_reason
         ))
-    
+
     return result
 
 
@@ -232,50 +232,46 @@ def get_popular_books(
         .limit(limit)
     ).all()
     
+    book_ids = [b.id for b in books]
+
+    # Batch counts by status
+    ub_rows = db.exec(
+        select(models.UserBook.book_id, models.UserBook.status, func.count(models.UserBook.id))
+        .where(models.UserBook.book_id.in_(book_ids))
+        .group_by(models.UserBook.book_id, models.UserBook.status)
+    ).all()
+    reading_map: Dict[int, int] = {}
+    completed_map: Dict[int, int] = {}
+    total_map: Dict[int, int] = {}
+    for book_id, status, cnt in ub_rows:
+        total_map[book_id] = total_map.get(book_id, 0) + cnt
+        if status == "reading":
+            reading_map[book_id] = cnt
+        elif status == "completed":
+            completed_map[book_id] = cnt
+
+    # Batch: all userbooks for these books + their users
+    all_ubs = db.exec(select(models.UserBook).where(models.UserBook.book_id.in_(book_ids))).all()
+    ub_user_ids = list({ub.user_id for ub in all_ubs})
+    ub_users = {u.id: u for u in db.exec(select(models.User).where(models.User.id.in_(ub_user_ids))).all()} if ub_user_ids else {}
+    book_user_names: Dict[int, List[str]] = {}
+    for ub in all_ubs:
+        user = ub_users.get(ub.user_id)
+        if user:
+            book_user_names.setdefault(ub.book_id, []).append(user.name or user.email.split('@')[0])
+
     result = []
     for book in books:
-        users_reading = db.exec(
-            select(func.count(models.UserBook.id))
-            .where(models.UserBook.book_id == book.id)
-            .where(models.UserBook.status == "reading")
-        ).one() or 0
-        
-        users_completed = db.exec(
-            select(func.count(models.UserBook.id))
-            .where(models.UserBook.book_id == book.id)
-            .where(models.UserBook.status == "completed")
-        ).one() or 0
-        
-        total_users = db.exec(
-            select(func.count(models.UserBook.id))
-            .where(models.UserBook.book_id == book.id)
-        ).one() or 0
-        
-        # Get all users who added this book
-        user_books = db.exec(
-            select(models.UserBook)
-            .where(models.UserBook.book_id == book.id)
-        ).all()
-        
-        user_names = []
-        for ub in user_books:
-            user = db.get(models.User, ub.user_id)
-            if user:
-                user_names.append(user.name or user.email.split('@')[0])
-        
-        added_by_users = ", ".join(user_names) if user_names else "-"
-        
         result.append(BookSummary(
             id=book.id,
             title=book.title,
             author=book.author,
-            users_reading=users_reading,
-            users_completed=users_completed,
-            total_users=total_users,
-            added_by_users=added_by_users
+            users_reading=reading_map.get(book.id, 0),
+            users_completed=completed_map.get(book.id, 0),
+            total_users=total_map.get(book.id, 0),
+            added_by_users=", ".join(book_user_names.get(book.id, [])) or "-",
         ))
-    
-    # Sort by total users descending
+
     result.sort(key=lambda x: x.total_users, reverse=True)
     return result
 
@@ -295,16 +291,13 @@ def get_follow_relationships(
         .limit(limit)
     ).all()
     
+    all_user_ids = list({f.follower_id for f in follows} | {f.followed_id for f in follows})
+    users_map = {u.id: u for u in db.exec(select(models.User).where(models.User.id.in_(all_user_ids))).all()}
+
     result = []
     for follow in follows:
-        follower = db.exec(
-            select(models.User).where(models.User.id == follow.follower_id)
-        ).first()
-        
-        followed = db.exec(
-            select(models.User).where(models.User.id == follow.followed_id)
-        ).first()
-        
+        follower = users_map.get(follow.follower_id)
+        followed = users_map.get(follow.followed_id)
         if follower and followed:
             result.append(FollowRelationship(
                 follower_id=follower.id,
@@ -313,7 +306,7 @@ def get_follow_relationships(
                 followed_name=followed.name or followed.email,
                 created_at=follow.created_at
             ))
-    
+
     return result
 
 

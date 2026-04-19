@@ -107,6 +107,33 @@ class SetBookBody(BaseModel):
     description: Optional[str] = None
 
 
+# ─── My pending invites (must be before /{group_id}/... routes) ──────────────
+
+@router.get("/invites/pending")
+def get_my_pending_invites(
+    db: Session = Depends(get_db),
+    me: models.User = Depends(get_current_user),
+):
+    """Groups where the current user has a pending invite from a curator."""
+    pending = db.exec(
+        select(models.GroupMember).where(
+            models.GroupMember.user_id == me.id,
+            models.GroupMember.status == "pending",
+            models.GroupMember.invited_by != None,
+        )
+    ).all()
+    result = []
+    for m in pending:
+        g = db.get(models.ReadingGroup, m.group_id)
+        if g:
+            inviter = db.get(models.User, m.invited_by) if m.invited_by else None
+            result.append({
+                **_serialize_group(db, g, me.id),
+                "invited_by_name": inviter.name if inviter else None,
+            })
+    return result
+
+
 # ─── List / Discover ──────────────────────────────────────────────────────────
 
 @router.get("/my")
@@ -121,12 +148,11 @@ def get_my_groups(
             models.GroupMember.status == "active",
         )
     ).all()
-    groups = []
-    for m in memberships:
-        g = db.get(models.ReadingGroup, m.group_id)
-        if g:
-            groups.append(_serialize_group(db, g, me.id))
-    return groups
+    if not memberships:
+        return []
+    group_ids = [m.group_id for m in memberships]
+    all_groups = db.exec(select(models.ReadingGroup).where(models.ReadingGroup.id.in_(group_ids))).all()
+    return [_serialize_group(db, g, me.id) for g in all_groups]
 
 
 @router.get("/discover")
@@ -495,14 +521,22 @@ def get_group_posts(
         .order_by(models.GroupPost.created_at.desc())
         .limit(50)
     ).all()
+    if not posts:
+        return []
+    user_ids = list({p.user_id for p in posts})
+    users_map = {u.id: u for u in db.exec(select(models.User).where(models.User.id.in_(user_ids))).all()}
+    ub_ids = [p.userbook_id for p in posts if p.userbook_id]
+    ubs_map = {ub.id: ub for ub in db.exec(select(models.UserBook).where(models.UserBook.id.in_(ub_ids))).all()} if ub_ids else {}
+    bk_ids = list({ub.book_id for ub in ubs_map.values() if ub.book_id})
+    books_map = {b.id: b for b in db.exec(select(models.Book).where(models.Book.id.in_(bk_ids))).all()} if bk_ids else {}
     result = []
     for p in posts:
-        user = db.get(models.User, p.user_id)
+        user = users_map.get(p.user_id)
         book = None
         if p.userbook_id:
-            ub = db.get(models.UserBook, p.userbook_id)
+            ub = ubs_map.get(p.userbook_id)
             if ub:
-                book = db.get(models.Book, ub.book_id)
+                book = books_map.get(ub.book_id)
         result.append({
             "id": p.id,
             "text": p.text,
@@ -582,50 +616,60 @@ def get_leaderboard(
         now = datetime.utcnow()
         since = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
 
+    if not members:
+        return []
+    member_ids = [m.user_id for m in members]
+
+    # Batch: user details
+    users_map = {u.id: u for u in db.exec(select(models.User).where(models.User.id.in_(member_ids))).all()}
+
+    # Batch: books finished per user
+    ub_q = select(models.UserBook.user_id, func.count(models.UserBook.id)).where(
+        models.UserBook.user_id.in_(member_ids),
+        models.UserBook.status == "finished",
+    )
+    if since:
+        ub_q = ub_q.where(models.UserBook.updated_at >= since)
+    finished_map = {r[0]: r[1] for r in db.exec(ub_q.group_by(models.UserBook.user_id)).all()}
+
+    # Batch: pages read per user from activity
+    ra_q = select(models.ReadingActivity.user_id, func.sum(models.ReadingActivity.pages_read)).where(
+        models.ReadingActivity.user_id.in_(member_ids),
+    )
+    if since:
+        ra_q = ra_q.where(models.ReadingActivity.date >= since)
+    pages_map = {r[0]: r[1] or 0 for r in db.exec(ra_q.group_by(models.ReadingActivity.user_id)).all()}
+
+    # Batch: currently reading book per user (one per user)
+    reading_ubs = db.exec(
+        select(models.UserBook).where(
+            models.UserBook.user_id.in_(member_ids),
+            models.UserBook.status == "reading",
+        )
+    ).all()
+    # Keep only most-recently-updated per user
+    reading_map: dict = {}
+    for ub in reading_ubs:
+        if ub.user_id not in reading_map or (ub.updated_at or 0) > (reading_map[ub.user_id].updated_at or 0):
+            reading_map[ub.user_id] = ub
+    reading_book_ids = [ub.book_id for ub in reading_map.values() if ub.book_id]
+    reading_books = {b.id: b for b in db.exec(select(models.Book).where(models.Book.id.in_(reading_book_ids))).all()} if reading_book_ids else {}
+
     rows = []
     for m in members:
-        user = db.get(models.User, m.user_id)
+        user = users_map.get(m.user_id)
         if not user:
             continue
-
-        # Books finished
-        ub_q = select(models.UserBook).where(
-            models.UserBook.user_id == m.user_id,
-            models.UserBook.status == "finished",
-        )
-        if since:
-            ub_q = ub_q.where(models.UserBook.updated_at >= since)
-        books_finished = len(db.exec(ub_q).all())
-
-        # Pages read from activity
-        ra_q = select(func.sum(models.ReadingActivity.pages_read)).where(
-            models.ReadingActivity.user_id == m.user_id,
-        )
-        if since:
-            ra_q = ra_q.where(models.ReadingActivity.date >= since)
-        pages = db.exec(ra_q).one() or 0
-
-        # Currently reading
-        current = db.exec(
-            select(models.UserBook).where(
-                models.UserBook.user_id == m.user_id,
-                models.UserBook.status == "reading",
-            ).limit(1)
-        ).first()
-        current_book = None
-        if current:
-            b = db.get(models.Book, current.book_id)
-            if b:
-                current_book = b.title
-
+        cur_ub = reading_map.get(m.user_id)
+        cur_book = reading_books.get(cur_ub.book_id) if cur_ub and cur_ub.book_id else None
         rows.append({
             "user_id": user.id,
             "name": user.name,
             "username": user.username,
             "profile_picture": getattr(user, "profile_picture", None),
-            "books_finished": books_finished,
-            "pages_read": int(pages),
-            "current_book": current_book,
+            "books_finished": finished_map.get(m.user_id, 0),
+            "pages_read": int(pages_map.get(m.user_id, 0)),
+            "current_book": cur_book.title if cur_book else None,
         })
 
     rows.sort(key=lambda r: (-r["pages_read"], -r["books_finished"]))
@@ -738,33 +782,6 @@ def clear_group_book(
     db.commit()
 
 
-# ─── My pending invites ───────────────────────────────────────────────────────
-
-@router.get("/invites/pending")
-def get_my_pending_invites(
-    db: Session = Depends(get_db),
-    me: models.User = Depends(get_current_user),
-):
-    """Groups where the current user has a pending invite from a curator."""
-    pending = db.exec(
-        select(models.GroupMember).where(
-            models.GroupMember.user_id == me.id,
-            models.GroupMember.status == "pending",
-            models.GroupMember.invited_by != None,
-        )
-    ).all()
-    result = []
-    for m in pending:
-        g = db.get(models.ReadingGroup, m.group_id)
-        if g:
-            inviter = db.get(models.User, m.invited_by) if m.invited_by else None
-            result.append({
-                **_serialize_group(db, g, me.id),
-                "invited_by_name": inviter.name if inviter else None,
-            })
-    return result
-
-
 # ─── Group Activity Feed ──────────────────────────────────────────────────────
 
 @router.get("/{group_id}/activity")
@@ -787,9 +804,13 @@ def get_group_activity(
     ).all()
 
     import json as _json
+    if not events:
+        return []
+    ev_user_ids = list({ev.user_id for ev in events})
+    ev_users_map = {u.id: u for u in db.exec(select(models.User).where(models.User.id.in_(ev_user_ids))).all()}
     result = []
     for ev in events:
-        user = db.get(models.User, ev.user_id)
+        user = ev_users_map.get(ev.user_id)
         payload = _json.loads(ev.payload) if ev.payload else {}
         result.append({
             "id": ev.id,

@@ -2,7 +2,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, select, func
 from ..deps import get_db, get_current_user
-from ..models import ReadingActivity, UserBook, Book, User
+from ..models import ReadingActivity, UserBook, Book, User, Follow
 from datetime import datetime, timedelta, date as date_type
 from typing import List
 
@@ -85,10 +85,12 @@ def get_reading_insights(
             "on_track": len(finished_this_year) >= round(yearly_goal * day_of_year / 365),
         }
 
-    # ── Total pages read ─────────────────────────────────────────────────────
+    # ── Total pages read — batch fetch books ─────────────────────────────────
+    _ub_book_ids = [ub.book_id for ub in all_ubs if ub.book_id]
+    _books_map = {b.id: b for b in db.exec(select(Book).where(Book.id.in_(_ub_book_ids))).all()} if _ub_book_ids else {}
     total_pages = 0
     for ub in all_ubs:
-        book = db.get(Book, ub.book_id) if ub.book_id else None
+        book = _books_map.get(ub.book_id)
         if ub.status == "finished":
             total_pages += (book.total_pages if book and book.total_pages else ub.current_page or 0)
         elif ub.status == "reading":
@@ -147,7 +149,7 @@ def get_reading_insights(
     projected = []
     if avg_pages_per_day > 0:
         for ub in reading_ubs:
-            book = db.get(Book, ub.book_id) if ub.book_id else None
+            book = _books_map.get(ub.book_id)
             if book and book.total_pages and ub.current_page:
                 pages_left = book.total_pages - ub.current_page
                 days_left = max(1, round(pages_left / avg_pages_per_day))
@@ -192,14 +194,19 @@ def get_user_daily_reading_stats(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """
-    Get daily reading activity for a specific user (for viewing their profile).
-    Public endpoint - anyone can see anyone's reading stats.
-    """
+    """Get daily reading activity for a specific user (for viewing their profile)."""
     # Verify user exists
     user = db.get(User, user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
+
+    # Enforce private profile
+    if getattr(user, "is_private_profile", False) and current_user.id != user_id:
+        is_following = bool(db.exec(
+            select(Follow).where(Follow.follower_id == current_user.id, Follow.followed_id == user_id)
+        ).first())
+        if not is_following:
+            raise HTTPException(status_code=403, detail="This profile is private")
     
     # Calculate date range
     end_date = datetime.utcnow().date()

@@ -230,30 +230,42 @@ def update_note(
 def get_feed(limit: int = 50, db: Session = Depends(get_db), current_user: Optional[models.User] = Depends(get_current_user_optional)):
     from sqlmodel import select, func
     notes = crud.get_notes_feed(db, limit=limit)
+    if not notes:
+        return []
+
+    note_ids = [n.id for n in notes]
+
+    # Batch: like counts per note
+    likes_rows = db.exec(
+        select(models.Like.note_id, func.count(models.Like.id))
+        .where(models.Like.note_id.in_(note_ids))
+        .group_by(models.Like.note_id)
+    ).all()
+    likes_map = {row[0]: row[1] for row in likes_rows}
+
+    # Batch: comment counts per note
+    comments_rows = db.exec(
+        select(models.Comment.note_id, func.count(models.Comment.id))
+        .where(models.Comment.note_id.in_(note_ids))
+        .group_by(models.Comment.note_id)
+    ).all()
+    comments_map = {row[0]: row[1] for row in comments_rows}
+
+    # Batch: which notes the current user has liked
+    liked_set = set()
+    if current_user:
+        liked_rows = db.exec(
+            select(models.Like.note_id)
+            .where(models.Like.user_id == current_user.id)
+            .where(models.Like.note_id.in_(note_ids))
+        ).all()
+        liked_set = set(liked_rows)
+
     result = []
     for n in notes:
         book = n.userbook.book if n.userbook else None
         user = n.user
-        
-        # Count likes
-        likes_count = db.exec(
-            select(func.count(models.Like.id)).where(models.Like.note_id == n.id)
-        ).one()
-        
-        # Count comments
-        comments_count = db.exec(
-            select(func.count(models.Comment.id)).where(models.Comment.note_id == n.id)
-        ).one()
-        
-        # Check if current user has liked (only if authenticated)
-        user_has_liked = False
-        if current_user:
-            user_has_liked = db.exec(
-                select(models.Like)
-                .where(models.Like.note_id == n.id)
-                .where(models.Like.user_id == current_user.id)
-            ).first() is not None
-        
+        user_has_liked = n.id in liked_set
         result.append({
             "id": n.id,
             "user_id": n.user_id,
@@ -265,8 +277,8 @@ def get_feed(limit: int = 50, db: Session = Depends(get_db), current_user: Optio
             "quote": n.quote,
             "is_public": n.is_public,
             "created_at": format_timestamp(n.created_at),
-            "likes_count": likes_count,
-            "comments_count": comments_count,
+            "likes_count": likes_map.get(n.id, 0),
+            "comments_count": comments_map.get(n.id, 0),
             "liked_by_me": user_has_liked,
             "user_has_liked": user_has_liked,
             "user": {
@@ -287,16 +299,21 @@ def get_feed(limit: int = 50, db: Session = Depends(get_db), current_user: Optio
 def get_my_notes(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     from sqlmodel import select, func
     notes = crud.get_notes_for_user(db, user_id=current_user.id)
+    if not notes:
+        return []
+    note_ids = [n.id for n in notes]
+    likes_map = {r[0]: r[1] for r in db.exec(
+        select(models.Like.note_id, func.count(models.Like.id))
+        .where(models.Like.note_id.in_(note_ids)).group_by(models.Like.note_id)
+    ).all()}
+    comments_map = {r[0]: r[1] for r in db.exec(
+        select(models.Comment.note_id, func.count(models.Comment.id))
+        .where(models.Comment.note_id.in_(note_ids)).group_by(models.Comment.note_id)
+    ).all()}
     out = []
     for n in notes:
         book = n.userbook.book if n.userbook else None
         user = n.user
-        likes_count = db.exec(
-            select(func.count(models.Like.id)).where(models.Like.note_id == n.id)
-        ).one()
-        comments_count = db.exec(
-            select(func.count(models.Comment.id)).where(models.Comment.note_id == n.id)
-        ).one()
         out.append({
             "id": n.id,
             "user_id": n.user_id,
@@ -309,9 +326,9 @@ def get_my_notes(db: Session = Depends(get_db), current_user: models.User = Depe
             "is_public": n.is_public,
             "created_at": format_timestamp(n.created_at),
             "updated_at": format_timestamp(n.updated_at),
-            "likes_count": likes_count,
-            "comments_count": comments_count,
-            "liked_by_me": True,  # own notes — always liked by current user semantically (not needed but safe)
+            "likes_count": likes_map.get(n.id, 0),
+            "comments_count": comments_map.get(n.id, 0),
+            "liked_by_me": True,
             "user": {
                 "id": user.id, "name": user.name,
                 "username": getattr(user, "username", None),
@@ -329,10 +346,20 @@ def get_my_notes(db: Session = Depends(get_db), current_user: models.User = Depe
 def get_public_notes_for_user(
     user_id: int,
     db: Session = Depends(get_db),
-    _: models.User = Depends(get_current_user)
+    current_user: models.User = Depends(get_current_user)
 ):
     """Get public notes for a specific user (for their public profile)"""
     from sqlmodel import select, func
+
+    # Enforce private profile — non-followers cannot see notes
+    target_user = db.get(models.User, user_id)
+    if target_user and getattr(target_user, "is_private_profile", False) and current_user.id != user_id:
+        is_following = bool(db.exec(
+            select(models.Follow).where(models.Follow.follower_id == current_user.id, models.Follow.followed_id == user_id)
+        ).first())
+        if not is_following:
+            raise HTTPException(status_code=403, detail="This profile is private")
+
     notes = db.exec(
         select(models.Note)
         .where(models.Note.user_id == user_id)
@@ -340,16 +367,21 @@ def get_public_notes_for_user(
         .order_by(models.Note.created_at.desc())
         .limit(20)
     ).all()
+    if not notes:
+        return []
+    note_ids = [n.id for n in notes]
+    likes_map = {r[0]: r[1] for r in db.exec(
+        select(models.Like.note_id, func.count(models.Like.id))
+        .where(models.Like.note_id.in_(note_ids)).group_by(models.Like.note_id)
+    ).all()}
+    comments_map = {r[0]: r[1] for r in db.exec(
+        select(models.Comment.note_id, func.count(models.Comment.id))
+        .where(models.Comment.note_id.in_(note_ids)).group_by(models.Comment.note_id)
+    ).all()}
     out = []
     for n in notes:
         book = n.userbook.book if n.userbook else None
         user = n.user
-        likes_count = db.exec(
-            select(func.count(models.Like.id)).where(models.Like.note_id == n.id)
-        ).one()
-        comments_count = db.exec(
-            select(func.count(models.Comment.id)).where(models.Comment.note_id == n.id)
-        ).one()
         out.append({
             "id": n.id,
             "text": n.text,
@@ -362,8 +394,8 @@ def get_public_notes_for_user(
             "created_at": format_timestamp(n.created_at),
             "user": {"id": user.id, "name": user.name} if user else None,
             "book": {"id": book.id, "title": book.title, "author": book.author, "cover_url": book.cover_url} if book else None,
-            "likes_count": likes_count,
-            "comments_count": comments_count,
+            "likes_count": likes_map.get(n.id, 0),
+            "comments_count": comments_map.get(n.id, 0),
         })
     return out
 
@@ -453,28 +485,37 @@ def get_friends_feed(
         ).order_by(models.Note.created_at.desc()).limit(limit)
     ).all()
     
+    note_ids = [n.id for n in notes]
+
+    # Batch: like counts per note
+    likes_rows = db.exec(
+        select(models.Like.note_id, func.count(models.Like.id))
+        .where(models.Like.note_id.in_(note_ids))
+        .group_by(models.Like.note_id)
+    ).all()
+    likes_map = {row[0]: row[1] for row in likes_rows}
+
+    # Batch: comment counts per note
+    comments_rows = db.exec(
+        select(models.Comment.note_id, func.count(models.Comment.id))
+        .where(models.Comment.note_id.in_(note_ids))
+        .group_by(models.Comment.note_id)
+    ).all()
+    comments_map = {row[0]: row[1] for row in comments_rows}
+
+    # Batch: which notes current user has liked
+    liked_rows = db.exec(
+        select(models.Like.note_id)
+        .where(models.Like.user_id == current_user.id)
+        .where(models.Like.note_id.in_(note_ids))
+    ).all()
+    liked_set = set(liked_rows)
+
     result = []
     for n in notes:
         book = n.userbook.book if n.userbook else None
         user = n.user
-        
-        # Count likes
-        likes_count = db.exec(
-            select(func.count(models.Like.id)).where(models.Like.note_id == n.id)
-        ).one()
-        
-        # Count comments
-        comments_count = db.exec(
-            select(func.count(models.Comment.id)).where(models.Comment.note_id == n.id)
-        ).one()
-        
-        # Check if current user has liked
-        user_has_liked = db.exec(
-            select(models.Like)
-            .where(models.Like.note_id == n.id)
-            .where(models.Like.user_id == current_user.id)
-        ).first() is not None
-        
+        user_has_liked = n.id in liked_set
         result.append({
             "id": n.id,
             "user_id": n.user_id,
@@ -486,8 +527,8 @@ def get_friends_feed(
             "quote": n.quote,
             "is_public": n.is_public,
             "created_at": format_timestamp(n.created_at),
-            "likes_count": likes_count,
-            "comments_count": comments_count,
+            "likes_count": likes_map.get(n.id, 0),
+            "comments_count": comments_map.get(n.id, 0),
             "liked_by_me": user_has_liked,
             "user_has_liked": user_has_liked,
             "user": {

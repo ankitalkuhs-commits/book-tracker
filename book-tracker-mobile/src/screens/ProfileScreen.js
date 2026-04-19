@@ -11,10 +11,12 @@ import {
   Alert,
 } from 'react-native';
 import Constants from 'expo-constants';
+import { Ionicons } from '@expo/vector-icons';
 import { userAPI, authAPI, userbooksAPI } from '../services/api';
 import { PreloadContext } from '../../App';
+import { colors, radius, shadow } from '../theme';
 
-const ProfileScreen = ({ onLogout }) => {
+const ProfileScreen = ({ navigation, onLogout }) => {
   const preloaded = useContext(PreloadContext);
   const [profile, setProfile] = useState(preloaded?.profile || null);
   const [stats, setStats] = useState(null);
@@ -129,9 +131,12 @@ const ProfileScreen = ({ onLogout }) => {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Profile</Text>
-        <TouchableOpacity onPress={handleLogout}>
-          <Text style={styles.logoutButton}>Logout</Text>
+        <View>
+          <Text style={styles.headerLabel}>MY ACCOUNT</Text>
+          <Text style={styles.headerTitle}>Profile</Text>
+        </View>
+        <TouchableOpacity onPress={() => navigation?.navigate('Settings')} style={styles.settingsBtn}>
+          <Ionicons name="settings-outline" size={22} color={colors.primary} />
         </TouchableOpacity>
       </View>
 
@@ -284,224 +289,75 @@ const ProfileScreen = ({ onLogout }) => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f5f5f5',
-  },
-  centered: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
+  container: { flex: 1, backgroundColor: colors.surface },
+  centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    paddingHorizontal: 20,
-    paddingTop: 60,
-    paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end',
+    backgroundColor: colors.surface, paddingHorizontal: 20,
+    paddingTop: 56, paddingBottom: 16,
   },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#333',
+  headerLabel: { fontSize: 10, fontWeight: '700', letterSpacing: 1.5, color: colors.secondary, marginBottom: 2 },
+  headerTitle: { fontSize: 28, fontWeight: '800', color: colors.primary },
+  settingsBtn: {
+    width: 40, height: 40, borderRadius: radius.md,
+    backgroundColor: colors.surfaceContainerHigh,
+    alignItems: 'center', justifyContent: 'center',
   },
-  logoutButton: {
-    fontSize: 16,
-    color: '#0066cc',
-    fontWeight: '600',
-  },
-  scrollView: {
-    flex: 1,
-  },
+  scrollView: { flex: 1 },
   card: {
-    backgroundColor: '#fff',
-    marginHorizontal: 16,
-    marginVertical: 8,
-    padding: 20,
-    borderRadius: 12,
-    alignItems: 'center',
+    backgroundColor: colors.surfaceContainerLowest,
+    marginHorizontal: 16, marginVertical: 8,
+    padding: 20, borderRadius: radius.lg,
+    alignItems: 'center', ...shadow.card,
   },
   avatar: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#0066cc',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 12,
+    width: 84, height: 84, borderRadius: 42,
+    backgroundColor: colors.primary,
+    justifyContent: 'center', alignItems: 'center', marginBottom: 14,
   },
-  avatarText: {
-    color: '#fff',
-    fontSize: 36,
-    fontWeight: 'bold',
-  },
-  userName: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#333',
-    marginBottom: 4,
-  },
-  userEmail: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 8,
-  },
-  memberSince: {
-    fontSize: 12,
-    color: '#999',
-    marginBottom: 12,
-  },
-  bioDisplayRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 4,
-    paddingHorizontal: 8,
-  },
-  bioText: {
-    flex: 1,
-    fontSize: 14,
-    color: '#555',
-    textAlign: 'center',
-    lineHeight: 20,
-  },
-  bioPlaceholder: {
-    flex: 1,
-    fontSize: 14,
-    color: '#bbb',
-    textAlign: 'center',
-    fontStyle: 'italic',
-  },
-  bioEditIcon: {
-    fontSize: 14,
-    marginLeft: 6,
-  },
-  bioEditContainer: {
-    width: '100%',
-    marginTop: 8,
-  },
+  avatarText: { color: colors.onPrimary, fontSize: 34, fontWeight: '800' },
+  userName: { fontSize: 22, fontWeight: '800', color: colors.onSurface, marginBottom: 3 },
+  userEmail: { fontSize: 13, color: colors.onSurfaceVariant, marginBottom: 6 },
+  memberSince: { fontSize: 11, color: colors.outline, marginBottom: 12 },
+  bioDisplayRow: { flexDirection: 'row', alignItems: 'center', marginTop: 4, paddingHorizontal: 8 },
+  bioText: { flex: 1, fontSize: 14, color: colors.onSurfaceVariant, textAlign: 'center', lineHeight: 20 },
+  bioPlaceholder: { flex: 1, fontSize: 14, color: colors.outlineVariant, textAlign: 'center', fontStyle: 'italic' },
+  bioEditIcon: { fontSize: 14, marginLeft: 6 },
+  bioEditContainer: { width: '100%', marginTop: 8 },
   bioInput: {
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 8,
-    padding: 10,
-    fontSize: 14,
-    color: '#333',
-    minHeight: 70,
-    textAlignVertical: 'top',
+    borderWidth: 1, borderColor: colors.outlineVariant,
+    borderRadius: radius.md, padding: 10,
+    fontSize: 14, color: colors.onSurface, minHeight: 70, textAlignVertical: 'top',
   },
-  bioActions: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    marginTop: 8,
-    gap: 8,
-  },
+  bioActions: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: 8, gap: 8 },
   bioCancelBtn: {
-    paddingHorizontal: 16,
-    paddingVertical: 6,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: '#ccc',
+    paddingHorizontal: 16, paddingVertical: 6,
+    borderRadius: radius.md, borderWidth: 1, borderColor: colors.outlineVariant,
   },
-  bioCancelText: {
-    fontSize: 14,
-    color: '#666',
-  },
-  bioSaveBtn: {
-    paddingHorizontal: 16,
-    paddingVertical: 6,
-    borderRadius: 6,
-    backgroundColor: '#0066cc',
-  },
-  bioSaveText: {
-    fontSize: 14,
-    color: '#fff',
-    fontWeight: '600',
-  },
-  sectionHeader: {
-    paddingHorizontal: 16,
-    paddingTop: 20,
-    paddingBottom: 8,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#333',
-  },
-  statsGrid: {
-    flexDirection: 'row',
-    marginHorizontal: 16,
-    marginVertical: 4,
-    gap: 8,
-  },
+  bioCancelText: { fontSize: 14, color: colors.onSurfaceVariant },
+  bioSaveBtn: { paddingHorizontal: 16, paddingVertical: 6, borderRadius: radius.md, backgroundColor: colors.primary },
+  bioSaveText: { fontSize: 14, color: colors.onPrimary, fontWeight: '600' },
+  sectionHeader: { paddingHorizontal: 16, paddingTop: 18, paddingBottom: 8 },
+  sectionTitle: { fontSize: 16, fontWeight: '700', color: colors.onSurface },
+  statsGrid: { flexDirection: 'row', marginHorizontal: 16, marginVertical: 4, gap: 8 },
   statCard: {
-    flex: 1,
-    backgroundColor: '#fff',
-    padding: 20,
-    borderRadius: 12,
-    alignItems: 'center',
+    flex: 1, backgroundColor: colors.surfaceContainerLowest,
+    padding: 18, borderRadius: radius.lg, alignItems: 'center', ...shadow.card,
   },
-  statCardFull: {
-    flex: 1,
-  },
-  statValue: {
-    fontSize: 32,
-    fontWeight: '700',
-    color: '#0066cc',
-    marginBottom: 4,
-  },
-  statLabel: {
-    fontSize: 14,
-    color: '#666',
-    textAlign: 'center',
-  },
-  yearStat: {
-    width: '100%',
-    marginBottom: 16,
-  },
-  yearStatLabel: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 8,
-  },
-  yearStatValue: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#0066cc',
-  },
+  statCardFull: { flex: 1 },
+  statValue: { fontSize: 30, fontWeight: '800', color: colors.primary, marginBottom: 4 },
+  statLabel: { fontSize: 13, color: colors.onSurfaceVariant, textAlign: 'center' },
+  yearStat: { width: '100%', marginBottom: 16 },
+  yearStatLabel: { fontSize: 13, color: colors.onSurfaceVariant, marginBottom: 6 },
+  yearStatValue: { fontSize: 26, fontWeight: '800', color: colors.primary },
   progressBarContainer: {
-    width: '100%',
-    height: 8,
-    backgroundColor: '#e0e0e0',
-    borderRadius: 4,
-    marginTop: 8,
-    overflow: 'hidden',
+    width: '100%', height: 8, backgroundColor: colors.surfaceContainerHigh,
+    borderRadius: 4, marginTop: 8, overflow: 'hidden',
   },
-  progressBar: {
-    height: '100%',
-    backgroundColor: '#10b981',
-    borderRadius: 4,
-  },
-  progressText: {
-    fontSize: 12,
-    color: '#666',
-    marginTop: 4,
-  },
-  aboutText: {
-    fontSize: 15,
-    color: '#666',
-    lineHeight: 22,
-    textAlign: 'center',
-    marginBottom: 16,
-  },
-  versionText: {
-    fontSize: 12,
-    color: '#999',
-    textAlign: 'center',
-  },
+  progressBar: { height: '100%', backgroundColor: colors.primary, borderRadius: 4 },
+  progressText: { fontSize: 12, color: colors.outline, marginTop: 4 },
+  aboutText: { fontSize: 14, color: colors.onSurfaceVariant, lineHeight: 21, textAlign: 'center', marginBottom: 14 },
+  versionText: { fontSize: 11, color: colors.outline, textAlign: 'center' },
 });
 
 export default ProfileScreen;
