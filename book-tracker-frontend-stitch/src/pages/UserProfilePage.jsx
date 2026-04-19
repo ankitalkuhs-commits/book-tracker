@@ -399,7 +399,7 @@ export default function UserProfilePage() {
         <div className="md:col-span-8">
           <VelocityChart activity30={activity30} activity90={activity90} />
         </div>
-      </div>
+      </div>}
 
       {/* ── Library + Notes ─────────────────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
