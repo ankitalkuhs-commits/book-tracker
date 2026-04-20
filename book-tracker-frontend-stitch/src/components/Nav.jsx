@@ -17,6 +17,7 @@ export default function Nav() {
   const navigate = useNavigate()
   const [unread, setUnread] = useState(0)
   const [menuOpen, setMenuOpen] = useState(false)
+  const [avatarOpen, setAvatarOpen] = useState(false)
 
   useEffect(() => {
     const fetch = () =>
@@ -90,7 +91,7 @@ export default function Nav() {
           {/* Avatar + dropdown */}
           <div className="relative">
             <button
-              onClick={() => setMenuOpen((v) => !v)}
+              onClick={() => setAvatarOpen((v) => !v)}
               className="w-9 h-9 rounded-full overflow-hidden border-2 border-primary-fixed-dim hover:scale-95 transition-transform focus:outline-none"
             >
               {user?.profile_picture ? (
@@ -107,11 +108,11 @@ export default function Nav() {
               )}
             </button>
 
-            {menuOpen && (
+            {avatarOpen && (
               <div className="absolute right-0 mt-2 w-48 bg-surface-container-lowest rounded-xl shadow-float border border-outline-variant/15 py-1 font-sans text-sm">
                 <NavLink
                   to="/profile"
-                  onClick={() => setMenuOpen(false)}
+                  onClick={() => setAvatarOpen(false)}
                   className="flex items-center gap-2 px-4 py-2.5 text-on-surface hover:bg-surface-container-low transition-colors"
                 >
                   <span className="material-symbols-outlined text-base">person</span>
@@ -119,7 +120,7 @@ export default function Nav() {
                 </NavLink>
                 <NavLink
                   to="/settings"
-                  onClick={() => setMenuOpen(false)}
+                  onClick={() => setAvatarOpen(false)}
                   className="flex items-center gap-2 px-4 py-2.5 text-on-surface hover:bg-surface-container-low transition-colors"
                 >
                   <span className="material-symbols-outlined text-base">settings</span>
