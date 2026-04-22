@@ -14,6 +14,30 @@ router = APIRouter(prefix="/api/googlebooks", tags=["Google Books"])
 # Google Books API Key - read from environment variable
 GOOGLE_BOOKS_API_KEY = os.getenv("GOOGLE_BOOKS_API_KEY")
 
+
+def normalize_google_cover_url(cover_url: Optional[str]) -> Optional[str]:
+    """
+    Convert old-style books.google.com/books/content?id=XXX URLs to the
+    modern CDN format used by the Books website itself. This format loads
+    reliably from all clients (mobile, web) without browser cookies/auth.
+
+    Also normalizes any stored http:// URL to https://.
+    """
+    if not cover_url:
+        return None
+    # Already in new CDN format
+    if "books.google.com/books/publisher/content/images/frontcover/" in cover_url:
+        return cover_url
+    # Extract id= param from old format and build new CDN URL
+    if "books.google.com/books/content" in cover_url:
+        import re
+        m = re.search(r'[?&]id=([^&]+)', cover_url)
+        if m:
+            google_id = m.group(1)
+            return f"https://books.google.com/books/publisher/content/images/frontcover/{google_id}?fife=w300-h450"
+    # Fallback: just ensure https
+    return cover_url.replace("http://", "https://")
+
 if not GOOGLE_BOOKS_API_KEY:
     print("WARNING: GOOGLE_BOOKS_API_KEY environment variable not set. Google Books API may have rate limits.")
 
@@ -110,15 +134,16 @@ async def search_google_books(query: str, max_results: int = 10):
             if any("magazine" in c.lower() or "periodical" in c.lower() for c in categories):
                 continue
 
-            # ── Cover (prefer high quality) ──────────────────────────
-            cover_url = (
+            # ── Cover URL ────────────────────────────────────────────
+            google_id = item.get("id", "")
+            raw_cover = (
                 image_links.get("large") or
                 image_links.get("medium") or
                 image_links.get("thumbnail") or
                 image_links.get("smallThumbnail")
             )
-            if cover_url:
-                cover_url = cover_url.replace("http://", "https://")
+            cover_url = normalize_google_cover_url(raw_cover if not google_id else
+                f"https://books.google.com/books/content?id={google_id}")
 
             # ── ISBNs ────────────────────────────────────────────────
             isbn_10 = None
@@ -204,18 +229,16 @@ async def get_book_details(google_book_id: str):
             elif identifier.get("type") == "ISBN_13":
                 isbn_13 = identifier.get("identifier")
         
-        # Extract cover image
+        # Extract cover image — use CDN format for reliability
+        google_id_val = item.get("id", "")
         image_links = volume_info.get("imageLinks", {})
-        cover_url = None
-        if image_links:
-            cover_url = (
-                image_links.get("large") or
-                image_links.get("medium") or
-                image_links.get("thumbnail") or
-                image_links.get("smallThumbnail")
-            )
-            if cover_url:
-                cover_url = cover_url.replace("http://", "https://")
+        raw_cover = (
+            image_links.get("large") or image_links.get("medium") or
+            image_links.get("thumbnail") or image_links.get("smallThumbnail")
+        ) if image_links else None
+        cover_url = normalize_google_cover_url(
+            f"https://books.google.com/books/content?id={google_id_val}" if google_id_val else raw_cover
+        )
         
         book_result = GoogleBookResult(
             google_id=item.get("id", ""),

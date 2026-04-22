@@ -12,6 +12,7 @@ from app.models import UserBookProgress
 from app.database import get_db
 from sqlalchemy.orm import Session
 from ..notifications.dispatcher import fire_event, get_follower_ids
+from .googlebooks_router import normalize_google_cover_url
 
 
 router = APIRouter(prefix="/userbooks", tags=["userbooks"])
@@ -263,7 +264,7 @@ def list_userbooks(db: Session = Depends(get_db), current_user = Depends(get_cur
                 "author": book.author,
                 "description": book.description,
                 "total_pages": book.total_pages,
-                "cover_url": book.cover_url,
+                "cover_url": normalize_google_cover_url(book.cover_url),
                 "pages_source": getattr(book, "pages_source", None)
             } if book else None
         })
@@ -357,7 +358,7 @@ def get_user_books(
                 "author": book.author,
                 "description": book.description,
                 "total_pages": book.total_pages,
-                "cover_url": book.cover_url,
+                "cover_url": normalize_google_cover_url(book.cover_url),
                 "page_count": getattr(book, "page_count", None),
             } if book else None
         })
@@ -430,7 +431,7 @@ def get_friends_currently_reading(
                     "id": book.id,
                     "title": book.title,
                     "author": book.author,
-                    "cover_url": book.cover_url,
+                    "cover_url": normalize_google_cover_url(book.cover_url),
                     "total_pages": book.total_pages
                 },
                 "current_page": ub.current_page,
