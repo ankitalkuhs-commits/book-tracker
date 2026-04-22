@@ -5,7 +5,7 @@ from fastapi.security import OAuth2PasswordBearer
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
 from .database import init_db
-from .routers import auth_router, books_router, userbooks_router, notes_router, follow_router, profile_router, googlebooks_router, likes_comments, users_router, admin_router, reading_activity_router, push_router
+from .routers import auth_router, books_router, userbooks_router, notes_router, follow_router, profile_router, googlebooks_router, likes_comments, users_router, admin_router, reading_activity_router, push_router, groups_router
 from .notifications.router import router as notifications_router
 import os
 # ---------------------
@@ -31,24 +31,24 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 # Step 3: Allow CORS (so frontends can talk to it)
 # ---------------------
 # Read comma-separated origins from env var (set this in Render)
+_localhost_origins = [
+    "http://localhost:5173",
+    "http://localhost:5174",
+    "http://localhost:5175",
+    "http://localhost:5176",
+    "http://localhost:5177",
+    "http://127.0.0.1:5173",
+    "http://127.0.0.1:5174",
+    "http://127.0.0.1:5175",
+    "http://127.0.0.1:5176",
+    "http://127.0.0.1:5177",
+]
 cors_env = os.getenv("CORS_ORIGINS", "")
 if cors_env:
-    # split by comma and strip whitespace
-    origins = [o.strip() for o in cors_env.split(",") if o.strip()]
+    _env_origins = [o.strip() for o in cors_env.split(",") if o.strip()]
+    origins = list(dict.fromkeys(_env_origins + _localhost_origins))  # env first, no dupes
 else:
-    # fallback during local dev
-    origins = [
-        "http://localhost:5173",
-        "http://localhost:5174",
-        "http://localhost:5175",
-        "http://localhost:5176",
-        "http://localhost:5177",
-        "http://127.0.0.1:5173",
-        "http://127.0.0.1:5174",
-        "http://127.0.0.1:5175",
-        "http://127.0.0.1:5176",
-        "http://127.0.0.1:5177",
-    ]
+    origins = _localhost_origins
 
 app.add_middleware(
     CORSMiddleware,
@@ -73,6 +73,7 @@ app.include_router(users_router.router)
 app.include_router(admin_router.router)
 app.include_router(reading_activity_router.router)
 app.include_router(push_router.router)
+app.include_router(groups_router.router)
 app.include_router(notifications_router)
 
 # ---------------------
@@ -88,39 +89,9 @@ app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 # ---------------------
 @app.on_event("startup")
 async def startup_event():
-    """Initialize database tables on application startup"""
-    # Start the daily inactivity reminder scheduler
     from .notifications.scheduler import start_scheduler
     start_scheduler()
-    try:
-        from sqlmodel import SQLModel
-        from .database import engine
-        from . import models  # Import models to register them
-        from sqlalchemy import text
-
-        print("🔄 Attempting to create database tables...")
-        SQLModel.metadata.create_all(engine)
-        print("✅ Database tables initialized successfully!")
-    except Exception as e:
-        print(f"⚠️ Warning: Could not create tables (they may already exist): {e}")
-        print("⚠️ Application will continue - tables should exist from previous deployment")
-        # Don't crash the app - tables likely already exist
-
-    # Run column migrations that create_all won't handle (adding columns to existing tables)
-    try:
-        from .database import engine
-        from sqlalchemy import text
-        with engine.connect() as conn:
-            conn.execute(text("ALTER TABLE note ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP"))
-            conn.commit()
-            print("✅ note.updated_at column ensured.")
-    except Exception as e:
-        # SQLite doesn't support IF NOT EXISTS on ALTER TABLE — silently skip if column exists
-        err = str(e).lower()
-        if "duplicate column" in err or "already exists" in err:
-            print("ℹ️ note.updated_at already exists, skipping.")
-        else:
-            print(f"⚠️ note.updated_at migration skipped: {e}")
+    print("✅ Application started.")
 
 @app.on_event("shutdown")
 async def shutdown_event():

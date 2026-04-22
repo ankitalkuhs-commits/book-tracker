@@ -110,8 +110,56 @@ When user says **"wrap up"**, Claude automatically:
 - Mobile: React Native (Expo SDK) — uses EAS builds, NOT Expo Go
 - Auth: Google OAuth + JWT tokens
 
+**Recently Added/Fixed (Stitch branch — April 2026):**
+- Added: Group activity feed backend table + events (member_joined, book_started, book_finished, milestone_reached, note_posted, group_book_changed)
+- Added: Edit/delete own posts in HomePage feed (inline edit + ··· menu)
+- Added: Edit notes in ProfilePage (text + quote inline editing)
+- Added: Notifications page navigation — clicking a notification routes to relevant page, optimistic read mark
+- Added: Share button on UserProfilePage notes (Web Share API + clipboard fallback)
+- Added: Push permission banner in NotificationsPage with FOMO copy
+- Added: Notification badge auto-refresh every 60s in Nav
+- Added: Privacy settings (#7) — `is_private_profile` field on User model + SettingsPage toggle + enforcement in GET /profile/{id} — locked view in UserProfilePage for non-followers
+- **MIGRATION NEEDED:** Run `context/supabase_migration.sql` in Supabase SQL editor (adds `group_activity` table + `is_private_profile` column)
+- Fixed: #9 Group activity feed pagination — `visibleActivity` (8 per page) + "Load more" button in GroupDetailPage (posts already had it)
+- Fixed: #11 WeeklyPulseChart "m" suffix — all active bars now show label with "m" suffix, not just today's bar
+- Fixed: #12 Search tab clear — switching tabs now clears query + both result sets + searched state
+- Confirmed done: #8 notification prefs (SettingsPage), #10 admin user search/sort (AdminPage), #13 profile picture upload (ProfilePage)
+
+**Phase 2 — Mobile rebuild (April 2026):**
+- Added: `src/theme.js` — Stitch color palette (primary #00464a, surface #fbf9f4, etc.) for React Native
+- Updated: `src/services/api.js` — switched to `https://book-tracker-stitch.onrender.com`, token key `bt_token`, added `notificationsAPI`, `groupsAPI`, `profileAPI`
+- Added: `NotificationsScreen.js` — list + mark-all-read, event type icons, unread highlight
+- Added: `SettingsScreen.js` — profile edit, privacy toggle, notification prefs per-type, logout, delete account
+- Added: `GroupsScreen.js` — My Circles + Discover tabs, create group modal, join by invite code modal
+- Updated: `App.js` — 5 tabs (Home, Library, Circles, Updates, Profile), Stitch tab bar colors, unread badge on Updates tab (polled every 60s), Settings wired via ProfileStack, old backend URLs removed
+
+- Restyled: FeedScreen, LibraryScreen, ProfileScreen, SearchScreen — all use theme.js tokens (teal primary, surface backgrounds, rounded cards)
+- ProfileScreen: header now shows Settings gear icon → navigates to SettingsScreen via ProfileStack
+- Added: GroupDetailScreen — leaderboard, activity feed (paginated), group posts (paginated + composer modal), members list; wired into GroupsStack
+
+**Recently Fixed (April 19, 2026 — stitch-experiment session):**
+- **Perf:** Eliminated ALL remaining N+1 queries across the entire backend:
+  - `groups_router.py`: invites/pending loop, get_my_groups, discover, get_members, get_pending — all now use batch IN() queries instead of per-row db.get()
+  - `books_router.py`: recommendations endpoint — 3 loops fixed (friends_reading, friends_loved, author_affinity)
+  - `likes_comments.py`: GET /notes/{id}/comments — batch user lookup (was missed in first audit pass)
+- **Fix:** Book cover in feed posts now shows as small thumbnail (48×72px mobile / 80×120px desktop) instead of full-width portrait — `PostCard` changed from `flex-col md:flex-row` to always `flex-row`
+- **Fix:** `post.image_url` (used by editorial bot) now constrained to `max-w-[160px] max-h-48` instead of `w-full max-h-64` — prevents bot book covers from going full-width
+- **Fix:** Post composer book picker now loads ALL library books (was filtered to `status=reading` only)
+- **Fix:** Group invitation bug — `GET /{group_id}/pending` was returning curator-invited members alongside self-join requests; now filters `invited_by IS NULL` so only join requests appear for curator approval
+- **Fix:** JSX syntax error in `UserProfilePage.jsx` line 402 — missing closing `}` for `{!profile.locked && <div>}` conditional caused Vercel build to fail
+- **Feat:** Loading states added across web + mobile:
+  - Leaderboard period switch: skeleton rows while loading
+  - Approve/reject/remove member: spinner + disabled per user
+  - Remove book from library: "Removing..." disabled state
+  - Mobile bio save: ActivityIndicator spinner on Save button
+- **Feat:** Recommendation confirmation modal — clicking a book in "For You" now opens bottom sheet with cover, title, author, reason; user picks "Want to Read" or "Start Reading Now"; spinner → success → auto-dismiss
+- **CRITICAL PATTERN:** `GET /{group_id}/pending` = self-join requests (invited_by IS NULL). `GET /invites/pending` = curator-sent invites for the current user. Never mix them.
+- **CRITICAL PATTERN:** Never push `app/models.py` changes without confirming Supabase migration has been run. New model fields with no matching DB column will crash the entire backend (every User query fails). Run `context/supabase_migration.sql` in Supabase SQL Editor BEFORE or simultaneously with the push.
+- **GOTCHA — Vercel deployment:** `book-tracker-stitch` Vercel project production branch is set to `master`. Pushing to `stitch-experiment` creates a Preview deployment only. To update `book-tracker-stitch.vercel.app`, go to Overview → Active Branches → `...` next to `stitch-experiment` → Promote to Production. (Or change production branch in Settings → General.)
+
 **Next Priorities:**
-- (User updates this as needed)
+- EAS build + Play Store release (Phase 3)
+- Test end-to-end on device against Stitch backend (`https://book-tracker-stitch.onrender.com`)
 
 ---
 

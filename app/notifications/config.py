@@ -31,6 +31,13 @@ NOTIFICATION_EVENTS: dict[str, dict] = {
         "daily_cap": False,
     },
 
+    "post_commented": {
+        "title": "{actor} commented on your post 💬",
+        "body": "{actor}: {preview}",
+        "is_active": True,
+        "daily_cap": False,
+    },
+
     # ── Reading activity events ───────────────────────────────────────────────
 
     "book_completed": {
@@ -70,6 +77,20 @@ NOTIFICATION_EVENTS: dict[str, dict] = {
     #     "is_active": True,
     #     "daily_cap": False,
     # },
+
+    "group_invite": {
+        "title": "You're invited to a Circle 📖",
+        "body": "{actor} invited you to join {group_name}",
+        "is_active": True,
+        "daily_cap": False,
+    },
+
+    "group_join_request": {
+        "title": "New join request 🙋",
+        "body": "{actor} wants to join {group_name}",
+        "is_active": True,
+        "daily_cap": False,
+    },
 
     # "reading_milestone": {
     #     "title": "{actor} hit a reading milestone 🏆",

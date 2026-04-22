@@ -31,7 +31,11 @@ class User(SQLModel, table=True):
     # Use the same column name as existing DB:
     password_hash: str = Field(nullable=False)
     bio: Optional[str] = None
+    profile_picture: Optional[str] = None
+    yearly_goal: Optional[int] = None          # target books per year
     is_admin: bool = Field(default=False)
+    is_private_profile: bool = Field(default=False)
+    notification_prefs: Optional[str] = Field(default=None)  # JSON: {"new_follower": true, ...}
     created_at: datetime = Field(default_factory=datetime.utcnow)
     last_active: Optional[datetime] = None
     deletion_requested_at: Optional[datetime] = None
@@ -56,6 +60,7 @@ class Book(SQLModel, table=True):
     published_date: Optional[str] = None
     format: Optional[str] = None
     pages_source: Optional[str] = None
+    google_books_id: Optional[str] = None
     created_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
 
     # Relationships
@@ -67,7 +72,7 @@ class UserBook(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     user_id: int = Field(foreign_key="user.id", index=True)
     book_id: int = Field(foreign_key="book.id", index=True)
-    status: str = Field(default="to-read")  # 'to-read' | 'reading' | 'finished'
+    status: str = Field(default="to-read", index=True)  # 'to-read' | 'reading' | 'finished'
     current_page: Optional[int] = None
     rating: Optional[int] = None
     private_notes: Optional[str] = None
@@ -94,12 +99,12 @@ class Note(SQLModel, table=True):
     user_id: int = Field(foreign_key="user.id", index=True)
     text: Optional[str] = None
     emotion: Optional[str] = None
-    page_number: Optional[int] = None  # New: track which page the note is about
-    chapter: Optional[str] = None  # New: track which chapter the note is about
-    image_url: Optional[str] = None  # New: store uploaded image URL
-    quote: Optional[str] = None  # New: store book quotes
-    is_public: bool = Field(default=True)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    page_number: Optional[int] = None
+    chapter: Optional[str] = None
+    image_url: Optional[str] = None
+    quote: Optional[str] = None
+    is_public: bool = Field(default=True, index=True)
+    created_at: datetime = Field(default_factory=datetime.utcnow, index=True)
     updated_at: Optional[datetime] = None
 
     # Relationships
@@ -172,11 +177,11 @@ class ReadingActivity(SQLModel, table=True):
 
     id: Optional[int] = Field(default=None, primary_key=True)
 
-    user_id: int = Field(foreign_key="user.id")
+    user_id: int = Field(foreign_key="user.id", index=True)
     userbook_id: int = Field(foreign_key="userbook.id", index=True)
 
     # date used for stats queries
-    date: datetime = Field(default_factory=datetime.utcnow)
+    date: datetime = Field(default_factory=datetime.utcnow, index=True)
 
     pages_read: Optional[int] = Field(default=0)
     current_page: Optional[int] = None
@@ -188,3 +193,67 @@ from sqlmodel import SQLModel
 
 class UserBookProgress(SQLModel):
     current_page : Optional[int] = 0
+
+
+# ─── Groups ───────────────────────────────────────────────────────────────────
+
+import secrets
+
+class ReadingGroup(SQLModel, table=True):
+    """A reading group / literary circle."""
+    __tablename__ = "reading_group"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    name: str = Field(nullable=False)
+    description: Optional[str] = None
+    is_private: bool = Field(default=False)
+    invite_code: str = Field(default_factory=lambda: secrets.token_urlsafe(8))
+    cover_preset: str = Field(default="teal")   # maps to a CSS gradient preset
+    created_by: int = Field(foreign_key="user.id")
+    # Collective reading goal
+    goal_pages: Optional[int] = None
+    goal_period: Optional[str] = None           # 'monthly' | 'yearly'
+    goal_start_date: Optional[datetime] = None
+    # Current group book
+    current_book_id: Optional[int] = Field(default=None, foreign_key="book.id")
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class GroupMember(SQLModel, table=True):
+    """Membership record — also used for pending invites."""
+    __tablename__ = "group_member"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    group_id: int = Field(foreign_key="reading_group.id", index=True)
+    user_id: int = Field(foreign_key="user.id", index=True)
+    role: str = Field(default="member")         # 'curator' | 'member'
+    status: str = Field(default="active")       # 'active' | 'pending'
+    invited_by: Optional[int] = Field(default=None, foreign_key="user.id")
+    joined_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class GroupPost(SQLModel, table=True):
+    """A post scoped to a reading group."""
+    __tablename__ = "group_post"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    group_id: int = Field(foreign_key="reading_group.id", index=True)
+    user_id: int = Field(foreign_key="user.id", index=True)
+    text: str
+    quote: Optional[str] = None
+    userbook_id: Optional[int] = Field(default=None, foreign_key="userbook.id")
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class GroupActivity(SQLModel, table=True):
+    """Activity feed events scoped to a reading group."""
+    __tablename__ = "group_activity"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    group_id: int = Field(foreign_key="reading_group.id", index=True)
+    user_id: int = Field(foreign_key="user.id", index=True)
+    # event_type: member_joined | book_started | book_finished |
+    #              milestone_reached | note_posted | group_book_changed
+    event_type: str = Field(nullable=False)
+    payload: Optional[str] = Field(default=None)   # JSON string
+    created_at: datetime = Field(default_factory=datetime.utcnow)

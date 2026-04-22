@@ -2,11 +2,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 
-// Your backend URL
-// For development: Use your deployed backend OR local IP
-const API_BASE_URL = 'https://book-tracker-backend-0hiz.onrender.com';
-// For testing locally: Use your PC's local IP
-// const API_BASE_URL = 'http://192.168.1.1:8000'; // Local backend for testing
+// Stitch backend (Phase 2)
+const API_BASE_URL = 'https://book-tracker-stitch.onrender.com';
+// For local dev: 'http://<your-ip>:8000'
 
 // Create axios instance
 const api = axios.create({
@@ -20,7 +18,7 @@ const api = axios.create({
 // Automatically add auth token to all requests
 api.interceptors.request.use(
   async (config) => {
-    const token = await AsyncStorage.getItem('token');
+    const token = await AsyncStorage.getItem('bt_token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -37,7 +35,7 @@ api.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401) {
       // Token expired or invalid - clear it
-      AsyncStorage.removeItem('token');
+      AsyncStorage.removeItem('bt_token');
     }
     return Promise.reject(error);
   }
@@ -53,22 +51,22 @@ export const authAPI = {
   
   // Save token after login
   saveToken: async (token) => {
-    await AsyncStorage.setItem('token', token);
+    await AsyncStorage.setItem('bt_token', token);
   },
   
   // Get current token
   getToken: async () => {
-    return await AsyncStorage.getItem('token');
+    return await AsyncStorage.getItem('bt_token');
   },
   
   // Logout
   logout: async () => {
-    await AsyncStorage.removeItem('token');
+    await AsyncStorage.removeItem('bt_token');
   },
   
   // Check if user is logged in
   isLoggedIn: async () => {
-    const token = await AsyncStorage.getItem('token');
+    const token = await AsyncStorage.getItem('bt_token');
     return !!token;
   },
 };
@@ -288,6 +286,135 @@ export const userAPI = {
   // Register push notification token
   registerPushToken: async (pushToken) => {
     const response = await api.post('/users/push-token', { token: pushToken });
+    return response.data;
+  },
+};
+
+// Notifications API
+export const notificationsAPI = {
+  getUnreadCount: async () => {
+    const response = await api.get('/notifications/unread-count');
+    return response.data;
+  },
+
+  getHistory: async () => {
+    const response = await api.get('/notifications/history');
+    return response.data;
+  },
+
+  markAllRead: async () => {
+    const response = await api.post('/notifications/mark-read');
+    return response.data;
+  },
+
+  getPrefs: async () => {
+    const response = await api.get('/notifications/prefs');
+    return response.data;
+  },
+
+  updatePrefs: async (prefs) => {
+    const response = await api.patch('/notifications/prefs', prefs);
+    return response.data;
+  },
+};
+
+// Groups API
+export const groupsAPI = {
+  getMyGroups: async () => {
+    const response = await api.get('/groups/my');
+    return response.data;
+  },
+
+  discoverGroups: async (q = '') => {
+    const url = q ? `/groups/discover?q=${encodeURIComponent(q)}` : '/groups/discover';
+    const response = await api.get(url);
+    return response.data;
+  },
+
+  getGroup: async (id) => {
+    const response = await api.get(`/groups/${id}`);
+    return response.data;
+  },
+
+  createGroup: async (data) => {
+    const response = await api.post('/groups/', data);
+    return response.data;
+  },
+
+  joinGroup: async (id) => {
+    const response = await api.post(`/groups/${id}/join`);
+    return response.data;
+  },
+
+  joinByInviteCode: async (code) => {
+    const response = await api.post(`/groups/join/${code}`);
+    return response.data;
+  },
+
+  leaveGroup: async (id) => {
+    const response = await api.delete(`/groups/${id}/leave`);
+    return response.data;
+  },
+
+  getGroupPosts: async (id) => {
+    const response = await api.get(`/groups/${id}/posts`);
+    return response.data;
+  },
+
+  createGroupPost: async (id, data) => {
+    const response = await api.post(`/groups/${id}/posts`, data);
+    return response.data;
+  },
+
+  getGroupMembers: async (id) => {
+    const response = await api.get(`/groups/${id}/members`);
+    return response.data;
+  },
+
+  getLeaderboard: async (id, period = 'monthly') => {
+    const response = await api.get(`/groups/${id}/leaderboard?period=${period}`);
+    return response.data;
+  },
+
+  getGroupActivity: async (id) => {
+    const response = await api.get(`/groups/${id}/activity`);
+    return response.data;
+  },
+
+  deleteGroupPost: async (groupId, postId) => {
+    const response = await api.delete(`/groups/${groupId}/posts/${postId}`);
+    return response.data;
+  },
+
+  getMyInvites: async () => {
+    const response = await api.get('/groups/invites/pending');
+    return response.data;
+  },
+};
+
+// Profile / Settings API
+export const profileAPI = {
+  getMe: async () => {
+    const response = await api.get('/profile/me');
+    return response.data;
+  },
+
+  updateMe: async (data) => {
+    const response = await api.put('/profile/me', data);
+    return response.data;
+  },
+
+  uploadPicture: async (uri) => {
+    const formData = new FormData();
+    formData.append('file', { uri, type: 'image/jpeg', name: 'photo.jpg' });
+    const response = await api.post('/profile/me/picture', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
+  },
+
+  deleteAccount: async () => {
+    const response = await api.post('/auth/delete-account/me');
     return response.data;
   },
 };

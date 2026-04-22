@@ -5,7 +5,8 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
 import { Ionicons } from '@expo/vector-icons';
-import { authAPI } from './src/services/api';
+import { authAPI, notificationsAPI } from './src/services/api';
+import { colors } from './src/theme';
 import { registerExpoPushToken, deregisterPushToken } from './src/services/NotificationService';
 import LoginScreen from './src/screens/LoginScreen';
 import LibraryScreen from './src/screens/LibraryScreen';
@@ -14,6 +15,10 @@ import ProfileScreen from './src/screens/ProfileScreen';
 import UserProfileScreen from './src/screens/UserProfileScreen';
 import SearchScreen from './src/screens/SearchScreen';
 import BookDetailScreen from './src/screens/BookDetailScreen';
+import NotificationsScreen from './src/screens/NotificationsScreen';
+import SettingsScreen from './src/screens/SettingsScreen';
+import GroupsScreen from './src/screens/GroupsScreen';
+import GroupDetailScreen from './src/screens/GroupDetailScreen';
 
 export const PreloadContext = createContext(null);
 
@@ -66,22 +71,58 @@ function HomeStack() {
   );
 }
 
+// ─── Groups Stack ─────────────────────────────────────────────────────────────
+function GroupsStack() {
+  return (
+    <Stack.Navigator>
+      <Stack.Screen
+        name="GroupsMain"
+        component={GroupsScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="GroupDetail"
+        component={GroupDetailScreen}
+        options={{ headerShown: false }}
+      />
+    </Stack.Navigator>
+  );
+}
+
+// ─── Profile Stack (Profile + Settings) ───────────────────────────────────────
+function ProfileStack({ onLogout }) {
+  return (
+    <Stack.Navigator>
+      <Stack.Screen name="ProfileMain" options={{ headerShown: false }}>
+        {(props) => <ProfileScreen {...props} onLogout={onLogout} />}
+      </Stack.Screen>
+      <Stack.Screen
+        name="Settings"
+        options={{ title: 'Settings', headerBackTitle: 'Back' }}
+      >
+        {(props) => <SettingsScreen {...props} onLogout={onLogout} />}
+      </Stack.Screen>
+    </Stack.Navigator>
+  );
+}
+
 // ─── Main Tabs ────────────────────────────────────────────────────────────────
-function MainTabs({ onLogout }) {
+function MainTabs({ onLogout, unreadCount }) {
   return (
     <Tab.Navigator
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: '#0066cc',
-        tabBarInactiveTintColor: '#666',
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.onSurfaceVariant,
         tabBarStyle: {
-          backgroundColor: '#fff',
+          backgroundColor: colors.surfaceContainerLowest,
           borderTopWidth: 1,
-          borderTopColor: '#e0e0e0',
+          borderTopColor: colors.outlineVariant + '60',
+          elevation: 0,
         },
         tabBarLabelStyle: {
-          fontSize: 12,
-          fontWeight: '500',
+          fontSize: 11,
+          fontWeight: '600',
         },
       }}
     >
@@ -90,12 +131,8 @@ function MainTabs({ onLogout }) {
         component={HomeStack}
         options={{
           tabBarLabel: 'Home',
-          tabBarIcon: ({ color, size, focused }) => (
-            <Ionicons
-              name={focused ? 'home' : 'home-outline'}
-              size={size}
-              color={focused ? color : '#666'}
-            />
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name={focused ? 'home' : 'home-outline'} size={22} color={color} />
           ),
         }}
       />
@@ -104,12 +141,30 @@ function MainTabs({ onLogout }) {
         component={LibraryStack}
         options={{
           tabBarLabel: 'Library',
-          tabBarIcon: ({ color, size, focused }) => (
-            <Ionicons
-              name={focused ? 'library' : 'library-outline'}
-              size={size}
-              color={focused ? color : '#666'}
-            />
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name={focused ? 'library' : 'library-outline'} size={22} color={color} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="Groups"
+        component={GroupsStack}
+        options={{
+          tabBarLabel: 'Circles',
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name={focused ? 'people' : 'people-outline'} size={22} color={color} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="Notifications"
+        component={NotificationsScreen}
+        options={{
+          tabBarLabel: 'Updates',
+          tabBarBadge: unreadCount > 0 ? (unreadCount > 9 ? '9+' : unreadCount) : undefined,
+          tabBarBadgeStyle: { backgroundColor: colors.secondary, fontSize: 10 },
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name={focused ? 'notifications' : 'notifications-outline'} size={22} color={color} />
           ),
         }}
       />
@@ -117,16 +172,12 @@ function MainTabs({ onLogout }) {
         name="Profile"
         options={{
           tabBarLabel: 'Profile',
-          tabBarIcon: ({ color, size, focused }) => (
-            <Ionicons
-              name={focused ? 'person' : 'person-outline'}
-              size={size}
-              color={focused ? color : '#666'}
-            />
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name={focused ? 'person' : 'person-outline'} size={22} color={color} />
           ),
         }}
       >
-        {(props) => <ProfileScreen {...props} onLogout={onLogout} />}
+        {(props) => <ProfileStack {...props} onLogout={onLogout} />}
       </Tab.Screen>
     </Tab.Navigator>
   );
@@ -137,6 +188,7 @@ export default function App() {
   const [isLoggedIn, setIsLoggedIn]       = useState(false);
   const [loading, setLoading]             = useState(true);
   const [error, setError]                 = useState(null);
+  const [unreadCount, setUnreadCount]     = useState(0);
   const [slideIndex, setSlideIndex]       = useState(0);
   const [preloadedFeed, setPreloadedFeed] = useState(null);
   const [preloadedData, setPreloadedData] = useState({ library: null, profile: null, feed: null });
@@ -215,6 +267,20 @@ export default function App() {
     return () => clearTimeout(timeout);
   }, [loading]);
 
+  // ── Notification badge polling (60s) ──────────────────────────────────────
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    const poll = async () => {
+      try {
+        const data = await notificationsAPI.getUnreadCount();
+        setUnreadCount(data?.count ?? 0);
+      } catch {}
+    };
+    poll();
+    const interval = setInterval(poll, 60000);
+    return () => clearInterval(interval);
+  }, [isLoggedIn]);
+
   // ── Post-login push retries ────────────────────────────────────────────────
   // FIX: authTokenRef is populated before setIsLoggedIn(true) in both login
   // paths, so these retries are guaranteed to find a valid token.
@@ -256,19 +322,21 @@ export default function App() {
           'Content-Type': 'application/json',
         };
 
+        const BASE = 'https://book-tracker-stitch.onrender.com';
         const [library, profile, feed] = await Promise.all([
-          fetch('https://book-tracker-backend-0hiz.onrender.com/userbooks/', { headers })
-            .then((res) => res.json()).catch(() => null),
-          fetch('https://book-tracker-backend-0hiz.onrender.com/profile/me', { headers })
-            .then((res) => res.json()).catch(() => null),
-          fetch('https://book-tracker-backend-0hiz.onrender.com/notes/feed?limit=50', { headers })
-            .then((res) => res.json()).catch(() => null),
+          fetch(`${BASE}/userbooks/`, { headers }).then((res) => res.json()).catch(() => null),
+          fetch(`${BASE}/profile/me`, { headers }).then((res) => res.json()).catch(() => null),
+          fetch(`${BASE}/notes/feed?limit=50`, { headers }).then((res) => res.json()).catch(() => null),
         ]);
 
         setPreloadedData({ library, profile, feed });
+
+        // Prime the notification badge
+        fetch(`${BASE}/notifications/unread-count`, { headers })
+          .then(r => r.json()).then(d => setUnreadCount(d?.count ?? 0)).catch(() => {});
       } else {
         const feedData = await fetch(
-          'https://book-tracker-backend-0hiz.onrender.com/notes/feed?limit=10'
+          'https://book-tracker-stitch.onrender.com/notes/feed?limit=10'
         ).then((res) => res.json()).catch(() => []);
         setPreloadedFeed(feedData);
       }
@@ -364,7 +432,7 @@ export default function App() {
       <View style={styles.container}>
         {isLoggedIn ? (
           <PreloadContext.Provider value={preloadedData}>
-            <MainTabs onLogout={handleLogout} />
+            <MainTabs onLogout={handleLogout} unreadCount={unreadCount} />
           </PreloadContext.Provider>
         ) : (
           <LoginScreen onLoginSuccess={handleLoginSuccess} preloadedFeed={preloadedFeed} />

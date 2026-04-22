@@ -5,13 +5,14 @@ from sqlmodel import Session, select
 from ..deps import get_db, get_current_user
 from .. import crud, models
 from typing import List
-from ..models import UserBook, Book   # adjust import path if different
+from ..models import UserBook, Book, Follow   # adjust import path if different
 from datetime import datetime
 from pydantic import BaseModel
 from app.models import UserBookProgress
 from app.database import get_db
 from sqlalchemy.orm import Session
 from ..notifications.dispatcher import fire_event, get_follower_ids
+from ..group_activity import fire_group_activity_for_user
 from .googlebooks_router import normalize_google_cover_url
 
 
@@ -23,9 +24,9 @@ class UpdatePagePayload(BaseModel):
 
 
 @router.put("/{userbook_id}/progress")
-def update_progress(userbook_id: int, data: UserBookProgress, db: Session = Depends(get_db)):
+def update_progress(userbook_id: int, data: UserBookProgress, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     userbook = db.get(UserBook, userbook_id)
-    if not userbook:
+    if not userbook or userbook.user_id != current_user.id:
         raise HTTPException(status_code=404, detail="UserBook not found")
 
     # Track previous page for activity logging
@@ -97,7 +98,7 @@ def update_progress(userbook_id: int, data: UserBookProgress, db: Session = Depe
     db.commit()
     db.refresh(userbook)
 
-    # Fire book_completed if status transitioned to 'finished' via progress update
+    # Fire book_completed / milestone events
     if _fire_completed:
         book_title = book.title if book else "a book"
         actor = db.get(models.User, userbook.user_id)
@@ -111,18 +112,36 @@ def update_progress(userbook_id: int, data: UserBookProgress, db: Session = Depe
                 recipient_ids=follower_ids,
                 extra={"book_title": book_title},
             )
+        fire_group_activity_for_user(
+            db, userbook.user_id, "book_finished",
+            {"book_title": book_title, "book_id": userbook.book_id},
+        )
+    elif total_pages and new_page > old_page:
+        # Check if user crossed a 25/50/75% milestone
+        book_title = book.title if book else "a book"
+        MILESTONES = [25, 50, 75]
+        old_pct = int((old_page / total_pages) * 100)
+        new_pct = int((new_page / total_pages) * 100)
+        for m in MILESTONES:
+            if old_pct < m <= new_pct:
+                fire_group_activity_for_user(
+                    db, userbook.user_id, "milestone_reached",
+                    {"book_title": book_title, "book_id": userbook.book_id,
+                     "pct": m, "current_page": new_page, "total_pages": total_pages},
+                )
+                break  # only fire the highest crossed milestone
 
     return userbook
 
 @router.post("/{userbook_id}/finish", status_code=200)
-def mark_userbook_finished(userbook_id: int, db: Session = Depends(get_db)):
+def mark_userbook_finished(userbook_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     """
     Mark a user's book as finished.
     If the Book has total_pages set, set userbook.current_page to total_pages.
     Always set status='finished' and update updated_at.
     """
     ub = db.get(UserBook, userbook_id)
-    if not ub:
+    if not ub or ub.user_id != current_user.id:
         raise HTTPException(status_code=404, detail="UserBook not found")
 
     # Try to fetch the book to read total_pages (may be None)
@@ -155,6 +174,10 @@ def mark_userbook_finished(userbook_id: int, db: Session = Depends(get_db)):
             recipient_ids=follower_ids,
             extra={"book_title": book_title},
         )
+    fire_group_activity_for_user(
+        db, ub.user_id, "book_finished",
+        {"book_title": book_title, "book_id": ub.book_id},
+    )
 
     return {"ok": True, "userbook": ub}
 
@@ -232,17 +255,27 @@ def add_userbook(payload: dict, db: Session = Depends(get_db), current_user: mod
 
 
 @router.get("/", response_model=List[dict])
-def list_userbooks(db: Session = Depends(get_db), current_user = Depends(get_current_user)):
+def list_userbooks(
+    status: Optional[str] = None,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user),
+):
     # fetch userbooks for current user, most recently updated/added first
+    q = select(UserBook).where(UserBook.user_id == current_user.id)
+    if status:
+        q = q.where(UserBook.status == status)
     userbooks = db.exec(
-        select(UserBook)
-        .where(UserBook.user_id == current_user.id)
-        .order_by(UserBook.updated_at.desc().nulls_last(), UserBook.created_at.desc())
+        q.order_by(UserBook.updated_at.desc().nulls_last(), UserBook.created_at.desc())
     ).all()
+
+    book_ids = [ub.book_id for ub in userbooks if ub.book_id]
+    books_map = {}
+    if book_ids:
+        books_map = {b.id: b for b in db.exec(select(Book).where(Book.id.in_(book_ids))).all()}
 
     results = []
     for ub in userbooks:
-        book = db.get(Book, ub.book_id)
+        book = books_map.get(ub.book_id)
         results.append({
             "id": ub.id,
             "user_id": ub.user_id,
@@ -257,7 +290,6 @@ def list_userbooks(db: Session = Depends(get_db), current_user = Depends(get_cur
             "loaned_to": ub.loaned_to,
             "created_at": ub.created_at,
             "updated_at": ub.updated_at,
-            # embed book details (or null)
             "book": {
                 "id": book.id,
                 "title": book.title,
@@ -285,10 +317,12 @@ def patch_userbook(userbook_id: int, payload: dict, db: Session = Depends(get_db
     old_status = ub.status
     ub = crud.update_userbook(db, ub, **update_fields)
 
+    new_status = update_fields.get("status")
+    book = db.get(Book, ub.book_id) if ub.book_id else None
+    book_title = book.title if book else "a book"
+
     # Notify followers when status manually changed to 'finished'
-    if update_fields.get("status") == "finished" and old_status != "finished":
-        book = db.get(Book, ub.book_id) if ub.book_id else None
-        book_title = book.title if book else "a book"
+    if new_status == "finished" and old_status != "finished":
         follower_ids = get_follower_ids(db, current_user.id)
         actor_name = current_user.name or current_user.username or "Someone"
         fire_event(
@@ -298,6 +332,15 @@ def patch_userbook(userbook_id: int, payload: dict, db: Session = Depends(get_db
             actor_name=actor_name,
             recipient_ids=follower_ids,
             extra={"book_title": book_title},
+        )
+        fire_group_activity_for_user(
+            db, current_user.id, "book_finished",
+            {"book_title": book_title, "book_id": ub.book_id},
+        )
+    elif new_status == "reading" and old_status != "reading":
+        fire_group_activity_for_user(
+            db, current_user.id, "book_started",
+            {"book_title": book_title, "book_id": ub.book_id},
         )
 
     return {"status": "ok", "userbook": ub}
@@ -331,6 +374,14 @@ def get_user_books(
     user = db.get(models.User, user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
+
+    # Enforce private profile — non-followers cannot see books
+    if getattr(user, "is_private_profile", False) and current_user.id != user_id:
+        is_following = bool(db.exec(
+            select(Follow).where(Follow.follower_id == current_user.id, Follow.followed_id == user_id)
+        ).first())
+        if not is_following:
+            raise HTTPException(status_code=403, detail="This profile is private")
     
     # Get user's books, most recently updated/added first
     userbooks = db.exec(
@@ -339,9 +390,14 @@ def get_user_books(
         .order_by(UserBook.updated_at.desc().nulls_last(), UserBook.created_at.desc())
     ).all()
     
+    book_ids = [ub.book_id for ub in userbooks if ub.book_id]
+    books_map = {}
+    if book_ids:
+        books_map = {b.id: b for b in db.exec(select(Book).where(Book.id.in_(book_ids))).all()}
+
     results = []
     for ub in userbooks:
-        book = db.get(Book, ub.book_id)
+        book = books_map.get(ub.book_id)
         results.append({
             "id": ub.id,
             "user_id": ub.user_id,
@@ -351,7 +407,6 @@ def get_user_books(
             "rating": ub.rating,
             "created_at": ub.created_at,
             "updated_at": ub.updated_at,
-            # embed book details (or null)
             "book": {
                 "id": book.id,
                 "title": book.title,
@@ -413,11 +468,15 @@ def get_friends_currently_reading(
         .limit(limit)
     ).all()
     
+    user_ids = list({ub.user_id for ub in userbooks})
+    book_ids = list({ub.book_id for ub in userbooks if ub.book_id})
+    users_map = {u.id: u for u in db.exec(select(models.User).where(models.User.id.in_(user_ids))).all()} if user_ids else {}
+    books_map = {b.id: b for b in db.exec(select(Book).where(Book.id.in_(book_ids))).all()} if book_ids else {}
+
     results = []
     for ub in userbooks:
-        user = db.get(models.User, ub.user_id)
-        book = db.get(Book, ub.book_id)
-        
+        user = users_map.get(ub.user_id)
+        book = books_map.get(ub.book_id)
         if user and book:
             results.append({
                 "id": ub.id,
@@ -437,5 +496,5 @@ def get_friends_currently_reading(
                 "current_page": ub.current_page,
                 "updated_at": ub.updated_at
             })
-    
+
     return results

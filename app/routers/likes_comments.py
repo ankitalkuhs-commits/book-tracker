@@ -97,15 +97,16 @@ def create_comment(
     db.commit()
     db.refresh(comment)
 
-    # Send push notification to note owner (skip if commenting on own post)
+    # Notify post owner via dispatcher (writes to NotificationLog + sends push)
     if note.user_id != current_user.id:
         commenter_name = current_user.name or current_user.username or "Someone"
-        send_push_notification_to_user(
+        fire_event(
             db=db,
-            user_id=note.user_id,
-            title="💬 New comment on your post",
-            body=f"{commenter_name} commented: {payload.text[:80]}",
-            data={"type": "comment", "note_id": note_id}
+            event_type="post_commented",
+            actor_id=current_user.id,
+            actor_name=commenter_name,
+            recipient_ids=[note.user_id],
+            extra={"preview": payload.text[:80], "note_id": note_id},
         )
 
     return {
@@ -119,23 +120,50 @@ def create_comment(
 @router.get("/{note_id}/comments", status_code=status.HTTP_200_OK)
 def get_comments(
     note_id: int,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
 ):
     """Get all comments for a note"""
+    note = db.get(models.Note, note_id)
+    if not note:
+        raise HTTPException(status_code=404, detail="Note not found")
+
+    # Enforce private profile — non-followers cannot read comments on private users' notes
+    if note.user_id != current_user.id:
+        author = db.get(models.User, note.user_id)
+        if author and getattr(author, "is_private_profile", False):
+            is_following = bool(db.exec(
+                select(models.Follow).where(
+                    models.Follow.follower_id == current_user.id,
+                    models.Follow.followed_id == note.user_id,
+                )
+            ).first())
+            if not is_following:
+                raise HTTPException(status_code=403, detail="This profile is private")
+
     comments = db.exec(
         select(models.Comment)
         .where(models.Comment.note_id == note_id)
         .order_by(models.Comment.created_at.asc())
     ).all()
     
+    if not comments:
+        return []
+    user_ids = list({c.user_id for c in comments})
+    users_map = {u.id: u for u in db.exec(select(models.User).where(models.User.id.in_(user_ids))).all()}
     result = []
     for c in comments:
-        user = db.get(models.User, c.user_id)
+        user = users_map.get(c.user_id)
         result.append({
             "id": c.id,
             "text": c.text,
             "created_at": c.created_at.isoformat() + 'Z',
-            "user": {"id": user.id, "name": user.name} if user else None
+            "user": {
+                "id": user.id,
+                "name": user.name,
+                "username": getattr(user, "username", None),
+                "profile_picture": getattr(user, "profile_picture", None),
+            } if user else None
         })
-    
+
     return result

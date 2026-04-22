@@ -14,26 +14,14 @@ def get_user_by_email(db: Session, email: str) -> Optional[models.User]:
 
 
 def create_user(db: Session, *, name: Optional[str], email: str, password_hash: str) -> models.User:
-    # Auto-generate username from name or email
-    username = None
-    if name:
-        # Convert name to username: lowercase, remove spaces, keep alphanumeric
-        base_username = ''.join(c.lower() for c in name if c.isalnum() or c.isspace()).replace(' ', '')
-        username = base_username
-        
-        # Check for uniqueness, append number if needed
-        counter = 1
-        while db.exec(select(models.User).where(models.User.username == username)).first():
-            username = f"{base_username}{counter}"
-            counter += 1
-    else:
-        # Fallback to email username part
-        base_username = email.split('@')[0].lower()
-        username = base_username
-        counter = 1
-        while db.exec(select(models.User).where(models.User.username == username)).first():
-            username = f"{base_username}{counter}"
-            counter += 1
+    # Username is always derived from the email prefix (part before @), lowercased.
+    # If it conflicts, append an incrementing number.
+    base_username = email.split('@')[0].lower()
+    username = base_username
+    counter = 1
+    while db.exec(select(models.User).where(models.User.username == username)).first():
+        username = f"{base_username}{counter}"
+        counter += 1
     
     user = models.User(name=name, email=email, password_hash=password_hash, username=username)
     db.add(user)
