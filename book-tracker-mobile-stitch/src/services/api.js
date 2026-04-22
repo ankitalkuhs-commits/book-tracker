@@ -33,7 +33,7 @@ api.interceptors.response.use(
 // Auth API
 export const authAPI = {
   googleLogin: async (idToken) => {
-    const response = await api.post('/auth/google', { id_token: idToken });
+    const response = await api.post('/auth/google', { token: idToken });
     return response.data;
   },
   saveToken: async (token) => { await AsyncStorage.setItem('bt_token', token); },
