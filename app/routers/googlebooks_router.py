@@ -70,7 +70,9 @@ async def search_google_books(query: str, max_results: int = 10):
     try:
         async with httpx.AsyncClient() as client:
             response = await client.get(url, params=params, timeout=10.0)
-            response.raise_for_status()
+            if response.status_code != 200:
+                print(f"[GoogleBooks] Error {response.status_code} for query='{query}': {response.text[:300]}")
+                raise HTTPException(status_code=502, detail=f"Google Books API error {response.status_code}")
             data = response.json()
         
         total_items = data.get("totalItems", 0)
