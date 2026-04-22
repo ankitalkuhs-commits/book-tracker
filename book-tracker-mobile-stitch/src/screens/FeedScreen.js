@@ -215,14 +215,15 @@ const FeedScreen = ({ navigation }) => {
   };
 
   const renderUserCard = (user) => {
-    const initials = getInitials(user.name);
+    const displayName = user.name || user.username || 'Reader';
+    const initials = getInitials(displayName);
     const username = user.username || `user${user.id}`;
     return (
       <View key={user.id} style={styles.userCard}>
         <View style={styles.userAvatar}><Text style={styles.userAvatarText}>{initials}</Text></View>
         <View style={styles.userInfoColumn}>
           <View style={styles.userNameRow}>
-            <Text style={styles.userNameText}>{user.name}</Text>
+            <Text style={styles.userNameText}>{displayName}</Text>
             {user.is_mutual && <View style={styles.userBadge}><Text style={styles.userBadgeText}>Mutual</Text></View>}
             {user.follows_you && !user.is_mutual && <View style={[styles.userBadge, styles.userBadgeSecondary]}><Text style={styles.userBadgeText}>Follows you</Text></View>}
           </View>
