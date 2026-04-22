@@ -6,6 +6,7 @@ from fastapi import APIRouter, HTTPException, Depends
 from typing import List, Optional
 import httpx
 import os
+import asyncio
 from pydantic import BaseModel
 
 router = APIRouter(prefix="/api/googlebooks", tags=["Google Books"])
@@ -69,8 +70,14 @@ async def search_google_books(query: str, max_results: int = 10):
     
     try:
         async with httpx.AsyncClient() as client:
-            response = await client.get(url, params=params, timeout=10.0)
-            if response.status_code != 200:
+            for attempt in range(3):
+                response = await client.get(url, params=params, timeout=10.0)
+                if response.status_code == 200:
+                    break
+                if response.status_code == 503 and attempt < 2:
+                    print(f"[GoogleBooks] 503 for query='{query}', retry {attempt + 1}/2 after 1s")
+                    await asyncio.sleep(1)
+                    continue
                 print(f"[GoogleBooks] Error {response.status_code} for query='{query}': {response.text[:300]}")
                 raise HTTPException(status_code=502, detail=f"Google Books API error {response.status_code}")
             data = response.json()
