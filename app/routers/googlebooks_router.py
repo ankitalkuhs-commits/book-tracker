@@ -6,6 +6,7 @@ from fastapi import APIRouter, HTTPException
 from typing import List, Optional
 import httpx
 import os
+import time
 from pydantic import BaseModel
 
 router = APIRouter(prefix="/googlebooks", tags=["Google Books"])
@@ -15,6 +16,11 @@ GOOGLE_BOOKS_API_KEY = os.getenv("GOOGLE_BOOKS_API_KEY")
 
 if not GOOGLE_BOOKS_API_KEY:
     print("WARNING: GOOGLE_BOOKS_API_KEY environment variable not set. Google Books API may have rate limits.")
+
+# Simple in-memory cache: { "query:max_results" -> (timestamp, results_dict) }
+# Prevents duplicate/rapid identical queries from hitting Google's rate limit
+_SEARCH_CACHE: dict = {}
+_CACHE_TTL = 60  # seconds
 
 
 class GoogleBookResult(BaseModel):
@@ -53,10 +59,16 @@ async def search_google_books(query: str, max_results: int = 10):
     """
     if not query or len(query.strip()) < 2:
         raise HTTPException(status_code=400, detail="Query must be at least 2 characters")
-    
+
     if max_results < 1 or max_results > 40:
         max_results = 10
-    
+
+    # Check cache first
+    cache_key = f"{query.lower().strip()}:{max_results}"
+    cached = _SEARCH_CACHE.get(cache_key)
+    if cached and (time.time() - cached[0]) < _CACHE_TTL:
+        return cached[1]
+
     # Google Books API endpoint
     url = "https://www.googleapis.com/books/v1/volumes"
     params = {
@@ -126,10 +138,9 @@ async def search_google_books(query: str, max_results: int = 10):
             )
             results.append(book_result)
         
-        return GoogleBooksSearchResponse(
-            results=results,
-            total_items=total_items
-        )
+        response_data = GoogleBooksSearchResponse(results=results, total_items=total_items)
+        _SEARCH_CACHE[cache_key] = (time.time(), response_data)
+        return response_data
     
     except httpx.HTTPError as e:
         raise HTTPException(
