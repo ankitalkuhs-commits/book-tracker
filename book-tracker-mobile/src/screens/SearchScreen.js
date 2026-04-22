@@ -96,7 +96,7 @@ export default function SearchScreen({ navigation }) {
         style={styles.bookCover}
       />
       <View style={styles.bookInfo}>
-        <Text style={styles.bookTitle} numberOfLines={2}>
+        <Text style={styles.bookTitle} numberOfLines={2} lineBreakMode="tail">
           {item.title || 'Untitled'}
         </Text>
         <Text style={styles.bookAuthor} numberOfLines={1}>
@@ -399,6 +399,7 @@ const styles = StyleSheet.create({
   bookTitle: {
     fontSize: 16,
     fontWeight: 'bold',
+    lineHeight: 22,
     color: '#1a1a1a',
     marginBottom: 4,
   },
