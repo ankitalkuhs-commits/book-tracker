@@ -24,9 +24,9 @@ class UpdatePagePayload(BaseModel):
 
 
 @router.put("/{userbook_id}/progress")
-def update_progress(userbook_id: int, data: UserBookProgress, db: Session = Depends(get_db)):
+def update_progress(userbook_id: int, data: UserBookProgress, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     userbook = db.get(UserBook, userbook_id)
-    if not userbook:
+    if not userbook or userbook.user_id != current_user.id:
         raise HTTPException(status_code=404, detail="UserBook not found")
 
     # Track previous page for activity logging
@@ -134,14 +134,14 @@ def update_progress(userbook_id: int, data: UserBookProgress, db: Session = Depe
     return userbook
 
 @router.post("/{userbook_id}/finish", status_code=200)
-def mark_userbook_finished(userbook_id: int, db: Session = Depends(get_db)):
+def mark_userbook_finished(userbook_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     """
     Mark a user's book as finished.
     If the Book has total_pages set, set userbook.current_page to total_pages.
     Always set status='finished' and update updated_at.
     """
     ub = db.get(UserBook, userbook_id)
-    if not ub:
+    if not ub or ub.user_id != current_user.id:
         raise HTTPException(status_code=404, detail="UserBook not found")
 
     # Try to fetch the book to read total_pages (may be None)

@@ -120,9 +120,27 @@ def create_comment(
 @router.get("/{note_id}/comments", status_code=status.HTTP_200_OK)
 def get_comments(
     note_id: int,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
 ):
     """Get all comments for a note"""
+    note = db.get(models.Note, note_id)
+    if not note:
+        raise HTTPException(status_code=404, detail="Note not found")
+
+    # Enforce private profile — non-followers cannot read comments on private users' notes
+    if note.user_id != current_user.id:
+        author = db.get(models.User, note.user_id)
+        if author and getattr(author, "is_private_profile", False):
+            is_following = bool(db.exec(
+                select(models.Follow).where(
+                    models.Follow.follower_id == current_user.id,
+                    models.Follow.followed_id == note.user_id,
+                )
+            ).first())
+            if not is_following:
+                raise HTTPException(status_code=403, detail="This profile is private")
+
     comments = db.exec(
         select(models.Comment)
         .where(models.Comment.note_id == note_id)

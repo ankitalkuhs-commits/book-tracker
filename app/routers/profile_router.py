@@ -1,14 +1,13 @@
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
-from sqlmodel import Session, select, func
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from sqlmodel import Session, select
 from pydantic import BaseModel
-from datetime import datetime
 import os
 import uuid
 
 import cloudinary
 import cloudinary.uploader
 
-from ..models import User, UserBook, Follow, ReadingActivity, Book
+from ..models import User, UserBook, Follow, Book
 from ..deps import get_db, get_current_user
 
 cloudinary.config(
@@ -115,12 +114,10 @@ def get_profile(db: Session = Depends(get_db), current_user=Depends(get_current_
 # ---------------------------------
 @router.put("/me")
 def update_profile(payload: ProfileUpdate, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
-    # Fetch user from active DB session
     user = db.get(User, current_user.id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    # Update editable fields only
     if payload.name is not None:
         user.name = payload.name
     if payload.bio is not None:

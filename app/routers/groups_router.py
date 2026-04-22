@@ -11,6 +11,7 @@ from pydantic import BaseModel
 from ..deps import get_db, get_current_user
 from .. import models
 from ..group_activity import fire_group_activity
+from ..notifications.dispatcher import fire_event
 
 router = APIRouter(prefix="/groups", tags=["groups"])
 
@@ -462,6 +463,25 @@ def join_group(
     db.commit()
     if member_status == "active":
         fire_group_activity(db, group_id, me.id, "member_joined")
+    elif member_status == "pending":
+        # Notify all curators that someone wants to join
+        curators = db.exec(
+            select(models.GroupMember).where(
+                models.GroupMember.group_id == group_id,
+                models.GroupMember.role == "curator",
+                models.GroupMember.status == "active",
+            )
+        ).all()
+        curator_ids = [c.user_id for c in curators]
+        if curator_ids:
+            fire_event(
+                db=db,
+                event_type="group_join_request",
+                actor_id=me.id,
+                actor_name=me.name or me.username or "Someone",
+                recipient_ids=curator_ids,
+                extra={"group_name": g.name, "group_id": group_id},
+            )
     return {"status": member_status}
 
 
@@ -609,11 +629,21 @@ def invite_user(
     target = db.get(models.User, user_id)
     if not target:
         raise HTTPException(status_code=404, detail="User not found")
+    g = db.get(models.ReadingGroup, group_id)
     db.add(models.GroupMember(
         group_id=group_id, user_id=user_id,
         role="member", status="pending", invited_by=me.id,
     ))
     db.commit()
+    # Notify the invited user
+    fire_event(
+        db=db,
+        event_type="group_invite",
+        actor_id=me.id,
+        actor_name=me.name or me.username or "Someone",
+        recipient_ids=[user_id],
+        extra={"group_name": g.name if g else "a Circle", "group_id": group_id},
+    )
     return {"ok": True}
 
 

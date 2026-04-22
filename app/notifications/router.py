@@ -128,10 +128,15 @@ def notification_history(
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Returns the 50 most recent notifications for the current user."""
+    """Returns notifications from the last 30 days for the current user (max 50)."""
+    from datetime import timedelta, timezone
+    cutoff = datetime.now(timezone.utc) - timedelta(days=30)
     logs = db.exec(
         select(models.NotificationLog)
-        .where(models.NotificationLog.user_id == current_user.id)
+        .where(
+            models.NotificationLog.user_id == current_user.id,
+            models.NotificationLog.sent_at >= cutoff,
+        )
         .order_by(models.NotificationLog.sent_at.desc())
         .limit(limit)
     ).all()
@@ -174,7 +179,7 @@ def mark_all_read(
 # ── Per-user notification preferences ────────────────────────────────────────
 
 # The preference keys exposed to users (subset of all event types)
-USER_PREF_KEYS = ["new_follower", "post_liked", "post_commented", "book_completed", "reading_streak_reminder"]
+USER_PREF_KEYS = ["new_follower", "post_liked", "post_commented", "book_completed", "reading_streak_reminder", "group_invite", "group_join_request"]
 
 class NotificationPrefs(BaseModel):
     new_follower: bool = True
@@ -182,6 +187,8 @@ class NotificationPrefs(BaseModel):
     post_commented: bool = True
     book_completed: bool = True          # covers book_completed + book_added
     reading_streak_reminder: bool = True
+    group_invite: bool = True
+    group_join_request: bool = True
 
 
 @router.get("/prefs")

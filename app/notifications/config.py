@@ -78,6 +78,20 @@ NOTIFICATION_EVENTS: dict[str, dict] = {
     #     "daily_cap": False,
     # },
 
+    "group_invite": {
+        "title": "You're invited to a Circle 📖",
+        "body": "{actor} invited you to join {group_name}",
+        "is_active": True,
+        "daily_cap": False,
+    },
+
+    "group_join_request": {
+        "title": "New join request 🙋",
+        "body": "{actor} wants to join {group_name}",
+        "is_active": True,
+        "daily_cap": False,
+    },
+
     # "reading_milestone": {
     #     "title": "{actor} hit a reading milestone 🏆",
     #     "body": "{actor} has read {milestone} books this year!",

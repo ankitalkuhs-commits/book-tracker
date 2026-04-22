@@ -37,21 +37,6 @@ class AccountDeletionRequest(BaseModel):
     email: str
     reason: str = None
 
-@router.post("/demo-login")
-def demo_login(db: Session = Depends(get_session)):
-    """Demo login endpoint for testing - uses existing user account"""
-    demo_email = "ankitshukla47.as@gmail.com"
-    
-    # Get existing user
-    user = crud.get_user_by_email(db, demo_email)
-    if not user:
-        raise HTTPException(status_code=404, detail="Demo user not found in database")
-    
-    token = auth.create_access_token({"sub": user.email})
-    return {
-        "access_token": token,
-        "user": {"id": user.id, "name": user.name, "email": user.email}
-    }
 
 @router.post("/signup")
 def signup(payload: SignupIn, db: Session = Depends(get_session)):
@@ -158,40 +143,6 @@ def google_auth(payload: GoogleAuthIn, db: Session = Depends(get_session)):
         raise HTTPException(status_code=500, detail=f"Google authentication failed: {str(e)}")
 
 
-class DemoLoginIn(BaseModel):
-    email: str
-
-@router.post("/demo")
-def demo_login(payload: DemoLoginIn, db: Session = Depends(get_session)):
-    """
-    Demo login endpoint for mobile app testing.
-    Creates or logs in a user without password.
-    REMOVE THIS IN PRODUCTION!
-    """
-    from datetime import datetime, date
-    
-    # Check if user exists
-    user = crud.get_user_by_email(db, payload.email)
-    
-    if not user:
-        # Create new demo user
-        import secrets
-        random_password = secrets.token_urlsafe(32)
-        hashed = auth.hash_password(random_password)
-        name = payload.email.split('@')[0]
-        user = crud.create_user(db, name=name, email=payload.email, password_hash=hashed)
-    
-    # Update last_active
-    today = date.today()
-    if user.last_active is None or user.last_active.date() != today:
-        user.last_active = datetime.utcnow()
-        db.add(user)
-        db.commit()
-        db.refresh(user)
-    
-    # Create access token
-    token = auth.create_access_token({"sub": user.email})
-    return {"access_token": token, "user": {"id": user.id, "name": user.name, "email": user.email}}
 
 @router.post("/delete-account")
 def request_account_deletion(payload: AccountDeletionRequest, db: Session = Depends(get_session)):
