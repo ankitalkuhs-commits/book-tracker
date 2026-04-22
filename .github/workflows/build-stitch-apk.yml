@@ -13,6 +13,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          ref: stitch-experiment
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -32,6 +34,9 @@ jobs:
         with:
           eas-version: latest
           token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Install dependencies
+        run: npm install
 
       - name: Build Android APK
         run: eas build --platform android --profile preview --local --output ./build.apk
