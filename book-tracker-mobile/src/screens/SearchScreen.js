@@ -97,7 +97,7 @@ export default function SearchScreen({ navigation }) {
         style={styles.bookCover}
       />
       <View style={styles.bookInfo}>
-        <Text style={styles.bookTitle} numberOfLines={2}>
+        <Text style={styles.bookTitle} numberOfLines={2} lineBreakMode="tail">
           {item.title || 'Untitled'}
         </Text>
         <Text style={styles.bookAuthor} numberOfLines={1}>
@@ -362,7 +362,7 @@ const styles = StyleSheet.create({
   },
   bookCover: { width: 80, height: 120, borderRadius: radius.md, backgroundColor: colors.surfaceContainerHigh },
   bookInfo: { flex: 1, marginLeft: 14 },
-  bookTitle: { fontSize: 15, fontWeight: '700', color: colors.onSurface, marginBottom: 4 },
+  bookTitle: { fontSize: 15, fontWeight: '700', lineHeight: 22, color: colors.onSurface, marginBottom: 4 },
   bookAuthor: { fontSize: 13, color: colors.onSurfaceVariant, marginBottom: 4 },
   bookPages: { fontSize: 12, color: colors.outline, marginBottom: 10 },
   addButton: {
