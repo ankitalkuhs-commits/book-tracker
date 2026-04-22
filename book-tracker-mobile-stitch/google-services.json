@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "168909998477",
+    "project_id": "trackmyread2504",
+    "storage_bucket": "trackmyread2504.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:168909998477:android:409a6eb4147823013155c4",
+        "android_client_info": {
+          "package_name": "com.bookpulse.mobile"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB1h-cqpV8nSebVLhQJ-8XISzp6HQD7fVg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
