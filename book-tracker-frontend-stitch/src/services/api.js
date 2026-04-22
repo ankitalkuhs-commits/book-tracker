@@ -101,7 +101,7 @@ export const getPublicProfile = (userId) => apiFetch(`/profile/${userId}`);
 export const searchLocalBooks = (q) => apiFetch(`/books/search?q=${encodeURIComponent(q)}`);
 export const getRecommendations = () => apiFetch('/books/recommendations');
 export const searchGoogleBooks = (q) =>
-  apiFetch(`/googlebooks/search?query=${encodeURIComponent(q)}`).then(res => {
+  apiFetch(`/api/googlebooks/search?query=${encodeURIComponent(q)}`).then(res => {
     const items = res?.results || res || []
     return items.map(b => ({
       ...b,
