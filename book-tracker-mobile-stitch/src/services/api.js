@@ -59,7 +59,7 @@ export const userbooksAPI = {
   getUserBooks: async (userId) => (await api.get(`/userbooks/user/${userId}`)).data,
   addBook: async (bookData) => (await api.post('/userbooks/', bookData)).data,
   updateProgress: async (userbookId, progressData) => (await api.put(`/userbooks/${userbookId}/progress`, progressData)).data,
-  finishBook: async (userbookId, rating = null) => (await api.put(`/userbooks/${userbookId}/finish`, { rating })).data,
+  finishBook: async (userbookId) => (await api.post(`/userbooks/${userbookId}/finish`)).data,
   deleteBook: async (userbookId) => (await api.delete(`/userbooks/${userbookId}`)).data,
   getFriendsReading: async (limit = 10) => (await api.get(`/userbooks/friends/currently-reading?limit=${limit}`)).data,
 };
@@ -95,7 +95,7 @@ export const userAPI = {
   followUser: async (userId) => (await api.post(`/follow/${userId}`)).data,
   unfollowUser: async (userId) => (await api.delete(`/follow/${userId}`)).data,
   getFollowing: async () => (await api.get('/users/following')).data,
-  registerPushToken: async (pushToken) => (await api.post('/users/push-token', { token: pushToken })).data,
+  registerPushToken: async (pushToken) => (await api.post('/push-tokens/', { token: pushToken })).data,
 };
 
 // Notifications API
