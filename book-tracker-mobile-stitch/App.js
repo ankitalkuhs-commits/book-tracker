@@ -4,7 +4,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import * as Notifications from 'expo-notifications';
 
 import { authAPI, userAPI, userbooksAPI, notesAPI, notificationsAPI } from './src/services/api';
-import NotificationService from './src/services/NotificationService';
+import { registerExpoPushToken } from './src/services/NotificationService';
 import AppNavigator from './src/navigation/AppNavigator';
 import LoginScreen from './src/screens/LoginScreen';
 import { colors } from './src/theme';
@@ -88,7 +88,7 @@ export default function App() {
   // ── Push notification registration ──────────────────────────────────────
   useEffect(() => {
     if (!isLoggedIn) return;
-    NotificationService.registerForPushNotifications().catch(() => {});
+    authAPI.getToken().then(token => registerExpoPushToken(token)).catch(() => {});
   }, [isLoggedIn]);
 
   // ── Login / Logout ───────────────────────────────────────────────────────
