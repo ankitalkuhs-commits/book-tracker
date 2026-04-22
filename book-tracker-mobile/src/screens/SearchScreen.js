@@ -399,6 +399,7 @@ const styles = StyleSheet.create({
   bookTitle: {
     fontSize: 16,
     fontWeight: 'bold',
+    color: '#1a1a1a',
     marginBottom: 4,
   },
   bookAuthor: {
@@ -493,6 +494,7 @@ const styles = StyleSheet.create({
   modalBookTitle: {
     fontSize: 16,
     fontWeight: 'bold',
+    color: '#1a1a1a',
     marginBottom: 4,
   },
   modalBookAuthor: {
