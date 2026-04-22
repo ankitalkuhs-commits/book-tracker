@@ -55,18 +55,18 @@ async def search_google_books(query: str, max_results: int = 10):
     if not query or len(query.strip()) < 2:
         raise HTTPException(status_code=400, detail="Query must be at least 2 characters")
 
-    # Always fetch max from Google, filter + trim to 15 quality results
-    params = {
-        "q": query,
-        "maxResults": 40,
-        "printType": "books",
-        "langRestrict": "en",
-        "orderBy": "relevance",
-        "key": GOOGLE_BOOKS_API_KEY
-    }
+    if max_results < 1 or max_results > 40:
+        max_results = 10
 
     # Google Books API endpoint
     url = "https://www.googleapis.com/books/v1/volumes"
+    params = {
+        "q": query,
+        "maxResults": max_results,
+        "printType": "books",
+        "langRestrict": "en",
+        "key": GOOGLE_BOOKS_API_KEY
+    }
 
     try:
         async with httpx.AsyncClient() as client:
@@ -89,38 +89,18 @@ async def search_google_books(query: str, max_results: int = 10):
         for item in items:
             volume_info = item.get("volumeInfo", {})
 
-            # ── Quality filters ──────────────────────────────────────
-            # Must have a cover image
             image_links = volume_info.get("imageLinks", {})
-            if not image_links:
-                continue
+            cover_url = None
+            if image_links:
+                cover_url = (
+                    image_links.get("large") or
+                    image_links.get("medium") or
+                    image_links.get("thumbnail") or
+                    image_links.get("smallThumbnail")
+                )
+                if cover_url:
+                    cover_url = cover_url.replace("http://", "https://")
 
-            # Must have at least one author
-            authors = volume_info.get("authors", [])
-            if not authors:
-                continue
-
-            # Must have a non-empty title
-            title = volume_info.get("title", "").strip()
-            if not title:
-                continue
-
-            # Skip magazines / periodicals
-            categories = volume_info.get("categories", [])
-            if any("magazine" in c.lower() or "periodical" in c.lower() for c in categories):
-                continue
-
-            # ── Cover (prefer high quality) ──────────────────────────
-            cover_url = (
-                image_links.get("large") or
-                image_links.get("medium") or
-                image_links.get("thumbnail") or
-                image_links.get("smallThumbnail")
-            )
-            if cover_url:
-                cover_url = cover_url.replace("http://", "https://")
-
-            # ── ISBNs ────────────────────────────────────────────────
             isbn_10 = None
             isbn_13 = None
             for identifier in volume_info.get("industryIdentifiers", []):
@@ -129,15 +109,14 @@ async def search_google_books(query: str, max_results: int = 10):
                 elif identifier.get("type") == "ISBN_13":
                     isbn_13 = identifier.get("identifier")
 
-            # ── Description ──────────────────────────────────────────
             description = volume_info.get("description", "")
             if description and len(description) > 500:
                 description = description[:497] + "..."
 
             results.append(GoogleBookResult(
                 google_id=item.get("id", ""),
-                title=title,
-                authors=authors,
+                title=volume_info.get("title", "Unknown Title"),
+                authors=volume_info.get("authors", []),
                 description=description or None,
                 cover_url=cover_url,
                 total_pages=volume_info.get("pageCount"),
@@ -149,14 +128,8 @@ async def search_google_books(query: str, max_results: int = 10):
                 isbn_13=isbn_13,
             ))
 
-        # Sort: rated books first, then by page count, then rest
-        results.sort(key=lambda b: (
-            0 if b.average_rating else 1,
-            0 if b.total_pages else 1,
-        ))
-
         return GoogleBooksSearchResponse(
-            results=results[:15],
+            results=results,
             total_items=total_items
         )
     
