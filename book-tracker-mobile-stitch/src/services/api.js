@@ -51,6 +51,7 @@ export const booksAPI = {
   },
   getGoogleBookDetails: async (googleBooksId) => (await api.get(`/api/googlebooks/book/${googleBooksId}`)).data,
   addToLibrary: async (bookData) => (await api.post('/books/add-to-library', bookData)).data,
+  getRecommendations: async () => (await api.get('/books/recommendations')).data,
 };
 
 // UserBooks API

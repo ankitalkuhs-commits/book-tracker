@@ -125,17 +125,39 @@ When user says **"wrap up"**, Claude automatically:
 - Fixed: #12 Search tab clear — switching tabs now clears query + both result sets + searched state
 - Confirmed done: #8 notification prefs (SettingsPage), #10 admin user search/sort (AdminPage), #13 profile picture upload (ProfilePage)
 
-**Phase 2 — Mobile rebuild (April 2026):**
-- Added: `src/theme.js` — Stitch color palette (primary #00464a, surface #fbf9f4, etc.) for React Native
-- Updated: `src/services/api.js` — switched to `https://book-tracker-stitch.onrender.com`, token key `bt_token`, added `notificationsAPI`, `groupsAPI`, `profileAPI`
-- Added: `NotificationsScreen.js` — list + mark-all-read, event type icons, unread highlight
-- Added: `SettingsScreen.js` — profile edit, privacy toggle, notification prefs per-type, logout, delete account
-- Added: `GroupsScreen.js` — My Circles + Discover tabs, create group modal, join by invite code modal
-- Updated: `App.js` — 5 tabs (Home, Library, Circles, Updates, Profile), Stitch tab bar colors, unread badge on Updates tab (polled every 60s), Settings wired via ProfileStack, old backend URLs removed
+**Phase 3 — Mobile ↔ Webapp parity fixes (April 23, 2026) — ALL SCREENS COMPLETE:**
+- Screen-by-screen diff between `book-tracker-mobile-stitch/` and `tracker-stitch.vercel.app`
+- **LoginScreen:** button copy fixed, quote card redesigned (format-quote-open icon), tagline color fixed to `colors.secondary`, subtitle added, community feed removed from auth screen
+- **FeedScreen:** FAB+modal composer replaced with inline composer card (tag book, quote, emotion fields), "For You" recs shelf added, post cards updated (heart icon, comment count, book label, ··· menu), tab "Your Friends"→"Friends", `AppHeader` added; post author tap → UserProfile
+- **LibraryScreen:** title "My Library"→"Your Library" + subtitle, tab order swapped (tabs above search), tab pills now have border (were invisible on cream bg), spine width 9→5 (slimmer), "Done"→"Finished", status text below author, Add Book modal: larger covers (72×108), card style results, publisher shown; options panel: 110×165 cover + description
+- **AppHeader.js (NEW):** `src/components/AppHeader.js` — shared top bar with TrackMyRead logo + bell icon (red unread badge, 9+) + avatar; all tab screens now use this header
+- **NotificationContext.js (NEW):** `src/context/NotificationContext.js` — React context providing `unreadCount` from App.js to AppHeader without prop drilling
+- **AppNavigator.js (REWRITE):** 4 tabs (Home/Library/Circles/Insights); Notifications + Profile moved to root Stack (accessed via header bell/avatar); UserProfile in FeedStack, GroupsStack, ProfileStack, and root Stack (for Notifications nav)
+- **GroupsScreen:** replaced StatusBar + hardcoded paddingTop with AppHeader
+- **GroupDetailScreen:** hero card redesigned (dark teal bg, rgba back btn), leaderboard/member rows now `TouchableOpacity` → navigate to UserProfile
+- **InsightsScreen (REWRITE):** AppHeader added, stat cards redesigned (label top + value large), "THIS YEAR" + "CURRENTLY READING" cards, streak redesign (two-halves row with divider), goal redesign (ring left + text right + "On track" badge), projected finishes as cards
+- **SettingsScreen (REWRITE):** back arrow top bar, avatar hero with "Choose avatar" + "Upload photo" buttons, 12 DiceBear adventurer presets in modal grid (4-col), `handleSelectAvatar` saves URL via `profileAPI.updateMe`
+- **BookDetailScreen (REWRITE):** `useSafeAreaInsets`, status pills segmented style, star rating only for finished books, always-visible note composer (no toggle), "NOTES & REFLECTIONS" label, empty state text, remove link at bottom (no header trash icon), `pageAltRow` for non-reading statuses
+- **UserProfileScreen (REWRITE):** square avatar (borderRadius 14) with teal border, small-caps stats pills, Yearly Progress section (golden bar), VelocityChart redesign (30D/90D toggle, taller bars), "Curated Library" + "View All →", NEW "By The Numbers" section (3 stat cards + Currently Reading up to 3 books with covers + progress), Public Notes (formatted dates APR DD YYYY, share button)
+- **NotificationsScreen:** back arrow added to header (now a pushed screen, not a tab)
+- **ProfileScreen:** `useSafeAreaInsets` added, back arrow in top bar (now a pushed screen), removed hardcoded `paddingTop: 56`
+- **Safe-area fixes:** all screens use `useSafeAreaInsets` via AppHeader or explicit `insets.top` — no hardcoded paddingTop values remain
+- **api.js:** added `booksAPI.getRecommendations()`
 
-- Restyled: FeedScreen, LibraryScreen, ProfileScreen, SearchScreen — all use theme.js tokens (teal primary, surface backgrounds, rounded cards)
-- ProfileScreen: header now shows Settings gear icon → navigates to SettingsScreen via ProfileStack
-- Added: GroupDetailScreen — leaderboard, activity feed (paginated), group posts (paginated + composer modal), members list; wired into GroupsStack
+**Phase 2 — Mobile rebuild (April 2026) — COMPLETE:**
+- All screens fully rebuilt in `book-tracker-mobile-stitch/` with webapp parity
+- Added: `src/theme.js` — Stitch color palette (primary #00464a, surface #fbf9f4, etc.) for React Native
+- Updated: `src/services/api.js` — switched to `https://book-tracker-stitch.onrender.com`, token key `bt_token`, added `notificationsAPI`, `groupsAPI`, `profileAPI`, `activityAPI`; fixed `profileAPI.uploadPicture` → `/profile/me/picture`; fixed `profileAPI.deleteAccount` → POST `/auth/delete-account/me`; added all missing `groupsAPI` methods (`getPendingMembers`, `approveGroupMember`, `rejectGroupMember`, `removeGroupMember`, `setGroupBook`, `clearGroupBook`, `deleteGroupPost`)
+- Updated: `AppNavigator.js` — 5 tabs: Home, Library, Circles, Insights (new), Notifications; Search tab removed (search integrated into Library); InsightsStack added
+- Added: `LibraryScreen.js` — 2-col grid, 3D book cover effect (spine View + `rotateY: '-12deg'`), 8 color palettes, progress bars on reading cards, star ratings on finished cards, inline AddBookModal (Google Books search → status/format/ownership chips → `booksAPI.addToLibrary()`)
+- Added: `InsightsScreen.js` — GoalRing (pure-View circular progress), BarChart (pure-View), stats grid, 30-day activity chart, monthly pages chart, projected finishes; uses `activityAPI`
+- Rebuilt: `ProfileScreen.js` — avatar camera upload, followers/following/books pills, GoalRing, Currently Reading, ActivityChart (30-bar), full Notes section with inline comments; uses `activityAPI` + `notesAPI`
+- Rebuilt: `SettingsScreen.js` — avatar upload, display name/bio/yearly reading goal, correct notification pref keys (`new_follower, post_liked, post_commented, book_completed, reading_streak_reminder`), privacy toggle, delete account
+- Rebuilt: `NotificationsScreen.js` — `useFocusEffect` auto-refresh, tap-to-navigate (follow → UserProfile), optimistic mark-read, unread banner
+- Added: `UserProfileScreen.js` — profile picture/initials fallback, followers/following/books pills, VelocityChart (30d/90d toggle), 3-col book grid, note cards, locked profile state for private profiles
+- Rebuilt: `GroupDetailScreen.js` — SetGroupBookModal (Google Books), group book display, pending members (approve/reject), remove member, leaderboard period toggle (weekly/monthly), fix `deleteGroupPost`
+- Added: `GroupsScreen.js` — My Circles + Discover tabs, create group modal, join by invite code modal
+- **CRITICAL PATTERN:** Notification pref keys are `new_follower, post_liked, post_commented, book_completed, reading_streak_reminder` — NOT `follows, likes, comments, book_finished, group_activity`
 
 **Recently Fixed (April 19, 2026 — stitch-experiment session):**
 - **Perf:** Eliminated ALL remaining N+1 queries across the entire backend:
@@ -158,8 +180,10 @@ When user says **"wrap up"**, Claude automatically:
 - **GOTCHA — Vercel deployment:** `book-tracker-stitch` Vercel project production branch is set to `master`. Pushing to `stitch-experiment` creates a Preview deployment only. To update `book-tracker-stitch.vercel.app`, go to Overview → Active Branches → `...` next to `stitch-experiment` → Promote to Production. (Or change production branch in Settings → General.)
 
 **Next Priorities:**
-- EAS build + Play Store release (Phase 3)
-- Test end-to-end on device against Stitch backend (`https://book-tracker-stitch.onrender.com`)
+- **APK build in progress** — EAS build from `book-tracker-mobile-stitch/` on `stitch-experiment` branch
+- Test end-to-end on device against Stitch backend (`https://book-tracker-stitch.onrender.com`) after APK install
+- Verify group API endpoints (`/groups/{id}/pending`, `/groups/{id}/approve/{userId}`, `/groups/{id}/reject/{userId}`, `/groups/{id}/remove/{userId}`, `/groups/{id}/book` PUT/DELETE) exist on stitch backend before testing GroupDetailScreen
+- After device testing: fix any regressions found, then EAS submit to Play Store
 
 ---
 

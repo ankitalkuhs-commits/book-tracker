@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { notificationsAPI } from '../services/api';
 import { colors, radius, shadow } from '../theme';
 
@@ -56,6 +57,7 @@ function NotifRow({ item, onPress }) {
 }
 
 export default function NotificationsScreen({ navigation }) {
+  const insets = useSafeAreaInsets();
   const [notifs,      setNotifs]      = useState([]);
   const [loading,     setLoading]     = useState(true);
   const [refreshing,  setRefreshing]  = useState(false);
@@ -104,8 +106,12 @@ export default function NotificationsScreen({ navigation }) {
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor={colors.surface} />
+      <View style={{ height: insets.top, backgroundColor: colors.surface }} />
       <View style={styles.header}>
-        <View>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+          <Ionicons name="arrow-back" size={22} color={colors.onSurface} />
+        </TouchableOpacity>
+        <View style={{ flex: 1 }}>
           <Text style={styles.headerLabel}>UPDATES</Text>
           <Text style={styles.headerTitle}>Notifications</Text>
         </View>
@@ -155,7 +161,8 @@ export default function NotificationsScreen({ navigation }) {
 const styles = StyleSheet.create({
   container:   { flex: 1, backgroundColor: colors.surface },
   center:      { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surface },
-  header:      { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 56, paddingBottom: 16, backgroundColor: colors.surface },
+  header:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 16, paddingBottom: 16, backgroundColor: colors.surface },
+  backBtn:     { marginRight: 12, padding: 4 },
   headerLabel: { fontSize: 10, fontWeight: '700', letterSpacing: 1.5, color: colors.secondary, marginBottom: 2 },
   headerTitle: { fontSize: 28, fontWeight: '800', color: colors.primary },
   markBtn:     { backgroundColor: colors.surfaceContainerHigh, borderRadius: radius.full, paddingHorizontal: 14, paddingVertical: 7 },

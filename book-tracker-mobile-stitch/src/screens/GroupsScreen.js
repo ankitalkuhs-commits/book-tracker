@@ -1,55 +1,96 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity, ActivityIndicator, RefreshControl, Alert, StatusBar, Modal } from 'react-native';
+import {
+  View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity,
+  ActivityIndicator, RefreshControl, Alert, Modal, KeyboardAvoidingView, Platform,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { groupsAPI } from '../services/api';
 import { colors, radius, shadow } from '../theme';
+import AppHeader from '../components/AppHeader';
 
 const COVER_COLORS = {
-  teal:   { bg: '#e0f2f1', text: '#00464a' },
+  teal:   { bg: '#004d51', text: '#ffffff' },
   amber:  { bg: '#fff8e1', text: '#735c00' },
   rose:   { bg: '#fce4ec', text: '#880e4f' },
   indigo: { bg: '#e8eaf6', text: '#283593' },
   green:  { bg: '#e8f5e9', text: '#1b5e20' },
 };
 
-function GroupCover({ preset = 'teal', size = 48 }) {
+function GroupCover({ preset = 'teal', size = 80 }) {
   const c = COVER_COLORS[preset] || COVER_COLORS.teal;
-  return <View style={[styles.cover, { width: size, height: size, borderRadius: size / 4, backgroundColor: c.bg }]}><Ionicons name="book" size={size * 0.4} color={c.text} /></View>;
+  return (
+    <View style={[styles.cover, { width: size, height: size, borderRadius: size / 5, backgroundColor: c.bg }]}>
+      <Ionicons name="book" size={size * 0.4} color={c.text} />
+    </View>
+  );
 }
 
 function GroupCard({ group, onPress }) {
+  const isCurator = group.user_role === 'curator';
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.75}>
-      <GroupCover preset={group.cover_preset} size={56} />
+      <GroupCover preset={group.cover_preset} size={80} />
       <View style={styles.cardBody}>
+        {isCurator && (
+          <Text style={styles.curatorBadge}>CURATOR</Text>
+        )}
         <Text style={styles.cardName} numberOfLines={1}>{group.name}</Text>
-        {group.description ? <Text style={styles.cardDesc} numberOfLines={2}>{group.description}</Text> : null}
+        {group.description ? (
+          <Text style={styles.cardDesc} numberOfLines={2}>{group.description}</Text>
+        ) : null}
         <View style={styles.cardMeta}>
           <Ionicons name="people-outline" size={13} color={colors.onSurfaceVariant} />
           <Text style={styles.cardMetaText}>{group.member_count ?? 0} members</Text>
-          {group.is_private && (<><View style={styles.metaDot} /><Ionicons name="lock-closed-outline" size={13} color={colors.onSurfaceVariant} /><Text style={styles.cardMetaText}>Private</Text></>)}
+          {group.is_private && (
+            <>
+              <Text style={styles.metaDot}>•</Text>
+              <Ionicons name="lock-closed-outline" size={13} color={colors.onSurfaceVariant} />
+              <Text style={styles.cardMetaText}>Private</Text>
+            </>
+          )}
         </View>
       </View>
-      <Ionicons name="chevron-forward" size={18} color={colors.outline} />
     </TouchableOpacity>
   );
 }
 
+const COVER_PRESETS = [
+  { key: 'teal',   bg: '#00464a', icon: 'book' },
+  { key: 'olive',  bg: '#4a5e00', icon: 'leaf' },
+  { key: 'amber',  bg: '#7a5800', icon: 'sunny' },
+  { key: 'rose',   bg: '#7a1030', icon: 'heart' },
+  { key: 'indigo', bg: '#283593', icon: 'planet' },
+  { key: 'green',  bg: '#1b5e20', icon: 'aperture' },
+  { key: 'purple', bg: '#4a1580', icon: 'telescope' },
+  { key: 'brown',  bg: '#4e342e', icon: 'compass' },
+];
+
 function CreateGroupModal({ visible, onClose, onCreated }) {
-  const [name, setName] = useState('');
-  const [desc, setDesc] = useState('');
+  const [name, setName]           = useState('');
+  const [desc, setDesc]           = useState('');
   const [isPrivate, setIsPrivate] = useState(false);
-  const [preset, setPreset] = useState('teal');
-  const [saving, setSaving] = useState(false);
-  const presets = Object.keys(COVER_COLORS);
+  const [preset, setPreset]       = useState('teal');
+  const [readingGoal, setReadingGoal] = useState('');
+  const [goalPeriod, setGoalPeriod]   = useState('monthly');
+  const [saving, setSaving]       = useState(false);
+
+  const selectedPreset = COVER_PRESETS.find(p => p.key === preset) || COVER_PRESETS[0];
 
   const handleCreate = async () => {
     if (!name.trim()) { Alert.alert('Name required'); return; }
     setSaving(true);
     try {
-      const g = await groupsAPI.createGroup({ name: name.trim(), description: desc.trim(), is_private: isPrivate, cover_preset: preset });
+      const g = await groupsAPI.createGroup({
+        name: name.trim(),
+        description: desc.trim(),
+        is_private: isPrivate,
+        cover_preset: preset,
+        reading_goal: readingGoal ? parseInt(readingGoal) : null,
+        goal_period: goalPeriod,
+      });
       onCreated(g);
       setName(''); setDesc(''); setIsPrivate(false); setPreset('teal');
+      setReadingGoal(''); setGoalPeriod('monthly');
       onClose();
     } catch (e) { Alert.alert('Error', e?.response?.data?.detail || 'Could not create group'); }
     setSaving(false);
@@ -57,35 +98,136 @@ function CreateGroupModal({ visible, onClose, onCreated }) {
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-      <View style={styles.modalContainer}>
-        <View style={styles.modalHeader}>
-          <Text style={styles.modalTitle}>New Reading Circle</Text>
-          <TouchableOpacity onPress={onClose}><Ionicons name="close" size={24} color={colors.onSurface} /></TouchableOpacity>
+      <ScrollView style={styles.modalRoot} contentContainerStyle={styles.modalScroll} keyboardShouldPersistTaps="handled">
+
+        {/* Header */}
+        <Text style={styles.modalEyebrow}>GROUPS</Text>
+        <Text style={styles.modalBigTitle}>Create a New Group</Text>
+        <Text style={styles.modalSubtitle}>Start a reading group, invite friends, and read together</Text>
+
+        {/* Cover picker */}
+        <Text style={[styles.fieldLabel, { marginTop: 20 }]}>COVER</Text>
+        <View style={styles.coverGrid}>
+          {COVER_PRESETS.map(p => (
+            <TouchableOpacity
+              key={p.key}
+              onPress={() => setPreset(p.key)}
+              style={[styles.coverTile, { backgroundColor: p.bg }, preset === p.key && styles.coverTileSelected]}
+              activeOpacity={0.8}
+            >
+              <Ionicons name={p.icon} size={22} color="#fff" />
+            </TouchableOpacity>
+          ))}
         </View>
-        <Text style={styles.fieldLabel}>Name</Text>
-        <TextInput style={styles.input} value={name} onChangeText={setName} placeholder="Circle name…" placeholderTextColor={colors.outline} maxLength={60} />
-        <Text style={[styles.fieldLabel, { marginTop: 14 }]}>Description (optional)</Text>
-        <TextInput style={[styles.input, styles.inputMulti]} value={desc} onChangeText={setDesc} placeholder="What's this circle about?" placeholderTextColor={colors.outline} multiline numberOfLines={3} />
-        <Text style={[styles.fieldLabel, { marginTop: 14 }]}>Color</Text>
-        <View style={styles.presetRow}>
-          {presets.map(p => {
-            const c = COVER_COLORS[p];
-            return <TouchableOpacity key={p} onPress={() => setPreset(p)} style={[styles.presetSwatch, { backgroundColor: c.bg }, preset === p && { borderWidth: 2.5, borderColor: c.text }]} />;
-          })}
+
+        {/* Cover preview */}
+        <View style={[styles.coverPreview, { backgroundColor: selectedPreset.bg }]}>
+          <Ionicons name={selectedPreset.icon} size={28} color="#fff" style={{ marginRight: 10 }} />
+          <Text style={styles.coverPreviewName} numberOfLines={1}>{name || 'Your Group Name'}</Text>
         </View>
-        <View style={styles.privacyRow}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.privacyLabel}>Private circle</Text>
-            <Text style={styles.privacySub}>Members must be invited</Text>
-          </View>
-          <TouchableOpacity style={[styles.toggle, isPrivate && styles.toggleOn]} onPress={() => setIsPrivate(v => !v)}>
-            <View style={[styles.toggleThumb, isPrivate && styles.toggleThumbOn]} />
+
+        {/* Group name */}
+        <Text style={[styles.fieldLabel, { marginTop: 20 }]}>GROUP NAME</Text>
+        <TextInput
+          style={styles.input}
+          value={name}
+          onChangeText={setName}
+          placeholder="e.g. Classic Fiction Club"
+          placeholderTextColor={colors.outline}
+          maxLength={60}
+        />
+
+        {/* Description */}
+        <Text style={[styles.fieldLabel, { marginTop: 16 }]}>DESCRIPTION</Text>
+        <TextInput
+          style={[styles.input, styles.inputMulti]}
+          value={desc}
+          onChangeText={setDesc}
+          placeholder="What's this group about? What are you reading together?"
+          placeholderTextColor={colors.outline}
+          multiline
+          numberOfLines={3}
+        />
+
+        {/* Privacy */}
+        <View style={styles.privacyCards}>
+          <TouchableOpacity
+            style={[styles.privacyCard, !isPrivate && styles.privacyCardSelected]}
+            onPress={() => setIsPrivate(false)}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="earth-outline" size={22} color={!isPrivate ? colors.primary : colors.onSurfaceVariant} style={{ marginBottom: 6 }} />
+            <Text style={[styles.privacyCardTitle, !isPrivate && { color: colors.primary }]}>Public</Text>
+            <Text style={styles.privacyCardSub}>Anyone can find and request to join this group</Text>
+            <View style={[styles.privacyCardBtn, !isPrivate && styles.privacyCardBtnSelected]}>
+              <Text style={[styles.privacyCardBtnText, !isPrivate && { color: colors.primary }]}>
+                {!isPrivate ? 'Selected Public' : 'Select Public'}
+              </Text>
+            </View>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.privacyCard, isPrivate && styles.privacyCardSelected]}
+            onPress={() => setIsPrivate(true)}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="lock-closed-outline" size={22} color={isPrivate ? colors.primary : colors.onSurfaceVariant} style={{ marginBottom: 6 }} />
+            <Text style={[styles.privacyCardTitle, isPrivate && { color: colors.primary }]}>Private</Text>
+            <Text style={styles.privacyCardSub}>Hidden from search. Members join via invitation or invite link only</Text>
+            <View style={[styles.privacyCardBtn, isPrivate && styles.privacyCardBtnSelected]}>
+              <Text style={[styles.privacyCardBtnText, isPrivate && { color: colors.primary }]}>
+                {isPrivate ? 'Selected Private' : 'Select Private'}
+              </Text>
+            </View>
           </TouchableOpacity>
         </View>
-        <TouchableOpacity style={styles.createBtn} onPress={handleCreate} disabled={saving}>
-          <Text style={styles.createBtnText}>{saving ? 'Creating…' : 'Create Circle'}</Text>
-        </TouchableOpacity>
-      </View>
+
+        {/* Reading goal */}
+        <Text style={[styles.fieldLabel, { marginTop: 20 }]}>READING GOAL <Text style={styles.optionalLabel}>(Optional)</Text></Text>
+        <View style={styles.goalRow}>
+          <TextInput
+            style={[styles.input, { flex: 1 }]}
+            value={readingGoal}
+            onChangeText={setReadingGoal}
+            placeholder="e.g. 50000 pages to read together"
+            placeholderTextColor={colors.outline}
+            keyboardType="numeric"
+          />
+          <View style={styles.goalPeriodToggle}>
+            {['monthly', 'yearly'].map(p => (
+              <TouchableOpacity
+                key={p}
+                style={[styles.goalPeriodBtn, goalPeriod === p && styles.goalPeriodBtnActive]}
+                onPress={() => setGoalPeriod(p)}
+              >
+                <Text style={[styles.goalPeriodText, goalPeriod === p && styles.goalPeriodTextActive]}>
+                  {p === 'monthly' ? 'Monthly' : 'Yearly'}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
+        {/* Ready to go */}
+        <View style={styles.readyCard}>
+          <Text style={styles.readyTitle}>Ready to go?</Text>
+          <Text style={styles.readySub}>You'll be the admin of this group</Text>
+          <TouchableOpacity
+            style={[styles.createBtn, saving && { opacity: 0.6 }]}
+            onPress={handleCreate}
+            disabled={saving || !name.trim()}
+          >
+            {saving
+              ? <ActivityIndicator size="small" color={colors.onPrimary} />
+              : <Text style={styles.createBtnText}>Create Group</Text>
+            }
+          </TouchableOpacity>
+          <TouchableOpacity onPress={onClose} style={{ marginTop: 12, alignItems: 'center' }}>
+            <Text style={styles.cancelLink}>Cancel</Text>
+          </TouchableOpacity>
+        </View>
+
+      </ScrollView>
     </Modal>
   );
 }
@@ -123,15 +265,22 @@ function JoinModal({ visible, onClose, onJoined }) {
 export default function GroupsScreen({ navigation }) {
   const [myGroups, setMyGroups] = useState([]);
   const [discover, setDiscover] = useState([]);
-  const [tab, setTab] = useState('mine');
   const [discoverQ, setDiscoverQ] = useState('');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
   const [showJoin, setShowJoin] = useState(false);
 
-  const loadMine = useCallback(async () => { try { const data = await groupsAPI.getMyGroups(); setMyGroups(Array.isArray(data) ? data : []); } catch { setMyGroups([]); } }, []);
-  const loadDiscover = useCallback(async (q = '') => { try { const data = await groupsAPI.discoverGroups(q); setDiscover(Array.isArray(data) ? data : []); } catch { setDiscover([]); } }, []);
+  const loadMine = useCallback(async () => {
+    try { const data = await groupsAPI.getMyGroups(); setMyGroups(Array.isArray(data) ? data : []); }
+    catch { setMyGroups([]); }
+  }, []);
+
+  const loadDiscover = useCallback(async (q = '') => {
+    try { const data = await groupsAPI.discoverGroups(q); setDiscover(Array.isArray(data) ? data : []); }
+    catch { setDiscover([]); }
+  }, []);
+
   const load = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
     await Promise.all([loadMine(), loadDiscover(discoverQ)]);
@@ -139,108 +288,180 @@ export default function GroupsScreen({ navigation }) {
   }, [discoverQ]);
 
   useEffect(() => { load(); }, []);
-  useEffect(() => { const t = setTimeout(() => { if (tab === 'discover') loadDiscover(discoverQ); }, 350); return () => clearTimeout(t); }, [discoverQ, tab]);
-
-  const activeData = tab === 'mine' ? myGroups : discover;
+  useEffect(() => {
+    const t = setTimeout(() => loadDiscover(discoverQ), 350);
+    return () => clearTimeout(t);
+  }, [discoverQ]);
 
   if (loading) return <View style={styles.center}><ActivityIndicator size="large" color={colors.primary} /></View>;
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor={colors.surface} />
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.headerLabel}>COMMUNITY</Text>
-          <Text style={styles.headerTitle}>Reading Circles</Text>
-        </View>
-        <View style={styles.headerActions}>
-          <TouchableOpacity style={styles.headerBtn} onPress={() => setShowJoin(true)}><Ionicons name="enter-outline" size={20} color={colors.primary} /></TouchableOpacity>
-          <TouchableOpacity style={[styles.headerBtn, styles.headerBtnPrimary]} onPress={() => setShowCreate(true)}><Ionicons name="add" size={20} color={colors.onPrimary} /></TouchableOpacity>
-        </View>
-      </View>
-
-      <View style={styles.tabs}>
-        {['mine', 'discover'].map(t => (
-          <TouchableOpacity key={t} style={[styles.tab, tab === t && styles.tabActive]} onPress={() => setTab(t)}>
-            <Text style={[styles.tabText, tab === t && styles.tabTextActive]}>{t === 'mine' ? 'My Circles' : 'Discover'}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      {tab === 'discover' && (
-        <View style={styles.searchWrap}>
-          <Ionicons name="search" size={16} color={colors.outline} style={{ marginLeft: 14 }} />
-          <TextInput style={styles.searchInput} value={discoverQ} onChangeText={setDiscoverQ} placeholder="Search circles…" placeholderTextColor={colors.outline} />
-        </View>
-      )}
-
-      <FlatList
-        data={activeData}
-        keyExtractor={item => String(item.id)}
-        renderItem={({ item }) => <GroupCard group={item} onPress={() => navigation.navigate('GroupDetail', { groupId: item.id })} />}
-        contentContainerStyle={styles.list}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => load(true)} tintColor={colors.primary} />}
-        ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
-        ListEmptyComponent={
-          <View style={styles.empty}>
-            <Ionicons name="people-outline" size={56} color={colors.outlineVariant} />
-            <Text style={styles.emptyTitle}>{tab === 'mine' ? 'No circles yet' : 'No circles found'}</Text>
-            <Text style={styles.emptySub}>{tab === 'mine' ? 'Create one or join with an invite code' : 'Try a different search'}</Text>
-          </View>
-        }
+      <AppHeader
+        onBellPress={() => navigation.navigate('Notifications')}
+        onAvatarPress={() => navigation.navigate('Profile')}
       />
 
-      <CreateGroupModal visible={showCreate} onClose={() => setShowCreate(false)} onCreated={g => { setMyGroups(prev => [g, ...prev]); setTab('mine'); }} />
-      <JoinModal visible={showJoin} onClose={() => setShowJoin(false)} onJoined={g => { setMyGroups(prev => [g, ...prev]); setTab('mine'); }} />
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => load(true)} tintColor={colors.primary} />}
+        keyboardShouldPersistTaps="handled"
+      >
+        {/* ── Hero header ── */}
+        <View style={styles.hero}>
+          <View style={styles.heroText}>
+            <Text style={styles.heroTitle}>Literary{'\n'}Circles</Text>
+            <Text style={styles.heroSub}>
+              Discover niche reading communities, discuss your favourite chapters, and join global conversations curated for the discerning reader.
+            </Text>
+          </View>
+          <TouchableOpacity style={styles.createHeroBtn} onPress={() => setShowCreate(true)}>
+            <Ionicons name="add" size={16} color={colors.onPrimary} />
+            <Text style={styles.createHeroBtnText}>Create New Group</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* ── Your Groups ── */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Your Groups</Text>
+          {myGroups.length === 0 ? (
+            <View style={styles.emptySection}>
+              <Text style={styles.emptySectionText}>No circles yet.</Text>
+              <TouchableOpacity onPress={() => setShowJoin(true)}>
+                <Text style={styles.joinLink}>Have an invite code? Join here</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <>
+              {myGroups.map(g => (
+                <GroupCard key={g.id} group={g} onPress={() => navigation.navigate('GroupDetail', { groupId: g.id })} />
+              ))}
+              <TouchableOpacity style={styles.joinCodeBtn} onPress={() => setShowJoin(true)}>
+                <Ionicons name="enter-outline" size={15} color={colors.primary} />
+                <Text style={styles.joinCodeText}>Join with invite code</Text>
+              </TouchableOpacity>
+            </>
+          )}
+        </View>
+
+        {/* ── Discover Groups ── */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Discover Groups</Text>
+          <Text style={styles.sectionSub}>Find your next intellectual sanctuary.</Text>
+          <View style={styles.searchWrap}>
+            <Ionicons name="search" size={15} color={colors.outline} />
+            <TextInput
+              style={styles.searchInput}
+              value={discoverQ}
+              onChangeText={setDiscoverQ}
+              placeholder="Search groups..."
+              placeholderTextColor={colors.outline}
+            />
+          </View>
+          {discover.length === 0 ? (
+            <View style={styles.emptySection}>
+              <Ionicons name="search-outline" size={40} color={colors.outlineVariant} />
+              <Text style={styles.emptySectionText}>{discoverQ ? 'No circles found' : 'Search to explore circles'}</Text>
+            </View>
+          ) : (
+            discover.map(g => (
+              <GroupCard key={g.id} group={g} onPress={() => navigation.navigate('GroupDetail', { groupId: g.id })} />
+            ))
+          )}
+        </View>
+      </ScrollView>
+
+      <CreateGroupModal visible={showCreate} onClose={() => setShowCreate(false)} onCreated={g => setMyGroups(prev => [g, ...prev])} />
+      <JoinModal visible={showJoin} onClose={() => setShowJoin(false)} onJoined={g => setMyGroups(prev => [g, ...prev])} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.surface },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surface },
-  header: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 56, paddingBottom: 12, backgroundColor: colors.surface },
-  headerLabel: { fontSize: 10, fontWeight: '700', letterSpacing: 1.5, color: colors.secondary, marginBottom: 2 },
-  headerTitle: { fontSize: 28, fontWeight: '800', color: colors.primary },
-  headerActions: { flexDirection: 'row', gap: 8 },
-  headerBtn: { width: 38, height: 38, borderRadius: radius.md, backgroundColor: colors.surfaceContainerHigh, alignItems: 'center', justifyContent: 'center' },
-  headerBtnPrimary: { backgroundColor: colors.primary },
-  tabs: { flexDirection: 'row', paddingHorizontal: 16, paddingBottom: 12, gap: 8 },
-  tab: { paddingHorizontal: 18, paddingVertical: 8, borderRadius: radius.full, backgroundColor: colors.surfaceContainerHigh },
-  tabActive: { backgroundColor: colors.primary },
-  tabText: { fontSize: 13, fontWeight: '600', color: colors.onSurfaceVariant },
-  tabTextActive: { color: colors.onPrimary },
-  searchWrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surfaceContainerLow, borderRadius: radius.lg, marginHorizontal: 16, marginBottom: 12, gap: 8 },
-  searchInput: { flex: 1, paddingVertical: 10, paddingRight: 14, fontSize: 14, color: colors.onSurface },
-  list: { paddingHorizontal: 16, paddingBottom: 24 },
-  card: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surfaceContainerLowest, borderRadius: radius.lg, padding: 14, gap: 12, ...shadow.card },
-  cover: { alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-  cardBody: { flex: 1, gap: 3 },
-  cardName: { fontSize: 15, fontWeight: '700', color: colors.onSurface },
-  cardDesc: { fontSize: 12, color: colors.onSurfaceVariant, lineHeight: 17 },
-  cardMeta: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
+  container:  { flex: 1, backgroundColor: colors.surface },
+  center:     { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surface },
+  scroll:     { paddingBottom: 40 },
+
+  // Hero
+  hero:           { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 20 },
+  heroText:       { marginBottom: 20 },
+  heroTitle:      { fontSize: 40, fontWeight: '800', color: colors.primary, lineHeight: 44, marginBottom: 12 },
+  heroSub:        { fontSize: 14, color: colors.onSurfaceVariant, lineHeight: 21 },
+  createHeroBtn:  { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: colors.primary, paddingHorizontal: 18, paddingVertical: 12, borderRadius: radius.lg, alignSelf: 'flex-start', ...shadow.float },
+  createHeroBtnText: { fontSize: 14, fontWeight: '700', color: colors.onPrimary },
+
+  // Sections
+  section:        { paddingHorizontal: 20, marginBottom: 8 },
+  sectionTitle:   { fontSize: 22, fontWeight: '800', color: colors.onSurface, marginBottom: 4 },
+  sectionSub:     { fontSize: 13, color: colors.onSurfaceVariant, marginBottom: 14 },
+  emptySection:   { alignItems: 'center', paddingVertical: 24, gap: 8 },
+  emptySectionText: { fontSize: 14, color: colors.onSurfaceVariant },
+  joinLink:       { fontSize: 13, color: colors.primary, fontWeight: '600' },
+  joinCodeBtn:    { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 12, alignSelf: 'flex-start' },
+  joinCodeText:   { fontSize: 13, color: colors.primary, fontWeight: '600' },
+
+  // Search
+  searchWrap:   { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: colors.surfaceContainerLow, borderRadius: radius.lg, paddingHorizontal: 14, paddingVertical: 10, marginBottom: 14, borderWidth: 1, borderColor: colors.outlineVariant + '60' },
+  searchInput:  { flex: 1, fontSize: 14, color: colors.onSurface },
+
+  // Group cards
+  card:         { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surfaceContainerLowest, borderRadius: radius.lg, padding: 14, gap: 14, marginBottom: 12, ...shadow.card },
+  cover:        { alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  cardBody:     { flex: 1, gap: 3 },
+  curatorBadge: { fontSize: 10, fontWeight: '700', color: colors.secondary, letterSpacing: 0.8, marginBottom: 2 },
+  cardName:     { fontSize: 15, fontWeight: '700', color: colors.onSurface },
+  cardDesc:     { fontSize: 12, color: colors.onSurfaceVariant, lineHeight: 17 },
+  cardMeta:     { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
   cardMetaText: { fontSize: 12, color: colors.onSurfaceVariant },
-  metaDot: { width: 3, height: 3, borderRadius: 2, backgroundColor: colors.outline },
-  empty: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 60, gap: 8 },
-  emptyTitle: { fontSize: 18, fontWeight: '700', color: colors.onSurface, marginTop: 8 },
-  emptySub: { fontSize: 13, color: colors.onSurfaceVariant, textAlign: 'center', paddingHorizontal: 32 },
-  modalContainer: { flex: 1, backgroundColor: colors.surface, paddingHorizontal: 20, paddingTop: 24 },
-  modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 },
-  modalTitle: { fontSize: 22, fontWeight: '800', color: colors.primary },
-  fieldLabel: { fontSize: 12, fontWeight: '600', color: colors.onSurfaceVariant, marginBottom: 6 },
-  input: { backgroundColor: colors.surfaceContainerLow, borderRadius: radius.md, paddingHorizontal: 14, paddingVertical: 10, fontSize: 14, color: colors.onSurface, borderWidth: 1, borderColor: colors.outlineVariant + '60' },
-  inputMulti: { minHeight: 80, textAlignVertical: 'top' },
-  presetRow: { flexDirection: 'row', gap: 12, marginTop: 4 },
-  presetSwatch: { width: 36, height: 36, borderRadius: 18 },
-  privacyRow: { flexDirection: 'row', alignItems: 'center', marginTop: 20, gap: 12 },
-  privacyLabel: { fontSize: 14, fontWeight: '600', color: colors.onSurface },
-  privacySub: { fontSize: 12, color: colors.onSurfaceVariant },
-  toggle: { width: 44, height: 26, borderRadius: 13, backgroundColor: colors.outlineVariant, padding: 3, justifyContent: 'center' },
-  toggleOn: { backgroundColor: colors.primary },
-  toggleThumb: { width: 20, height: 20, borderRadius: 10, backgroundColor: '#fff' },
-  toggleThumbOn: { alignSelf: 'flex-end' },
-  createBtn: { marginTop: 24, backgroundColor: colors.primary, borderRadius: radius.lg, paddingVertical: 14, alignItems: 'center' },
-  createBtnText: { fontSize: 15, fontWeight: '700', color: colors.onPrimary },
-  joinOverlay: { flex: 1, backgroundColor: '#0006', justifyContent: 'flex-end' },
-  joinSheet: { backgroundColor: colors.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40 },
+  metaDot:      { fontSize: 12, color: colors.outline, marginHorizontal: 2 },
+
+  // Create group modal
+  modalRoot:      { flex: 1, backgroundColor: colors.surface },
+  modalScroll:    { paddingHorizontal: 20, paddingTop: 28, paddingBottom: 48 },
+  modalEyebrow:   { fontSize: 11, fontWeight: '700', letterSpacing: 1.5, color: colors.secondary, marginBottom: 6 },
+  modalBigTitle:  { fontSize: 30, fontWeight: '800', color: colors.primary, marginBottom: 6, lineHeight: 36 },
+  modalSubtitle:  { fontSize: 13, color: colors.onSurfaceVariant, lineHeight: 19, marginBottom: 4 },
+
+  fieldLabel:     { fontSize: 11, fontWeight: '700', letterSpacing: 0.8, color: colors.onSurfaceVariant, marginBottom: 10, textTransform: 'uppercase' },
+  optionalLabel:  { fontWeight: '400', letterSpacing: 0, textTransform: 'none', color: colors.outline },
+  input:          { backgroundColor: colors.surfaceContainerLow, borderRadius: radius.md, paddingHorizontal: 14, paddingVertical: 11, fontSize: 14, color: colors.onSurface, borderWidth: 1, borderColor: colors.outlineVariant + '60' },
+  inputMulti:     { minHeight: 80, textAlignVertical: 'top' },
+
+  // Cover grid
+  coverGrid:      { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 14 },
+  coverTile:      { width: 64, height: 64, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center', opacity: 0.75 },
+  coverTileSelected: { opacity: 1, borderWidth: 3, borderColor: '#fff', ...shadow.float },
+  coverPreview:   { flexDirection: 'row', alignItems: 'center', borderRadius: radius.lg, paddingHorizontal: 18, paddingVertical: 14, marginBottom: 4, ...shadow.card },
+  coverPreviewName: { fontSize: 16, fontWeight: '700', color: '#fff', flex: 1 },
+
+  // Privacy cards
+  privacyCards:   { flexDirection: 'row', gap: 12, marginTop: 16 },
+  privacyCard:    { flex: 1, backgroundColor: colors.surfaceContainerLowest, borderRadius: radius.lg, padding: 14, borderWidth: 1.5, borderColor: colors.outlineVariant + '60', ...shadow.card },
+  privacyCardSelected: { borderColor: colors.primary },
+  privacyCardTitle: { fontSize: 14, fontWeight: '700', color: colors.onSurface, marginBottom: 4 },
+  privacyCardSub:   { fontSize: 11, color: colors.onSurfaceVariant, lineHeight: 16, marginBottom: 10 },
+  privacyCardBtn:   { borderRadius: radius.md, paddingVertical: 6, paddingHorizontal: 10, backgroundColor: colors.surfaceContainerHigh, alignItems: 'center' },
+  privacyCardBtnSelected: { backgroundColor: colors.primary + '18' },
+  privacyCardBtnText: { fontSize: 11, fontWeight: '700', color: colors.onSurfaceVariant },
+
+  // Reading goal
+  goalRow:        { flexDirection: 'row', gap: 10, alignItems: 'center' },
+  goalPeriodToggle: { flexDirection: 'row', backgroundColor: colors.surfaceContainerHigh, borderRadius: radius.md, overflow: 'hidden' },
+  goalPeriodBtn:  { paddingHorizontal: 12, paddingVertical: 11 },
+  goalPeriodBtnActive: { backgroundColor: colors.primary },
+  goalPeriodText: { fontSize: 12, fontWeight: '600', color: colors.onSurfaceVariant },
+  goalPeriodTextActive: { color: colors.onPrimary },
+
+  // Ready card
+  readyCard:      { backgroundColor: colors.surfaceContainerLowest, borderRadius: radius.xl, padding: 20, marginTop: 24, ...shadow.card },
+  readyTitle:     { fontSize: 18, fontWeight: '800', color: colors.onSurface, marginBottom: 4 },
+  readySub:       { fontSize: 13, color: colors.onSurfaceVariant, marginBottom: 16 },
+  createBtn:      { backgroundColor: colors.primary, borderRadius: radius.lg, paddingVertical: 14, alignItems: 'center' },
+  createBtnText:  { fontSize: 15, fontWeight: '700', color: colors.onPrimary },
+  cancelLink:     { fontSize: 14, color: colors.onSurfaceVariant },
+
+  // Join modal
+  joinOverlay:    { flex: 1, backgroundColor: '#0006', justifyContent: 'flex-end' },
+  joinSheet:      { backgroundColor: colors.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40 },
+  modalTitle:     { fontSize: 22, fontWeight: '800', color: colors.primary },
 });

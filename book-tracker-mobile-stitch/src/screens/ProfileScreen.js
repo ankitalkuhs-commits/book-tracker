@@ -5,6 +5,7 @@ import {
   Platform, Dimensions,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { userAPI, authAPI, userbooksAPI, notesAPI, activityAPI, profileAPI } from '../services/api';
@@ -291,6 +292,7 @@ function NewNoteModal({ visible, editNote, books, onClose, onSaved }) {
 
 // ── Profile Screen ─────────────────────────────────────────────────────────────
 export default function ProfileScreen({ navigation, onLogout }) {
+  const insets    = useSafeAreaInsets();
   const preloaded = useContext(PreloadContext);
   const [profile,  setProfile]   = useState(preloaded?.profile || null);
   const [books,    setBooks]     = useState(preloaded?.library || []);
@@ -410,8 +412,11 @@ export default function ProfileScreen({ navigation, onLogout }) {
   return (
     <View style={styles.container}>
       {/* ── Fixed header ── */}
-      <View style={styles.topBar}>
-        <View>
+      <View style={[styles.topBar, { paddingTop: insets.top + 16 }]}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+          <Ionicons name="arrow-back" size={22} color={colors.onSurface} />
+        </TouchableOpacity>
+        <View style={{ flex: 1 }}>
           <Text style={styles.topBarLabel}>MY PROFILE</Text>
           <Text style={styles.topBarTitle}>Profile</Text>
         </View>
@@ -629,7 +634,8 @@ const styles = StyleSheet.create({
   centered:  { flex: 1, justifyContent: 'center', alignItems: 'center' },
   scroll:    { flex: 1 },
 
-  topBar:      { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', paddingHorizontal: 20, paddingTop: 56, paddingBottom: 14, backgroundColor: colors.surface },
+  topBar:      { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingBottom: 14, backgroundColor: colors.surface },
+  backBtn:     { marginRight: 12, padding: 4 },
   topBarLabel: { fontSize: 10, fontWeight: '700', letterSpacing: 1.5, color: colors.secondary, marginBottom: 2 },
   topBarTitle: { fontSize: 28, fontWeight: '800', color: colors.primary },
   settingsBtn: { width: 40, height: 40, borderRadius: radius.md, backgroundColor: colors.surfaceContainerHigh, alignItems: 'center', justifyContent: 'center' },

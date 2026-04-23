@@ -8,6 +8,7 @@ import { registerExpoPushToken } from './src/services/NotificationService';
 import AppNavigator from './src/navigation/AppNavigator';
 import LoginScreen from './src/screens/LoginScreen';
 import { colors } from './src/theme';
+import { NotificationContext } from './src/context/NotificationContext';
 
 // ── Preload context (consumed by FeedScreen, LibraryScreen, ProfileScreen) ───
 export const PreloadContext = createContext(null);
@@ -119,11 +120,13 @@ export default function App() {
   }
 
   return (
-    <PreloadContext.Provider value={preloaded}>
-      <NavigationContainer>
-        <AppNavigator unreadCount={unreadCount} onLogout={handleLogout} />
-      </NavigationContainer>
-    </PreloadContext.Provider>
+    <NotificationContext.Provider value={{ unreadCount }}>
+      <PreloadContext.Provider value={preloaded}>
+        <NavigationContainer>
+          <AppNavigator onLogout={handleLogout} />
+        </NavigationContainer>
+      </PreloadContext.Provider>
+    </NotificationContext.Provider>
   );
 }
 

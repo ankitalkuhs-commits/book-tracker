@@ -9,6 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { userbooksAPI, booksAPI } from '../services/api';
 import { PreloadContext } from '../../App';
 import { colors, radius, shadow } from '../theme';
+import AppHeader from '../components/AppHeader';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 const GRID_PAD = 14;
@@ -17,7 +18,7 @@ const TILE_W    = (SCREEN_W - GRID_PAD * 2 - GRID_GAP) / 2;
 const TILE_H    = TILE_W * (4 / 3);
 const COVER_W   = TILE_W * 0.52;
 const COVER_H   = COVER_W * 1.5;
-const SPINE_W   = 9;
+const SPINE_W   = 5;
 
 // Colour palettes for book tiles
 const PALETTES = [
@@ -153,7 +154,7 @@ function BookTile({ userbook, onPress }) {
         )}
         {isFinished && (
           <View style={[styles.statusBadge, { backgroundColor: colors.secondary }]}>
-            <Text style={styles.statusBadgeText}>Done</Text>
+            <Text style={styles.statusBadgeText}>Finished</Text>
           </View>
         )}
         {userbook.status === 'to-read' && (
@@ -167,6 +168,9 @@ function BookTile({ userbook, onPress }) {
       <View style={styles.tileInfo}>
         <Text style={styles.tileTitle} numberOfLines={2}>{book?.title || 'Untitled'}</Text>
         <Text style={[styles.tileAuthor, { color: palette.text }]} numberOfLines={1}>{book?.author || ''}</Text>
+        <Text style={styles.tileStatus}>
+          {isReading ? 'READING' : isFinished ? 'FINISHED' : 'WANT TO READ'}
+        </Text>
 
         {isReading && book?.total_pages > 0 && (
           <ProgressBar current={userbook.current_page || 0} total={book.total_pages} />
@@ -289,27 +293,33 @@ function AddBookModal({ visible, onClose, onAdded }) {
                 <FlatList
                   data={results}
                   keyExtractor={(_, i) => i.toString()}
-                  contentContainerStyle={{ padding: 14 }}
+                  contentContainerStyle={styles.resultsList}
                   renderItem={({ item }) => (
                     <TouchableOpacity
-                      style={styles.resultRow}
+                      style={styles.resultCard}
                       onPress={() => setSelectedBook(item)}
                       activeOpacity={0.8}
                     >
-                      <Image
-                        source={{ uri: item.cover_url || 'https://via.placeholder.com/60x90' }}
-                        style={styles.resultCover}
-                      />
-                      <View style={{ flex: 1 }}>
+                      {/* Cover — overflows above the card */}
+                      <View style={styles.resultCoverWrap}>
+                        <Image
+                          source={{ uri: item.cover_url }}
+                          style={styles.resultCover}
+                          resizeMode="cover"
+                        />
+                      </View>
+                      <View style={styles.resultInfo}>
                         <Text style={styles.resultTitle} numberOfLines={2}>{item.title}</Text>
                         <Text style={styles.resultAuthor} numberOfLines={1}>
                           {item.authors?.join(', ') || 'Unknown'}
                         </Text>
-                        {item.total_pages > 0 && (
-                          <Text style={styles.resultPages}>{item.total_pages} pages</Text>
-                        )}
+                        {item.publisher ? (
+                          <Text style={styles.resultPublisher} numberOfLines={1}>{item.publisher}</Text>
+                        ) : item.total_pages > 0 ? (
+                          <Text style={styles.resultPublisher}>{item.total_pages} pages</Text>
+                        ) : null}
                       </View>
-                      <Ionicons name="chevron-forward" size={18} color={colors.outline} />
+                      <Ionicons name="chevron-forward" size={18} color={colors.outline} style={{ alignSelf: 'center' }} />
                     </TouchableOpacity>
                   )}
                 />
@@ -318,25 +328,42 @@ function AddBookModal({ visible, onClose, onAdded }) {
           ) : (
             /* ── Options panel ── */
             <ScrollView contentContainerStyle={styles.optionsScroll}>
-              {/* Selected book preview */}
-              <View style={styles.selectedPreview}>
-                <TouchableOpacity onPress={() => setSelectedBook(null)} style={styles.backBtn}>
-                  <Ionicons name="chevron-back" size={18} color={colors.primary} />
-                  <Text style={styles.backBtnText}>Back</Text>
-                </TouchableOpacity>
-                <View style={styles.selectedBookRow}>
-                  <Image
-                    source={{ uri: selectedBook.cover_url || 'https://via.placeholder.com/60x90' }}
-                    style={styles.selectedCover}
-                  />
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.selectedTitle} numberOfLines={3}>{selectedBook.title}</Text>
-                    <Text style={styles.selectedAuthor}>
-                      {selectedBook.authors?.join(', ') || 'Unknown'}
-                    </Text>
-                  </View>
+              {/* Back */}
+              <TouchableOpacity onPress={() => setSelectedBook(null)} style={styles.backBtn}>
+                <Ionicons name="chevron-back" size={18} color={colors.primary} />
+                <Text style={styles.backBtnText}>Back</Text>
+              </TouchableOpacity>
+
+              {/* Hero: large cover + meta */}
+              <View style={styles.selectedHero}>
+                <Image
+                  source={{ uri: selectedBook.cover_url }}
+                  style={styles.selectedCoverLarge}
+                  resizeMode="cover"
+                />
+                <View style={styles.selectedMeta}>
+                  <Text style={styles.selectedTitle} numberOfLines={3}>{selectedBook.title}</Text>
+                  <Text style={styles.selectedAuthor}>
+                    {selectedBook.authors?.join(', ') || 'Unknown'}
+                  </Text>
+                  {selectedBook.publisher ? (
+                    <Text style={styles.selectedPublisher}>{selectedBook.publisher}</Text>
+                  ) : null}
+                  {selectedBook.published_date ? (
+                    <Text style={styles.selectedPublisher}>{selectedBook.published_date.slice(0, 4)}</Text>
+                  ) : null}
+                  {selectedBook.total_pages > 0 ? (
+                    <Text style={styles.selectedPages}>{selectedBook.total_pages} pages</Text>
+                  ) : null}
                 </View>
               </View>
+
+              {/* Description */}
+              {selectedBook.description ? (
+                <View style={styles.descriptionBox}>
+                  <Text style={styles.descriptionText} numberOfLines={5}>{selectedBook.description}</Text>
+                </View>
+              ) : null}
 
               {/* Status */}
               <Text style={styles.optionLabel}>Add to</Text>
@@ -444,14 +471,36 @@ export default function LibraryScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
+      <AppHeader
+        onBellPress={() => navigation.navigate('Notifications')}
+        onAvatarPress={() => navigation.navigate('Profile')}
+      />
       {/* ── Header ── */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>My Library</Text>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.headerTitle}>Your Library</Text>
+          <Text style={styles.headerSubtitle}>Curating your personal journey through words and wisdom.</Text>
+        </View>
         <TouchableOpacity style={styles.addBookBtn} onPress={() => setShowAddModal(true)}>
           <Ionicons name="add" size={18} color={colors.onPrimary} />
           <Text style={styles.addBookBtnText}>Add Book</Text>
         </TouchableOpacity>
       </View>
+
+      {/* ── Status tabs ── */}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabScroll} contentContainerStyle={styles.tabContent}>
+        {TABS.map(({ key, label }) => (
+          <TouchableOpacity
+            key={key}
+            style={[styles.tab, activeTab === key && styles.tabActive]}
+            onPress={() => setActiveTab(key)}
+          >
+            <Text style={[styles.tabText, activeTab === key && styles.tabTextActive]}>
+              {label}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
 
       {/* ── Search bar ── */}
       <View style={styles.searchBar}>
@@ -470,24 +519,6 @@ export default function LibraryScreen({ navigation }) {
           </TouchableOpacity>
         )}
       </View>
-
-      {/* ── Status tabs ── */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabScroll} contentContainerStyle={styles.tabContent}>
-        {TABS.map(({ key, label, count }) => (
-          <TouchableOpacity
-            key={key}
-            style={[styles.tab, activeTab === key && styles.tabActive]}
-            onPress={() => setActiveTab(key)}
-          >
-            <Text style={[styles.tabText, activeTab === key && styles.tabTextActive]}>
-              {label}
-            </Text>
-            <Text style={[styles.tabCount, activeTab === key && styles.tabCountActive]}>
-              {count}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
 
       {/* ── Grid ── */}
       {filtered.length === 0 ? (
@@ -536,22 +567,21 @@ export default function LibraryScreen({ navigation }) {
 const styles = StyleSheet.create({
   container:    { flex: 1, backgroundColor: colors.surface },
   centered:     { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
-  header:       { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 56, paddingBottom: 12 },
-  headerTitle:  { fontSize: 28, fontWeight: '800', color: colors.primary },
+  header:       { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', paddingHorizontal: 20, paddingBottom: 12, paddingTop: 16 },
+  headerTitle:  { fontSize: 28, fontWeight: '800', color: colors.onSurface },
+  headerSubtitle: { fontSize: 13, color: colors.onSurfaceVariant, marginTop: 3, lineHeight: 18, paddingRight: 12 },
   addBookBtn:   { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: colors.primary, paddingHorizontal: 14, paddingVertical: 8, borderRadius: radius.md },
   addBookBtnText: { color: colors.onPrimary, fontSize: 13, fontWeight: '700' },
 
-  searchBar:    { flexDirection: 'row', alignItems: 'center', marginHorizontal: 16, marginBottom: 10, backgroundColor: colors.surfaceContainerLow, borderRadius: radius.lg, paddingHorizontal: 14, paddingVertical: 10, borderWidth: 1, borderColor: colors.outlineVariant + '60' },
+  searchBar:    { flexDirection: 'row', alignItems: 'center', marginHorizontal: 16, marginTop: 4, marginBottom: 10, backgroundColor: colors.surfaceContainerLow, borderRadius: radius.lg, paddingHorizontal: 14, paddingVertical: 10, borderWidth: 1, borderColor: colors.outlineVariant + '60' },
   searchInput:  { flex: 1, fontSize: 14, color: colors.onSurface },
 
   tabScroll:    {},
   tabContent:   { paddingHorizontal: 14, paddingBottom: 10, gap: 8 },
-  tab:          { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 14, paddingVertical: 7, borderRadius: 999, backgroundColor: colors.surfaceContainerHigh },
-  tabActive:    { backgroundColor: colors.primary },
+  tab:          { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 999, backgroundColor: colors.surfaceContainerLowest, borderWidth: 1, borderColor: colors.outlineVariant },
+  tabActive:    { backgroundColor: colors.primary, borderColor: colors.primary },
   tabText:      { fontSize: 12, fontWeight: '600', color: colors.onSurfaceVariant },
   tabTextActive: { color: colors.onPrimary },
-  tabCount:     { fontSize: 11, color: colors.outline },
-  tabCountActive: { color: colors.onPrimary + 'cc' },
 
   grid:         { padding: GRID_PAD, gap: GRID_GAP },
   gridRow:      { gap: GRID_GAP, justifyContent: 'flex-start' },
@@ -561,6 +591,7 @@ const styles = StyleSheet.create({
   tileInfo:     { paddingTop: 10, paddingHorizontal: 2, gap: 3 },
   tileTitle:    { fontSize: 13, fontWeight: '700', color: colors.onSurface, lineHeight: 18 },
   tileAuthor:   { fontSize: 11, fontWeight: '600', lineHeight: 15 },
+  tileStatus:   { fontSize: 9, fontWeight: '700', color: colors.primary, letterSpacing: 0.6, marginTop: 2 },
   statusBadge:  { position: 'absolute', top: 8, right: 8, paddingHorizontal: 7, paddingVertical: 3, borderRadius: 999 },
   statusBadgeText: { fontSize: 9, fontWeight: '700', color: '#fff' },
 
@@ -574,7 +605,7 @@ const styles = StyleSheet.create({
   emptyAddBtnText: { color: colors.onPrimary, fontWeight: '700' },
 
   // Modal
-  modalRoot:    { flex: 1, backgroundColor: colors.surface },
+  modalRoot:    { flex: 1, backgroundColor: colors.surface },  // cream #fbf9f4
   modalHeader:  { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 18, paddingBottom: 14, borderBottomWidth: 1, borderBottomColor: colors.outlineVariant + '60' },
   modalCancel:  { fontSize: 15, color: colors.primary },
   modalTitle:   { fontSize: 17, fontWeight: '700', color: colors.onSurface },
@@ -585,20 +616,34 @@ const styles = StyleSheet.create({
   searchEmpty:  { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 12, paddingBottom: 60 },
   searchEmptyText: { fontSize: 15, color: colors.onSurfaceVariant },
 
-  resultRow:    { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: colors.surfaceContainerHigh },
-  resultCover:  { width: 48, height: 72, borderRadius: radius.sm, backgroundColor: colors.surfaceContainerHigh },
+  // Search result cards
+  resultsList:  { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 20 },
+  resultCard:   {
+    flexDirection: 'row', alignItems: 'center', gap: 14,
+    backgroundColor: colors.surfaceContainerLowest,
+    borderRadius: radius.lg, padding: 12, marginBottom: 12,
+    ...shadow.card,
+  },
+  resultCoverWrap: { flexShrink: 0 },
+  resultCover:  { width: 72, height: 108, borderRadius: radius.md, backgroundColor: colors.surfaceContainerHigh },
+  resultInfo:   { flex: 1 },
   resultTitle:  { fontSize: 14, fontWeight: '700', color: colors.onSurface, lineHeight: 20, marginBottom: 3 },
-  resultAuthor: { fontSize: 12, color: colors.onSurfaceVariant },
-  resultPages:  { fontSize: 11, color: colors.outline, marginTop: 3 },
+  resultAuthor: { fontSize: 12, color: colors.onSurfaceVariant, marginBottom: 2 },
+  resultPublisher: { fontSize: 11, color: colors.outline },
 
-  optionsScroll: { padding: 20, gap: 4 },
-  selectedPreview: { marginBottom: 20 },
-  backBtn:      { flexDirection: 'row', alignItems: 'center', marginBottom: 14 },
+  // Options panel (after selecting a book)
+  optionsScroll: { padding: 20, paddingTop: 12 },
+  backBtn:      { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
   backBtnText:  { fontSize: 14, color: colors.primary, fontWeight: '600' },
-  selectedBookRow: { flexDirection: 'row', gap: 14, backgroundColor: colors.surfaceContainerLow, padding: 12, borderRadius: radius.lg },
-  selectedCover: { width: 60, height: 90, borderRadius: radius.sm },
-  selectedTitle: { fontSize: 15, fontWeight: '700', color: colors.onSurface, lineHeight: 21, marginBottom: 5 },
-  selectedAuthor: { fontSize: 13, color: colors.onSurfaceVariant },
+  selectedHero: { flexDirection: 'row', gap: 16, marginBottom: 16, backgroundColor: colors.surfaceContainerLowest, borderRadius: radius.lg, padding: 14, ...shadow.card },
+  selectedCoverLarge: { width: 110, height: 165, borderRadius: radius.md, backgroundColor: colors.surfaceContainerHigh, flexShrink: 0 },
+  selectedMeta: { flex: 1, justifyContent: 'flex-start', gap: 4 },
+  selectedTitle: { fontSize: 16, fontWeight: '800', color: colors.onSurface, lineHeight: 22, marginBottom: 2 },
+  selectedAuthor: { fontSize: 13, fontWeight: '600', color: colors.primary },
+  selectedPublisher: { fontSize: 11, color: colors.onSurfaceVariant },
+  selectedPages: { fontSize: 11, color: colors.outline, marginTop: 2 },
+  descriptionBox: { backgroundColor: colors.surfaceContainerLowest, borderRadius: radius.lg, padding: 14, marginBottom: 4, ...shadow.card },
+  descriptionText: { fontSize: 13, color: colors.onSurfaceVariant, lineHeight: 20 },
 
   optionLabel:  { fontSize: 11, fontWeight: '700', color: colors.onSurfaceVariant, textTransform: 'uppercase', letterSpacing: 0.8, marginTop: 18, marginBottom: 8 },
   chipRow:      { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },

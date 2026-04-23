@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity,
-  Switch, ActivityIndicator, Alert, StatusBar, Image, Modal,
+  Switch, ActivityIndicator, Alert, Image, Modal, FlatList,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { profileAPI, notificationsAPI, authAPI } from '../services/api';
 import { colors, radius, shadow } from '../theme';
 
-// Notification pref keys must match the backend (same as webapp)
+// Notification pref keys must match the backend
 const NOTIF_PREFS = [
   { key: 'new_follower',            icon: 'person-add-outline',    label: 'New followers',     desc: 'When someone starts following you' },
   { key: 'post_liked',              icon: 'heart-outline',         label: 'Likes',              desc: 'When someone likes your post' },
@@ -18,6 +19,15 @@ const NOTIF_PREFS = [
   { key: 'group_invite',            icon: 'people-outline',        label: 'Circle invites',     desc: 'When someone invites you to join a Circle' },
   { key: 'group_join_request',      icon: 'person-add-outline',    label: 'Join requests',      desc: 'When someone requests to join your Circle (curators only)' },
 ];
+
+// 12 preset cartoon avatars via DiceBear adventurer
+const AVATAR_SEEDS = ['Aneka','Buster','Callie','Destiny','Emery','Felix','Gracie','Harley','Iris','Jasper','Kali','Lexi'];
+const AVATAR_BG    = ['#c8e6f5','#dcc8f0','#c8e6c9','#f5dcc8','#f5c8c8','#c8ddf5','#e8c8f5','#f5f0c8','#c8f0e8','#f0c8d8','#d8f0c8','#c8d8f0'];
+const AVATARS = AVATAR_SEEDS.map((seed, i) => ({
+  id: seed,
+  url: `https://api.dicebear.com/9.x/adventurer/png?seed=${seed}&size=200`,
+  bg: AVATAR_BG[i],
+}));
 
 function SectionHeader({ label }) {
   return <Text style={styles.sectionHeader}>{label}</Text>;
@@ -40,19 +50,78 @@ function Row({ icon, label, desc, onPress, danger, rightEl }) {
   );
 }
 
+// ── Avatar Picker Modal ───────────────────────────────────────────────────────
+function AvatarPickerModal({ visible, onClose, onSelect }) {
+  const [selected, setSelected] = useState(null);
+
+  const handleUse = () => {
+    if (selected) { onSelect(selected); onClose(); }
+  };
+
+  return (
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+      <View style={styles.pickerOverlay}>
+        <View style={styles.pickerSheet}>
+          {/* Header */}
+          <View style={styles.pickerHeader}>
+            <Text style={styles.pickerTitle}>Choose Avatar</Text>
+            <TouchableOpacity onPress={onClose} style={styles.pickerClose}>
+              <Ionicons name="close" size={22} color={colors.onSurface} />
+            </TouchableOpacity>
+          </View>
+
+          {/* Grid */}
+          <FlatList
+            data={AVATARS}
+            numColumns={4}
+            keyExtractor={item => item.id}
+            contentContainerStyle={styles.pickerGrid}
+            renderItem={({ item }) => (
+              <TouchableOpacity
+                style={[styles.avatarTile, { backgroundColor: item.bg }, selected?.id === item.id && styles.avatarTileSelected]}
+                onPress={() => setSelected(item)}
+                activeOpacity={0.8}
+              >
+                <Image source={{ uri: item.url }} style={styles.avatarTileImg} />
+                {selected?.id === item.id && (
+                  <View style={styles.avatarTileCheck}>
+                    <Ionicons name="checkmark-circle" size={18} color={colors.primary} />
+                  </View>
+                )}
+              </TouchableOpacity>
+            )}
+          />
+
+          {/* CTA */}
+          <TouchableOpacity
+            style={[styles.useAvatarBtn, !selected && { opacity: 0.4 }]}
+            onPress={handleUse}
+            disabled={!selected}
+          >
+            <Text style={styles.useAvatarBtnText}>Use This Avatar</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+// ── Settings Screen ───────────────────────────────────────────────────────────
 export default function SettingsScreen({ navigation, onLogout }) {
-  const [profile,       setProfile]       = useState(null);
-  const [loading,       setLoading]       = useState(true);
-  const [saving,        setSaving]        = useState(false);
-  const [savedFeedback, setSavedFeedback] = useState(false);
-  const [editName,      setEditName]      = useState('');
-  const [editBio,       setEditBio]       = useState('');
-  const [editGoal,      setEditGoal]      = useState('');
-  const [editingProfile, setEditingProfile] = useState(false);
-  const [prefs,         setPrefs]         = useState({});
-  const [isPrivate,     setIsPrivate]     = useState(false);
-  const [savingPrivacy, setSavingPrivacy] = useState(false);
-  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const insets = useSafeAreaInsets();
+  const [profile,         setProfile]         = useState(null);
+  const [loading,         setLoading]         = useState(true);
+  const [saving,          setSaving]          = useState(false);
+  const [savedFeedback,   setSavedFeedback]   = useState(false);
+  const [editName,        setEditName]        = useState('');
+  const [editBio,         setEditBio]         = useState('');
+  const [editGoal,        setEditGoal]        = useState('');
+  const [editingProfile,  setEditingProfile]  = useState(false);
+  const [prefs,           setPrefs]           = useState({});
+  const [isPrivate,       setIsPrivate]       = useState(false);
+  const [savingPrivacy,   setSavingPrivacy]   = useState(false);
+  const [uploadingPhoto,  setUploadingPhoto]  = useState(false);
+  const [showAvatarPicker, setShowAvatarPicker] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -76,18 +145,42 @@ export default function SettingsScreen({ navigation, onLogout }) {
     if (!editName.trim()) { Alert.alert('Name required'); return; }
     setSaving(true);
     try {
-      const payload = {
-        name:    editName.trim(),
-        bio:     editBio.trim(),
+      const updated = await profileAPI.updateMe({
+        name: editName.trim(),
+        bio: editBio.trim(),
         yearly_goal: editGoal ? parseInt(editGoal, 10) : null,
-      };
-      const updated = await profileAPI.updateMe(payload);
+      });
       setProfile(updated);
       setEditingProfile(false);
       setSavedFeedback(true);
       setTimeout(() => setSavedFeedback(false), 2500);
     } catch (e) { Alert.alert('Error', e?.response?.data?.detail || 'Could not save profile'); }
     setSaving(false);
+  };
+
+  const handleSelectAvatar = async (avatar) => {
+    setUploadingPhoto(true);
+    try {
+      const updated = await profileAPI.updateMe({ profile_picture: avatar.url });
+      setProfile(prev => ({ ...prev, profile_picture: avatar.url }));
+    } catch { Alert.alert('Error', 'Could not set avatar'); }
+    setUploadingPhoto(false);
+  };
+
+  const handlePhotoUpload = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') { Alert.alert('Permission needed', 'Please allow photo library access.'); return; }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true, aspect: [1, 1], quality: 0.8,
+    });
+    if (result.canceled) return;
+    setUploadingPhoto(true);
+    try {
+      const updated = await profileAPI.uploadPicture(result.assets[0].uri);
+      setProfile(prev => ({ ...prev, profile_picture: updated.profile_picture }));
+    } catch { Alert.alert('Error', 'Could not upload photo'); }
+    setUploadingPhoto(false);
   };
 
   const togglePrivacy = async (val) => {
@@ -103,27 +196,6 @@ export default function SettingsScreen({ navigation, onLogout }) {
     setPrefs(updated);
     try { await notificationsAPI.updatePrefs({ [key]: updated[key] }); }
     catch { setPrefs(prefs); }
-  };
-
-  const handlePhotoUpload = async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') {
-      Alert.alert('Permission needed', 'Please allow photo library access.');
-      return;
-    }
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.8,
-    });
-    if (result.canceled) return;
-    setUploadingPhoto(true);
-    try {
-      const updated = await profileAPI.uploadPicture(result.assets[0].uri);
-      setProfile(prev => ({ ...prev, profile_picture: updated.profile_picture }));
-    } catch { Alert.alert('Error', 'Could not upload photo'); }
-    setUploadingPhoto(false);
   };
 
   const handleLogout = () => Alert.alert('Sign out', 'Are you sure?', [
@@ -149,10 +221,13 @@ export default function SettingsScreen({ navigation, onLogout }) {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor={colors.surface} />
-      <View style={styles.header}>
-        <Text style={styles.headerLabel}>ACCOUNT</Text>
-        <Text style={styles.headerTitle}>Settings</Text>
+      {/* ── Header with back button ── */}
+      <View style={[styles.topBar, { paddingTop: insets.top + 10 }]}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+          <Ionicons name="arrow-back" size={22} color={colors.onSurface} />
+        </TouchableOpacity>
+        <Text style={styles.topBarTitle}>Settings</Text>
+        <View style={{ width: 40 }} />
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
@@ -160,24 +235,34 @@ export default function SettingsScreen({ navigation, onLogout }) {
         {/* ── Profile section ── */}
         <SectionHeader label="Profile" />
         <View style={styles.card}>
-          {/* Avatar */}
-          <View style={styles.avatarRow}>
-            {profile?.profile_picture ? (
-              <Image source={{ uri: profile.profile_picture }} style={styles.avatarImg} />
-            ) : (
-              <View style={styles.avatarFallback}>
-                <Text style={styles.avatarText}>{initials}</Text>
+          {/* Photo + name + email */}
+          <View style={styles.profileHero}>
+            <View style={styles.avatarWrap}>
+              {uploadingPhoto ? (
+                <View style={styles.avatarImg}><ActivityIndicator color={colors.primary} /></View>
+              ) : profile?.profile_picture ? (
+                <Image source={{ uri: profile.profile_picture }} style={styles.avatarImg} />
+              ) : (
+                <View style={[styles.avatarImg, styles.avatarFallback]}>
+                  <Text style={styles.avatarInitials}>{initials}</Text>
+                </View>
+              )}
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.profileName}>{profile?.name || 'Your Name'}</Text>
+              <Text style={styles.profileEmail}>{profile?.email || ''}</Text>
+              {/* Two action buttons */}
+              <View style={styles.photoBtns}>
+                <TouchableOpacity style={styles.photoBtn} onPress={() => setShowAvatarPicker(true)}>
+                  <Ionicons name="happy-outline" size={15} color={colors.primary} />
+                  <Text style={styles.photoBtnText}>Choose avatar</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.photoBtn} onPress={handlePhotoUpload} disabled={uploadingPhoto}>
+                  <Ionicons name="cloud-upload-outline" size={15} color={colors.primary} />
+                  <Text style={styles.photoBtnText}>Upload photo</Text>
+                </TouchableOpacity>
               </View>
-            )}
-            <TouchableOpacity style={styles.uploadPhotoBtn} onPress={handlePhotoUpload} disabled={uploadingPhoto}>
-              {uploadingPhoto
-                ? <ActivityIndicator size="small" color={colors.primary} />
-                : <>
-                    <Ionicons name="camera-outline" size={16} color={colors.primary} />
-                    <Text style={styles.uploadPhotoBtnText}>Change photo</Text>
-                  </>
-              }
-            </TouchableOpacity>
+            </View>
           </View>
 
           <View style={styles.rowSep} />
@@ -228,7 +313,11 @@ export default function SettingsScreen({ navigation, onLogout }) {
                 }}>
                   <Text style={styles.cancelBtnText}>Cancel</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={[styles.saveBtn, (!editName.trim() || saving) && { opacity: 0.5 }]} onPress={saveProfile} disabled={saving || !editName.trim()}>
+                <TouchableOpacity
+                  style={[styles.saveBtn, (!editName.trim() || saving) && { opacity: 0.5 }]}
+                  onPress={saveProfile}
+                  disabled={saving || !editName.trim()}
+                >
                   <Text style={styles.saveBtnText}>{saving ? 'Saving…' : 'Save Changes'}</Text>
                 </TouchableOpacity>
               </View>
@@ -242,25 +331,18 @@ export default function SettingsScreen({ navigation, onLogout }) {
             </View>
           ) : (
             <>
-              <Row icon="person-outline" label={profile?.name || 'Set your name'} onPress={() => setEditingProfile(true)} />
+              <Row icon="person-outline"        label={profile?.name || 'Set your name'}         onPress={() => setEditingProfile(true)} />
               {profile?.username && <>
                 <View style={styles.rowSep} />
-                <Row icon="at-outline" label={`@${profile.username}`} />
+                <Row icon="at-outline"           label={`@${profile.username}`} />
               </>}
               <View style={styles.rowSep} />
-              <Row icon="document-text-outline" label={profile?.bio || 'Add a bio…'} onPress={() => setEditingProfile(true)} />
-              {profile?.yearly_goal > 0 && (
-                <>
-                  <View style={styles.rowSep} />
-                  <Row icon="flag-outline" label={`${profile.yearly_goal} books / year`} onPress={() => setEditingProfile(true)} />
-                </>
-              )}
-              {!profile?.yearly_goal && (
-                <>
-                  <View style={styles.rowSep} />
-                  <Row icon="flag-outline" label="Set yearly goal" onPress={() => setEditingProfile(true)} />
-                </>
-              )}
+              <Row icon="document-text-outline" label={profile?.bio || 'Add a bio…'}              onPress={() => setEditingProfile(true)} />
+              <View style={styles.rowSep} />
+              <Row icon="flag-outline"
+                label={profile?.yearly_goal > 0 ? `${profile.yearly_goal} books / year` : 'Set yearly goal'}
+                onPress={() => setEditingProfile(true)}
+              />
             </>
           )}
         </View>
@@ -271,7 +353,7 @@ export default function SettingsScreen({ navigation, onLogout }) {
           <Row
             icon="lock-closed-outline"
             label="Private Profile"
-            desc="Only your followers can see your library and notes. Your name and avatar remain visible."
+            desc="Only your followers can see your library and notes."
             rightEl={
               <Switch
                 value={isPrivate}
@@ -285,9 +367,7 @@ export default function SettingsScreen({ navigation, onLogout }) {
           {isPrivate && (
             <View style={styles.privateNotice}>
               <Ionicons name="lock-closed" size={13} color={colors.onSurfaceVariant} />
-              <Text style={styles.privateNoticeText}>
-                Your profile is private. Non-followers see a locked view.
-              </Text>
+              <Text style={styles.privateNoticeText}>Your profile is private. Non-followers see a locked view.</Text>
             </View>
           )}
         </View>
@@ -318,11 +398,11 @@ export default function SettingsScreen({ navigation, onLogout }) {
         {/* ── Account section ── */}
         <SectionHeader label="Account" />
         <View style={styles.card}>
-          <Row icon="mail-outline" label={profile?.email || 'Email'} />
+          <Row icon="mail-outline"    label={profile?.email || 'Email'} />
           <View style={styles.rowSep} />
-          <Row icon="log-out-outline" label="Sign out" onPress={handleLogout} />
+          <Row icon="log-out-outline" label="Sign out"       onPress={handleLogout} />
           <View style={styles.rowSep} />
-          <Row icon="trash-outline" label="Delete account" onPress={handleDeleteAccount} danger />
+          <Row icon="trash-outline"   label="Delete account" onPress={handleDeleteAccount} danger />
         </View>
 
         {/* ── About section ── */}
@@ -337,31 +417,45 @@ export default function SettingsScreen({ navigation, onLogout }) {
 
         <View style={{ height: 40 }} />
       </ScrollView>
+
+      <AvatarPickerModal
+        visible={showAvatarPicker}
+        onClose={() => setShowAvatarPicker(false)}
+        onSelect={handleSelectAvatar}
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container:   { flex: 1, backgroundColor: colors.surface },
-  center:      { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surface },
-  header:      { paddingHorizontal: 20, paddingTop: 56, paddingBottom: 16, backgroundColor: colors.surface },
-  headerLabel: { fontSize: 10, fontWeight: '700', letterSpacing: 1.5, color: colors.secondary, marginBottom: 2 },
-  headerTitle: { fontSize: 28, fontWeight: '800', color: colors.primary },
-  scroll:      { paddingHorizontal: 16, paddingBottom: 32 },
+  container: { flex: 1, backgroundColor: colors.surface },
+  center:    { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surface },
+
+  // Top bar with back button
+  topBar:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingBottom: 12, backgroundColor: colors.surface },
+  backBtn:     { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
+  topBarTitle: { fontSize: 20, fontWeight: '800', color: colors.onSurface },
+
+  scroll: { paddingHorizontal: 16, paddingBottom: 32 },
 
   sectionHeader: { fontSize: 11, fontWeight: '700', letterSpacing: 1, color: colors.onSurfaceVariant, marginTop: 20, marginBottom: 8, marginLeft: 4, textTransform: 'uppercase' },
   card:          { backgroundColor: colors.surfaceContainerLowest, borderRadius: radius.lg, overflow: 'hidden', ...shadow.card },
 
-  avatarRow:     { flexDirection: 'row', alignItems: 'center', gap: 14, padding: 16 },
-  avatarImg:     { width: 56, height: 56, borderRadius: 28, borderWidth: 2, borderColor: colors.primary },
-  avatarFallback:{ width: 56, height: 56, borderRadius: 28, backgroundColor: colors.primary, justifyContent: 'center', alignItems: 'center' },
-  avatarText:    { color: colors.onPrimary, fontSize: 20, fontWeight: '800' },
-  uploadPhotoBtn:{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 8, borderRadius: radius.md, borderWidth: 1, borderColor: colors.primary },
-  uploadPhotoBtnText: { fontSize: 13, color: colors.primary, fontWeight: '600' },
+  // Profile hero (photo + name + email + buttons)
+  profileHero:    { flexDirection: 'row', alignItems: 'flex-start', gap: 14, padding: 16 },
+  avatarWrap:     { flexShrink: 0 },
+  avatarImg:      { width: 72, height: 72, borderRadius: 36, borderWidth: 2, borderColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
+  avatarFallback: { backgroundColor: colors.primary },
+  avatarInitials: { color: colors.onPrimary, fontSize: 24, fontWeight: '800' },
+  profileName:    { fontSize: 16, fontWeight: '700', color: colors.onSurface, marginBottom: 2 },
+  profileEmail:   { fontSize: 12, color: colors.onSurfaceVariant, marginBottom: 10 },
+  photoBtns:      { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
+  photoBtn:       { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 6, borderRadius: radius.md, borderWidth: 1, borderColor: colors.primary + '60', backgroundColor: colors.primary + '08' },
+  photoBtnText:   { fontSize: 12, color: colors.primary, fontWeight: '600' },
 
   row:      { flexDirection: 'row', alignItems: 'center', padding: 14, gap: 12 },
   rowIcon:  { width: 36, height: 36, borderRadius: radius.md, backgroundColor: colors.primary + '12', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-  rowIconDanger: { backgroundColor: colors.error + '12' },
+  rowIconDanger:  { backgroundColor: colors.error + '12' },
   rowBody:  { flex: 1 },
   rowLabel: { fontSize: 14, fontWeight: '500', color: colors.onSurface },
   rowLabelDanger: { color: colors.error },
@@ -386,4 +480,18 @@ const styles = StyleSheet.create({
 
   aboutBlock: { padding: 16 },
   aboutText:  { fontSize: 14, color: colors.onSurfaceVariant, lineHeight: 21 },
+
+  // Avatar picker modal
+  pickerOverlay:  { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  pickerSheet:    { backgroundColor: colors.surfaceContainerLowest, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, paddingBottom: 32 },
+  pickerHeader:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 16 },
+  pickerTitle:    { fontSize: 18, fontWeight: '800', color: colors.onSurface },
+  pickerClose:    { width: 36, height: 36, alignItems: 'center', justifyContent: 'center', borderRadius: 18, backgroundColor: colors.surfaceContainerHigh },
+  pickerGrid:     { paddingHorizontal: 16, gap: 10 },
+  avatarTile:     { flex: 1, margin: 5, borderRadius: radius.lg, overflow: 'hidden', aspectRatio: 1 },
+  avatarTileSelected: { borderWidth: 3, borderColor: colors.primary },
+  avatarTileImg:  { width: '100%', height: '100%' },
+  avatarTileCheck:{ position: 'absolute', bottom: 4, right: 4, backgroundColor: colors.surfaceContainerLowest, borderRadius: 10 },
+  useAvatarBtn:   { marginHorizontal: 20, marginTop: 16, backgroundColor: colors.primary, paddingVertical: 14, borderRadius: radius.lg, alignItems: 'center' },
+  useAvatarBtnText: { fontSize: 15, fontWeight: '700', color: colors.onPrimary },
 });

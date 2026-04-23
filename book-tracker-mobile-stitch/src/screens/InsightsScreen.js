@@ -5,8 +5,9 @@ import {
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { activityAPI, userbooksAPI } from '../services/api';
+import { activityAPI, userbooksAPI, profileAPI } from '../services/api';
 import { colors, radius, shadow } from '../theme';
+import AppHeader from '../components/AppHeader';
 
 const SCREEN_W = Dimensions.get('window').width;
 
@@ -120,12 +121,15 @@ function BarChart({ data, height = 100, barColor = colors.primary, highlightColo
 }
 
 // ── Stat card ─────────────────────────────────────────────────────────────────
-function StatCard({ label, value, icon, accent, wide }) {
+function StatCard({ label, value, sub, icon, accent, wide }) {
   return (
     <View style={[styles.statCard, accent && styles.statCardAccent, wide && styles.statCardWide]}>
-      <Ionicons name={icon} size={18} color={accent ? colors.onPrimary : colors.primary} style={{ marginBottom: 6 }} />
+      <View style={styles.statCardTop}>
+        <Text style={[styles.statLabel, accent && styles.statLabelAccent]}>{label.toUpperCase()}</Text>
+        <Ionicons name={icon} size={16} color={accent ? colors.onPrimary + 'aa' : colors.onSurfaceVariant} />
+      </View>
       <Text style={[styles.statValue, accent && styles.statValueAccent]}>{value ?? '—'}</Text>
-      <Text style={[styles.statLabel, accent && styles.statLabelAccent]}>{label}</Text>
+      {sub ? <Text style={[styles.statSub, accent && styles.statSubAccent]}>{sub}</Text> : null}
     </View>
   );
 }
@@ -135,20 +139,23 @@ export default function InsightsScreen({ navigation }) {
   const [insights, setInsights]   = useState(null);
   const [activity, setActivity]   = useState([]);
   const [books, setBooks]         = useState([]);
+  const [user, setUser]           = useState(null);
   const [loading, setLoading]     = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
   const load = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
     try {
-      const [ins, act, bks] = await Promise.allSettled([
+      const [ins, act, bks, usr] = await Promise.allSettled([
         activityAPI.getInsights(),
         activityAPI.getMyActivity(30),
         userbooksAPI.getMyBooks(),
+        profileAPI.getMe(),
       ]);
       if (ins.status === 'fulfilled') setInsights(ins.value);
       if (act.status === 'fulfilled') setActivity(act.value || []);
       if (bks.status === 'fulfilled') setBooks(bks.value || []);
+      if (usr.status === 'fulfilled') setUser(usr.value);
     } catch { /* ignore */ }
     finally { setLoading(false); setRefreshing(false); }
   }, []);
@@ -160,18 +167,21 @@ export default function InsightsScreen({ navigation }) {
     return <View style={styles.centered}><ActivityIndicator size="large" color={colors.primary} /></View>;
   }
 
-  const streak     = insights?.current_streak  || 0;
-  const bestStreak = insights?.longest_streak  || 0;
-  const totalBooks = insights?.total_books     ?? books.length;
-  const finished   = insights?.finished_books  ?? books.filter(b => b.status === 'finished').length;
-  const pagesRead  = insights?.total_pages_read ?? 0;
-  const avgRating  = insights?.average_rating  ?? null;
-  const avgPpd     = insights?.avg_pages_per_day ?? null;
-  const yearGoal   = insights?.yearly_goal;
-  const projected  = insights?.projected_finishes || [];
+  const streak          = insights?.current_streak     || 0;
+  const bestStreak      = insights?.longest_streak     || 0;
+  const totalBooks      = insights?.total_books        ?? books.length;
+  const finished        = insights?.finished_books     ?? books.filter(b => b.status === 'finished').length;
+  const pagesRead       = insights?.total_pages_read   ?? 0;
+  const avgRating       = insights?.average_rating     ?? null;
+  const avgPpd          = insights?.avg_pages_per_day  ?? null;
+  const yearGoal        = insights?.yearly_goal;
+  const projected       = insights?.projected_finishes || [];
+  const booksThisYear   = insights?.books_this_year    ?? insights?.books_finished_this_year ?? null;
+  const readingBooks    = books.filter(b => b.status === 'reading');
+  const currentlyReading = readingBooks.length;
 
   // Monthly chart — last 12 months pages
-  const monthly    = insights?.monthly_pages || [];
+  const monthly = insights?.monthly_pages || [];
 
   // 30-day activity bars
   const activityBars = activity.map((d, i) => ({
@@ -190,173 +200,186 @@ export default function InsightsScreen({ navigation }) {
   }
   const onTrack = yearGoal?.on_track;
 
-  // Reading books for projected finishes
-  const readingBooks = books.filter(b => b.status === 'reading');
-
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.content}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => load(true)} tintColor={colors.primary} />}
-    >
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerLabel}>YOUR READING LIFE</Text>
-        <Text style={styles.headerTitle}>Insights</Text>
-        <Text style={styles.headerSub}>Quantified.</Text>
-      </View>
+    <View style={styles.container}>
+      <AppHeader
+        user={user}
+        onBellPress={() => navigation?.navigate('Notifications')}
+        onAvatarPress={() => navigation?.navigate('Profile')}
+      />
 
-      {/* ── Stats grid ── */}
-      <View style={styles.statsGrid}>
-        <StatCard label="Total Books"  value={fmt(totalBooks)} icon="library-outline" />
-        <StatCard label="Finished"     value={fmt(finished)}   icon="checkmark-circle-outline" accent />
-        <StatCard label="Pages Read"   value={fmt(pagesRead)}  icon="book-outline" />
-        <StatCard label="Avg Rating"   value={avgRating ? avgRating.toFixed(1) : '—'} icon="star-outline" />
-      </View>
-
-      <View style={styles.statsGrid}>
-        <StatCard label="Avg Pages / Day" value={avgPpd ? Math.round(avgPpd).toString() : '—'} icon="trending-up-outline" />
-        <StatCard label="Streak (days)"   value={streak > 0 ? `🔥 ${streak}` : '—'}            icon="flame-outline" />
-        <StatCard label="Best Streak"     value={bestStreak > 0 ? `${bestStreak}d` : '—'}       icon="trophy-outline" />
-      </View>
-
-      {/* ── Streak + Goal row ── */}
-      <View style={styles.row}>
-        {/* Streak card */}
-        <View style={[styles.card, { flex: 1 }]}>
-          <Text style={styles.cardTitle}>Reading Streak</Text>
-          <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4, marginVertical: 6 }}>
-            <Text style={styles.bigNumber}>{streak}</Text>
-            <Text style={styles.bigUnit}>days</Text>
-          </View>
-          {streak >= 7 && (
-            <Text style={{ fontSize: 12, color: colors.primary, fontWeight: '600' }}>
-              🔥 {streak >= 30 ? 'On fire!' : streak >= 14 ? 'Two weeks strong!' : 'Keep it up!'}
-            </Text>
-          )}
-          {bestStreak > streak && bestStreak > 0 && (
-            <Text style={styles.cardSub}>Best: {bestStreak} days</Text>
-          )}
+      <ScrollView
+        contentContainerStyle={styles.content}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => load(true)} tintColor={colors.primary} />}
+      >
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={styles.headerLabel}>YOUR READING LIFE</Text>
+          <Text style={styles.headerTitle}>Reading Insights</Text>
+          <Text style={styles.headerSub}>Your reading life, quantified.</Text>
         </View>
 
-        {/* Yearly goal */}
-        {yearGoal ? (
-          <View style={[styles.card, { flex: 1, alignItems: 'center' }]}>
-            <Text style={styles.cardTitle}>{new Date().getFullYear()} Goal</Text>
-            <GoalRing pct={goalPct} size={72} stroke={8} color={onTrack ? colors.primary : colors.secondary}>
-              <Text style={{ fontSize: 14, fontWeight: '800', color: colors.onSurface }}>{goalPct}%</Text>
-            </GoalRing>
-            <Text style={[styles.goalStatus, { color: onTrack ? colors.primary : colors.secondary }]}>
-              {onTrack ? 'On track' : 'Behind pace'}
-            </Text>
-            <Text style={styles.cardSub}>{goalFinished} / {goalTarget} books</Text>
-          </View>
-        ) : (
-          <View style={[styles.card, { flex: 1, alignItems: 'center', justifyContent: 'center' }]}>
-            <Ionicons name="flag-outline" size={32} color={colors.outlineVariant} />
-            <Text style={[styles.cardSub, { textAlign: 'center', marginTop: 8 }]}>Set a yearly goal in Settings</Text>
-          </View>
-        )}
-      </View>
-
-      {/* ── 30-Day Activity chart ── */}
-      <View style={styles.card}>
-        <View style={styles.cardTitleRow}>
-          <Text style={styles.cardTitle}>30-Day Activity</Text>
-          {streak > 0 && (
-            <View style={styles.streakBadge}>
-              <Text style={styles.streakBadgeText}>🔥 {streak} day streak</Text>
-            </View>
-          )}
+        {/* ── Stats grid row 1: Total Books | Finished ── */}
+        <View style={styles.statsGrid}>
+          <StatCard label="Total Books" value={fmt(totalBooks)} icon="library-outline" />
+          <StatCard label="Finished"    value={fmt(finished)}   icon="checkmark-circle-outline" accent />
         </View>
-        <Text style={styles.cardSub}>Daily pages read</Text>
-        {activityBars.length > 0 ? (
-          <>
-            <View style={{ marginTop: 14 }}>
-              <BarChart data={activityBars} height={90} />
-            </View>
-            <View style={styles.chartAxis}>
-              <Text style={styles.chartAxisLabel}>30 days ago</Text>
-              <Text style={styles.chartAxisLabel}>Today</Text>
-            </View>
-          </>
-        ) : (
-          <Text style={[styles.cardSub, { marginTop: 12 }]}>No activity data yet. Start logging pages!</Text>
-        )}
-      </View>
 
-      {/* ── Monthly pages chart ── */}
-      {monthly.length > 0 && (
+        {/* ── Stats grid row 2: Pages Read | Avg Rating ── */}
+        <View style={styles.statsGrid}>
+          <StatCard label="Pages Read" value={fmt(pagesRead)} icon="book-outline" />
+          <StatCard
+            label="Avg Rating"
+            value={avgRating ? avgRating.toFixed(1) : '—'}
+            sub={!avgRating ? 'rate your finished books' : undefined}
+            icon="star-outline"
+          />
+        </View>
+
+        {/* ── Stats grid row 3: Avg Pages/Day | This Year ── */}
+        <View style={styles.statsGrid}>
+          <StatCard
+            label="Avg Pages / Day"
+            value={avgPpd ? Math.round(avgPpd).toString() : '—'}
+            sub="last 30 days"
+            icon="trending-up-outline"
+          />
+          <StatCard
+            label="This Year"
+            value={booksThisYear != null ? String(booksThisYear) : fmt(finished)}
+            sub={`books finished in ${new Date().getFullYear()}`}
+            icon="calendar-outline"
+          />
+        </View>
+
+        {/* ── Currently Reading — full width ── */}
+        <StatCard
+          label="Currently Reading"
+          value={String(currentlyReading)}
+          sub="books in progress"
+          icon="reader-outline"
+          wide
+        />
+
+        {/* ── Reading Streak ── */}
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>Pages per Month</Text>
-          <Text style={styles.cardSub}>Last 12 months</Text>
-          <View style={{ marginTop: 14 }}>
-            <BarChart
-              data={monthly.map((m, i) => ({ value: m.pages || 0, isToday: i === monthly.length - 1 }))}
-              height={90}
-            />
+          <Text style={styles.cardEyebrow}>READING STREAK</Text>
+          <View style={styles.streakRow}>
+            <View style={styles.streakHalf}>
+              <Text style={styles.streakIcon}>🔥</Text>
+              <Text style={styles.bigNumber}>{streak}</Text>
+              <Text style={styles.streakUnit}>current streak{'\n'}days</Text>
+            </View>
+            <View style={styles.streakDivider} />
+            <View style={styles.streakHalf}>
+              <Text style={styles.bigNumber}>{bestStreak || 1}</Text>
+              <Text style={styles.streakUnit}>longest ever{'\n'}day</Text>
+            </View>
           </View>
-          <View style={[styles.chartAxis, { marginTop: 6 }]}>
-            {monthly.length > 0 && (
-              <>
+        </View>
+
+        {/* ── Yearly goal ── */}
+        {yearGoal ? (
+          <View style={styles.card}>
+            <View style={styles.goalHeader}>
+              <Text style={styles.cardEyebrow}>YEARLY GOAL</Text>
+              <View style={[styles.onTrackBadge, !onTrack && styles.behindBadge]}>
+                <Text style={[styles.onTrackText, !onTrack && styles.behindText]}>
+                  {onTrack ? 'On track' : 'Behind pace'}
+                </Text>
+              </View>
+            </View>
+            <View style={styles.goalBody}>
+              <GoalRing pct={goalPct} size={90} stroke={10} color={onTrack ? colors.primary : colors.secondary}>
+                <Text style={{ fontSize: 15, fontWeight: '800', color: colors.onSurface }}>{goalPct}%</Text>
+              </GoalRing>
+              <View style={styles.goalText}>
+                <Text style={styles.goalBooksNum}>{goalFinished}</Text>
+                <Text style={styles.goalBooksOf}>of {goalTarget} books</Text>
+                <Text style={styles.goalBooksLeft}>{Math.max(0, goalTarget - goalFinished)} to go</Text>
+              </View>
+            </View>
+          </View>
+        ) : (
+          <View style={[styles.card, styles.goalEmpty]}>
+            <Ionicons name="flag-outline" size={32} color={colors.outlineVariant} />
+            <Text style={styles.cardSub}>Set a yearly goal in Settings</Text>
+          </View>
+        )}
+
+        {/* ── Monthly pages chart ── */}
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Monthly Pages Read</Text>
+          {monthly.length > 0 ? (
+            <>
+              <View style={{ marginTop: 14 }}>
+                <BarChart
+                  data={monthly.map((m, i) => ({ value: m.pages || 0, isToday: i === monthly.length - 1 }))}
+                  height={90}
+                />
+              </View>
+              <View style={[styles.chartAxis, { marginTop: 6 }]}>
                 <Text style={styles.chartAxisLabel}>{shortMonth(monthly[0]?.month)}</Text>
                 <Text style={styles.chartAxisLabel}>{shortMonth(monthly[monthly.length - 1]?.month)}</Text>
-              </>
-            )}
-          </View>
+              </View>
+            </>
+          ) : (
+            <Text style={[styles.cardSub, { marginTop: 12 }]}>No monthly data yet.</Text>
+          )}
         </View>
-      )}
 
-      {/* ── Projected finishes ── */}
-      {readingBooks.length > 0 && (
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Projected Finishes</Text>
-          <Text style={styles.cardSub}>Based on your reading pace</Text>
-          <View style={{ marginTop: 14, gap: 14 }}>
-            {readingBooks.map(ub => {
-              const book     = ub.book;
-              const cur      = ub.current_page || 0;
-              const total    = book?.total_pages || 0;
-              const pct      = total > 0 ? Math.min(100, Math.round((cur / total) * 100)) : 0;
-              const proj     = projected.find(p => p.userbook_id === ub.id);
-              const dl       = proj ? daysLeft(proj.projected_finish_date) : null;
-              return (
-                <TouchableOpacity
-                  key={ub.id}
-                  style={styles.projRow}
-                  onPress={() => navigation?.navigate('BookDetail', { userbook: ub, userbookId: ub.id })}
-                  activeOpacity={0.8}
-                >
-                  {book?.cover_url ? (
-                    <Image source={{ uri: book.cover_url }} style={styles.projCover} />
-                  ) : (
-                    <View style={[styles.projCover, { backgroundColor: colors.surfaceContainerHigh, justifyContent: 'center', alignItems: 'center' }]}>
-                      <Ionicons name="book-outline" size={20} color={colors.outline} />
-                    </View>
-                  )}
-                  <View style={{ flex: 1, gap: 4 }}>
-                    <Text style={styles.projTitle} numberOfLines={2}>{book?.title || 'Unknown'}</Text>
-                    <View style={styles.projProgress}>
-                      <View style={styles.projTrack}>
-                        <View style={[styles.projFill, { width: `${pct}%` }]} />
+        {/* ── Projected finish dates ── */}
+        {readingBooks.length > 0 && (
+          <View style={styles.card}>
+            <Text style={styles.cardEyebrow}>PROJECTED FINISH DATES</Text>
+            <View style={{ gap: 12, marginTop: 10 }}>
+              {readingBooks.map(ub => {
+                const book  = ub.book;
+                const cur   = ub.current_page || 0;
+                const total = book?.total_pages || 0;
+                const pct   = total > 0 ? Math.min(100, Math.round((cur / total) * 100)) : 0;
+                const proj  = projected.find(p => p.userbook_id === ub.id);
+                const dl    = proj ? daysLeft(proj.projected_finish_date) : null;
+                return (
+                  <TouchableOpacity
+                    key={ub.id}
+                    style={styles.projRow}
+                    onPress={() => navigation?.navigate('BookDetail', { userbook: ub, userbookId: ub.id })}
+                    activeOpacity={0.8}
+                  >
+                    {book?.cover_url ? (
+                      <Image source={{ uri: book.cover_url }} style={styles.projCover} />
+                    ) : (
+                      <View style={[styles.projCover, { backgroundColor: colors.surfaceContainerHigh, justifyContent: 'center', alignItems: 'center' }]}>
+                        <Ionicons name="book-outline" size={20} color={colors.outline} />
                       </View>
-                      <Text style={styles.projPct}>{pct}%</Text>
+                    )}
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.projTitle} numberOfLines={1}>{book?.title || 'Unknown'}</Text>
+                      <Text style={styles.projPages}>{cur} / {total || '?'} pages</Text>
+                      <View style={styles.projProgress}>
+                        <View style={styles.projTrack}>
+                          <View style={[styles.projFill, { width: `${pct}%` }]} />
+                        </View>
+                        <Text style={styles.projPct}>{pct}%</Text>
+                      </View>
                     </View>
-                    <Text style={styles.projMeta}>
-                      {cur} / {total || '?'} pages
-                      {proj?.projected_finish_date ? `  ·  Finishes ${shortDate(proj.projected_finish_date)}` : ''}
-                      {dl ? `  ·  ${dl}d left` : ''}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-              );
-            })}
+                    {proj?.projected_finish_date && (
+                      <View style={styles.projDate}>
+                        <Text style={styles.projDateText}>{shortDate(proj.projected_finish_date)}</Text>
+                        {dl ? <Text style={styles.projDaysLeft}>{dl}d left</Text> : null}
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
           </View>
-        </View>
-      )}
+        )}
 
-      <View style={{ height: 32 }} />
-    </ScrollView>
+        <View style={{ height: 32 }} />
+      </ScrollView>
+    </View>
   );
 }
 
@@ -366,48 +389,66 @@ const styles = StyleSheet.create({
   content:   { padding: 16, gap: 12 },
   centered:  { flex: 1, justifyContent: 'center', alignItems: 'center' },
 
-  header:      { paddingTop: 40, paddingBottom: 8 },
+  header:      { paddingBottom: 4 },
   headerLabel: { fontSize: 10, fontWeight: '700', letterSpacing: 1.5, color: colors.secondary, marginBottom: 2 },
-  headerTitle: { fontSize: 30, fontWeight: '800', color: colors.primary, lineHeight: 36 },
+  headerTitle: { fontSize: 30, fontWeight: '800', color: colors.onSurface, lineHeight: 36 },
   headerSub:   { fontSize: 14, color: colors.onSurfaceVariant, marginTop: 2 },
 
-  statsGrid: { flexDirection: 'row', gap: 10, flexWrap: 'wrap' },
+  statsGrid: { flexDirection: 'row', gap: 10 },
   statCard:  {
-    flex: 1, minWidth: (SCREEN_W - 48) / 2 - 5,
+    flex: 1,
     backgroundColor: colors.surfaceContainerLowest,
     borderRadius: radius.lg, padding: 14, ...shadow.card,
-    alignItems: 'flex-start',
   },
   statCardAccent: { backgroundColor: colors.primary },
-  statCardWide:   { minWidth: '100%' },
-  statValue:      { fontSize: 22, fontWeight: '800', color: colors.onSurface, lineHeight: 26 },
+  statCardWide:   { flex: undefined },
+  statCardTop:    { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
+  statValue:      { fontSize: 24, fontWeight: '800', color: colors.onSurface, lineHeight: 28 },
   statValueAccent:{ color: colors.onPrimary },
-  statLabel:      { fontSize: 11, color: colors.onSurfaceVariant, marginTop: 2 },
+  statLabel:      { fontSize: 10, fontWeight: '700', letterSpacing: 0.8, color: colors.onSurfaceVariant },
   statLabelAccent:{ color: colors.onPrimary + 'cc' },
+  statSub:        { fontSize: 11, color: colors.onSurfaceVariant, marginTop: 3 },
+  statSubAccent:  { color: colors.onPrimary + 'aa' },
 
-  row:  { flexDirection: 'row', gap: 12 },
-  card: { backgroundColor: colors.surfaceContainerLowest, borderRadius: radius.lg, padding: 16, ...shadow.card },
-  cardTitleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 },
+  card:         { backgroundColor: colors.surfaceContainerLowest, borderRadius: radius.lg, padding: 16, ...shadow.card },
+  cardEyebrow:  { fontSize: 10, fontWeight: '700', letterSpacing: 1.5, color: colors.secondary, marginBottom: 10 },
   cardTitle:    { fontSize: 15, fontWeight: '700', color: colors.onSurface },
   cardSub:      { fontSize: 12, color: colors.onSurfaceVariant, marginTop: 2 },
 
-  bigNumber: { fontSize: 36, fontWeight: '800', color: colors.onSurface },
-  bigUnit:   { fontSize: 14, color: colors.onSurfaceVariant },
+  // Streak
+  streakRow:    { flexDirection: 'row', alignItems: 'flex-start', marginTop: 4 },
+  streakHalf:   { flex: 1, alignItems: 'flex-start' },
+  streakIcon:   { fontSize: 20, marginBottom: 2 },
+  streakDivider:{ width: 1, backgroundColor: colors.outlineVariant, alignSelf: 'stretch', marginHorizontal: 16 },
+  streakUnit:   { fontSize: 12, color: colors.onSurfaceVariant, marginTop: 2, lineHeight: 16 },
+  bigNumber:    { fontSize: 38, fontWeight: '900', color: colors.onSurface, lineHeight: 44 },
 
-  goalStatus: { fontSize: 12, fontWeight: '700', marginTop: 6 },
-
-  streakBadge: { backgroundColor: colors.primary + '18', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999 },
-  streakBadgeText: { fontSize: 12, fontWeight: '700', color: colors.primary },
+  // Goal
+  goalHeader:   { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },
+  goalBody:     { flexDirection: 'row', alignItems: 'center', gap: 20 },
+  goalText:     { flex: 1 },
+  goalBooksNum: { fontSize: 32, fontWeight: '900', color: colors.primary, lineHeight: 36 },
+  goalBooksOf:  { fontSize: 14, color: colors.onSurfaceVariant, marginTop: 2 },
+  goalBooksLeft:{ fontSize: 12, color: colors.outline, marginTop: 2 },
+  onTrackBadge: { backgroundColor: colors.primary + '18', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999 },
+  onTrackText:  { fontSize: 12, fontWeight: '700', color: colors.primary },
+  behindBadge:  { backgroundColor: colors.secondary + '18' },
+  behindText:   { color: colors.secondary },
+  goalEmpty:    { alignItems: 'center', gap: 8, paddingVertical: 20 },
 
   chartAxis:      { flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 },
   chartAxisLabel: { fontSize: 10, color: colors.outline },
 
-  projRow:     { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  projCover:   { width: 44, height: 64, borderRadius: radius.sm },
-  projTitle:   { fontSize: 13, fontWeight: '700', color: colors.onSurface, lineHeight: 18 },
-  projProgress:{ flexDirection: 'row', alignItems: 'center', gap: 6 },
-  projTrack:   { flex: 1, height: 4, backgroundColor: colors.surfaceContainerHigh, borderRadius: 2, overflow: 'hidden' },
-  projFill:    { height: '100%', backgroundColor: colors.primary, borderRadius: 2 },
-  projPct:     { fontSize: 10, fontWeight: '700', color: colors.primary, width: 28 },
-  projMeta:    { fontSize: 11, color: colors.outline },
+  // Projected finishes
+  projRow:      { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: colors.surfaceContainerLow, borderRadius: radius.md, padding: 12 },
+  projCover:    { width: 52, height: 78, borderRadius: radius.sm },
+  projTitle:    { fontSize: 14, fontWeight: '700', color: colors.onSurface, lineHeight: 18, marginBottom: 2 },
+  projPages:    { fontSize: 11, color: colors.onSurfaceVariant, marginBottom: 6 },
+  projProgress: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  projTrack:    { flex: 1, height: 4, backgroundColor: colors.surfaceContainerHigh, borderRadius: 2, overflow: 'hidden' },
+  projFill:     { height: '100%', backgroundColor: colors.primary, borderRadius: 2 },
+  projPct:      { fontSize: 11, fontWeight: '700', color: colors.primary, width: 30, textAlign: 'right' },
+  projDate:     { alignItems: 'flex-end', minWidth: 54 },
+  projDateText: { fontSize: 13, fontWeight: '700', color: colors.secondary },
+  projDaysLeft: { fontSize: 11, color: colors.onSurfaceVariant, marginTop: 2 },
 });
