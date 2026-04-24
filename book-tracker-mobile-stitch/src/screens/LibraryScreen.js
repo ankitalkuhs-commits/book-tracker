@@ -416,6 +416,7 @@ function AddBookModal({ visible, onClose, onAdded }) {
 // ── Library Screen ─────────────────────────────────────────────────────────────
 export default function LibraryScreen({ navigation }) {
   const preloaded  = useContext(PreloadContext);
+  const currentUser = preloaded?.profile || null;
   const [books, setBooks]         = useState(preloaded?.library || []);
   const [loading, setLoading]     = useState(!preloaded?.library);
   const [refreshing, setRefreshing] = useState(false);
@@ -472,6 +473,7 @@ export default function LibraryScreen({ navigation }) {
   return (
     <View style={styles.container}>
       <AppHeader
+        user={currentUser}
         onBellPress={() => navigation.navigate('Notifications')}
         onAvatarPress={() => navigation.navigate('Profile')}
       />
@@ -578,9 +580,9 @@ const styles = StyleSheet.create({
 
   tabScroll:    {},
   tabContent:   { paddingHorizontal: 14, paddingBottom: 10, gap: 8 },
-  tab:          { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 999, backgroundColor: colors.surfaceContainerLowest, borderWidth: 1, borderColor: colors.outlineVariant },
+  tab:          { paddingHorizontal: 16, paddingVertical: 7, borderRadius: 999, backgroundColor: 'transparent', borderWidth: 1.5, borderColor: colors.onSurfaceVariant + '60' },
   tabActive:    { backgroundColor: colors.primary, borderColor: colors.primary },
-  tabText:      { ...type.label, color: colors.onSurfaceVariant },
+  tabText:      { ...type.label, color: colors.onSurface },
   tabTextActive: { color: colors.onPrimary },
 
   grid:         { padding: GRID_PAD, gap: GRID_GAP },
@@ -613,7 +615,7 @@ const styles = StyleSheet.create({
   searchRow:    { flexDirection: 'row', margin: 14, gap: 10 },
   searchBtn:    { width: 46, height: 46, backgroundColor: colors.primary, borderRadius: radius.md, justifyContent: 'center', alignItems: 'center' },
 
-  searchEmpty:  { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 12, paddingBottom: 60 },
+  searchEmpty:  { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 12 },
   searchEmptyText: { ...type.body, color: colors.onSurfaceVariant },
 
   // Search result cards

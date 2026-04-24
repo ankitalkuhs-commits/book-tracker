@@ -60,6 +60,7 @@ export const userbooksAPI = {
   getUserBooks: async (userId) => (await api.get(`/userbooks/user/${userId}`)).data,
   addBook: async (bookData) => (await api.post('/userbooks/', bookData)).data,
   updateProgress: async (userbookId, progressData) => (await api.put(`/userbooks/${userbookId}/progress`, progressData)).data,
+  patchUserbook: async (userbookId, fields) => (await api.patch(`/userbooks/${userbookId}`, fields)).data,
   finishBook: async (userbookId) => (await api.post(`/userbooks/${userbookId}/finish`)).data,
   deleteBook: async (userbookId) => (await api.delete(`/userbooks/${userbookId}`)).data,
   getFriendsReading: async (limit = 10) => (await api.get(`/userbooks/friends/currently-reading?limit=${limit}`)).data,

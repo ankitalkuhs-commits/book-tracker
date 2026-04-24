@@ -54,6 +54,13 @@ const FeedScreen = ({ navigation }) => {
   const [menuPostId, setMenuPostId] = useState(null);
   const likingInFlight = useRef(new Set());
 
+  // Comment state
+  const [expandedComments, setExpandedComments] = useState({});  // postId → { comments, loading, text }
+
+  // Shelf-book modal (recs + friends reading)
+  const [shelfModal, setShelfModal] = useState(null);  // { book, reason } | null
+  const [shelving, setShelving] = useState(false);
+
   useEffect(() => {
     if (!preloaded?.feed) loadFeed();
     loadFriendsReading();
@@ -200,6 +207,57 @@ const FeedScreen = ({ navigation }) => {
     }
   };
 
+  const toggleComments = async (postId) => {
+    if (expandedComments[postId]) {
+      setExpandedComments(prev => { const n = { ...prev }; delete n[postId]; return n; });
+      return;
+    }
+    setExpandedComments(prev => ({ ...prev, [postId]: { comments: [], loading: true, text: '' } }));
+    try {
+      const data = await notesAPI.getComments(postId);
+      setExpandedComments(prev => ({ ...prev, [postId]: { comments: Array.isArray(data) ? data : [], loading: false, text: '' } }));
+    } catch {
+      setExpandedComments(prev => ({ ...prev, [postId]: { comments: [], loading: false, text: '' } }));
+    }
+  };
+
+  const handleCommentTextChange = (postId, text) => {
+    setExpandedComments(prev => ({ ...prev, [postId]: { ...prev[postId], text } }));
+  };
+
+  const handlePostComment = async (postId) => {
+    const state = expandedComments[postId];
+    if (!state?.text?.trim()) return;
+    try {
+      const newComment = await notesAPI.addComment(postId, state.text.trim());
+      setExpandedComments(prev => ({
+        ...prev,
+        [postId]: { ...prev[postId], comments: [...(prev[postId]?.comments || []), newComment], text: '' },
+      }));
+      setPosts(prev => prev.map(p => p.id === postId ? { ...p, comments_count: (p.comments_count || 0) + 1 } : p));
+    } catch { Alert.alert('Error', 'Could not post comment'); }
+  };
+
+  const handleShelfBook = async (status) => {
+    if (!shelfModal?.book) return;
+    setShelving(true);
+    try {
+      const book = shelfModal.book;
+      await booksAPI.addToLibrary({
+        google_books_id: book.google_books_id || book.google_id || null,
+        title: book.title,
+        author: book.author || (Array.isArray(book.authors) ? book.authors.join(', ') : ''),
+        cover_url: book.cover_url || null,
+        total_pages: book.total_pages || null,
+        status,
+      });
+      setShelfModal(null);
+      Alert.alert('Added!', status === 'reading' ? 'Happy reading!' : 'Added to your Want to Read list.');
+    } catch (e) {
+      Alert.alert('Error', e?.response?.data?.detail || 'Could not add book');
+    } finally { setShelving(false); }
+  };
+
   const getInitials = (name) => name ? name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : '?';
 
   const REASON_LABEL = {
@@ -327,7 +385,8 @@ const FeedScreen = ({ navigation }) => {
         </View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.recsScroll}>
           {recs.map(book => (
-            <View key={book.id} style={styles.recCard}>
+            <TouchableOpacity key={book.id} style={styles.recCard} activeOpacity={0.8}
+              onPress={() => setShelfModal({ book, reason: REASON_LABEL[book.reason] || '' })}>
               <View style={styles.recCoverContainer}>
                 {book.cover_url
                   ? <Image source={{ uri: book.cover_url }} style={styles.recCover} />
@@ -336,7 +395,7 @@ const FeedScreen = ({ navigation }) => {
               </View>
               <Text style={styles.recTitle} numberOfLines={2}>{book.title}</Text>
               <Text style={styles.recReason}>{REASON_LABEL[book.reason] || ''}</Text>
-            </View>
+            </TouchableOpacity>
           ))}
         </ScrollView>
       </View>
@@ -360,12 +419,16 @@ const FeedScreen = ({ navigation }) => {
           {item.books?.map((bookItem) => {
             const book = bookItem.book;
             return (
-              <TouchableOpacity key={bookItem.id} style={styles.bookCard} activeOpacity={0.7}>
+              <TouchableOpacity key={bookItem.id} style={styles.bookCard} activeOpacity={0.8}
+                onPress={() => book && setShelfModal({ book, reason: `${item.user?.name || 'A friend'} is reading this` })}>
                 <View style={styles.bookCoverContainer}>
-                  <Image source={{ uri: book?.cover_url || 'https://via.placeholder.com/100x150?text=No+Cover' }} style={styles.friendReadingBookCover} />
+                  {book?.cover_url
+                    ? <Image source={{ uri: book.cover_url }} style={styles.friendReadingBookCover} />
+                    : <View style={[styles.friendReadingBookCover, styles.friendBookFallback]}><Ionicons name="book-outline" size={28} color={colors.outline} /></View>
+                  }
                 </View>
                 <Text style={styles.bookCardTitle} numberOfLines={2}>{book?.title || 'Unknown Book'}</Text>
-                <Text style={styles.bookCardAuthor} numberOfLines={1}>{book?.author || 'Unknown Author'}</Text>
+                <Text style={styles.bookCardAuthor} numberOfLines={1}>{book?.author || ''}</Text>
               </TouchableOpacity>
             );
           })}
@@ -455,12 +518,94 @@ const FeedScreen = ({ navigation }) => {
             />
             <Text style={styles.actionCount}>{post.likes_count || 0}</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.actionButton}>
-            <Ionicons name="chatbubble-outline" size={17} color={colors.onSurfaceVariant} />
-            <Text style={styles.actionCount}>{post.comments_count || 0}</Text>
+          <TouchableOpacity style={styles.actionButton} onPress={() => toggleComments(post.id)}>
+            <Ionicons name={expandedComments[post.id] ? 'chatbubble' : 'chatbubble-outline'} size={17}
+              color={expandedComments[post.id] ? colors.primary : colors.onSurfaceVariant} />
+            <Text style={[styles.actionCount, expandedComments[post.id] && { color: colors.primary }]}>
+              {post.comments_count || 0}
+            </Text>
           </TouchableOpacity>
         </View>
+
+        {/* Inline comments */}
+        {expandedComments[post.id] && (
+          <View style={styles.commentsSection}>
+            {expandedComments[post.id].loading ? (
+              <ActivityIndicator size="small" color={colors.primary} style={{ marginVertical: 8 }} />
+            ) : (
+              expandedComments[post.id].comments.map((c, i) => (
+                <View key={c.id || i} style={styles.commentRow}>
+                  <View style={styles.commentAvatar}>
+                    <Text style={styles.commentAvatarText}>{(c.user?.name?.[0] || c.user?.email?.[0] || 'U').toUpperCase()}</Text>
+                  </View>
+                  <View style={styles.commentBubble}>
+                    <Text style={styles.commentName}>{c.user?.name || c.user?.username || 'Reader'}</Text>
+                    <Text style={styles.commentText}>{c.text}</Text>
+                  </View>
+                </View>
+              ))
+            )}
+            <View style={styles.commentInputRow}>
+              <TextInput
+                style={styles.commentInput}
+                placeholder="Add a comment..."
+                placeholderTextColor={colors.outline}
+                value={expandedComments[post.id]?.text || ''}
+                onChangeText={(t) => handleCommentTextChange(post.id, t)}
+                returnKeyType="send"
+                onSubmitEditing={() => handlePostComment(post.id)}
+              />
+              <TouchableOpacity
+                style={[styles.commentPostBtn, !expandedComments[post.id]?.text?.trim() && { opacity: 0.4 }]}
+                onPress={() => handlePostComment(post.id)}
+                disabled={!expandedComments[post.id]?.text?.trim()}
+              >
+                <Text style={styles.commentPostBtnText}>Post</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
       </View>
+    );
+  };
+
+  const renderShelfModal = () => {
+    if (!shelfModal) return null;
+    const { book, reason } = shelfModal;
+    return (
+      <Modal visible animationType="slide" transparent onRequestClose={() => setShelfModal(null)}>
+        <TouchableOpacity style={styles.shelfOverlay} activeOpacity={1} onPress={() => setShelfModal(null)} />
+        <View style={styles.shelfSheet}>
+          <View style={styles.shelfHandle} />
+          <View style={styles.shelfBookRow}>
+            {book.cover_url
+              ? <Image source={{ uri: book.cover_url }} style={styles.shelfCover} />
+              : <View style={[styles.shelfCover, styles.shelfCoverFallback]}><Ionicons name="book-outline" size={28} color={colors.outline} /></View>
+            }
+            <View style={{ flex: 1 }}>
+              <Text style={styles.shelfTitle} numberOfLines={2}>{book.title}</Text>
+              <Text style={styles.shelfAuthor} numberOfLines={1}>{book.author || ''}</Text>
+              {reason ? <Text style={styles.shelfReason}>{reason}</Text> : null}
+            </View>
+          </View>
+          <Text style={styles.shelfPrompt}>Where would you like to shelve this?</Text>
+          <TouchableOpacity style={styles.shelfBtnPrimary} onPress={() => handleShelfBook('to-read')} disabled={shelving}>
+            {shelving ? <ActivityIndicator size="small" color={colors.onPrimary} /> : (
+              <>
+                <Ionicons name="bookmark-outline" size={18} color={colors.onPrimary} style={{ marginRight: 8 }} />
+                <Text style={styles.shelfBtnPrimaryText}>Want to Read</Text>
+              </>
+            )}
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.shelfBtnSecondary} onPress={() => handleShelfBook('reading')} disabled={shelving}>
+            <Ionicons name="book-outline" size={18} color={colors.primary} style={{ marginRight: 8 }} />
+            <Text style={styles.shelfBtnSecondaryText}>Start Reading Now</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.shelfCancelBtn} onPress={() => setShelfModal(null)}>
+            <Text style={styles.shelfCancelText}>Cancel</Text>
+          </TouchableOpacity>
+        </View>
+      </Modal>
     );
   };
 
@@ -468,6 +613,7 @@ const FeedScreen = ({ navigation }) => {
 
   return (
     <View style={styles.container}>
+      {renderShelfModal()}
       <AppHeader
         user={currentUser}
         onBellPress={() => navigation.navigate('Notifications')}
@@ -599,6 +745,40 @@ const styles = StyleSheet.create({
   actionsRow: { flexDirection: 'row', paddingTop: 10, borderTopWidth: 1, borderTopColor: colors.surfaceContainerHigh, gap: 20 },
   actionButton: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   actionCount: { ...type.bodySm, color: colors.onSurfaceVariant },
+
+  // Comments
+  commentsSection: { marginTop: 10, borderTopWidth: 1, borderTopColor: colors.surfaceContainerHigh, paddingTop: 10 },
+  commentRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginBottom: 8 },
+  commentAvatar: { width: 28, height: 28, borderRadius: 14, backgroundColor: colors.primaryContainer, justifyContent: 'center', alignItems: 'center', flexShrink: 0 },
+  commentAvatarText: { ...type.caption, color: colors.onPrimary, fontFamily: 'Manrope_700Bold', fontWeight: '700' },
+  commentBubble: { flex: 1, backgroundColor: colors.surfaceContainerLow, borderRadius: radius.md, paddingHorizontal: 10, paddingVertical: 6 },
+  commentName: { ...type.caption, fontFamily: 'Manrope_700Bold', fontWeight: '700', color: colors.onSurface, marginBottom: 2 },
+  commentText: { ...type.bodySm, color: colors.onSurface },
+  commentInputRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 },
+  commentInput: { flex: 1, ...type.bodySm, backgroundColor: colors.surfaceContainerLow, borderRadius: radius.full, paddingHorizontal: 14, paddingVertical: 8, color: colors.onSurface },
+  commentPostBtn: { backgroundColor: colors.primary, paddingHorizontal: 14, paddingVertical: 8, borderRadius: radius.full },
+  commentPostBtnText: { ...type.label, color: colors.onPrimary },
+
+  // Shelf-book modal
+  shelfOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)' },
+  shelfSheet: { backgroundColor: colors.surfaceContainerLowest, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40 },
+  shelfHandle: { width: 40, height: 4, backgroundColor: colors.outlineVariant, borderRadius: 2, alignSelf: 'center', marginBottom: 20 },
+  shelfBookRow: { flexDirection: 'row', gap: 14, marginBottom: 20 },
+  shelfCover: { width: 72, height: 108, borderRadius: radius.md },
+  shelfCoverFallback: { backgroundColor: colors.surfaceContainerHigh, justifyContent: 'center', alignItems: 'center' },
+  shelfTitle: { ...type.titleLg, color: colors.onSurface, marginBottom: 4 },
+  shelfAuthor: { ...type.body, color: colors.onSurfaceVariant, marginBottom: 4 },
+  shelfReason: { ...type.eyebrow, color: colors.secondary },
+  shelfPrompt: { ...type.body, color: colors.onSurfaceVariant, textAlign: 'center', marginBottom: 16 },
+  shelfBtnPrimary: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: colors.primary, borderRadius: radius.full, paddingVertical: 14, marginBottom: 12 },
+  shelfBtnPrimaryText: { ...type.title, color: colors.onPrimary },
+  shelfBtnSecondary: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', borderRadius: radius.full, paddingVertical: 14, borderWidth: 1.5, borderColor: colors.primary, marginBottom: 12 },
+  shelfBtnSecondaryText: { ...type.title, color: colors.primary },
+  shelfCancelBtn: { alignItems: 'center', paddingVertical: 10 },
+  shelfCancelText: { ...type.body, color: colors.onSurfaceVariant },
+
+  // Friends book fallback
+  friendBookFallback: { backgroundColor: colors.surfaceContainerHigh, justifyContent: 'center', alignItems: 'center' },
 
   emptyState: { alignItems: 'center', justifyContent: 'center', paddingVertical: 80, paddingHorizontal: 40 },
   emptyIcon: { fontSize: 64, marginBottom: 16 },

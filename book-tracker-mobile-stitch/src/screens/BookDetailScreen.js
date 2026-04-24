@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { userbooksAPI, notesAPI } from '../services/api';
+import { userbooksAPI, notesAPI, booksAPI } from '../services/api';
 import { colors, radius, shadow, type } from '../theme';
 
 const STATUS_OPTIONS = [
@@ -67,13 +67,14 @@ export default function BookDetailScreen({ route, navigation }) {
 
   useEffect(() => { loadNotes(); }, [loadNotes]);
 
+  const [descExpanded, setDescExpanded] = useState(false);
+
   const handleStatusChange = async (newStatus) => {
     if (newStatus === ub.status) return;
     setSavingStatus(true);
     try {
-      const updated = newStatus === 'finished'
-        ? await userbooksAPI.finishBook(ub.id)
-        : await userbooksAPI.updateProgress(ub.id, { status: newStatus });
+      // Use PATCH endpoint which accepts status directly (PUT /progress only accepts current_page)
+      const updated = await userbooksAPI.patchUserbook(ub.id, { status: newStatus });
       setUb(prev => ({ ...prev, ...updated }));
     } catch (e) { Alert.alert('Error', e?.response?.data?.detail || 'Could not update status'); }
     setSavingStatus(false);
@@ -156,6 +157,12 @@ export default function BookDetailScreen({ route, navigation }) {
           {ub.status === 'finished' && (
             <StarRating value={rating} onChange={handleRating} />
           )}
+          {book.description ? (
+            <TouchableOpacity onPress={() => setDescExpanded(v => !v)} activeOpacity={0.8} style={styles.descToggle}>
+              <Text style={styles.descText} numberOfLines={descExpanded ? undefined : 3}>{book.description}</Text>
+              <Text style={styles.descToggleText}>{descExpanded ? 'Show less' : 'Show more'}</Text>
+            </TouchableOpacity>
+          ) : null}
         </View>
 
         {/* ── Status ── */}
@@ -319,6 +326,9 @@ const styles = StyleSheet.create({
   bookTitle:       { fontFamily: 'NotoSerif_700Bold', fontSize: 22, fontWeight: '700', color: colors.onSurface, textAlign: 'center', marginBottom: 4 },
   bookAuthor:      { ...type.body, color: colors.onSurfaceVariant, textAlign: 'center', marginBottom: 4 },
   bookPages:       { ...type.label, color: colors.outline },
+  descToggle:      { marginTop: 10, paddingHorizontal: 4 },
+  descText:        { ...type.bodySm, color: colors.onSurfaceVariant, textAlign: 'center', lineHeight: 20 },
+  descToggleText:  { ...type.label, color: colors.primary, textAlign: 'center', marginTop: 4 },
 
   section:      { marginTop: 20, paddingHorizontal: 16 },
   sectionLabel: { ...type.eyebrow, color: colors.onSurfaceVariant, marginBottom: 12 },

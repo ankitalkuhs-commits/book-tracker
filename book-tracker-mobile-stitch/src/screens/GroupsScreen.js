@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useContext } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity,
   ActivityIndicator, RefreshControl, Alert, Modal, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { groupsAPI } from '../services/api';
+import { PreloadContext } from '../../App';
 import { colors, radius, shadow, type } from '../theme';
 import AppHeader from '../components/AppHeader';
 
@@ -263,6 +264,8 @@ function JoinModal({ visible, onClose, onJoined }) {
 }
 
 export default function GroupsScreen({ navigation }) {
+  const preloaded = useContext(PreloadContext);
+  const currentUser = preloaded?.profile || null;
   const [myGroups, setMyGroups] = useState([]);
   const [discover, setDiscover] = useState([]);
   const [discoverQ, setDiscoverQ] = useState('');
@@ -298,6 +301,7 @@ export default function GroupsScreen({ navigation }) {
   return (
     <View style={styles.container}>
       <AppHeader
+        user={currentUser}
         onBellPress={() => navigation.navigate('Notifications')}
         onAvatarPress={() => navigation.navigate('Profile')}
       />

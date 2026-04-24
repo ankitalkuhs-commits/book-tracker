@@ -61,7 +61,7 @@ export default function App() {
       const [profile, library, feed, count] = await Promise.allSettled([
         userAPI.getProfile(),
         userbooksAPI.getMyBooks(),
-        notesAPI.getFriendsFeed(20),
+        notesAPI.getCommunityFeed(50),
         notificationsAPI.getUnreadCount(),
       ]);
       setPreloaded({
