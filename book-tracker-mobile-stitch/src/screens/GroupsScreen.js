@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { groupsAPI } from '../services/api';
-import { colors, radius, shadow } from '../theme';
+import { colors, radius, shadow, type } from '../theme';
 import AppHeader from '../components/AppHeader';
 
 const COVER_COLORS = {
@@ -385,46 +385,46 @@ const styles = StyleSheet.create({
   // Hero
   hero:           { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 20 },
   heroText:       { marginBottom: 20 },
-  heroTitle:      { fontSize: 40, fontWeight: '800', color: colors.primary, lineHeight: 44, marginBottom: 12 },
-  heroSub:        { fontSize: 14, color: colors.onSurfaceVariant, lineHeight: 21 },
+  heroTitle:      { fontFamily: 'NotoSerif_700Bold', fontSize: 36, fontWeight: '700', color: colors.primary, lineHeight: 44, marginBottom: 12 },
+  heroSub:        { ...type.body, color: colors.onSurfaceVariant },
   createHeroBtn:  { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: colors.primary, paddingHorizontal: 18, paddingVertical: 12, borderRadius: radius.lg, alignSelf: 'flex-start', ...shadow.float },
-  createHeroBtnText: { fontSize: 14, fontWeight: '700', color: colors.onPrimary },
+  createHeroBtnText: { ...type.body, fontFamily: 'Manrope_700Bold', fontWeight: '700', color: colors.onPrimary },
 
   // Sections
   section:        { paddingHorizontal: 20, marginBottom: 8 },
-  sectionTitle:   { fontSize: 22, fontWeight: '800', color: colors.onSurface, marginBottom: 4 },
-  sectionSub:     { fontSize: 13, color: colors.onSurfaceVariant, marginBottom: 14 },
+  sectionTitle:   { ...type.titleLg, color: colors.onSurface, marginBottom: 4 },
+  sectionSub:     { ...type.bodySm, color: colors.onSurfaceVariant, marginBottom: 14 },
   emptySection:   { alignItems: 'center', paddingVertical: 24, gap: 8 },
-  emptySectionText: { fontSize: 14, color: colors.onSurfaceVariant },
-  joinLink:       { fontSize: 13, color: colors.primary, fontWeight: '600' },
+  emptySectionText: { ...type.body, color: colors.onSurfaceVariant },
+  joinLink:       { ...type.bodySm, color: colors.primary, fontFamily: 'Manrope_600SemiBold', fontWeight: '600' },
   joinCodeBtn:    { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 12, alignSelf: 'flex-start' },
-  joinCodeText:   { fontSize: 13, color: colors.primary, fontWeight: '600' },
+  joinCodeText:   { ...type.bodySm, color: colors.primary, fontFamily: 'Manrope_600SemiBold', fontWeight: '600' },
 
   // Search
   searchWrap:   { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: colors.surfaceContainerLow, borderRadius: radius.lg, paddingHorizontal: 14, paddingVertical: 10, marginBottom: 14, borderWidth: 1, borderColor: colors.outlineVariant + '60' },
-  searchInput:  { flex: 1, fontSize: 14, color: colors.onSurface },
+  searchInput:  { ...type.body, flex: 1, color: colors.onSurface },
 
   // Group cards
   card:         { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surfaceContainerLowest, borderRadius: radius.lg, padding: 14, gap: 14, marginBottom: 12, ...shadow.card },
   cover:        { alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
   cardBody:     { flex: 1, gap: 3 },
-  curatorBadge: { fontSize: 10, fontWeight: '700', color: colors.secondary, letterSpacing: 0.8, marginBottom: 2 },
-  cardName:     { fontSize: 15, fontWeight: '700', color: colors.onSurface },
-  cardDesc:     { fontSize: 12, color: colors.onSurfaceVariant, lineHeight: 17 },
+  curatorBadge: { ...type.eyebrow, color: colors.secondary, marginBottom: 2 },
+  cardName:     { ...type.body, fontFamily: 'Manrope_700Bold', fontWeight: '700', color: colors.onSurface },
+  cardDesc:     { ...type.label, color: colors.onSurfaceVariant, lineHeight: 17 },
   cardMeta:     { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
-  cardMetaText: { fontSize: 12, color: colors.onSurfaceVariant },
-  metaDot:      { fontSize: 12, color: colors.outline, marginHorizontal: 2 },
+  cardMetaText: { ...type.label, color: colors.onSurfaceVariant },
+  metaDot:      { ...type.label, color: colors.outline, marginHorizontal: 2 },
 
   // Create group modal
   modalRoot:      { flex: 1, backgroundColor: colors.surface },
   modalScroll:    { paddingHorizontal: 20, paddingTop: 28, paddingBottom: 48 },
-  modalEyebrow:   { fontSize: 11, fontWeight: '700', letterSpacing: 1.5, color: colors.secondary, marginBottom: 6 },
-  modalBigTitle:  { fontSize: 30, fontWeight: '800', color: colors.primary, marginBottom: 6, lineHeight: 36 },
-  modalSubtitle:  { fontSize: 13, color: colors.onSurfaceVariant, lineHeight: 19, marginBottom: 4 },
+  modalEyebrow:   { ...type.eyebrow, color: colors.secondary, marginBottom: 6 },
+  modalBigTitle:  { fontFamily: 'NotoSerif_700Bold', fontSize: 28, fontWeight: '700', color: colors.primary, marginBottom: 6, lineHeight: 36 },
+  modalSubtitle:  { ...type.bodySm, color: colors.onSurfaceVariant, marginBottom: 4 },
 
-  fieldLabel:     { fontSize: 11, fontWeight: '700', letterSpacing: 0.8, color: colors.onSurfaceVariant, marginBottom: 10, textTransform: 'uppercase' },
-  optionalLabel:  { fontWeight: '400', letterSpacing: 0, textTransform: 'none', color: colors.outline },
-  input:          { backgroundColor: colors.surfaceContainerLow, borderRadius: radius.md, paddingHorizontal: 14, paddingVertical: 11, fontSize: 14, color: colors.onSurface, borderWidth: 1, borderColor: colors.outlineVariant + '60' },
+  fieldLabel:     { ...type.eyebrow, color: colors.onSurfaceVariant, marginBottom: 10 },
+  optionalLabel:  { fontFamily: 'Manrope_400Regular', fontWeight: '400', letterSpacing: 0, textTransform: 'none', color: colors.outline },
+  input:          { ...type.body, backgroundColor: colors.surfaceContainerLow, borderRadius: radius.md, paddingHorizontal: 14, paddingVertical: 11, color: colors.onSurface, borderWidth: 1, borderColor: colors.outlineVariant + '60' },
   inputMulti:     { minHeight: 80, textAlignVertical: 'top' },
 
   // Cover grid
@@ -432,36 +432,36 @@ const styles = StyleSheet.create({
   coverTile:      { width: 64, height: 64, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center', opacity: 0.75 },
   coverTileSelected: { opacity: 1, borderWidth: 3, borderColor: '#fff', ...shadow.float },
   coverPreview:   { flexDirection: 'row', alignItems: 'center', borderRadius: radius.lg, paddingHorizontal: 18, paddingVertical: 14, marginBottom: 4, ...shadow.card },
-  coverPreviewName: { fontSize: 16, fontWeight: '700', color: '#fff', flex: 1 },
+  coverPreviewName: { ...type.title, color: '#fff', flex: 1 },
 
   // Privacy cards
   privacyCards:   { flexDirection: 'row', gap: 12, marginTop: 16 },
   privacyCard:    { flex: 1, backgroundColor: colors.surfaceContainerLowest, borderRadius: radius.lg, padding: 14, borderWidth: 1.5, borderColor: colors.outlineVariant + '60', ...shadow.card },
   privacyCardSelected: { borderColor: colors.primary },
-  privacyCardTitle: { fontSize: 14, fontWeight: '700', color: colors.onSurface, marginBottom: 4 },
-  privacyCardSub:   { fontSize: 11, color: colors.onSurfaceVariant, lineHeight: 16, marginBottom: 10 },
+  privacyCardTitle: { ...type.body, fontFamily: 'Manrope_700Bold', fontWeight: '700', color: colors.onSurface, marginBottom: 4 },
+  privacyCardSub:   { ...type.caption, color: colors.onSurfaceVariant, lineHeight: 16, marginBottom: 10 },
   privacyCardBtn:   { borderRadius: radius.md, paddingVertical: 6, paddingHorizontal: 10, backgroundColor: colors.surfaceContainerHigh, alignItems: 'center' },
   privacyCardBtnSelected: { backgroundColor: colors.primary + '18' },
-  privacyCardBtnText: { fontSize: 11, fontWeight: '700', color: colors.onSurfaceVariant },
+  privacyCardBtnText: { ...type.caption, fontFamily: 'Manrope_700Bold', fontWeight: '700', color: colors.onSurfaceVariant },
 
   // Reading goal
   goalRow:        { flexDirection: 'row', gap: 10, alignItems: 'center' },
   goalPeriodToggle: { flexDirection: 'row', backgroundColor: colors.surfaceContainerHigh, borderRadius: radius.md, overflow: 'hidden' },
   goalPeriodBtn:  { paddingHorizontal: 12, paddingVertical: 11 },
   goalPeriodBtnActive: { backgroundColor: colors.primary },
-  goalPeriodText: { fontSize: 12, fontWeight: '600', color: colors.onSurfaceVariant },
+  goalPeriodText: { ...type.label, color: colors.onSurfaceVariant },
   goalPeriodTextActive: { color: colors.onPrimary },
 
   // Ready card
   readyCard:      { backgroundColor: colors.surfaceContainerLowest, borderRadius: radius.xl, padding: 20, marginTop: 24, ...shadow.card },
-  readyTitle:     { fontSize: 18, fontWeight: '800', color: colors.onSurface, marginBottom: 4 },
-  readySub:       { fontSize: 13, color: colors.onSurfaceVariant, marginBottom: 16 },
+  readyTitle:     { ...type.titleLg, color: colors.onSurface, marginBottom: 4 },
+  readySub:       { ...type.bodySm, color: colors.onSurfaceVariant, marginBottom: 16 },
   createBtn:      { backgroundColor: colors.primary, borderRadius: radius.lg, paddingVertical: 14, alignItems: 'center' },
-  createBtnText:  { fontSize: 15, fontWeight: '700', color: colors.onPrimary },
-  cancelLink:     { fontSize: 14, color: colors.onSurfaceVariant },
+  createBtnText:  { ...type.body, fontFamily: 'Manrope_700Bold', fontWeight: '700', color: colors.onPrimary },
+  cancelLink:     { ...type.body, color: colors.onSurfaceVariant },
 
   // Join modal
   joinOverlay:    { flex: 1, backgroundColor: '#0006', justifyContent: 'flex-end' },
   joinSheet:      { backgroundColor: colors.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40 },
-  modalTitle:     { fontSize: 22, fontWeight: '800', color: colors.primary },
+  modalTitle:     { ...type.titleLg, color: colors.primary },
 });

@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { StatusBar } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, shadow } from '../theme';
+import { colors, type } from '../theme';
 import { NotificationContext } from '../context/NotificationContext';
 
 /**
@@ -78,8 +78,7 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   logo: {
-    fontSize: 20,
-    fontWeight: '800',
+    ...type.titleLg,
     color: colors.primary,
     letterSpacing: -0.3,
   },
@@ -108,6 +107,7 @@ const styles = StyleSheet.create({
   },
   badgeText: {
     color: '#fff',
+    fontFamily: 'Manrope_800ExtraBold',
     fontSize: 9,
     fontWeight: '800',
   },
@@ -120,8 +120,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   avatarText: {
+    ...type.label,
     color: colors.onPrimary,
-    fontSize: 14,
-    fontWeight: '700',
   },
 });

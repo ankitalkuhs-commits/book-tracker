@@ -8,7 +8,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { userbooksAPI, booksAPI } from '../services/api';
 import { PreloadContext } from '../../App';
-import { colors, radius, shadow } from '../theme';
+import { colors, radius, shadow, type } from '../theme';
 import AppHeader from '../components/AppHeader';
 
 const { width: SCREEN_W } = Dimensions.get('window');
@@ -568,19 +568,19 @@ const styles = StyleSheet.create({
   container:    { flex: 1, backgroundColor: colors.surface },
   centered:     { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
   header:       { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', paddingHorizontal: 20, paddingBottom: 12, paddingTop: 16 },
-  headerTitle:  { fontSize: 28, fontWeight: '800', color: colors.onSurface },
-  headerSubtitle: { fontSize: 13, color: colors.onSurfaceVariant, marginTop: 3, lineHeight: 18, paddingRight: 12 },
+  headerTitle:  { ...type.headline, color: colors.onSurface },
+  headerSubtitle: { ...type.bodySm, color: colors.onSurfaceVariant, marginTop: 3, paddingRight: 12 },
   addBookBtn:   { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: colors.primary, paddingHorizontal: 14, paddingVertical: 8, borderRadius: radius.md },
-  addBookBtnText: { color: colors.onPrimary, fontSize: 13, fontWeight: '700' },
+  addBookBtnText: { ...type.label, color: colors.onPrimary, fontFamily: 'Manrope_700Bold', fontWeight: '700' },
 
   searchBar:    { flexDirection: 'row', alignItems: 'center', marginHorizontal: 16, marginTop: 4, marginBottom: 10, backgroundColor: colors.surfaceContainerLow, borderRadius: radius.lg, paddingHorizontal: 14, paddingVertical: 10, borderWidth: 1, borderColor: colors.outlineVariant + '60' },
-  searchInput:  { flex: 1, fontSize: 14, color: colors.onSurface },
+  searchInput:  { ...type.body, flex: 1, color: colors.onSurface },
 
   tabScroll:    {},
   tabContent:   { paddingHorizontal: 14, paddingBottom: 10, gap: 8 },
   tab:          { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 999, backgroundColor: colors.surfaceContainerLowest, borderWidth: 1, borderColor: colors.outlineVariant },
   tabActive:    { backgroundColor: colors.primary, borderColor: colors.primary },
-  tabText:      { fontSize: 12, fontWeight: '600', color: colors.onSurfaceVariant },
+  tabText:      { ...type.label, color: colors.onSurfaceVariant },
   tabTextActive: { color: colors.onPrimary },
 
   grid:         { padding: GRID_PAD, gap: GRID_GAP },
@@ -589,32 +589,32 @@ const styles = StyleSheet.create({
   tile:         { marginBottom: 4 },
   tileInner:    { borderRadius: radius.lg, alignItems: 'center', justifyContent: 'center', overflow: 'hidden', position: 'relative' },
   tileInfo:     { paddingTop: 10, paddingHorizontal: 2, gap: 3 },
-  tileTitle:    { fontSize: 13, fontWeight: '700', color: colors.onSurface, lineHeight: 18 },
-  tileAuthor:   { fontSize: 11, fontWeight: '600', lineHeight: 15 },
-  tileStatus:   { fontSize: 9, fontWeight: '700', color: colors.primary, letterSpacing: 0.6, marginTop: 2 },
+  tileTitle:    { ...type.bodySm, fontFamily: 'Manrope_700Bold', fontWeight: '700', color: colors.onSurface, lineHeight: 18 },
+  tileAuthor:   { ...type.caption, fontFamily: 'Manrope_600SemiBold', fontWeight: '600', lineHeight: 15 },
+  tileStatus:   { fontFamily: 'Manrope_800ExtraBold', fontSize: 9, fontWeight: '800', color: colors.primary, letterSpacing: 0.6, marginTop: 2 },
   statusBadge:  { position: 'absolute', top: 8, right: 8, paddingHorizontal: 7, paddingVertical: 3, borderRadius: 999 },
-  statusBadgeText: { fontSize: 9, fontWeight: '700', color: '#fff' },
+  statusBadgeText: { fontFamily: 'Manrope_800ExtraBold', fontSize: 9, fontWeight: '700', color: '#fff' },
 
   progressWrap: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 2 },
   progressTrack: { flex: 1, height: 4, backgroundColor: colors.surfaceContainerHigh, borderRadius: 2, overflow: 'hidden' },
   progressFill:  { height: '100%', backgroundColor: colors.primary, borderRadius: 2 },
-  progressLabel: { fontSize: 9, fontWeight: '700', color: colors.primary, width: 26 },
+  progressLabel: { fontFamily: 'Manrope_800ExtraBold', fontSize: 9, fontWeight: '700', color: colors.primary, width: 26 },
 
-  emptyText:    { fontSize: 16, fontWeight: '600', color: colors.onSurfaceVariant, marginTop: 14, textAlign: 'center' },
+  emptyText:    { ...type.title, color: colors.onSurfaceVariant, marginTop: 14, textAlign: 'center' },
   emptyAddBtn:  { marginTop: 16, backgroundColor: colors.primary, paddingHorizontal: 24, paddingVertical: 10, borderRadius: radius.md },
-  emptyAddBtnText: { color: colors.onPrimary, fontWeight: '700' },
+  emptyAddBtnText: { ...type.label, color: colors.onPrimary, fontFamily: 'Manrope_700Bold', fontWeight: '700' },
 
   // Modal
-  modalRoot:    { flex: 1, backgroundColor: colors.surface },  // cream #fbf9f4
+  modalRoot:    { flex: 1, backgroundColor: colors.surface },
   modalHeader:  { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 18, paddingBottom: 14, borderBottomWidth: 1, borderBottomColor: colors.outlineVariant + '60' },
-  modalCancel:  { fontSize: 15, color: colors.primary },
-  modalTitle:   { fontSize: 17, fontWeight: '700', color: colors.onSurface },
+  modalCancel:  { ...type.body, color: colors.primary },
+  modalTitle:   { ...type.title, fontFamily: 'NotoSerif_700Bold', color: colors.onSurface },
 
   searchRow:    { flexDirection: 'row', margin: 14, gap: 10 },
   searchBtn:    { width: 46, height: 46, backgroundColor: colors.primary, borderRadius: radius.md, justifyContent: 'center', alignItems: 'center' },
 
   searchEmpty:  { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 12, paddingBottom: 60 },
-  searchEmptyText: { fontSize: 15, color: colors.onSurfaceVariant },
+  searchEmptyText: { ...type.body, color: colors.onSurfaceVariant },
 
   // Search result cards
   resultsList:  { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 20 },
@@ -627,31 +627,31 @@ const styles = StyleSheet.create({
   resultCoverWrap: { flexShrink: 0 },
   resultCover:  { width: 72, height: 108, borderRadius: radius.md, backgroundColor: colors.surfaceContainerHigh },
   resultInfo:   { flex: 1 },
-  resultTitle:  { fontSize: 14, fontWeight: '700', color: colors.onSurface, lineHeight: 20, marginBottom: 3 },
-  resultAuthor: { fontSize: 12, color: colors.onSurfaceVariant, marginBottom: 2 },
-  resultPublisher: { fontSize: 11, color: colors.outline },
+  resultTitle:  { ...type.body, fontFamily: 'Manrope_700Bold', fontWeight: '700', color: colors.onSurface, marginBottom: 3 },
+  resultAuthor: { ...type.label, color: colors.onSurfaceVariant, marginBottom: 2 },
+  resultPublisher: { ...type.caption, color: colors.outline },
 
   // Options panel (after selecting a book)
   optionsScroll: { padding: 20, paddingTop: 12 },
   backBtn:      { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
-  backBtnText:  { fontSize: 14, color: colors.primary, fontWeight: '600' },
+  backBtnText:  { ...type.body, color: colors.primary, fontFamily: 'Manrope_600SemiBold', fontWeight: '600' },
   selectedHero: { flexDirection: 'row', gap: 16, marginBottom: 16, backgroundColor: colors.surfaceContainerLowest, borderRadius: radius.lg, padding: 14, ...shadow.card },
   selectedCoverLarge: { width: 110, height: 165, borderRadius: radius.md, backgroundColor: colors.surfaceContainerHigh, flexShrink: 0 },
   selectedMeta: { flex: 1, justifyContent: 'flex-start', gap: 4 },
-  selectedTitle: { fontSize: 16, fontWeight: '800', color: colors.onSurface, lineHeight: 22, marginBottom: 2 },
-  selectedAuthor: { fontSize: 13, fontWeight: '600', color: colors.primary },
-  selectedPublisher: { fontSize: 11, color: colors.onSurfaceVariant },
-  selectedPages: { fontSize: 11, color: colors.outline, marginTop: 2 },
+  selectedTitle: { ...type.title, fontFamily: 'NotoSerif_700Bold', color: colors.onSurface, marginBottom: 2 },
+  selectedAuthor: { ...type.bodySm, fontFamily: 'Manrope_600SemiBold', fontWeight: '600', color: colors.primary },
+  selectedPublisher: { ...type.caption, color: colors.onSurfaceVariant },
+  selectedPages: { ...type.caption, color: colors.outline, marginTop: 2 },
   descriptionBox: { backgroundColor: colors.surfaceContainerLowest, borderRadius: radius.lg, padding: 14, marginBottom: 4, ...shadow.card },
-  descriptionText: { fontSize: 13, color: colors.onSurfaceVariant, lineHeight: 20 },
+  descriptionText: { ...type.bodySm, color: colors.onSurfaceVariant },
 
-  optionLabel:  { fontSize: 11, fontWeight: '700', color: colors.onSurfaceVariant, textTransform: 'uppercase', letterSpacing: 0.8, marginTop: 18, marginBottom: 8 },
+  optionLabel:  { ...type.eyebrow, color: colors.onSurfaceVariant, marginTop: 18, marginBottom: 8 },
   chipRow:      { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip:         { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 999, borderWidth: 1, borderColor: colors.outlineVariant, backgroundColor: colors.surfaceContainerLowest },
   chipActive:   { backgroundColor: colors.primary, borderColor: colors.primary },
-  chipText:     { fontSize: 13, color: colors.onSurfaceVariant },
-  chipTextActive: { color: colors.onPrimary, fontWeight: '700' },
+  chipText:     { ...type.bodySm, color: colors.onSurfaceVariant },
+  chipTextActive: { color: colors.onPrimary, fontFamily: 'Manrope_700Bold', fontWeight: '700' },
 
   addBtn:       { marginTop: 32, backgroundColor: colors.primary, paddingVertical: 14, borderRadius: radius.lg, alignItems: 'center' },
-  addBtnText:   { color: colors.onPrimary, fontSize: 16, fontWeight: '700' },
+  addBtnText:   { ...type.title, color: colors.onPrimary },
 });

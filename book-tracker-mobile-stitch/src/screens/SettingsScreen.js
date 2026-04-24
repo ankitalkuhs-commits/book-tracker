@@ -7,7 +7,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { profileAPI, notificationsAPI, authAPI } from '../services/api';
-import { colors, radius, shadow } from '../theme';
+import { colors, radius, shadow, type } from '../theme';
 
 // Notification pref keys must match the backend
 const NOTIF_PREFS = [
@@ -434,11 +434,11 @@ const styles = StyleSheet.create({
   // Top bar with back button
   topBar:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingBottom: 12, backgroundColor: colors.surface },
   backBtn:     { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
-  topBarTitle: { fontSize: 20, fontWeight: '800', color: colors.onSurface },
+  topBarTitle: { ...type.titleLg, color: colors.onSurface },
 
   scroll: { paddingHorizontal: 16, paddingBottom: 32 },
 
-  sectionHeader: { fontSize: 11, fontWeight: '700', letterSpacing: 1, color: colors.onSurfaceVariant, marginTop: 20, marginBottom: 8, marginLeft: 4, textTransform: 'uppercase' },
+  sectionHeader: { ...type.eyebrow, color: colors.onSurfaceVariant, marginTop: 20, marginBottom: 8, marginLeft: 4 },
   card:          { backgroundColor: colors.surfaceContainerLowest, borderRadius: radius.lg, overflow: 'hidden', ...shadow.card },
 
   // Profile hero (photo + name + email + buttons)
@@ -446,46 +446,46 @@ const styles = StyleSheet.create({
   avatarWrap:     { flexShrink: 0 },
   avatarImg:      { width: 72, height: 72, borderRadius: 36, borderWidth: 2, borderColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
   avatarFallback: { backgroundColor: colors.primary },
-  avatarInitials: { color: colors.onPrimary, fontSize: 24, fontWeight: '800' },
-  profileName:    { fontSize: 16, fontWeight: '700', color: colors.onSurface, marginBottom: 2 },
-  profileEmail:   { fontSize: 12, color: colors.onSurfaceVariant, marginBottom: 10 },
+  avatarInitials: { fontFamily: 'NotoSerif_700Bold', fontSize: 24, fontWeight: '700', color: colors.onPrimary },
+  profileName:    { ...type.title, color: colors.onSurface, marginBottom: 2 },
+  profileEmail:   { ...type.label, color: colors.onSurfaceVariant, marginBottom: 10 },
   photoBtns:      { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
   photoBtn:       { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 6, borderRadius: radius.md, borderWidth: 1, borderColor: colors.primary + '60', backgroundColor: colors.primary + '08' },
-  photoBtnText:   { fontSize: 12, color: colors.primary, fontWeight: '600' },
+  photoBtnText:   { ...type.label, color: colors.primary },
 
   row:      { flexDirection: 'row', alignItems: 'center', padding: 14, gap: 12 },
   rowIcon:  { width: 36, height: 36, borderRadius: radius.md, backgroundColor: colors.primary + '12', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
   rowIconDanger:  { backgroundColor: colors.error + '12' },
   rowBody:  { flex: 1 },
-  rowLabel: { fontSize: 14, fontWeight: '500', color: colors.onSurface },
+  rowLabel: { ...type.body, color: colors.onSurface },
   rowLabelDanger: { color: colors.error },
-  rowDesc:  { fontSize: 12, color: colors.onSurfaceVariant, marginTop: 2, lineHeight: 16 },
+  rowDesc:  { ...type.label, color: colors.onSurfaceVariant, marginTop: 2, lineHeight: 16 },
   rowRight: { flexShrink: 0 },
   rowSep:   { height: 1, backgroundColor: colors.outlineVariant + '40', marginLeft: 62 },
 
   editBlock:  { padding: 16 },
-  fieldLabel: { fontSize: 12, fontWeight: '600', color: colors.onSurfaceVariant, marginBottom: 6 },
-  input:      { backgroundColor: colors.surfaceContainerLow, borderRadius: radius.md, paddingHorizontal: 14, paddingVertical: 10, fontSize: 14, color: colors.onSurface, borderWidth: 1, borderColor: colors.outlineVariant + '60' },
+  fieldLabel: { ...type.label, color: colors.onSurfaceVariant, marginBottom: 6 },
+  input:      { ...type.body, backgroundColor: colors.surfaceContainerLow, borderRadius: radius.md, paddingHorizontal: 14, paddingVertical: 10, color: colors.onSurface, borderWidth: 1, borderColor: colors.outlineVariant + '60' },
   inputMulti: { minHeight: 80, textAlignVertical: 'top' },
   editActions:{ flexDirection: 'row', gap: 10, marginTop: 16 },
   cancelBtn:  { flex: 1, paddingVertical: 10, borderRadius: radius.md, backgroundColor: colors.surfaceContainerHigh, alignItems: 'center' },
-  cancelBtnText: { fontSize: 14, fontWeight: '600', color: colors.onSurfaceVariant },
+  cancelBtnText: { ...type.body, fontFamily: 'Manrope_600SemiBold', fontWeight: '600', color: colors.onSurfaceVariant },
   saveBtn:    { flex: 1, paddingVertical: 10, borderRadius: radius.md, backgroundColor: colors.primary, alignItems: 'center' },
-  saveBtnText: { fontSize: 14, fontWeight: '700', color: colors.onPrimary },
+  saveBtnText: { ...type.body, fontFamily: 'Manrope_700Bold', fontWeight: '700', color: colors.onPrimary },
   savedBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 10, justifyContent: 'center' },
-  savedBadgeText: { fontSize: 13, color: colors.primary, fontWeight: '600' },
+  savedBadgeText: { ...type.bodySm, color: colors.primary, fontFamily: 'Manrope_600SemiBold', fontWeight: '600' },
 
   privateNotice:     { flexDirection: 'row', alignItems: 'center', gap: 8, marginHorizontal: 14, marginBottom: 14, backgroundColor: colors.surfaceContainerLow, padding: 10, borderRadius: radius.md },
-  privateNoticeText: { flex: 1, fontSize: 12, color: colors.onSurfaceVariant, lineHeight: 17 },
+  privateNoticeText: { ...type.label, flex: 1, color: colors.onSurfaceVariant, lineHeight: 17 },
 
   aboutBlock: { padding: 16 },
-  aboutText:  { fontSize: 14, color: colors.onSurfaceVariant, lineHeight: 21 },
+  aboutText:  { ...type.body, color: colors.onSurfaceVariant },
 
   // Avatar picker modal
   pickerOverlay:  { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
   pickerSheet:    { backgroundColor: colors.surfaceContainerLowest, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, paddingBottom: 32 },
   pickerHeader:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 16 },
-  pickerTitle:    { fontSize: 18, fontWeight: '800', color: colors.onSurface },
+  pickerTitle:    { ...type.titleLg, color: colors.onSurface },
   pickerClose:    { width: 36, height: 36, alignItems: 'center', justifyContent: 'center', borderRadius: 18, backgroundColor: colors.surfaceContainerHigh },
   pickerGrid:     { paddingHorizontal: 16, gap: 10 },
   avatarTile:     { flex: 1, margin: 5, borderRadius: radius.lg, overflow: 'hidden', aspectRatio: 1 },
@@ -493,5 +493,5 @@ const styles = StyleSheet.create({
   avatarTileImg:  { width: '100%', height: '100%' },
   avatarTileCheck:{ position: 'absolute', bottom: 4, right: 4, backgroundColor: colors.surfaceContainerLowest, borderRadius: 10 },
   useAvatarBtn:   { marginHorizontal: 20, marginTop: 16, backgroundColor: colors.primary, paddingVertical: 14, borderRadius: radius.lg, alignItems: 'center' },
-  useAvatarBtnText: { fontSize: 15, fontWeight: '700', color: colors.onPrimary },
+  useAvatarBtnText: { ...type.body, fontFamily: 'Manrope_700Bold', fontWeight: '700', color: colors.onPrimary },
 });

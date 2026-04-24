@@ -6,7 +6,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { userbooksAPI, notesAPI } from '../services/api';
-import { colors, radius, shadow } from '../theme';
+import { colors, radius, shadow, type } from '../theme';
 
 const STATUS_OPTIONS = [
   { key: 'to-read',  label: 'Want to Read', icon: 'bookmark-outline' },
@@ -310,60 +310,60 @@ const styles = StyleSheet.create({
 
   topBar:      { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingBottom: 12, backgroundColor: colors.surface },
   backBtn:     { width: 40, height: 40, borderRadius: radius.md, backgroundColor: colors.surfaceContainerHigh, alignItems: 'center', justifyContent: 'center' },
-  topBarTitle: { flex: 1, fontSize: 16, fontWeight: '700', color: colors.onSurface, textAlign: 'center', marginHorizontal: 8 },
+  topBarTitle: { ...type.title, flex: 1, color: colors.onSurface, textAlign: 'center', marginHorizontal: 8 },
 
   coverSection:    { alignItems: 'center', paddingTop: 20, paddingBottom: 16, paddingHorizontal: 24 },
   coverCard:       { borderRadius: radius.lg, overflow: 'hidden', marginBottom: 16, ...shadow.float },
   coverImage:      { width: 140, height: 200 },
   coverPlaceholder:{ width: 140, height: 200, backgroundColor: colors.primaryContainer, alignItems: 'center', justifyContent: 'center' },
-  bookTitle:       { fontSize: 22, fontWeight: '800', color: colors.onSurface, textAlign: 'center', marginBottom: 4 },
-  bookAuthor:      { fontSize: 15, color: colors.onSurfaceVariant, textAlign: 'center', marginBottom: 4 },
-  bookPages:       { fontSize: 12, color: colors.outline },
+  bookTitle:       { fontFamily: 'NotoSerif_700Bold', fontSize: 22, fontWeight: '700', color: colors.onSurface, textAlign: 'center', marginBottom: 4 },
+  bookAuthor:      { ...type.body, color: colors.onSurfaceVariant, textAlign: 'center', marginBottom: 4 },
+  bookPages:       { ...type.label, color: colors.outline },
 
   section:      { marginTop: 20, paddingHorizontal: 16 },
-  sectionLabel: { fontSize: 11, fontWeight: '700', letterSpacing: 1, color: colors.onSurfaceVariant, marginBottom: 12, textTransform: 'uppercase' },
+  sectionLabel: { ...type.eyebrow, color: colors.onSurfaceVariant, marginBottom: 12 },
 
   // Status pills — segmented style
   statusRow:          { flexDirection: 'row', backgroundColor: colors.surfaceContainerHigh, borderRadius: radius.full, padding: 3, gap: 3 },
   statusPill:         { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, borderRadius: radius.full, paddingVertical: 8 },
   statusPillActive:   { backgroundColor: colors.primary },
-  statusPillText:     { fontSize: 12, fontWeight: '600', color: colors.onSurfaceVariant },
+  statusPillText:     { ...type.label, color: colors.onSurfaceVariant },
   statusPillTextActive: { color: colors.onPrimary },
 
   // Progress
   progressCard:     { backgroundColor: colors.surfaceContainerLowest, borderRadius: radius.lg, padding: 16, ...shadow.card },
   progressTopRow:   { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-  progressPagesText:{ fontSize: 13, color: colors.onSurfaceVariant },
-  progressPct:      { fontSize: 13, fontWeight: '700', color: colors.primary },
+  progressPagesText:{ ...type.bodySm, color: colors.onSurfaceVariant },
+  progressPct:      { ...type.bodySm, fontFamily: 'Manrope_700Bold', fontWeight: '700', color: colors.primary },
   progressBarTrack: { height: 6, backgroundColor: colors.surfaceContainerHighest, borderRadius: 3, overflow: 'hidden', marginBottom: 14 },
   progressBarFill:  { height: '100%', backgroundColor: colors.primary, borderRadius: 3 },
   pageInputRow:     { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  pageInput:        { flex: 1, backgroundColor: colors.surfaceContainerLow, borderRadius: radius.md, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, color: colors.onSurface, borderWidth: 1, borderColor: colors.outlineVariant + '60' },
+  pageInput:        { ...type.body, flex: 1, backgroundColor: colors.surfaceContainerLow, borderRadius: radius.md, paddingHorizontal: 12, paddingVertical: 10, color: colors.onSurface, borderWidth: 1, borderColor: colors.outlineVariant + '60' },
   updateBtn:        { backgroundColor: colors.primary, borderRadius: radius.md, paddingHorizontal: 18, paddingVertical: 10, alignItems: 'center', minWidth: 72 },
-  updateBtnText:    { fontSize: 14, fontWeight: '600', color: colors.onPrimary },
+  updateBtnText:    { ...type.body, fontFamily: 'Manrope_600SemiBold', fontWeight: '600', color: colors.onPrimary },
 
   // Page alt (non-reading)
   pageAltRow:  { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  pageAltHint: { fontSize: 11, color: colors.outline, lineHeight: 16, flexShrink: 1 },
+  pageAltHint: { ...type.caption, color: colors.outline, lineHeight: 16, flexShrink: 1 },
 
   // Notes composer
   noteComposer:   { backgroundColor: colors.surfaceContainerLowest, borderRadius: radius.lg, overflow: 'hidden', marginBottom: 14, ...shadow.card },
-  noteTextInput:  { paddingHorizontal: 14, paddingTop: 12, paddingBottom: 8, fontSize: 14, color: colors.onSurface, minHeight: 80 },
+  noteTextInput:  { ...type.body, paddingHorizontal: 14, paddingTop: 12, paddingBottom: 8, color: colors.onSurface, minHeight: 80 },
   noteQuoteRow:   { flexDirection: 'row', alignItems: 'center', borderTopWidth: 1, borderTopColor: colors.outlineVariant + '40', paddingHorizontal: 10, paddingVertical: 8 },
-  noteQuoteInput: { flex: 1, fontSize: 13, color: colors.onSurface, paddingVertical: 4 },
+  noteQuoteInput: { ...type.bodySm, flex: 1, color: colors.onSurface, paddingVertical: 4 },
   postBtn:        { backgroundColor: colors.primary, borderRadius: radius.md, paddingHorizontal: 14, paddingVertical: 7 },
-  postBtnText:    { fontSize: 13, fontWeight: '700', color: colors.onPrimary },
+  postBtnText:    { ...type.label, fontFamily: 'Manrope_700Bold', fontWeight: '700', color: colors.onPrimary },
 
-  notesLoadingText: { fontSize: 13, color: colors.outline, marginTop: 8 },
-  notesEmptyText:   { fontSize: 13, color: colors.onSurfaceVariant, marginTop: 4, marginBottom: 4 },
+  notesLoadingText: { ...type.bodySm, color: colors.outline, marginTop: 8 },
+  notesEmptyText:   { ...type.bodySm, color: colors.onSurfaceVariant, marginTop: 4, marginBottom: 4 },
 
   noteCard:       { backgroundColor: colors.surfaceContainerLowest, borderRadius: radius.md, padding: 14, marginBottom: 8, borderLeftWidth: 3, borderLeftColor: colors.primary, ...shadow.card },
-  noteText:       { fontSize: 14, color: colors.onSurface, lineHeight: 20 },
+  noteText:       { ...type.body, color: colors.onSurface },
   noteQuoteBlock: { marginTop: 8, paddingLeft: 10, borderLeftWidth: 2, borderLeftColor: colors.primaryContainer },
-  noteQuoteText:  { fontSize: 13, fontStyle: 'italic', color: colors.onSurfaceVariant, lineHeight: 18 },
+  noteQuoteText:  { ...type.bodySm, fontFamily: 'NotoSerif_400Italic', color: colors.onSurfaceVariant },
   noteFooter:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 },
-  noteTime:       { fontSize: 11, color: colors.outline },
+  noteTime:       { ...type.caption, color: colors.outline },
 
   removeLink:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 24, marginBottom: 8 },
-  removeLinkText: { fontSize: 14, color: colors.error, fontWeight: '600' },
+  removeLinkText: { ...type.body, fontFamily: 'Manrope_600SemiBold', fontWeight: '600', color: colors.error },
 });

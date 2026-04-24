@@ -6,7 +6,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { userAPI, userbooksAPI, activityAPI, notesAPI } from '../services/api';
-import { colors, radius, shadow } from '../theme';
+import { colors, radius, shadow, type } from '../theme';
 
 const SCREEN_W   = Dimensions.get('window').width;
 const BOOK_TILE_W = (SCREEN_W - 32 - 16) / 3;
@@ -417,36 +417,36 @@ const styles = StyleSheet.create({
 
   topBar:      { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingBottom: 12, backgroundColor: colors.surface },
   backBtn:     { width: 40, height: 40, borderRadius: radius.md, backgroundColor: colors.surfaceContainerHigh, alignItems: 'center', justifyContent: 'center' },
-  topBarTitle: { flex: 1, fontSize: 16, fontWeight: '700', color: colors.onSurface, textAlign: 'center', marginHorizontal: 8 },
+  topBarTitle: { flex: 1, ...type.title, color: colors.onSurface, textAlign: 'center', marginHorizontal: 8 },
 
   heroSection:    { alignItems: 'center', paddingHorizontal: 24, paddingTop: 20, paddingBottom: 20 },
   avatarImg:      { width: 96, height: 96, borderRadius: 14, borderWidth: 3, borderColor: colors.primary, marginBottom: 14 },
   avatarFallback: { width: 96, height: 96, borderRadius: 14, backgroundColor: colors.primaryContainer, alignItems: 'center', justifyContent: 'center', marginBottom: 14, borderWidth: 3, borderColor: colors.primary },
-  avatarText:     { fontSize: 34, fontWeight: '800', color: colors.primary },
-  userName:       { fontSize: 22, fontWeight: '800', color: colors.onSurface, marginBottom: 2 },
+  avatarText:     { fontFamily: 'NotoSerif_700Bold', fontSize: 34, fontWeight: '700', color: colors.primary },
+  userName:       { ...type.titleLg, color: colors.onSurface, marginBottom: 2 },
   heroUsername:   { fontSize: 13, color: colors.onSurfaceVariant, marginBottom: 6 },
   userBio:        { fontSize: 14, color: colors.onSurfaceVariant, textAlign: 'center', lineHeight: 20, marginBottom: 14, paddingHorizontal: 16 },
 
   statsPills:      { flexDirection: 'row', alignItems: 'center', marginBottom: 18 },
   statPill:        { alignItems: 'center', paddingHorizontal: 16 },
-  statPillValue:   { fontSize: 18, fontWeight: '800', color: colors.onSurface },
-  statPillLabel:   { fontSize: 10, fontWeight: '700', letterSpacing: 0.8, color: colors.onSurfaceVariant, marginTop: 2 },
+  statPillValue:   { fontFamily: 'NotoSerif_700Bold', fontSize: 18, fontWeight: '700', color: colors.onSurface },
+  statPillLabel:   { ...type.eyebrow, color: colors.onSurfaceVariant, marginTop: 2 },
   statPillDivider: { width: 1, height: 28, backgroundColor: colors.outlineVariant + '60' },
 
   followBtn:           { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.primary, borderRadius: radius.full, paddingHorizontal: 28, paddingVertical: 10, minWidth: 120, justifyContent: 'center' },
   followBtnActive:     { backgroundColor: colors.surface, borderWidth: 1.5, borderColor: colors.primary },
-  followBtnText:       { fontSize: 14, fontWeight: '700', color: colors.onPrimary },
+  followBtnText:       { ...type.body, fontFamily: 'Manrope_700Bold', fontWeight: '700', color: colors.onPrimary },
   followBtnTextActive: { color: colors.primary },
 
   lockedCard:  { margin: 24, padding: 32, backgroundColor: colors.surfaceContainerLowest, borderRadius: radius.xl, alignItems: 'center', gap: 10, ...shadow.card },
-  lockedTitle: { fontSize: 18, fontWeight: '700', color: colors.onSurface },
+  lockedTitle: { ...type.titleLg, color: colors.onSurface },
   lockedSub:   { fontSize: 14, color: colors.onSurfaceVariant, textAlign: 'center', lineHeight: 20 },
 
   // Yearly Progress
   progressSection: { marginHorizontal: 16, marginBottom: 14, backgroundColor: colors.surfaceContainerLowest, borderRadius: radius.lg, padding: 18, ...shadow.card },
-  progressEyebrow: { fontSize: 10, fontWeight: '700', letterSpacing: 1.5, color: colors.secondary, marginBottom: 6 },
+  progressEyebrow: { ...type.eyebrow, color: colors.secondary, marginBottom: 6 },
   progressBody:    { flexDirection: 'row', alignItems: 'baseline', marginBottom: 10 },
-  progressNum:     { fontSize: 42, fontWeight: '900', color: colors.onSurface, lineHeight: 48 },
+  progressNum:     { fontFamily: 'NotoSerif_700Bold', fontSize: 42, fontWeight: '700', color: colors.onSurface, lineHeight: 48 },
   progressOf:      { fontSize: 16, color: colors.onSurfaceVariant },
   progressTrack:   { height: 10, backgroundColor: colors.surfaceContainerHigh, borderRadius: 5, overflow: 'hidden' },
   progressFill:    { height: '100%', backgroundColor: colors.secondary, borderRadius: 5 },
@@ -455,7 +455,7 @@ const styles = StyleSheet.create({
   // Velocity
   velocityCard:    { backgroundColor: colors.surfaceContainerLowest, borderRadius: radius.lg, padding: 16, ...shadow.card },
   velocityHeader:  { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
-  velocityTitle:   { fontSize: 15, fontWeight: '700', color: colors.onSurface },
+  velocityTitle:   { ...type.body, fontFamily: 'Manrope_700Bold', fontWeight: '700', color: colors.onSurface },
   velocitySub:     { fontSize: 11, color: colors.onSurfaceVariant, marginTop: 2 },
   periodToggle:    { flexDirection: 'row', backgroundColor: colors.surfaceContainerHigh, borderRadius: 999, padding: 2, gap: 2 },
   periodBtn:       { paddingHorizontal: 12, paddingVertical: 4, borderRadius: 999 },
@@ -466,7 +466,7 @@ const styles = StyleSheet.create({
 
   section:         { paddingHorizontal: 16, marginBottom: 20 },
   sectionHeaderRow:{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-  sectionTitle:    { fontSize: 18, fontWeight: '800', color: colors.onSurface },
+  sectionTitle:    { ...type.titleLg, color: colors.onSurface },
   viewAllLink:     { fontSize: 13, color: colors.primary, fontWeight: '600' },
 
   bookGrid:        { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
@@ -479,11 +479,11 @@ const styles = StyleSheet.create({
   // By The Numbers
   numbersGrid:     { flexDirection: 'row', gap: 10, marginBottom: 16 },
   numberCard:      { flex: 1, backgroundColor: colors.surfaceContainerLowest, borderRadius: radius.lg, padding: 14, alignItems: 'flex-start', ...shadow.card },
-  numberValue:     { fontSize: 26, fontWeight: '900', color: colors.primary, lineHeight: 30 },
+  numberValue:     { fontFamily: 'NotoSerif_700Bold', fontSize: 26, fontWeight: '700', color: colors.primary, lineHeight: 30 },
   numberLabel:     { fontSize: 11, color: colors.onSurfaceVariant, marginTop: 2 },
 
   currentlyReadingBlock: { backgroundColor: colors.surfaceContainerLowest, borderRadius: radius.lg, padding: 14, ...shadow.card },
-  currentlyReadingLabel: { fontSize: 10, fontWeight: '700', letterSpacing: 1.5, color: colors.secondary, marginBottom: 12 },
+  currentlyReadingLabel: { ...type.eyebrow, color: colors.secondary, marginBottom: 12 },
   currentlyReadingRow:   { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12 },
   currentlyCover:        { width: 44, height: 64, borderRadius: radius.sm },
   currentlyTitle:        { fontSize: 13, fontWeight: '700', color: colors.onSurface, marginBottom: 2 },
@@ -500,8 +500,8 @@ const styles = StyleSheet.create({
   noteBookTag:     { fontSize: 12, fontWeight: '700', color: colors.primary, flex: 1, marginRight: 8 },
   shareBtn:        { padding: 2 },
   quoteBlock:      { borderLeftWidth: 3, borderLeftColor: colors.primary, paddingLeft: 10, marginBottom: 8 },
-  quoteText:       { fontSize: 13, fontStyle: 'italic', color: colors.onSurfaceVariant, lineHeight: 19 },
-  noteText:        { fontSize: 14, color: colors.onSurface, lineHeight: 21, marginBottom: 10 },
+  quoteText:       { ...type.bodySm, fontFamily: 'NotoSerif_400Italic', fontStyle: 'italic', color: colors.onSurfaceVariant },
+  noteText:        { ...type.body, color: colors.onSurface, marginBottom: 10 },
   noteFooter:      { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 8, borderTopWidth: 1, borderTopColor: colors.surfaceContainerHigh },
   noteDate:        { fontSize: 11, color: colors.outline, fontWeight: '600' },
   noteActions:     { flexDirection: 'row', gap: 14 },

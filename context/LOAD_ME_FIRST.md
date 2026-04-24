@@ -125,7 +125,9 @@ When user says **"wrap up"**, Claude automatically:
 - Fixed: #12 Search tab clear — switching tabs now clears query + both result sets + searched state
 - Confirmed done: #8 notification prefs (SettingsPage), #10 admin user search/sort (AdminPage), #13 profile picture upload (ProfilePage)
 
-**Phase 3 — Mobile ↔ Webapp parity fixes (April 23, 2026) — ALL SCREENS COMPLETE:**
+**Phase 3 — Mobile ↔ Webapp parity fixes (April 23–24, 2026) — ALL SCREENS COMPLETE:**
+> Full per-screen changelog: `context/MOBILE_STITCH_PHASE3.md`
+
 - Screen-by-screen diff between `book-tracker-mobile-stitch/` and `tracker-stitch.vercel.app`
 - **LoginScreen:** button copy fixed, quote card redesigned (format-quote-open icon), tagline color fixed to `colors.secondary`, subtitle added, community feed removed from auth screen
 - **FeedScreen:** FAB+modal composer replaced with inline composer card (tag book, quote, emotion fields), "For You" recs shelf added, post cards updated (heart icon, comment count, book label, ··· menu), tab "Your Friends"→"Friends", `AppHeader` added; post author tap → UserProfile

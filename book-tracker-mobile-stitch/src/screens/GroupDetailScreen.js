@@ -7,7 +7,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { groupsAPI, booksAPI } from '../services/api';
-import { colors, radius, shadow } from '../theme';
+import { colors, radius, shadow, type } from '../theme';
 
 function timeAgo(dateStr) {
   if (!dateStr) return '';
@@ -599,15 +599,15 @@ const styles = StyleSheet.create({
   header:       { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingTop: 52, paddingBottom: 14, backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.outlineVariant + '40' },
   backBtn:      { width: 36, height: 36, borderRadius: radius.md, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
   headerCenter: { flex: 1 },
-  headerTitle:  { fontSize: 17, fontWeight: '800', color: colors.onSurface },
-  headerSub:    { fontSize: 12, color: colors.onSurfaceVariant, marginTop: 1 },
+  headerTitle:  { ...type.title, fontFamily: 'NotoSerif_700Bold', color: colors.onSurface },
+  headerSub:    { ...type.caption, color: colors.onSurfaceVariant, marginTop: 1 },
   leaveBtn:     { alignSelf: 'flex-start', marginTop: 12, paddingHorizontal: 14, paddingVertical: 6, borderRadius: radius.full, backgroundColor: 'rgba(255,255,255,0.15)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)' },
   leaveBtnText: { fontSize: 13, fontWeight: '600', color: colors.onPrimary },
 
   // Hero card
   hero:          { backgroundColor: colors.primary, borderRadius: radius.lg, padding: 20, marginBottom: 14, ...shadow.card },
-  heroEyebrow:   { fontSize: 10, fontWeight: '700', letterSpacing: 2, color: 'rgba(255,255,255,0.65)', marginBottom: 6 },
-  heroTitle:     { fontSize: 26, fontWeight: '900', color: colors.onPrimary, lineHeight: 30, marginBottom: 6 },
+  heroEyebrow:   { ...type.eyebrow, color: 'rgba(255,255,255,0.65)', marginBottom: 6 },
+  heroTitle:     { fontFamily: 'NotoSerif_700Bold', fontSize: 26, fontWeight: '700', color: colors.onPrimary, lineHeight: 30, marginBottom: 6 },
   heroDesc:      { fontSize: 14, color: 'rgba(255,255,255,0.75)', lineHeight: 20, marginBottom: 12 },
   heroPills:     { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   heroPill:      { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(255,255,255,0.15)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999 },
@@ -616,15 +616,15 @@ const styles = StyleSheet.create({
   scroll:        { paddingHorizontal: 16, paddingTop: 16 },
   description:   { fontSize: 14, color: colors.onSurfaceVariant, lineHeight: 20, marginBottom: 16 },
   section:       { backgroundColor: colors.surfaceContainerLowest, borderRadius: radius.lg, padding: 16, marginBottom: 14, ...shadow.card },
-  sectionLabel:  { fontSize: 10, fontWeight: '700', letterSpacing: 1.5, color: colors.secondary, marginBottom: 2 },
-  sectionTitle:  { fontSize: 18, fontWeight: '800', color: colors.primary, marginBottom: 14 },
+  sectionLabel:  { ...type.eyebrow, color: colors.secondary, marginBottom: 2 },
+  sectionTitle:  { ...type.titleLg, fontFamily: 'NotoSerif_700Bold', color: colors.primary, marginBottom: 14 },
   sectionHeaderRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 14 },
   emptyMsg:      { fontSize: 13, color: colors.outline, fontStyle: 'italic' },
 
   groupBookRow:      { flexDirection: 'row', alignItems: 'center', gap: 14, backgroundColor: colors.surfaceContainerLow, padding: 12, borderRadius: radius.md },
   groupBookCover:    { width: 56, height: 84, borderRadius: radius.sm },
-  groupBookLabel:    { fontSize: 9, fontWeight: '700', letterSpacing: 1.5, color: colors.secondary, marginBottom: 3 },
-  groupBookTitle:    { fontSize: 15, fontWeight: '700', color: colors.onSurface, marginBottom: 3 },
+  groupBookLabel:    { ...type.eyebrow, color: colors.secondary, marginBottom: 3 },
+  groupBookTitle:    { ...type.body, fontFamily: 'Manrope_700Bold', fontWeight: '700', color: colors.onSurface, marginBottom: 3 },
   groupBookAuthor:   { fontSize: 13, color: colors.onSurfaceVariant, marginBottom: 6 },
   groupBookPages:    { fontSize: 11, color: colors.outline },
   groupBookEmpty:    { alignItems: 'center', paddingVertical: 20, gap: 8 },
@@ -635,7 +635,7 @@ const styles = StyleSheet.create({
   removeLink:        { fontSize: 12, color: colors.error, fontWeight: '600' },
 
   // Reading Goal
-  goalPages:    { fontSize: 36, fontWeight: '900', color: colors.primary, lineHeight: 42 },
+  goalPages:    { fontFamily: 'NotoSerif_700Bold', fontSize: 36, fontWeight: '700', color: colors.primary, lineHeight: 42 },
   goalOf:       { fontSize: 13, color: colors.onSurfaceVariant, marginBottom: 10 },
   goalTrack:    { height: 8, backgroundColor: colors.surfaceContainerHigh, borderRadius: 99, overflow: 'hidden', marginBottom: 6 },
   goalFill:     { height: '100%', backgroundColor: colors.primary, borderRadius: 99 },
@@ -667,9 +667,9 @@ const styles = StyleSheet.create({
 
   leaderRow:      { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10 },
   leaderRank:     { fontSize: 18, width: 28, textAlign: 'center' },
-  leaderName:     { fontSize: 14, fontWeight: '600', color: colors.onSurface, marginBottom: 1 },
-  leaderReading:  { fontSize: 11, color: colors.onSurfaceVariant, fontStyle: 'italic' },
-  leaderPages:    { fontSize: 13, fontWeight: '700', color: colors.primary },
+  leaderName:     { ...type.body, fontFamily: 'Manrope_600SemiBold', fontWeight: '600', color: colors.onSurface, marginBottom: 1 },
+  leaderReading:  { ...type.caption, fontFamily: 'NotoSerif_400Italic', fontStyle: 'italic', color: colors.onSurfaceVariant },
+  leaderPages:    { ...type.bodySm, fontFamily: 'Manrope_700Bold', fontWeight: '700', color: colors.primary },
 
   activityRow:  { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 10 },
   activityIcon: { width: 32, height: 32, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
@@ -680,37 +680,37 @@ const styles = StyleSheet.create({
   postCard:   { backgroundColor: colors.surfaceContainerLow, borderRadius: radius.md, padding: 14, marginBottom: 10 },
   postHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10 },
   postMeta:   { flex: 1 },
-  postAuthor: { fontSize: 14, fontWeight: '700', color: colors.onSurface },
-  postTime:   { fontSize: 11, color: colors.outline, marginTop: 1 },
-  postText:   { fontSize: 14, color: colors.onSurface, lineHeight: 20 },
+  postAuthor: { ...type.body, fontFamily: 'Manrope_700Bold', fontWeight: '700', color: colors.onSurface },
+  postTime:   { ...type.caption, color: colors.outline, marginTop: 1 },
+  postText:   { ...type.body, color: colors.onSurface },
   postQuote:  { marginTop: 8, borderLeftWidth: 3, borderLeftColor: colors.primary, paddingLeft: 10, paddingVertical: 4 },
-  postQuoteText: { fontSize: 13, fontStyle: 'italic', color: colors.onSurfaceVariant },
+  postQuoteText: { ...type.bodySm, fontFamily: 'NotoSerif_400Italic', fontStyle: 'italic', color: colors.onSurfaceVariant },
   deleteBtn:  { padding: 4 },
   postBtn:    { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: colors.primary, paddingHorizontal: 14, paddingVertical: 8, borderRadius: radius.md },
   postBtnText:{ fontSize: 13, fontWeight: '700', color: colors.onPrimary },
 
   memberRow:      { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12 },
   memberNameRow:  { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  memberName:     { fontSize: 14, fontWeight: '600', color: colors.onSurface },
+  memberName:     { ...type.body, fontFamily: 'Manrope_600SemiBold', fontWeight: '600', color: colors.onSurface },
   memberUsername: { fontSize: 12, color: colors.onSurfaceVariant, marginTop: 1 },
   curatorBadge:   { backgroundColor: colors.primary + '18', paddingHorizontal: 10, paddingVertical: 3, borderRadius: 999 },
-  curatorBadgeText: { fontSize: 11, fontWeight: '700', color: colors.primary },
+  curatorBadgeText: { ...type.caption, fontFamily: 'Manrope_700Bold', fontWeight: '700', color: colors.primary },
   removeBtn:      { padding: 4 },
 
   avatar:     { backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-  avatarText: { color: colors.onPrimary, fontWeight: '800' },
+  avatarText: { color: colors.onPrimary, fontFamily: 'Manrope_700Bold', fontWeight: '700' },
 
   composerRoot:   { flex: 1, backgroundColor: colors.surfaceContainerLowest },
   composerHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 20, paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: colors.outlineVariant + '40' },
   composerCancel: { fontSize: 16, color: colors.onSurfaceVariant },
-  composerTitle:  { fontSize: 17, fontWeight: '700', color: colors.onSurface },
-  composerPost:   { fontSize: 16, fontWeight: '700', color: colors.primary },
-  composerInput:  { flex: 1, padding: 20, fontSize: 16, color: colors.onSurface, textAlignVertical: 'top' },
+  composerTitle:  { ...type.title, fontFamily: 'NotoSerif_700Bold', color: colors.onSurface },
+  composerPost:   { ...type.title, fontFamily: 'Manrope_700Bold', fontWeight: '700', color: colors.primary },
+  composerInput:  { flex: 1, padding: 20, ...type.title, color: colors.onSurface, textAlignVertical: 'top' },
 
   modalRoot:    { flex: 1, backgroundColor: colors.surface },
   modalHeader:  { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 18, paddingBottom: 14, borderBottomWidth: 1, borderBottomColor: colors.outlineVariant + '60' },
   modalCancel:  { fontSize: 15, color: colors.primary },
-  modalTitle:   { fontSize: 17, fontWeight: '700', color: colors.onSurface },
+  modalTitle:   { ...type.title, fontFamily: 'NotoSerif_700Bold', color: colors.onSurface },
   searchRow:    { flexDirection: 'row', margin: 14, gap: 10 },
   searchInput:  { flex: 1, height: 46, backgroundColor: colors.surfaceContainerLow, borderRadius: radius.md, paddingHorizontal: 14, fontSize: 14, color: colors.onSurface, borderWidth: 1, borderColor: colors.outlineVariant + '60' },
   searchBtn:    { width: 46, height: 46, backgroundColor: colors.primary, borderRadius: radius.md, justifyContent: 'center', alignItems: 'center' },

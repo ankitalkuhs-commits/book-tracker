@@ -2,13 +2,18 @@ import React, { useState, useEffect, createContext, useRef } from 'react';
 import { View, ActivityIndicator, StyleSheet, AppState } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import * as Notifications from 'expo-notifications';
+import * as Font from 'expo-font';
+import * as SplashScreen from 'expo-splash-screen';
 
 import { authAPI, userAPI, userbooksAPI, notesAPI, notificationsAPI } from './src/services/api';
 import { registerExpoPushToken } from './src/services/NotificationService';
 import AppNavigator from './src/navigation/AppNavigator';
 import LoginScreen from './src/screens/LoginScreen';
-import { colors } from './src/theme';
+import { colors, fontMap } from './src/theme';
 import { NotificationContext } from './src/context/NotificationContext';
+
+// Keep splash visible until fonts + auth check are done
+SplashScreen.preventAutoHideAsync().catch(() => {});
 
 // ── Preload context (consumed by FeedScreen, LibraryScreen, ProfileScreen) ───
 export const PreloadContext = createContext(null);
@@ -23,12 +28,20 @@ Notifications.setNotificationHandler({
 });
 
 export default function App() {
-  const [authChecked, setAuthChecked] = useState(false);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [preloaded, setPreloaded] = useState(null);
-  const [unreadCount, setUnreadCount] = useState(0);
-  const pollRef = useRef(null);
+  const [fontsLoaded, setFontsLoaded]   = useState(false);
+  const [authChecked, setAuthChecked]   = useState(false);
+  const [isLoggedIn, setIsLoggedIn]     = useState(false);
+  const [preloaded, setPreloaded]       = useState(null);
+  const [unreadCount, setUnreadCount]   = useState(0);
+  const pollRef    = useRef(null);
   const appStateRef = useRef(AppState.currentState);
+
+  // ── Load custom fonts ────────────────────────────────────────────────────
+  useEffect(() => {
+    Font.loadAsync(fontMap)
+      .catch(() => {}) // non-fatal — fall back to system font
+      .finally(() => setFontsLoaded(true));
+  }, []);
 
   // ── Auth check on mount ──────────────────────────────────────────────────
   useEffect(() => {
@@ -105,8 +118,11 @@ export default function App() {
     setIsLoggedIn(false);
   };
 
-  // ── Loading splash ───────────────────────────────────────────────────────
-  if (!authChecked) {
+  // ── Loading splash — wait for both fonts + auth ──────────────────────────
+  const ready = fontsLoaded && authChecked;
+  if (ready) SplashScreen.hideAsync().catch(() => {});
+
+  if (!ready) {
     return (
       <View style={styles.splash}>
         <ActivityIndicator size="large" color={colors.primary} />

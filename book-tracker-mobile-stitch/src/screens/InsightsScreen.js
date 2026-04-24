@@ -6,7 +6,7 @@ import {
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { activityAPI, userbooksAPI, profileAPI } from '../services/api';
-import { colors, radius, shadow } from '../theme';
+import { colors, radius, shadow, type } from '../theme';
 import AppHeader from '../components/AppHeader';
 
 const SCREEN_W = Dimensions.get('window').width;
@@ -390,9 +390,9 @@ const styles = StyleSheet.create({
   centered:  { flex: 1, justifyContent: 'center', alignItems: 'center' },
 
   header:      { paddingBottom: 4 },
-  headerLabel: { fontSize: 10, fontWeight: '700', letterSpacing: 1.5, color: colors.secondary, marginBottom: 2 },
-  headerTitle: { fontSize: 30, fontWeight: '800', color: colors.onSurface, lineHeight: 36 },
-  headerSub:   { fontSize: 14, color: colors.onSurfaceVariant, marginTop: 2 },
+  headerLabel: { ...type.eyebrow, color: colors.secondary, marginBottom: 2 },
+  headerTitle: { ...type.headline, color: colors.onSurface },
+  headerSub:   { ...type.body, color: colors.onSurfaceVariant, marginTop: 2 },
 
   statsGrid: { flexDirection: 'row', gap: 10 },
   statCard:  {
@@ -403,52 +403,52 @@ const styles = StyleSheet.create({
   statCardAccent: { backgroundColor: colors.primary },
   statCardWide:   { flex: undefined },
   statCardTop:    { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
-  statValue:      { fontSize: 24, fontWeight: '800', color: colors.onSurface, lineHeight: 28 },
+  statValue:      { fontFamily: 'NotoSerif_700Bold', fontSize: 24, fontWeight: '700', color: colors.onSurface, lineHeight: 28 },
   statValueAccent:{ color: colors.onPrimary },
-  statLabel:      { fontSize: 10, fontWeight: '700', letterSpacing: 0.8, color: colors.onSurfaceVariant },
+  statLabel:      { ...type.eyebrow, color: colors.onSurfaceVariant },
   statLabelAccent:{ color: colors.onPrimary + 'cc' },
-  statSub:        { fontSize: 11, color: colors.onSurfaceVariant, marginTop: 3 },
+  statSub:        { ...type.caption, color: colors.onSurfaceVariant, marginTop: 3 },
   statSubAccent:  { color: colors.onPrimary + 'aa' },
 
   card:         { backgroundColor: colors.surfaceContainerLowest, borderRadius: radius.lg, padding: 16, ...shadow.card },
-  cardEyebrow:  { fontSize: 10, fontWeight: '700', letterSpacing: 1.5, color: colors.secondary, marginBottom: 10 },
-  cardTitle:    { fontSize: 15, fontWeight: '700', color: colors.onSurface },
-  cardSub:      { fontSize: 12, color: colors.onSurfaceVariant, marginTop: 2 },
+  cardEyebrow:  { ...type.eyebrow, color: colors.secondary, marginBottom: 10 },
+  cardTitle:    { ...type.title, fontFamily: 'NotoSerif_700Bold', color: colors.onSurface },
+  cardSub:      { ...type.label, color: colors.onSurfaceVariant, marginTop: 2 },
 
   // Streak
   streakRow:    { flexDirection: 'row', alignItems: 'flex-start', marginTop: 4 },
   streakHalf:   { flex: 1, alignItems: 'flex-start' },
   streakIcon:   { fontSize: 20, marginBottom: 2 },
   streakDivider:{ width: 1, backgroundColor: colors.outlineVariant, alignSelf: 'stretch', marginHorizontal: 16 },
-  streakUnit:   { fontSize: 12, color: colors.onSurfaceVariant, marginTop: 2, lineHeight: 16 },
-  bigNumber:    { fontSize: 38, fontWeight: '900', color: colors.onSurface, lineHeight: 44 },
+  streakUnit:   { ...type.label, color: colors.onSurfaceVariant, marginTop: 2 },
+  bigNumber:    { fontFamily: 'NotoSerif_700Bold', fontSize: 38, fontWeight: '700', color: colors.onSurface, lineHeight: 44 },
 
   // Goal
   goalHeader:   { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },
   goalBody:     { flexDirection: 'row', alignItems: 'center', gap: 20 },
   goalText:     { flex: 1 },
-  goalBooksNum: { fontSize: 32, fontWeight: '900', color: colors.primary, lineHeight: 36 },
-  goalBooksOf:  { fontSize: 14, color: colors.onSurfaceVariant, marginTop: 2 },
-  goalBooksLeft:{ fontSize: 12, color: colors.outline, marginTop: 2 },
+  goalBooksNum: { fontFamily: 'NotoSerif_700Bold', fontSize: 32, fontWeight: '700', color: colors.primary, lineHeight: 36 },
+  goalBooksOf:  { ...type.body, color: colors.onSurfaceVariant, marginTop: 2 },
+  goalBooksLeft:{ ...type.label, color: colors.outline, marginTop: 2 },
   onTrackBadge: { backgroundColor: colors.primary + '18', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999 },
-  onTrackText:  { fontSize: 12, fontWeight: '700', color: colors.primary },
+  onTrackText:  { ...type.label, fontFamily: 'Manrope_700Bold', fontWeight: '700', color: colors.primary },
   behindBadge:  { backgroundColor: colors.secondary + '18' },
   behindText:   { color: colors.secondary },
   goalEmpty:    { alignItems: 'center', gap: 8, paddingVertical: 20 },
 
   chartAxis:      { flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 },
-  chartAxisLabel: { fontSize: 10, color: colors.outline },
+  chartAxisLabel: { fontFamily: 'Manrope_500Medium', fontSize: 10, fontWeight: '500', color: colors.outline },
 
   // Projected finishes
   projRow:      { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: colors.surfaceContainerLow, borderRadius: radius.md, padding: 12 },
   projCover:    { width: 52, height: 78, borderRadius: radius.sm },
-  projTitle:    { fontSize: 14, fontWeight: '700', color: colors.onSurface, lineHeight: 18, marginBottom: 2 },
-  projPages:    { fontSize: 11, color: colors.onSurfaceVariant, marginBottom: 6 },
+  projTitle:    { ...type.body, fontFamily: 'Manrope_700Bold', fontWeight: '700', color: colors.onSurface, marginBottom: 2 },
+  projPages:    { ...type.caption, color: colors.onSurfaceVariant, marginBottom: 6 },
   projProgress: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   projTrack:    { flex: 1, height: 4, backgroundColor: colors.surfaceContainerHigh, borderRadius: 2, overflow: 'hidden' },
   projFill:     { height: '100%', backgroundColor: colors.primary, borderRadius: 2 },
-  projPct:      { fontSize: 11, fontWeight: '700', color: colors.primary, width: 30, textAlign: 'right' },
+  projPct:      { ...type.caption, fontFamily: 'Manrope_700Bold', fontWeight: '700', color: colors.primary, width: 30, textAlign: 'right' },
   projDate:     { alignItems: 'flex-end', minWidth: 54 },
-  projDateText: { fontSize: 13, fontWeight: '700', color: colors.secondary },
-  projDaysLeft: { fontSize: 11, color: colors.onSurfaceVariant, marginTop: 2 },
+  projDateText: { ...type.bodySm, fontFamily: 'Manrope_700Bold', fontWeight: '700', color: colors.secondary },
+  projDaysLeft: { ...type.caption, color: colors.onSurfaceVariant, marginTop: 2 },
 });
