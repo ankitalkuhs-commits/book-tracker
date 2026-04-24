@@ -73,9 +73,11 @@ export default function BookDetailScreen({ route, navigation }) {
     if (newStatus === ub.status) return;
     setSavingStatus(true);
     try {
-      // Use PATCH endpoint which accepts status directly (PUT /progress only accepts current_page)
-      const updated = await userbooksAPI.patchUserbook(ub.id, { status: newStatus });
-      setUb(prev => ({ ...prev, ...updated }));
+      // PATCH returns { status: "ok", userbook: <flat UserBook> }
+      // Preserve the nested book object from prev since backend returns flat model
+      const result = await userbooksAPI.patchUserbook(ub.id, { status: newStatus });
+      const serverUb = result?.userbook || result;
+      setUb(prev => ({ ...prev, ...serverUb, book: prev.book }));
     } catch (e) { Alert.alert('Error', e?.response?.data?.detail || 'Could not update status'); }
     setSavingStatus(false);
   };
