@@ -391,7 +391,7 @@ const styles = StyleSheet.create({
 
   header:      { paddingBottom: 4 },
   headerLabel: { ...type.eyebrow, color: colors.secondary, marginBottom: 2 },
-  headerTitle: { ...type.headline, color: colors.onSurface },
+  headerTitle: { ...type.headline, color: colors.onSurfaceVariant },
   headerSub:   { ...type.body, color: colors.onSurfaceVariant, marginTop: 2 },
 
   statsGrid: { flexDirection: 'row', gap: 10 },

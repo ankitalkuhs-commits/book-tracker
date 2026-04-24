@@ -112,7 +112,7 @@ export default function NotificationsScreen({ navigation }) {
           <Ionicons name="arrow-back" size={22} color={colors.onSurface} />
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
-          <Text style={styles.headerLabel}>UPDATES</Text>
+          <Text style={styles.headerLabel}>YOUR LATEST UPDATES</Text>
           <Text style={styles.headerTitle}>Notifications</Text>
         </View>
         {unreadCount > 0 && (
@@ -164,7 +164,7 @@ const styles = StyleSheet.create({
   header:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 16, paddingBottom: 16, backgroundColor: colors.surface },
   backBtn:     { marginRight: 12, padding: 4 },
   headerLabel: { ...type.eyebrow, color: colors.secondary, marginBottom: 2 },
-  headerTitle: { ...type.headline, color: colors.primary },
+  headerTitle: { ...type.headline, color: colors.onSurfaceVariant },
   markBtn:     { backgroundColor: colors.surfaceContainerHigh, borderRadius: radius.full, paddingHorizontal: 14, paddingVertical: 7 },
   markBtnText: { ...type.label, color: colors.primary },
 

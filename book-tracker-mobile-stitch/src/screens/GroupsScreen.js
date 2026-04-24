@@ -314,6 +314,7 @@ export default function GroupsScreen({ navigation }) {
         {/* ── Hero header ── */}
         <View style={styles.hero}>
           <View style={styles.heroText}>
+            <Text style={styles.heroEyebrow}>YOUR LITERARY CIRCLES</Text>
             <Text style={styles.heroTitle}>Literary{'\n'}Circles</Text>
             <Text style={styles.heroSub}>
               Discover niche reading communities, discuss your favourite chapters, and join global conversations curated for the discerning reader.
@@ -389,7 +390,8 @@ const styles = StyleSheet.create({
   // Hero
   hero:           { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 20 },
   heroText:       { marginBottom: 20 },
-  heroTitle:      { fontFamily: 'NotoSerif_700Bold', fontSize: 36, fontWeight: '700', color: colors.primary, lineHeight: 44, marginBottom: 12 },
+  heroEyebrow:    { ...type.eyebrow, color: colors.secondary, marginBottom: 6 },
+  heroTitle:      { fontFamily: 'NotoSerif_700Bold', fontSize: 36, fontWeight: '700', color: colors.onSurfaceVariant, lineHeight: 44, marginBottom: 12 },
   heroSub:        { ...type.body, color: colors.onSurfaceVariant },
   createHeroBtn:  { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: colors.primary, paddingHorizontal: 18, paddingVertical: 12, borderRadius: radius.lg, alignSelf: 'flex-start', ...shadow.float },
   createHeroBtnText: { ...type.body, fontFamily: 'Manrope_700Bold', fontWeight: '700', color: colors.onPrimary },

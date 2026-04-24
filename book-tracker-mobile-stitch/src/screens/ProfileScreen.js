@@ -417,7 +417,7 @@ export default function ProfileScreen({ navigation, onLogout }) {
           <Ionicons name="arrow-back" size={22} color={colors.onSurface} />
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
-          <Text style={styles.topBarLabel}>MY PROFILE</Text>
+          <Text style={styles.topBarLabel}>YOUR READING STORY</Text>
           <Text style={styles.topBarTitle}>Profile</Text>
         </View>
         <TouchableOpacity onPress={() => navigation?.navigate('Settings')} style={styles.settingsBtn}>
@@ -637,7 +637,7 @@ const styles = StyleSheet.create({
   topBar:      { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingBottom: 14, backgroundColor: colors.surface },
   backBtn:     { marginRight: 12, padding: 4 },
   topBarLabel: { ...type.eyebrow, color: colors.secondary, marginBottom: 2 },
-  topBarTitle: { ...type.headline, color: colors.primary },
+  topBarTitle: { ...type.headline, color: colors.onSurfaceVariant },
   settingsBtn: { width: 40, height: 40, borderRadius: radius.md, backgroundColor: colors.surfaceContainerHigh, alignItems: 'center', justifyContent: 'center' },
 
   heroCard:    { backgroundColor: colors.surfaceContainerLowest, margin: 16, padding: 24, borderRadius: radius.xl, ...shadow.card, alignItems: 'center' },

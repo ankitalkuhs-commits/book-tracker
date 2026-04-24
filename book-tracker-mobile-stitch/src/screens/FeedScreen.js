@@ -620,6 +620,11 @@ const FeedScreen = ({ navigation }) => {
         onAvatarPress={() => navigation.navigate('Profile')}
       />
       <View style={styles.tabBar}>
+        <View style={styles.feedHeader}>
+          <Text style={styles.feedEyebrow}>
+            {activeTab === 'community' ? 'YOUR READING COMMUNITY' : 'YOUR READING CIRCLE'}
+          </Text>
+        </View>
         <View style={styles.tabs}>
           <TouchableOpacity style={[styles.tab, activeTab === 'community' && styles.activeTab]} onPress={() => setActiveTab('community')}>
             <Text style={[styles.tabText, activeTab === 'community' && styles.activeTabText]}>Community</Text>
@@ -669,6 +674,8 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.surface },
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   tabBar: { backgroundColor: colors.surfaceContainerLowest, borderBottomWidth: 1, borderBottomColor: colors.outlineVariant + '60' },
+  feedHeader: { paddingHorizontal: 20, paddingTop: 12, paddingBottom: 4 },
+  feedEyebrow: { ...type.eyebrow, color: colors.secondary },
   tabs: { flexDirection: 'row' },
   tab: { flex: 1, paddingVertical: 14, alignItems: 'center', borderBottomWidth: 3, borderBottomColor: 'transparent' },
   activeTab: { borderBottomColor: colors.primary },

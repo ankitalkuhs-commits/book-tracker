@@ -434,7 +434,7 @@ const styles = StyleSheet.create({
   // Top bar with back button
   topBar:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingBottom: 12, backgroundColor: colors.surface },
   backBtn:     { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
-  topBarTitle: { ...type.titleLg, color: colors.onSurface },
+  topBarTitle: { ...type.titleLg, color: colors.onSurfaceVariant },
 
   scroll: { paddingHorizontal: 16, paddingBottom: 32 },
 

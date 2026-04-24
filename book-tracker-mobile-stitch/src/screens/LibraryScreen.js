@@ -480,6 +480,7 @@ export default function LibraryScreen({ navigation }) {
       {/* ── Header ── */}
       <View style={styles.header}>
         <View style={{ flex: 1 }}>
+          <Text style={styles.headerEyebrow}>YOUR READING JOURNEY</Text>
           <Text style={styles.headerTitle}>Your Library</Text>
           <Text style={styles.headerSubtitle}>Curating your personal journey through words and wisdom.</Text>
         </View>
@@ -570,7 +571,8 @@ const styles = StyleSheet.create({
   container:    { flex: 1, backgroundColor: colors.surface },
   centered:     { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
   header:       { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', paddingHorizontal: 20, paddingBottom: 12, paddingTop: 16 },
-  headerTitle:  { ...type.headline, color: colors.onSurface },
+  headerEyebrow:{ ...type.eyebrow, color: colors.secondary, marginBottom: 4 },
+  headerTitle:  { ...type.headline, color: colors.onSurfaceVariant },
   headerSubtitle: { ...type.bodySm, color: colors.onSurfaceVariant, marginTop: 3, paddingRight: 12 },
   addBookBtn:   { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: colors.primary, paddingHorizontal: 14, paddingVertical: 8, borderRadius: radius.md },
   addBookBtnText: { ...type.label, color: colors.onPrimary, fontFamily: 'Manrope_700Bold', fontWeight: '700' },
