@@ -227,3 +227,36 @@ This document is the single source of truth for every change made during the scr
 4. **"View All Books" on UserProfile** — `TouchableOpacity` is there but no navigation target wired yet (would need a full library list screen for other users).
 5. **ProfileScreen back button** — only makes sense when navigated to from somewhere. If user lands on Profile via avatar tap from any tab, `navigation.goBack()` should work. If Profile is the deepest screen in ProfileStack, goBack returns to the previous tab. Verify this feels natural.
 6. **NotificationsScreen → UserProfile** — follow event taps call `navigate('UserProfile', { userId: item.actor_id })`. This is in the root stack, so it should resolve correctly. Verify on device.
+
+---
+
+## Bugs Found on Device — April 24, 2026 (Phase 4 Fix List)
+
+These were identified from APK testing against `https://book-tracker-stitch.onrender.com`. All fixes should go in `book-tracker-mobile-stitch/`.
+
+### FeedScreen bugs
+1. **Community feed shows only friends' posts** — "For You" tab should show posts from everyone (all users), not just friends. Check `feedAPI.getCommunityFeed()` call vs backend `GET /community/feed` — backend likely supports a `scope` or `all` flag. Compare with webapp.
+2. **Comment icon non-functional** — tapping comment icon on any post card does nothing. Webapp: clicking comment icon expands inline comment input below the post. Needs comment sheet or inline expand on post card.
+3. **"For You" recs → add-to-library modal missing** — tapping a recommended book should open a bottom sheet: book cover + title + author + reason + "Want to Read" / "Start Reading Now" buttons. This was built in webapp (`RecommendationModal`). Needs porting to mobile.
+4. **Profile avatar not updating in header/feed** — AppHeader shows initials only; does not show uploaded photo or DiceBear avatar URL. `AppHeader` needs to check `user.profile_picture` (URL) and render `<Image>` when set, fallback to initials.
+
+### FeedScreen — Friends tab
+5. **"What Friends Are Reading" books not tappable** — tapping a friend's currently-reading book should open the same add-to-library bottom sheet as #3 ("Want to Read" / "Start Reading Now"), mirroring webapp behaviour.
+
+### LibraryScreen bug
+6. **Status filter tabs not visible** — "All / Want to Read / Reading / Finished" pill tabs are rendered but barely visible against the cream background. Webapp uses a solid teal active pill + strong border on inactive. Fix: active tab = `backgroundColor: colors.primary`, inactive = `backgroundColor: 'transparent', borderWidth: 1.5, borderColor: colors.outlineVariant`; all text should use `colors.onSurface` for inactive and `colors.onPrimary` for active.
+
+### BookDetailScreen bugs
+7. **Status not updating** — tapping "Want to Read / Reading / Finished" segmented pills does not persist the change. Likely: `handleStatusChange` is calling the right API but the response isn't refreshing local state, OR the API call is failing silently. Audit: check `booksAPI.updateStatus(bookId, status)` method, the endpoint URL (`PATCH /books/{id}/status` vs `PUT /books/{id}`), and whether `setBook(...)` is called after success.
+8. **Book description missing** — `BookDetailScreen` shows cover, title, author, status pills, notes — but no book description/synopsis. The `book` object from `GET /books/{id}` likely includes `description` field (from Google Books at add-time). Add a collapsible description section below the author, same as webapp's `BookDetailPage`.
+
+### GroupsScreen / AppHeader bug
+9. **Circles page loses profile icon → shows question mark** — AppHeader on GroupsScreen renders `?` instead of avatar initials or photo. This is a `user` prop issue: `GroupsScreen` likely doesn't pass `user` correctly to `AppHeader`, or the user object is `null` at render time. Check how `GroupsScreen` calls `<AppHeader user={user} ...>` and whether `user` is being pulled from the right context/prop.
+
+### LibraryScreen — Add Book modal
+10. **Add Book: search input starts at top, should be vertically centered** — on open, the search bar and empty state ("Search for a book to add") should be vertically centred in the screen. Once search results appear, the list pushes the input up naturally but the modal/safe-area should prevent it from going behind the status bar. Fix: wrap the empty state in a `flex: 1, justifyContent: 'center'` container, but cap `paddingTop` at `insets.top + 8` so it never overlaps the status bar.
+
+### Priority order for Phase 4
+High (broken core functionality): #7 (status update), #2 (comments), #1 (feed scope)
+Medium (UX parity): #3 #5 (recs modal), #6 (tab visibility), #4 (avatar), #9 (Circles header)
+Low (polish): #8 (book description), #10 (add book centering)

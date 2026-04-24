@@ -181,11 +181,25 @@ When user says **"wrap up"**, Claude automatically:
 - **CRITICAL PATTERN:** Never push `app/models.py` changes without confirming Supabase migration has been run. New model fields with no matching DB column will crash the entire backend (every User query fails). Run `context/supabase_migration.sql` in Supabase SQL Editor BEFORE or simultaneously with the push.
 - **GOTCHA — Vercel deployment:** `book-tracker-stitch` Vercel project production branch is set to `master`. Pushing to `stitch-experiment` creates a Preview deployment only. To update `book-tracker-stitch.vercel.app`, go to Overview → Active Branches → `...` next to `stitch-experiment` → Promote to Production. (Or change production branch in Settings → General.)
 
-**Next Priorities:**
-- **APK build in progress** — EAS build from `book-tracker-mobile-stitch/` on `stitch-experiment` branch
-- Test end-to-end on device against Stitch backend (`https://book-tracker-stitch.onrender.com`) after APK install
-- Verify group API endpoints (`/groups/{id}/pending`, `/groups/{id}/approve/{userId}`, `/groups/{id}/reject/{userId}`, `/groups/{id}/remove/{userId}`, `/groups/{id}/book` PUT/DELETE) exist on stitch backend before testing GroupDetailScreen
-- After device testing: fix any regressions found, then EAS submit to Play Store
+**Next Priorities — Phase 4 (device-tested bugs, April 24 2026):**
+> Full bug list with root causes: `context/MOBILE_STITCH_PHASE3.md` → "Bugs Found on Device" section
+
+HIGH (broken core functionality):
+1. **BookDetailScreen: status pill not persisting** — `handleStatusChange` not refreshing state or API URL wrong. Audit `booksAPI.updateStatus` call + endpoint.
+2. **FeedScreen: comment icon non-functional** — need inline comment expand or comment sheet on post tap.
+3. **FeedScreen "For You" tab: shows only friends** — backend likely has `all` scope flag. Check `feedAPI.getCommunityFeed()` vs webapp's API call.
+
+MEDIUM (UX parity):
+4. **Recs modal + Friends reading → add-to-library sheet** — "Want to Read" / "Start Reading Now" bottom sheet on book tap in both "For You" recs shelf and Friends tab "What Friends Are Reading".
+5. **Library filter tabs not visible** — active pill needs `backgroundColor: colors.primary`; inactive needs visible border.
+6. **AppHeader avatar not showing photo** — show `user.profile_picture` as `<Image>` when set, fallback to initials.
+7. **Circles page shows `?` instead of avatar** — `user` prop not reaching AppHeader correctly in GroupsScreen.
+
+LOW (polish):
+8. **BookDetailScreen: book description missing** — add collapsible description section.
+9. **Add Book modal: search bar starts at top** — should be vertically centred until results appear, capped at insets.top.
+
+**Typography system** — committed `7b60209` on `stitch-experiment` branch (Manrope + Noto Serif across all screens). Next APK build will include fonts.
 
 ---
 
