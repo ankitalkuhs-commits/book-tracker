@@ -100,16 +100,23 @@ export const getPublicProfile = (userId) => apiFetch(`/profile/${userId}`);
 // Books
 export const searchLocalBooks = (q) => apiFetch(`/books/search?q=${encodeURIComponent(q)}`);
 export const getRecommendations = () => apiFetch('/books/recommendations');
-export const searchGoogleBooks = (q) =>
-  apiFetch(`/api/googlebooks/search?query=${encodeURIComponent(q)}`).then(res => {
+export const searchGoogleBooks = (q, { genre, orderBy, startIndex } = {}) => {
+  const params = new URLSearchParams({ query: q })
+  if (genre && genre !== 'all') params.append('genre', genre)
+  if (orderBy && orderBy !== 'relevance') params.append('order_by', orderBy)
+  if (startIndex) params.append('start_index', startIndex)
+  return apiFetch(`/api/googlebooks/search?${params.toString()}`).then(res => {
     const items = res?.results || res || []
-    return items.map(b => ({
+    const mapped = items.map(b => ({
       ...b,
       google_books_id: b.google_id || b.google_books_id,
       author: Array.isArray(b.authors) ? b.authors.join(', ') : (b.author || ''),
       isbn: b.isbn_13 || b.isbn_10 || b.isbn || null,
     }))
-  });
+    // Return full response so callers can read has_more + next_start_index
+    return { results: mapped, has_more: res?.has_more ?? false, next_start_index: res?.next_start_index ?? 0 }
+  })
+};
 export const addToLibrary = (data) =>
   apiFetch('/books/add-to-library', { method: 'POST', body: JSON.stringify(data) })
     .then(r => { invalidateUserBooks(); return r; });

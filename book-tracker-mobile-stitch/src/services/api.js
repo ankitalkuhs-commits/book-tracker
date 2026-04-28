@@ -45,9 +45,14 @@ export const authAPI = {
 // Books API
 export const booksAPI = {
   getAll: async () => (await api.get('/books/')).data,
-  search: async (query) => {
-    const response = await api.get(`/api/googlebooks/search?query=${encodeURIComponent(query)}`);
-    return response.data.results || [];
+  search: async (query, { genre, orderBy, startIndex } = {}) => {
+    const params = new URLSearchParams({ query });
+    if (genre && genre !== 'all') params.append('genre', genre);
+    if (orderBy && orderBy !== 'relevance') params.append('order_by', orderBy);
+    if (startIndex) params.append('start_index', startIndex);
+    const response = await api.get(`/api/googlebooks/search?${params.toString()}`);
+    // Return full response so callers can read has_more + next_start_index
+    return response.data;
   },
   getGoogleBookDetails: async (googleBooksId) => (await api.get(`/api/googlebooks/book/${googleBooksId}`)).data,
   addToLibrary: async (bookData) => (await api.post('/books/add-to-library', bookData)).data,

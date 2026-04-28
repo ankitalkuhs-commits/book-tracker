@@ -87,8 +87,8 @@ export const type = {
   // Page-level titles — header h1 ("Your Library", "Insights", etc.)
   headline: {
     fontFamily: 'NotoSerif_700Bold',
-    fontSize: 26,
-    lineHeight: 34,
+    fontSize: 30,
+    lineHeight: 38,
     fontWeight: '700',
   },
   // Section headings, book titles, modal titles
@@ -103,8 +103,8 @@ export const type = {
   // Top bar labels, card sub-headings, tab labels (active)
   title: {
     fontFamily: 'Manrope_600SemiBold',
-    fontSize: 16,
-    lineHeight: 22,
+    fontSize: 18,
+    lineHeight: 24,
     fontWeight: '600',
   },
   // Default body text — descriptions, post content

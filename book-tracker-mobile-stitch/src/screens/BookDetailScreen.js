@@ -325,7 +325,7 @@ const styles = StyleSheet.create({
   coverCard:       { borderRadius: radius.lg, overflow: 'hidden', marginBottom: 16, ...shadow.float },
   coverImage:      { width: 140, height: 200 },
   coverPlaceholder:{ width: 140, height: 200, backgroundColor: colors.primaryContainer, alignItems: 'center', justifyContent: 'center' },
-  bookTitle:       { fontFamily: 'NotoSerif_700Bold', fontSize: 22, fontWeight: '700', color: colors.onSurface, textAlign: 'center', marginBottom: 4 },
+  bookTitle:       { ...type.titleLg, color: colors.onSurface, textAlign: 'center', marginBottom: 4 },
   bookAuthor:      { ...type.body, color: colors.onSurfaceVariant, textAlign: 'center', marginBottom: 4 },
   bookPages:       { ...type.label, color: colors.outline },
   descToggle:      { marginTop: 10, paddingHorizontal: 4 },
