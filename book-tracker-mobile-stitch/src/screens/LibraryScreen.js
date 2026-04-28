@@ -456,7 +456,7 @@ export default function LibraryScreen({ navigation }) {
   const TABS = [
     { key: 'all',      label: 'All',         count: books.length },
     { key: 'reading',  label: 'Reading',     count: books.filter(b => b.status === 'reading').length },
-    { key: 'to-read',  label: 'Want to Read',count: books.filter(b => b.status === 'to-read').length },
+    { key: 'to-read',  label: 'To Read',     count: books.filter(b => b.status === 'to-read').length },
     { key: 'finished', label: 'Finished',    count: books.filter(b => b.status === 'finished').length },
   ];
 
@@ -491,19 +491,19 @@ export default function LibraryScreen({ navigation }) {
       </View>
 
       {/* ── Status tabs ── */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabScroll} contentContainerStyle={styles.tabContent}>
+      <View style={styles.tabRow}>
         {TABS.map(({ key, label }) => (
           <TouchableOpacity
             key={key}
             style={[styles.tab, activeTab === key && styles.tabActive]}
             onPress={() => setActiveTab(key)}
           >
-            <Text style={[styles.tabText, activeTab === key && styles.tabTextActive]}>
+            <Text style={[styles.tabText, activeTab === key && styles.tabTextActive]} numberOfLines={1} adjustsFontSizeToFit>
               {label}
             </Text>
           </TouchableOpacity>
         ))}
-      </ScrollView>
+      </View>
 
       {/* ── Search bar ── */}
       <View style={styles.searchBar}>
@@ -580,11 +580,10 @@ const styles = StyleSheet.create({
   searchBar:    { flexDirection: 'row', alignItems: 'center', marginHorizontal: 16, marginTop: 4, marginBottom: 10, backgroundColor: colors.surfaceContainerLow, borderRadius: radius.lg, paddingHorizontal: 14, paddingVertical: 10, borderWidth: 1, borderColor: colors.outlineVariant + '60' },
   searchInput:  { ...type.body, flex: 1, color: colors.onSurface, padding: 0, textAlignVertical: 'center' },
 
-  tabScroll:    {},
-  tabContent:   { paddingHorizontal: 14, paddingVertical: 8, gap: 8 },
-  tab:          { paddingHorizontal: 18, paddingVertical: 10, borderRadius: 999, backgroundColor: colors.surfaceContainerLow, borderWidth: 1.5, borderColor: colors.outlineVariant },
+  tabRow:       { flexDirection: 'row', paddingHorizontal: 14, paddingVertical: 8, gap: 8 },
+  tab:          { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 10, borderRadius: 999, backgroundColor: colors.surfaceContainerLow, borderWidth: 1.5, borderColor: colors.outlineVariant },
   tabActive:    { backgroundColor: colors.primary, borderColor: colors.primary },
-  tabText:      { ...type.label, color: colors.onSurfaceVariant },
+  tabText:      { ...type.label, color: colors.onSurfaceVariant, textAlign: 'center' },
   tabTextActive: { color: colors.onPrimary, fontFamily: 'Manrope_700Bold', fontWeight: '700' },
 
   grid:         { padding: GRID_PAD, gap: GRID_GAP },
