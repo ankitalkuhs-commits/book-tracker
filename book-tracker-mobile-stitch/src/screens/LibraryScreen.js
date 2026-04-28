@@ -18,7 +18,7 @@ const TILE_W    = (SCREEN_W - GRID_PAD * 2 - GRID_GAP) / 2;
 const TILE_H    = TILE_W * (4 / 3);
 const COVER_W   = TILE_W * 0.52;
 const COVER_H   = COVER_W * 1.5;
-const SPINE_W   = 5;
+const SPINE_W   = 3;
 
 // Colour palettes for book tiles
 const PALETTES = [
