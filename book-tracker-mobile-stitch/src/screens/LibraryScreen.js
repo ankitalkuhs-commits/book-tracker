@@ -201,7 +201,7 @@ function AddBookModal({ visible, onClose, onAdded }) {
     setResults([]);
     try {
       const res = await booksAPI.search(query.trim());
-      setResults(res || []);
+      setResults(res?.results || []);
     } catch { Alert.alert('Error', 'Search failed'); }
     finally { setSearching(false); }
   };
