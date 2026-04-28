@@ -12,6 +12,23 @@ import { PreloadContext } from '../../App';
 import { formatTimeAgo } from '../utils/bookUtils';
 import { colors, radius, shadow, type } from '../theme';
 
+const EMOTION_OPTIONS = [
+  { emoji: '😊', label: 'Joyful' },
+  { emoji: '😢', label: 'Moved' },
+  { emoji: '😮', label: 'Surprised' },
+  { emoji: '🤯', label: 'Mind-blown' },
+  { emoji: '😌', label: 'Peaceful' },
+  { emoji: '🤔', label: 'Thoughtful' },
+  { emoji: '😰', label: 'Tense' },
+  { emoji: '😂', label: 'Amused' },
+  { emoji: '🥺', label: 'Emotional' },
+  { emoji: '😤', label: 'Frustrated' },
+  { emoji: '😱', label: 'Shocked' },
+  { emoji: '🤩', label: 'Inspired' },
+  { emoji: '😔', label: 'Melancholic' },
+  { emoji: '❤️', label: 'In love with it' },
+];
+
 const PostImage = ({ uri, style }) => {
   const [failed, setFailed] = useState(false);
   if (failed || !uri) return null;
@@ -325,7 +342,7 @@ const FeedScreen = ({ navigation }) => {
             </View>
           )}
 
-          {/* Quote + emotion inputs */}
+          {/* Quote input */}
           <View style={styles.composerFields}>
             <View style={styles.composerFieldRow}>
               <MaterialCommunityIcons name="format-quote-open" size={16} color={colors.outline} style={styles.fieldIcon} />
@@ -337,16 +354,30 @@ const FeedScreen = ({ navigation }) => {
                 onChangeText={setPostQuote}
               />
             </View>
-            <View style={styles.composerFieldRow}>
-              <MaterialCommunityIcons name="emoticon-happy-outline" size={16} color={colors.outline} style={styles.fieldIcon} />
-              <TextInput
-                style={styles.composerField}
-                placeholder="Current mood or emotion..."
-                placeholderTextColor={colors.outline + '99'}
-                value={emotion}
-                onChangeText={setEmotion}
-              />
-            </View>
+          </View>
+
+          {/* Emotion chip picker */}
+          <View style={styles.emotionSection}>
+            <Text style={styles.emotionLabel}>
+              <MaterialCommunityIcons name="emoticon-happy-outline" size={13} color={colors.onSurfaceVariant} />
+              {'  '}How are you feeling?
+            </Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.emotionChipsRow} keyboardShouldPersistTaps="handled">
+              {EMOTION_OPTIONS.map(opt => {
+                const active = emotion === opt.label;
+                return (
+                  <TouchableOpacity
+                    key={opt.label}
+                    style={[styles.emotionChip, active && styles.emotionChipActive]}
+                    onPress={() => setEmotion(active ? '' : opt.label)}
+                    activeOpacity={0.75}
+                  >
+                    <Text style={styles.emotionChipEmoji}>{opt.emoji}</Text>
+                    <Text style={[styles.emotionChipText, active && styles.emotionChipTextActive]}>{opt.label}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
           </View>
 
           {/* Image preview */}
@@ -532,6 +563,21 @@ const FeedScreen = ({ navigation }) => {
             </View>
           )}
         </View>
+        {/* Emotion sentence */}
+        {post.emotion && (() => {
+          const opt = EMOTION_OPTIONS.find(o => o.label === post.emotion);
+          const emoji = opt?.emoji || '✨';
+          const bookName = post.book?.title;
+          return (
+            <View style={styles.emotionLine}>
+              <Text style={styles.emotionLineText}>
+                {emoji}{'  '}{userName} is feeling{' '}
+                <Text style={styles.emotionHighlight}>{post.emotion}</Text>
+                {bookName ? <Text> while reading <Text style={styles.emotionHighlight}>{bookName}</Text></Text> : null}
+              </Text>
+            </View>
+          );
+        })()}
         {post.text && <Text style={styles.noteText}>{post.text}</Text>}
         <PostImage uri={post.image_url} style={styles.noteImage} />
         {post.quote && <View style={styles.quoteContainer}><Text style={styles.quoteText}>"{post.quote}"</Text></View>}
@@ -777,6 +823,21 @@ const styles = StyleSheet.create({
   menuDropdown: { position: 'absolute', right: 0, top: 28, backgroundColor: colors.surfaceContainerLowest, borderRadius: radius.md, paddingVertical: 4, minWidth: 120, zIndex: 100, ...shadow.float, borderWidth: 1, borderColor: colors.outlineVariant + '40' },
   menuItem: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 14, paddingVertical: 10 },
   menuItemTextDanger: { ...type.body, color: colors.error },
+  // Emotion chip picker (composer)
+  emotionSection: { marginTop: 8, marginBottom: 4 },
+  emotionLabel: { ...type.caption, color: colors.onSurfaceVariant, marginBottom: 6, paddingLeft: 2 },
+  emotionChipsRow: { gap: 6, paddingRight: 4 },
+  emotionChip: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 6, borderRadius: radius.full, borderWidth: 1, borderColor: colors.outlineVariant, backgroundColor: colors.surfaceContainerLow },
+  emotionChipActive: { backgroundColor: colors.secondaryContainer, borderColor: colors.secondary },
+  emotionChipEmoji: { fontSize: 14 },
+  emotionChipText: { ...type.caption, color: colors.onSurfaceVariant },
+  emotionChipTextActive: { color: colors.onSecondaryContainer, fontFamily: 'Manrope_700Bold', fontWeight: '700' },
+
+  // Emotion sentence (post display)
+  emotionLine: { backgroundColor: colors.secondaryContainer + '55', borderRadius: radius.md, paddingHorizontal: 12, paddingVertical: 8, marginBottom: 10 },
+  emotionLineText: { ...type.bodySm, color: colors.onSurfaceVariant },
+  emotionHighlight: { fontFamily: 'Manrope_700Bold', fontWeight: '700', color: colors.secondary },
+
   noteText: { ...type.body, color: colors.onSurface, marginBottom: 10 },
   noteImage: { width: '100%', aspectRatio: 2 / 3, borderRadius: radius.md, backgroundColor: colors.surfaceContainerLow, marginBottom: 10 },
   quoteContainer: { backgroundColor: colors.surfaceContainerLow, borderLeftWidth: 3, borderLeftColor: colors.primary, padding: 12, borderRadius: 6, marginBottom: 10 },
