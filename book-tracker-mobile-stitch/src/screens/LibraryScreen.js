@@ -581,11 +581,11 @@ const styles = StyleSheet.create({
   searchInput:  { ...type.body, flex: 1, color: colors.onSurface },
 
   tabScroll:    {},
-  tabContent:   { paddingHorizontal: 14, paddingBottom: 10, gap: 8 },
-  tab:          { paddingHorizontal: 16, paddingVertical: 7, borderRadius: 999, backgroundColor: 'transparent', borderWidth: 1.5, borderColor: colors.onSurfaceVariant + '60' },
+  tabContent:   { paddingHorizontal: 14, paddingVertical: 8, gap: 8 },
+  tab:          { paddingHorizontal: 18, paddingVertical: 10, borderRadius: 999, backgroundColor: colors.surfaceContainerLow, borderWidth: 1.5, borderColor: colors.outlineVariant },
   tabActive:    { backgroundColor: colors.primary, borderColor: colors.primary },
-  tabText:      { ...type.label, color: colors.onSurface },
-  tabTextActive: { color: colors.onPrimary },
+  tabText:      { ...type.label, color: colors.onSurfaceVariant },
+  tabTextActive: { color: colors.onPrimary, fontFamily: 'Manrope_700Bold', fontWeight: '700' },
 
   grid:         { padding: GRID_PAD, gap: GRID_GAP },
   gridRow:      { gap: GRID_GAP, justifyContent: 'flex-start' },
