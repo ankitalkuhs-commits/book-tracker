@@ -310,7 +310,12 @@ const FeedScreen = ({ navigation }) => {
                         style={styles.bookPickerItem}
                         onPress={() => { setSelectedUserBook(ub); setShowBookPicker(false); }}
                       >
-                        <MaterialCommunityIcons name="book-outline" size={14} color={colors.secondary} />
+                        {ub.book?.cover_url
+                          ? <Image source={{ uri: ub.book.cover_url }} style={styles.bookPickerCover} resizeMode="cover" />
+                          : <View style={[styles.bookPickerCover, styles.bookPickerCoverFallback]}>
+                              <MaterialCommunityIcons name="book-outline" size={12} color={colors.outline} />
+                            </View>
+                        }
                         <Text style={styles.bookPickerItemText} numberOfLines={1}>{ub.book?.title}</Text>
                       </TouchableOpacity>
                     ))}
@@ -481,6 +486,18 @@ const FeedScreen = ({ navigation }) => {
     return (
       <View key={post.id || Math.random().toString()} style={styles.postCard}>
         <View style={styles.postHeader}>
+          {/* Book cover thumbnail — shown when post has a tagged book */}
+          {post.book && (
+            <View style={styles.postBookCoverWrap}>
+              {post.book.cover_url
+                ? <Image source={{ uri: post.book.cover_url }} style={styles.postBookCover} resizeMode="cover" />
+                : <View style={[styles.postBookCover, styles.postBookCoverFallback]}>
+                    <Ionicons name="book-outline" size={16} color={colors.outline} />
+                  </View>
+              }
+            </View>
+          )}
+
           <TouchableOpacity
             style={styles.userInfo}
             onPress={() => post.user?.id && navigation.navigate('UserProfile', { userId: post.user.id })}
@@ -712,7 +729,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surfaceContainerLowest, borderRadius: radius.md, marginBottom: 10,
     borderWidth: 1, borderColor: colors.outlineVariant + '60', ...shadow.card,
   },
-  bookPickerItem: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.surfaceContainerHigh },
+  bookPickerItem: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: colors.surfaceContainerHigh },
+  bookPickerCover: { width: 30, height: 45, borderRadius: 4, backgroundColor: colors.surfaceContainerHigh, flexShrink: 0 },
+  bookPickerCoverFallback: { justifyContent: 'center', alignItems: 'center' },
   bookPickerItemText: { ...type.bodySm, color: colors.onSurface, flex: 1 },
   composerFields: { gap: 8, marginBottom: 10 },
   composerFieldRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surfaceContainerLow, borderRadius: radius.md, paddingHorizontal: 10, paddingVertical: 8 },
@@ -747,6 +766,9 @@ const styles = StyleSheet.create({
   avatar: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.primary, justifyContent: 'center', alignItems: 'center', flexShrink: 0 },
   avatarImg: { width: 40, height: 40, borderRadius: 20 },
   avatarText: { ...type.title, color: colors.onPrimary },
+  postBookCoverWrap: { marginRight: 10, alignSelf: 'flex-start', flexShrink: 0 },
+  postBookCover: { width: 44, height: 66, borderRadius: 6, backgroundColor: colors.surfaceContainerHigh },
+  postBookCoverFallback: { justifyContent: 'center', alignItems: 'center' },
   postBookLabel: { ...type.eyebrow, color: colors.secondary, letterSpacing: 0.5, marginBottom: 1 },
   userName: { ...type.body, fontFamily: 'Manrope_600SemiBold', fontWeight: '600', color: colors.onSurface },
   timeAgo: { ...type.caption, color: colors.outline, marginTop: 1 },
