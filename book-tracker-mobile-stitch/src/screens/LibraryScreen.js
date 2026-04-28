@@ -5,6 +5,7 @@ import {
   Dimensions, Alert, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { userbooksAPI, booksAPI } from '../services/api';
 import { PreloadContext } from '../../App';
@@ -186,6 +187,7 @@ function BookTile({ userbook, onPress }) {
 
 // ── Add Book Modal ─────────────────────────────────────────────────────────────
 function AddBookModal({ visible, onClose, onAdded }) {
+  const insets = useSafeAreaInsets();
   const [query, setQuery]               = useState('');
   const [results, setResults]           = useState([]);
   const [searching, setSearching]       = useState(false);
@@ -253,7 +255,7 @@ function AddBookModal({ visible, onClose, onAdded }) {
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={handleClose}>
       <View style={styles.modalRoot}>
         {/* Header */}
-        <View style={styles.modalHeader}>
+        <View style={[styles.modalHeader, { paddingTop: insets.top + 14 }]}>
           <TouchableOpacity onPress={handleClose}>
             <Text style={styles.modalCancel}>Cancel</Text>
           </TouchableOpacity>
