@@ -69,7 +69,7 @@ export default function App() {
         library: library.status === 'fulfilled' ? library.value : [],
         feed:    feed.status    === 'fulfilled' ? feed.value    : [],
       });
-      if (count.status === 'fulfilled') setUnreadCount(count.value?.count ?? 0);
+      if (count.status === 'fulfilled') setUnreadCount(count.value?.unread ?? 0);
     } catch { /* non-critical — screens will load their own data */ }
   };
 
@@ -77,7 +77,7 @@ export default function App() {
   const fetchUnread = async () => {
     try {
       const data = await notificationsAPI.getUnreadCount();
-      setUnreadCount(data?.count ?? 0);
+      setUnreadCount(data?.unread ?? 0);
     } catch { /* ignore */ }
   };
 
