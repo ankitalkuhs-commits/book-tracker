@@ -137,7 +137,11 @@ export default function App() {
 
   return (
     <NotificationContext.Provider value={{ unreadCount }}>
-      <PreloadContext.Provider value={preloaded}>
+      <PreloadContext.Provider value={{
+          ...(preloaded || {}),
+          updateProfile: (patch) =>
+            setPreloaded(prev => ({ ...prev, profile: { ...(prev?.profile || {}), ...patch } })),
+        }}>
         <NavigationContainer>
           <AppNavigator onLogout={handleLogout} />
         </NavigationContainer>

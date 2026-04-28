@@ -349,6 +349,7 @@ export default function ProfileScreen({ navigation, onLogout }) {
     try {
       const updated = await profileAPI.uploadPicture(result.assets[0].uri);
       setProfile(prev => ({ ...prev, profile_picture: updated.profile_picture }));
+      preloaded?.updateProfile?.({ profile_picture: updated.profile_picture });
     } catch { Alert.alert('Error', 'Could not upload photo'); }
     finally { setUploadingPhoto(false); }
   };

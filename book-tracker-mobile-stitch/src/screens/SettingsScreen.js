@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity,
   Switch, ActivityIndicator, Alert, Image, Modal, FlatList,
@@ -7,6 +7,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { profileAPI, notificationsAPI, authAPI } from '../services/api';
+import { PreloadContext } from '../../App';
 import { colors, radius, shadow, type } from '../theme';
 
 // Notification pref keys must match the backend
@@ -109,6 +110,7 @@ function AvatarPickerModal({ visible, onClose, onSelect }) {
 // ── Settings Screen ───────────────────────────────────────────────────────────
 export default function SettingsScreen({ navigation, onLogout }) {
   const insets = useSafeAreaInsets();
+  const preloaded = useContext(PreloadContext);
   const [profile,         setProfile]         = useState(null);
   const [loading,         setLoading]         = useState(true);
   const [saving,          setSaving]          = useState(false);
@@ -151,6 +153,7 @@ export default function SettingsScreen({ navigation, onLogout }) {
         yearly_goal: editGoal ? parseInt(editGoal, 10) : null,
       });
       setProfile(updated);
+      preloaded?.updateProfile?.({ name: updated.name, bio: updated.bio, yearly_goal: updated.yearly_goal });
       setEditingProfile(false);
       setSavedFeedback(true);
       setTimeout(() => setSavedFeedback(false), 2500);
@@ -161,8 +164,9 @@ export default function SettingsScreen({ navigation, onLogout }) {
   const handleSelectAvatar = async (avatar) => {
     setUploadingPhoto(true);
     try {
-      const updated = await profileAPI.updateMe({ profile_picture: avatar.url });
+      await profileAPI.updateMe({ profile_picture: avatar.url });
       setProfile(prev => ({ ...prev, profile_picture: avatar.url }));
+      preloaded?.updateProfile?.({ profile_picture: avatar.url });
     } catch { Alert.alert('Error', 'Could not set avatar'); }
     setUploadingPhoto(false);
   };
@@ -179,6 +183,7 @@ export default function SettingsScreen({ navigation, onLogout }) {
     try {
       const updated = await profileAPI.uploadPicture(result.assets[0].uri);
       setProfile(prev => ({ ...prev, profile_picture: updated.profile_picture }));
+      preloaded?.updateProfile?.({ profile_picture: updated.profile_picture });
     } catch { Alert.alert('Error', 'Could not upload photo'); }
     setUploadingPhoto(false);
   };
