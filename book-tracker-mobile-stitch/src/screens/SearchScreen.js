@@ -321,24 +321,23 @@ export default function SearchScreen({ navigation }) {
         ))}
       </ScrollView>
 
-      {/* ── Sort toggle (only when results exist) ── */}
-      {hasSearched && searchResults.length > 0 && (
-        <View style={styles.sortRow}>
-          <Text style={styles.sortLabel}>Sort:</Text>
-          {SORT_OPTIONS.map(s => (
-            <TouchableOpacity
-              key={s.key}
-              style={[styles.sortBtn, activeSort === s.key && styles.sortBtnActive]}
-              onPress={() => handleSortChange(s.key)}
-            >
-              <Text style={[styles.sortBtnText, activeSort === s.key && styles.sortBtnTextActive]}>
-                {s.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
-          <Text style={styles.resultCount}>{searchResults.length} results</Text>
-        </View>
-      )}
+      {/* ── Sort toggle — always rendered to prevent layout shift ── */}
+      <View style={[styles.sortRow, { opacity: (hasSearched && searchResults.length > 0) ? 1 : 0 }]}
+            pointerEvents={hasSearched && searchResults.length > 0 ? 'auto' : 'none'}>
+        <Text style={styles.sortLabel}>Sort:</Text>
+        {SORT_OPTIONS.map(s => (
+          <TouchableOpacity
+            key={s.key}
+            style={[styles.sortBtn, activeSort === s.key && styles.sortBtnActive]}
+            onPress={() => handleSortChange(s.key)}
+          >
+            <Text style={[styles.sortBtnText, activeSort === s.key && styles.sortBtnTextActive]}>
+              {s.label}
+            </Text>
+          </TouchableOpacity>
+        ))}
+        <Text style={styles.resultCount}>{searchResults.length} results</Text>
+      </View>
 
       {/* ── Results / states ── */}
       {searching ? (
