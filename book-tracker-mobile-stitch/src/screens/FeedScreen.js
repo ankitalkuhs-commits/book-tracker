@@ -409,7 +409,10 @@ const FeedScreen = ({ navigation }) => {
     return (
       <View key={item.user?.id || item.user?.email} style={styles.friendReadingCard}>
         <View style={styles.friendReadingHeader}>
-          <View style={styles.friendReadingAvatar}><Text style={styles.friendReadingAvatarText}>{initials}</Text></View>
+          {item.user?.profile_picture
+            ? <Image source={{ uri: item.user.profile_picture }} style={[styles.avatarImg, { width: 36, height: 36, borderRadius: 18 }]} />
+            : <View style={styles.friendReadingAvatar}><Text style={styles.friendReadingAvatarText}>{initials}</Text></View>
+          }
           <View style={styles.friendReadingHeaderInfo}>
             <Text style={styles.friendReadingHeaderName}>{userName}</Text>
             <Text style={styles.friendReadingStatus}>reading {bookCount} book{bookCount === 1 ? '' : 's'}</Text>
@@ -443,7 +446,10 @@ const FeedScreen = ({ navigation }) => {
     const username = user.username || `user${user.id}`;
     return (
       <View key={user.id} style={styles.userCard}>
-        <View style={styles.userAvatar}><Text style={styles.userAvatarText}>{initials}</Text></View>
+        {user.profile_picture
+          ? <Image source={{ uri: user.profile_picture }} style={styles.avatarImg} />
+          : <View style={styles.userAvatar}><Text style={styles.userAvatarText}>{initials}</Text></View>
+        }
         <View style={styles.userInfoColumn}>
           <View style={styles.userNameRow}>
             <Text style={styles.userNameText}>{displayName}</Text>
@@ -479,7 +485,10 @@ const FeedScreen = ({ navigation }) => {
             style={styles.userInfo}
             onPress={() => post.user?.id && navigation.navigate('UserProfile', { userId: post.user.id })}
           >
-            <View style={styles.avatar}><Text style={styles.avatarText}>{(userName[0] || 'U').toUpperCase()}</Text></View>
+            {post.user?.profile_picture
+              ? <Image source={{ uri: post.user.profile_picture }} style={styles.avatarImg} />
+              : <View style={styles.avatar}><Text style={styles.avatarText}>{(userName[0] || 'U').toUpperCase()}</Text></View>
+            }
             <View style={{ flex: 1 }}>
               {post.book && (
                 <Text style={styles.postBookLabel} numberOfLines={1}>
@@ -736,6 +745,7 @@ const styles = StyleSheet.create({
   postHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 },
   userInfo: { flexDirection: 'row', alignItems: 'flex-start', flex: 1, gap: 10 },
   avatar: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.primary, justifyContent: 'center', alignItems: 'center', flexShrink: 0 },
+  avatarImg: { width: 40, height: 40, borderRadius: 20 },
   avatarText: { ...type.title, color: colors.onPrimary },
   postBookLabel: { ...type.eyebrow, color: colors.secondary, letterSpacing: 0.5, marginBottom: 1 },
   userName: { ...type.body, fontFamily: 'Manrope_600SemiBold', fontWeight: '600', color: colors.onSurface },
