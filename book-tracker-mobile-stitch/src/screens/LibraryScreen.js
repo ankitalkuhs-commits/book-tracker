@@ -492,14 +492,14 @@ export default function LibraryScreen({ navigation }) {
 
       {/* ── Status tabs ── */}
       <View style={styles.tabRow}>
-        {TABS.map(({ key, label }) => (
+        {TABS.map(({ key, label, count }) => (
           <TouchableOpacity
             key={key}
             style={[styles.tab, activeTab === key && styles.tabActive]}
             onPress={() => setActiveTab(key)}
           >
             <Text style={[styles.tabText, activeTab === key && styles.tabTextActive]} numberOfLines={1}>
-              {label}
+              {label} {count}
             </Text>
           </TouchableOpacity>
         ))}
