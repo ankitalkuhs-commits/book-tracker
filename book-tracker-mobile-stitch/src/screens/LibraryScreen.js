@@ -498,7 +498,7 @@ export default function LibraryScreen({ navigation }) {
             style={[styles.tab, activeTab === key && styles.tabActive]}
             onPress={() => setActiveTab(key)}
           >
-            <Text style={[styles.tabText, activeTab === key && styles.tabTextActive]} numberOfLines={1} adjustsFontSizeToFit>
+            <Text style={[styles.tabText, activeTab === key && styles.tabTextActive]} numberOfLines={1}>
               {label}
             </Text>
           </TouchableOpacity>
@@ -580,10 +580,10 @@ const styles = StyleSheet.create({
   searchBar:    { flexDirection: 'row', alignItems: 'center', marginHorizontal: 16, marginTop: 4, marginBottom: 10, backgroundColor: colors.surfaceContainerLow, borderRadius: radius.lg, paddingHorizontal: 14, paddingVertical: 10, borderWidth: 1, borderColor: colors.outlineVariant + '60' },
   searchInput:  { ...type.body, flex: 1, color: colors.onSurface, padding: 0, textAlignVertical: 'center' },
 
-  tabRow:       { flexDirection: 'row', paddingHorizontal: 14, paddingVertical: 8, gap: 8 },
-  tab:          { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 14, borderRadius: 999, backgroundColor: colors.surfaceContainerHigh, borderWidth: 1.5, borderColor: colors.outline },
-  tabActive:    { backgroundColor: colors.primary, borderColor: colors.primary },
-  tabText:      { ...type.label, color: colors.onSurface, textAlign: 'center' },
+  tabRow:        { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 14, paddingVertical: 8, gap: 8 },
+  tab:           { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 999, borderWidth: 1, borderColor: colors.outlineVariant, backgroundColor: colors.surfaceContainerLowest },
+  tabActive:     { backgroundColor: colors.primary, borderColor: colors.primary },
+  tabText:       { ...type.bodySm, color: colors.onSurfaceVariant },
   tabTextActive: { color: colors.onPrimary, fontFamily: 'Manrope_700Bold', fontWeight: '700' },
 
   grid:         { padding: GRID_PAD, gap: GRID_GAP },
