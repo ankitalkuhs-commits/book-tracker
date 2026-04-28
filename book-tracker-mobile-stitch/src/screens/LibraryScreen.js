@@ -581,7 +581,7 @@ const styles = StyleSheet.create({
   searchInput:  { ...type.body, flex: 1, color: colors.onSurface, padding: 0, textAlignVertical: 'center' },
 
   tabRow:       { flexDirection: 'row', paddingHorizontal: 14, paddingVertical: 8, gap: 8 },
-  tab:          { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 10, borderRadius: 999, backgroundColor: colors.surfaceContainerHigh, borderWidth: 1.5, borderColor: colors.outline },
+  tab:          { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 14, borderRadius: 999, backgroundColor: colors.surfaceContainerHigh, borderWidth: 1.5, borderColor: colors.outline },
   tabActive:    { backgroundColor: colors.primary, borderColor: colors.primary },
   tabText:      { ...type.label, color: colors.onSurface, textAlign: 'center' },
   tabTextActive: { color: colors.onPrimary, fontFamily: 'Manrope_700Bold', fontWeight: '700' },
