@@ -578,7 +578,7 @@ const styles = StyleSheet.create({
   addBookBtnText: { ...type.label, color: colors.onPrimary, fontFamily: 'Manrope_700Bold', fontWeight: '700' },
 
   searchBar:    { flexDirection: 'row', alignItems: 'center', marginHorizontal: 16, marginTop: 4, marginBottom: 10, backgroundColor: colors.surfaceContainerLow, borderRadius: radius.lg, paddingHorizontal: 14, paddingVertical: 10, borderWidth: 1, borderColor: colors.outlineVariant + '60' },
-  searchInput:  { ...type.body, flex: 1, color: colors.onSurface },
+  searchInput:  { ...type.body, flex: 1, color: colors.onSurface, padding: 0, textAlignVertical: 'center' },
 
   tabScroll:    {},
   tabContent:   { paddingHorizontal: 14, paddingVertical: 8, gap: 8 },

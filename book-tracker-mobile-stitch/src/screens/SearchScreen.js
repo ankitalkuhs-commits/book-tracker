@@ -453,7 +453,7 @@ const styles = StyleSheet.create({
   backBtn:    { width: 40, height: 40, borderRadius: radius.md, backgroundColor: colors.surfaceContainerHigh, alignItems: 'center', justifyContent: 'center' },
   inputWrap:  { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surfaceContainerLow, borderRadius: radius.lg, paddingHorizontal: 12, height: 44, gap: 8, borderWidth: 1, borderColor: colors.outlineVariant + '50' },
   searchIcon: { flexShrink: 0 },
-  searchInput:{ flex: 1, ...type.body, color: colors.onSurface, padding: 0 },
+  searchInput:{ flex: 1, ...type.body, color: colors.onSurface, padding: 0, textAlignVertical: 'center' },
   searchBtn:  { backgroundColor: colors.primary, borderRadius: radius.lg, paddingHorizontal: 16, height: 44, justifyContent: 'center' },
   searchBtnText: { ...type.label, fontFamily: 'Manrope_700Bold', fontWeight: '700', color: colors.onPrimary },
 
