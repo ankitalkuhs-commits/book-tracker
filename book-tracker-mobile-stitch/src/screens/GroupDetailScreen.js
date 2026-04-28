@@ -139,7 +139,7 @@ export default function GroupDetailScreen({ route, navigation }) {
   const [activity,    setActivity]    = useState([]);
   const [members,     setMembers]     = useState([]);
   const [pending,     setPending]     = useState([]);
-  const [leaderboard, setLeaderboard] = useState([]);
+  const [lbData,      setLbData]      = useState({ monthly: [], alltime: [] });
   const [lbPeriod,    setLbPeriod]    = useState('monthly');
   const [loading,     setLoading]     = useState(true);
   const [refreshing,  setRefreshing]  = useState(false);
@@ -151,22 +151,26 @@ export default function GroupDetailScreen({ route, navigation }) {
 
   const safe = fn => Promise.resolve(fn).catch(() => null);
 
-  const load = useCallback(async (isRefresh = false, period = lbPeriod) => {
+  const load = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
     try {
-      const [g, p, act, m, lb, pend] = await Promise.all([
+      const [g, p, act, m, lbMonthly, lbAlltime, pend] = await Promise.all([
         safe(groupsAPI.getGroup(groupId)),
         safe(groupsAPI.getGroupPosts(groupId)),
         safe(groupsAPI.getGroupActivity(groupId)),
         safe(groupsAPI.getGroupMembers(groupId)),
-        safe(groupsAPI.getLeaderboard(groupId, period)),
+        safe(groupsAPI.getLeaderboard(groupId, 'monthly')),
+        safe(groupsAPI.getLeaderboard(groupId, 'alltime')),
         safe(groupsAPI.getPendingMembers(groupId).catch(() => [])),
       ]);
       if (g) setGroup(g);
       setPosts(Array.isArray(p) ? p : []);
       setActivity(Array.isArray(act) ? act : []);
       setMembers(Array.isArray(m) ? m : []);
-      setLeaderboard(Array.isArray(lb) ? lb : []);
+      setLbData({
+        monthly: Array.isArray(lbMonthly) ? lbMonthly : [],
+        alltime: Array.isArray(lbAlltime) ? lbAlltime : [],
+      });
       setPending(Array.isArray(pend) ? pend : []);
     } catch {
       Alert.alert('Error', 'Could not load group');
@@ -178,17 +182,7 @@ export default function GroupDetailScreen({ route, navigation }) {
 
   useEffect(() => { load(); }, []);
 
-  const loadLeaderboard = async (period) => {
-    try {
-      const lb = await groupsAPI.getLeaderboard(groupId, period);
-      setLeaderboard(Array.isArray(lb) ? lb : []);
-    } catch { /* ignore */ }
-  };
-
-  const handleLbPeriod = (p) => {
-    setLbPeriod(p);
-    loadLeaderboard(p);
-  };
+  const handleLbPeriod = (p) => setLbPeriod(p);
 
   const handleCreatePost = async () => {
     if (!postInput.trim()) return;
@@ -220,11 +214,17 @@ export default function GroupDetailScreen({ route, navigation }) {
     catch { Alert.alert('Error', 'Could not reject member'); }
   };
 
-  const handleRemoveMember = (member) => Alert.alert(`Remove ${member.name}?`, 'They will be removed from the circle.', [
+  const handleRemoveMember = (entry) => Alert.alert(`Remove ${entry.name}?`, 'They will be removed from the circle.', [
     { text: 'Cancel', style: 'cancel' },
     { text: 'Remove', style: 'destructive', onPress: async () => {
-      try { await groupsAPI.removeGroupMember(groupId, member.user_id); setMembers(prev => prev.filter(m => m.user_id !== member.user_id)); }
-      catch { Alert.alert('Error', 'Could not remove member'); }
+      try {
+        await groupsAPI.removeGroupMember(groupId, entry.user_id);
+        setMembers(prev => prev.filter(m => m.user_id !== entry.user_id));
+        setLbData(prev => ({
+          monthly: prev.monthly.filter(e => e.user_id !== entry.user_id),
+          alltime: prev.alltime.filter(e => e.user_id !== entry.user_id),
+        }));
+      } catch { Alert.alert('Error', 'Could not remove member'); }
     }},
   ]);
 
@@ -337,41 +337,65 @@ export default function GroupDetailScreen({ route, navigation }) {
         )}
 
         {/* ── Leaderboard ── */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeaderRow}>
-            <View>
-              <Text style={styles.sectionLabel}>RANKINGS</Text>
-              <Text style={styles.sectionTitle}>Leaderboard</Text>
-            </View>
-            <View style={styles.periodToggle}>
-              {[['monthly', 'This Month'], ['alltime', 'All Time']].map(([val, label]) => (
-                <TouchableOpacity
-                  key={val}
-                  style={[styles.periodBtn, lbPeriod === val && styles.periodBtnActive]}
-                  onPress={() => handleLbPeriod(val)}
-                >
-                  <Text style={[styles.periodBtnText, lbPeriod === val && styles.periodBtnTextActive]}>
-                    {label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-          {leaderboard.length === 0 ? (
-            <Text style={styles.emptyMsg}>No data yet — start reading together!</Text>
-          ) : leaderboard.slice(0, 5).map((entry, i) => (
-            <TouchableOpacity key={entry.user_id} style={styles.leaderRow} onPress={() => navigation.navigate('UserProfile', { userId: entry.user_id })}>
-              <Text style={styles.leaderRank}>{i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}.`}</Text>
-              <Avatar name={entry.name} size={36} />
-              <View style={{ flex: 1 }}>
-                <Text style={styles.leaderName} numberOfLines={1}>{entry.name}</Text>
-                {entry.currently_reading && <Text style={styles.leaderReading} numberOfLines={1}>Reading: {entry.currently_reading}</Text>}
-                {entry.books_finished > 0 && <Text style={styles.leaderReading}>{entry.books_finished} books finished</Text>}
+        {(() => {
+          const curatorIds = new Set(members.filter(m => m.role === 'curator').map(m => m.user_id));
+          const entries = lbData[lbPeriod];
+          return (
+            <View style={styles.section}>
+              <View style={styles.sectionHeaderRow}>
+                <View>
+                  <Text style={styles.sectionLabel}>RANKINGS</Text>
+                  <Text style={styles.sectionTitle}>Leaderboard</Text>
+                </View>
+                <View style={styles.periodToggle}>
+                  {[['monthly', 'This Month'], ['alltime', 'All Time']].map(([val, label]) => (
+                    <TouchableOpacity
+                      key={val}
+                      style={[styles.periodBtn, lbPeriod === val && styles.periodBtnActive]}
+                      onPress={() => handleLbPeriod(val)}
+                    >
+                      <Text style={[styles.periodBtnText, lbPeriod === val && styles.periodBtnTextActive]}>
+                        {label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
               </View>
-              <Text style={styles.leaderPages}>{entry.pages_read ?? 0} pages</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+              {entries.length === 0 ? (
+                <Text style={styles.emptyMsg}>No data yet — start reading together!</Text>
+              ) : (
+                <ScrollView
+                  style={styles.lbScroll}
+                  nestedScrollEnabled
+                  showsVerticalScrollIndicator={false}
+                >
+                  {entries.map((entry, i) => (
+                    <TouchableOpacity
+                      key={entry.user_id}
+                      style={styles.leaderRow}
+                      onPress={() => navigation.navigate('UserProfile', { userId: entry.user_id })}
+                      onLongPress={() => isCurator && !curatorIds.has(entry.user_id) && handleRemoveMember(entry)}
+                    >
+                      <Text style={styles.leaderRank}>{i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}.`}</Text>
+                      <Avatar name={entry.name} size={36} />
+                      <View style={{ flex: 1 }}>
+                        <View style={styles.memberNameRow}>
+                          <Text style={styles.leaderName} numberOfLines={1}>{entry.name}</Text>
+                          {curatorIds.has(entry.user_id) && (
+                            <View style={styles.curatorBadge}><Text style={styles.curatorBadgeText}>CURATOR</Text></View>
+                          )}
+                        </View>
+                        {entry.current_book && <Text style={styles.leaderReading} numberOfLines={1}>Reading: {entry.current_book}</Text>}
+                        {entry.books_finished > 0 && <Text style={styles.leaderReading}>{entry.books_finished} book{entry.books_finished !== 1 ? 's' : ''} finished</Text>}
+                      </View>
+                      <Text style={styles.leaderPages}>{entry.pages_read ?? 0} pages</Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              )}
+            </View>
+          );
+        })()}
 
         {/* ── Activity ── */}
         <View style={styles.section}>
@@ -440,30 +464,6 @@ export default function GroupDetailScreen({ route, navigation }) {
           )}
         </View>
 
-        {/* ── Members ── */}
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>MEMBERS</Text>
-          <Text style={styles.sectionTitle}>Members {members.length}</Text>
-          {members.map(m => (
-            <TouchableOpacity key={m.user_id} style={styles.memberRow} onPress={() => navigation.navigate('UserProfile', { userId: m.user_id })}>
-              <Avatar name={m.name} size={40} />
-              <View style={{ flex: 1 }}>
-                <View style={styles.memberNameRow}>
-                  <Text style={styles.memberName} numberOfLines={1}>{m.name}</Text>
-                  {m.role === 'curator' && (
-                    <View style={styles.curatorBadge}><Text style={styles.curatorBadgeText}>CURATOR</Text></View>
-                  )}
-                </View>
-                <Text style={styles.memberUsername}>@{m.username || m.name?.toLowerCase().replace(/\s/g, '')}</Text>
-              </View>
-              {isCurator && m.role !== 'curator' && (
-                <TouchableOpacity onPress={() => handleRemoveMember(m)} style={styles.removeBtn}>
-                  <Ionicons name="person-remove-outline" size={16} color={colors.outline} />
-                </TouchableOpacity>
-              )}
-            </TouchableOpacity>
-          ))}
-        </View>
 
         {/* ── Currently Reading (Group Book) ── */}
         <View style={styles.section}>
@@ -665,6 +665,7 @@ const styles = StyleSheet.create({
   periodBtnText:  { fontSize: 12, fontWeight: '600', color: colors.onSurfaceVariant },
   periodBtnTextActive: { color: colors.onPrimary },
 
+  lbScroll:       { maxHeight: 300 },
   leaderRow:      { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10 },
   leaderRank:     { fontSize: 18, width: 28, textAlign: 'center' },
   leaderName:     { ...type.body, fontFamily: 'Manrope_600SemiBold', fontWeight: '600', color: colors.onSurface, marginBottom: 1 },
