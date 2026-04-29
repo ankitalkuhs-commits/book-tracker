@@ -181,8 +181,31 @@ When user says **"wrap up"**, Claude automatically:
 - **CRITICAL PATTERN:** Never push `app/models.py` changes without confirming Supabase migration has been run. New model fields with no matching DB column will crash the entire backend (every User query fails). Run `context/supabase_migration.sql` in Supabase SQL Editor BEFORE or simultaneously with the push.
 - **GOTCHA — Vercel deployment:** `book-tracker-stitch` Vercel project production branch is set to `master`. Pushing to `stitch-experiment` creates a Preview deployment only. To update `book-tracker-stitch.vercel.app`, go to Overview → Active Branches → `...` next to `stitch-experiment` → Promote to Production. (Or change production branch in Settings → General.)
 
-**Next Priorities — Phase 4 (device-tested bugs, April 24 2026):**
-> Full bug list with root causes: `context/MOBILE_STITCH_PHASE3.md` → "Bugs Found on Device" section
+**Device-tested fixes (April 28, 2026):**
+- **LoginScreen:** Restored multicolor Google G icon — `react-native-svg@15.15.4` (was 15.8.0, broke New Architecture build); 4-path SVG (red/blue/yellow/green) matching webapp
+- **Library filter pills (LibraryScreen):** Multiple rounds of fixes:
+  - Changed horizontal ScrollView → flex row so all 4 pills share equal width
+  - Text visibility fixed: `onSurface` color, `outline` border, `surfaceContainerHigh` bg
+  - Height increased: `paddingVertical` 10→14
+  - Final style: matched exactly to Add Book modal `OptionChip` — white bg (`surfaceContainerLowest`), `outlineVariant` border, auto-width, `flexWrap`
+  - Book count appended to each label: "All 12", "Reading 3", "To Read 5", "Finished 4"
+  - **GOTCHA:** `adjustsFontSizeToFit` suppresses text on Android — removed it
+  - **GOTCHA:** Spreading `...type.label` (custom font family) can make text invisible if font hasn't loaded; use explicit `fontSize`/`fontWeight` for critical UI elements
+- **Book spine width (LibraryScreen):** 5→3px
+- **Leaderboard (GroupDetailScreen):**
+  - Both `monthly` + `alltime` preloaded in parallel at screen load — tab switch is now instant, no API call
+  - Members section removed; leaderboard shows ALL members (backend already returns all, sorted by pages read)
+  - Fixed-height inner `ScrollView` (`maxHeight: 300`, `nestedScrollEnabled`) shows ~5 rows then scrolls
+  - Curator badge shown on leaderboard rows (cross-referenced from `members` state)
+  - Long-press (curator only, non-curator rows) → remove confirmation → removes from both `lbData` caches + `members` state immediately
+  - Fixed field name bug: `entry.currently_reading` → `entry.current_book` (backend returns `current_book`)
+- **Add Book modal header (LibraryScreen):** Was overlapping status bar on Android — fixed with `useSafeAreaInsets`, header `paddingTop: insets.top + 14`
+
+**⚠️ UPCOMING — Production Cutover (next iteration):**
+> Full plan: `context/PRODUCTION_CUTOVER_PLAN.md`
+> TL;DR order: cherry-pick Google Books fixes → run supabase_migration.sql → bump versionCode to 45 → merge stitch-experiment→master → change Vercel root dir → eas build + submit → staged rollout
+
+**Next Priorities — Phase 4 (remaining device bugs):**
 
 HIGH (broken core functionality):
 1. **BookDetailScreen: status pill not persisting** — `handleStatusChange` not refreshing state or API URL wrong. Audit `booksAPI.updateStatus` call + endpoint.
@@ -191,13 +214,11 @@ HIGH (broken core functionality):
 
 MEDIUM (UX parity):
 4. **Recs modal + Friends reading → add-to-library sheet** — "Want to Read" / "Start Reading Now" bottom sheet on book tap in both "For You" recs shelf and Friends tab "What Friends Are Reading".
-5. **Library filter tabs not visible** — active pill needs `backgroundColor: colors.primary`; inactive needs visible border.
-6. **AppHeader avatar not showing photo** — show `user.profile_picture` as `<Image>` when set, fallback to initials.
-7. **Circles page shows `?` instead of avatar** — `user` prop not reaching AppHeader correctly in GroupsScreen.
+5. **AppHeader avatar not showing photo** — show `user.profile_picture` as `<Image>` when set, fallback to initials.
+6. **Circles page shows `?` instead of avatar** — `user` prop not reaching AppHeader correctly in GroupsScreen.
 
 LOW (polish):
-8. **BookDetailScreen: book description missing** — add collapsible description section.
-9. **Add Book modal: search bar starts at top** — should be vertically centred until results appear, capped at insets.top.
+7. **BookDetailScreen: book description missing** — add collapsible description section.
 
 **Typography system** — committed `7b60209` on `stitch-experiment` branch (Manrope + Noto Serif across all screens). Next APK build will include fonts.
 
