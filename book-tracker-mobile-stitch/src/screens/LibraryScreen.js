@@ -650,8 +650,8 @@ const styles = StyleSheet.create({
   chipRow:      { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip:         { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 999, borderWidth: 1, borderColor: colors.outlineVariant, backgroundColor: colors.surfaceContainerLowest },
   chipActive:   { backgroundColor: colors.primary, borderColor: colors.primary },
-  chipText:     { ...type.bodySm, color: colors.onSurfaceVariant },
-  chipTextActive: { color: colors.onPrimary, fontFamily: 'Manrope_700Bold', fontWeight: '700' },
+  chipText:     { fontSize: 13, fontWeight: '500', color: colors.onSurfaceVariant },
+  chipTextActive: { fontSize: 13, fontWeight: '700', color: colors.onPrimary },
 
   addBtn:       { marginTop: 32, backgroundColor: colors.primary, paddingVertical: 14, borderRadius: radius.lg, alignItems: 'center' },
   addBtnText:   { ...type.title, color: colors.onPrimary },
