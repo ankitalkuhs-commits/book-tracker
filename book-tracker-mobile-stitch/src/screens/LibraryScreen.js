@@ -585,8 +585,8 @@ const styles = StyleSheet.create({
   tabRow:        { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 14, paddingVertical: 8, gap: 8 },
   tab:           { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 999, borderWidth: 1, borderColor: colors.outlineVariant, backgroundColor: colors.surfaceContainerLowest },
   tabActive:     { backgroundColor: colors.primary, borderColor: colors.primary },
-  tabText:       { ...type.bodySm, color: colors.onSurfaceVariant },
-  tabTextActive: { color: colors.onPrimary, fontFamily: 'Manrope_700Bold', fontWeight: '700' },
+  tabText:       { fontSize: 13, fontWeight: '500', color: colors.onSurfaceVariant },
+  tabTextActive: { fontSize: 13, fontWeight: '700', color: colors.onPrimary },
 
   grid:         { padding: GRID_PAD, gap: GRID_GAP },
   gridRow:      { gap: GRID_GAP, justifyContent: 'flex-start' },
