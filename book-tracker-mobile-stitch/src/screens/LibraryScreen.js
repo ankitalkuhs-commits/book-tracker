@@ -185,6 +185,19 @@ function BookTile({ userbook, onPress }) {
   );
 }
 
+// ── Shared chip component (proven to work on device) ─────────────────────────
+function OptionChip({ label, active, onPress }) {
+  return (
+    <TouchableOpacity
+      style={[styles.chip, active && styles.chipActive]}
+      onPress={onPress}
+      activeOpacity={0.75}
+    >
+      <Text style={[styles.chipText, active && styles.chipTextActive]}>{label}</Text>
+    </TouchableOpacity>
+  );
+}
+
 // ── Add Book Modal ─────────────────────────────────────────────────────────────
 function AddBookModal({ visible, onClose, onAdded }) {
   const insets = useSafeAreaInsets();
@@ -240,16 +253,6 @@ function AddBookModal({ visible, onClose, onAdded }) {
     setBookStatus('to-read'); setBookFormat('paperback'); setOwnership('owned');
     onClose();
   };
-
-  const OptionChip = ({ label, active, onPress }) => (
-    <TouchableOpacity
-      style={[styles.chip, active && styles.chipActive]}
-      onPress={onPress}
-      activeOpacity={0.75}
-    >
-      <Text style={[styles.chipText, active && styles.chipTextActive]}>{label}</Text>
-    </TouchableOpacity>
-  );
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={handleClose}>
@@ -495,15 +498,12 @@ export default function LibraryScreen({ navigation }) {
       {/* ── Status tabs ── */}
       <View style={styles.tabRow}>
         {TABS.map(({ key, label, count }) => (
-          <TouchableOpacity
+          <OptionChip
             key={key}
-            style={[styles.tab, activeTab === key && styles.tabActive]}
+            label={`${label} ${count}`}
+            active={activeTab === key}
             onPress={() => setActiveTab(key)}
-          >
-            <Text style={[styles.tabText, activeTab === key && styles.tabTextActive]} numberOfLines={1}>
-              {label} {count}
-            </Text>
-          </TouchableOpacity>
+          />
         ))}
       </View>
 
@@ -583,10 +583,6 @@ const styles = StyleSheet.create({
   searchInput:  { ...type.body, flex: 1, color: colors.onSurface, padding: 0, textAlignVertical: 'center' },
 
   tabRow:        { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 14, paddingVertical: 8, gap: 8 },
-  tab:           { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 999, borderWidth: 1, borderColor: colors.outlineVariant, backgroundColor: colors.surfaceContainerLowest },
-  tabActive:     { backgroundColor: colors.primary, borderColor: colors.primary },
-  tabText:       { fontSize: 13, fontWeight: '500', color: colors.onSurfaceVariant },
-  tabTextActive: { fontSize: 13, fontWeight: '700', color: colors.onPrimary },
 
   grid:         { padding: GRID_PAD, gap: GRID_GAP },
   gridRow:      { gap: GRID_GAP, justifyContent: 'flex-start' },
