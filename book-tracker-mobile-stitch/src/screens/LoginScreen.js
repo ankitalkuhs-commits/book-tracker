@@ -1,73 +1,41 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, Alert,
-  ActivityIndicator, ScrollView, Image, StatusBar,
+  ActivityIndicator, ScrollView, Image, StatusBar, Dimensions,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import Svg, { Path } from 'react-native-svg';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
-import { authAPI, notesAPI } from '../services/api';
-import { colors, radius, shadow } from '../theme';
+import { authAPI } from '../services/api';
+import { colors, radius, shadow, type } from '../theme';
 
-const HERO_IMAGE = 'https://images.unsplash.com/photo-1507842217343-583bb7270b66?w=800&q=80';
-const QUOTE = '"A reader lives a thousand lives before he dies."';
-const QUOTE_AUTHOR = '— George R.R. Martin';
+
+const SCREEN_W = Dimensions.get('window').width;
+
+const HERO_IMAGE  = 'https://images.unsplash.com/photo-1507842217343-583bb7270b66?w=800&q=80';
+const QUOTE       = 'A reader lives a thousand lives before he dies.';
+const QUOTE_AUTH  = '— George R.R. Martin';
 const WEB_CLIENT_ID = '580873034102-ukh12uuph4c17eqvvbjl1a48alrfepok.apps.googleusercontent.com';
 
 const TRUST_AVATARS = [
-  { initials: 'AM', bg: '#c8e6c9' },
-  { initials: 'RK', bg: '#bbdefb' },
-  { initials: 'SJ', bg: '#f8bbd0' },
+  { initials: 'A', bg: colors.surfaceContainerHighest },
+  { initials: 'B', bg: colors.surfaceContainerHighest },
+  { initials: 'C', bg: colors.surfaceContainerHighest },
 ];
 
-function PostCard({ post }) {
-  const timeAgo = (ts) => {
-    if (!ts) return '';
-    const diff = (Date.now() - new Date(ts)) / 1000;
-    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
-    if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
-    return `${Math.floor(diff / 86400)}d ago`;
-  };
+const FEATURE_CARDS = [
+  { emoji: '📚', title: 'Track', desc: 'Log every book & page' },
+  { emoji: '✍️', title: 'Reflect', desc: 'Share quotes & moods' },
+  { emoji: '👥', title: 'Discover', desc: 'Read with friends' },
+];
 
-  return (
-    <View style={styles.postCard}>
-      <View style={styles.postMeta}>
-        <View style={styles.postAvatar}>
-          <Text style={styles.postAvatarText}>{(post.user_name || post.author || 'R')[0].toUpperCase()}</Text>
-        </View>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.postAuthor}>{post.user_name || post.author || 'Reader'}</Text>
-          <Text style={styles.postTime}>{timeAgo(post.created_at)}</Text>
-        </View>
-        <View style={styles.postBadge}>
-          <Ionicons name="book-outline" size={12} color={colors.primary} />
-          <Text style={styles.postBadgeText}>Reading</Text>
-        </View>
-      </View>
-      {post.text ? <Text style={styles.postText} numberOfLines={4}>{post.text}</Text> : null}
-      {post.quote ? (
-        <View style={styles.postQuoteBlock}>
-          <Text style={styles.postQuoteText} numberOfLines={3}>"{post.quote}"</Text>
-        </View>
-      ) : null}
-    </View>
-  );
-}
-
+// ── Screen ────────────────────────────────────────────────────────────────────
 export default function LoginScreen({ onLoginSuccess }) {
   const [loading, setLoading] = useState(false);
-  const [posts, setPosts] = useState([]);
 
   useEffect(() => {
     GoogleSignin.configure({ webClientId: WEB_CLIENT_ID, offlineAccess: false });
-    loadFeed();
   }, []);
-
-  const loadFeed = async () => {
-    try {
-      const data = await notesAPI.getCommunityFeed(8);
-      setPosts(Array.isArray(data) ? data.slice(0, 8) : []);
-    } catch { /* silently ignore — social proof only */ }
-  };
 
   const handleSignIn = async () => {
     setLoading(true);
@@ -76,7 +44,7 @@ export default function LoginScreen({ onLoginSuccess }) {
       await GoogleSignin.hasPlayServices();
       await GoogleSignin.signIn();
       const tokens = await GoogleSignin.getTokens();
-      const data = await authAPI.googleLogin(tokens.idToken);
+      const data   = await authAPI.googleLogin(tokens.idToken);
       await authAPI.saveToken(data.access_token);
       onLoginSuccess?.();
     } catch (error) {
@@ -96,36 +64,55 @@ export default function LoginScreen({ onLoginSuccess }) {
 
         {/* Logo */}
         <View style={styles.logoRow}>
-          <Ionicons name="book" size={28} color={colors.primary} />
+          <MaterialCommunityIcons name="book-open-variant" size={26} color={colors.primary} />
           <Text style={styles.logoText}>TrackMyRead</Text>
         </View>
 
         {/* Hero image card */}
         <View style={styles.heroCard}>
           <Image source={{ uri: HERO_IMAGE }} style={styles.heroImage} resizeMode="cover" />
-          {/* Glassmorphism quote overlay */}
           <View style={styles.quoteOverlay}>
+            <Text style={styles.quoteDecor}>"</Text>
             <Text style={styles.quoteText}>{QUOTE}</Text>
-            <Text style={styles.quoteAuthor}>{QUOTE_AUTHOR}</Text>
+            <Text style={styles.quoteAuthor}>{QUOTE_AUTH}</Text>
           </View>
         </View>
 
         {/* Tagline */}
         <Text style={styles.tagline}>
-          Track your reading.{' '}
+          <Text style={styles.taglineDark}>Track your reading.{'\n'}</Text>
           <Text style={styles.taglineItalic}>Share your journey.</Text>
         </Text>
+
+        {/* Subtitle */}
+        <Text style={styles.subtitle}>
+          The social home for book lovers. Log progress, share highlights, and discover your next favourite read with friends.
+        </Text>
+
+        {/* Feature cards — replaces the marquee */}
+        <View style={styles.featureRow}>
+          {FEATURE_CARDS.map(card => (
+            <View key={card.title} style={styles.featureCard}>
+              <Text style={styles.featureEmoji}>{card.emoji}</Text>
+              <Text style={styles.featureTitle}>{card.title}</Text>
+              <Text style={styles.featureDesc}>{card.desc}</Text>
+            </View>
+          ))}
+        </View>
 
         {/* Google sign-in */}
         <TouchableOpacity style={styles.googleBtn} onPress={handleSignIn} disabled={loading} activeOpacity={0.85}>
           {loading ? (
-            <ActivityIndicator color={colors.onPrimary} size="small" />
+            <ActivityIndicator color={colors.onSurface} size="small" />
           ) : (
             <>
-              <View style={styles.googleIconBubble}>
-                <Text style={styles.googleIconText}>G</Text>
-              </View>
-              <Text style={styles.googleBtnText}>Continue with Google</Text>
+              <Svg width={20} height={20} viewBox="0 0 48 48">
+                <Path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+                <Path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+                <Path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+                <Path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+              </Svg>
+              <Text style={styles.googleBtnText}>Sign in with Google</Text>
             </>
           )}
         </TouchableOpacity>
@@ -142,70 +129,66 @@ export default function LoginScreen({ onLoginSuccess }) {
           <Text style={styles.trustText}>Joined by 12,000+ readers</Text>
         </View>
 
-        {/* Community feed */}
-        {posts.length > 0 && (
-          <View style={styles.feedSection}>
-            <Text style={styles.feedTitle}>What readers are sharing</Text>
-            {posts.map(post => <PostCard key={post.id} post={post} />)}
-          </View>
-        )}
-
-        <View style={styles.bottomPad} />
       </ScrollView>
     </View>
   );
 }
 
+const CARD_W = (SCREEN_W - 48 - 16) / 3; // 24px padding each side, 8px gap × 2
+
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.surface },
-  scroll: { paddingHorizontal: 24, paddingTop: 60, paddingBottom: 40 },
+  scroll:    { paddingHorizontal: 24, paddingTop: 56, paddingBottom: 40 },
 
-  logoRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 28 },
-  logoText: { fontSize: 26, fontWeight: '800', color: colors.primary, letterSpacing: -0.5 },
+  // Logo
+  logoRow:  { flexDirection: 'row', alignItems: 'center', gap: 9, marginBottom: 24 },
+  logoText: { ...type.titleLg, color: colors.primary, letterSpacing: -0.5 },
 
-  heroCard: { borderRadius: radius.xl, overflow: 'hidden', marginBottom: 20, ...shadow.float },
-  heroImage: { width: '100%', height: 220 },
+  // Hero
+  heroCard:  { borderRadius: radius.xl, overflow: 'hidden', marginBottom: 22, ...shadow.float },
+  heroImage: { width: '100%', height: 260 },
   quoteOverlay: {
-    position: 'absolute', bottom: 14, right: 14, left: 60,
-    backgroundColor: 'rgba(255,255,255,0.88)',
-    borderRadius: radius.lg, padding: 12,
+    position: 'absolute', top: '18%', right: 14, width: 190,
+    backgroundColor: 'rgba(251,249,244,0.93)', borderRadius: radius.lg, padding: 14,
+    shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 }, elevation: 3,
   },
-  quoteText: { fontSize: 13, fontStyle: 'italic', color: colors.onSurface, lineHeight: 19, fontWeight: '500' },
-  quoteAuthor: { fontSize: 11, color: colors.onSurfaceVariant, marginTop: 4, fontWeight: '600' },
+  quoteDecor:  { fontFamily: 'NotoSerif_700Bold', fontSize: 36, lineHeight: 36, color: '#b0a898', marginBottom: 2 },
+  quoteText:   { ...type.bodySm, fontFamily: 'NotoSerif_400Italic', color: colors.onSurface },
+  quoteAuthor: { ...type.caption, color: colors.onSurfaceVariant, marginTop: 6, fontWeight: '600' },
 
-  tagline: { fontSize: 20, fontWeight: '700', color: colors.onSurface, textAlign: 'center', marginBottom: 28, lineHeight: 28 },
-  taglineItalic: { fontStyle: 'italic', color: colors.primary },
+  // Tagline
+  tagline:      { marginBottom: 10 },
+  taglineDark:  { fontFamily: 'NotoSerif_700Bold', fontSize: 28, lineHeight: 36, color: colors.primary },
+  taglineItalic:{ fontFamily: 'NotoSerif_400Italic', fontSize: 28, lineHeight: 36, color: colors.secondary },
+  subtitle:     { ...type.body, color: colors.onSurfaceVariant, marginBottom: 22 },
 
+  // Feature cards
+  featureRow:  { flexDirection: 'row', gap: 8, marginBottom: 26 },
+  featureCard: {
+    width: CARD_W, backgroundColor: colors.surfaceContainerLow,
+    borderRadius: radius.lg, padding: 14, alignItems: 'center', gap: 4,
+    borderWidth: 1, borderColor: colors.outlineVariant + '50',
+  },
+  featureEmoji: { fontSize: 22, marginBottom: 2 },
+  featureTitle: { ...type.label, color: colors.primary, fontFamily: 'Manrope_700Bold', fontWeight: '700' },
+  featureDesc:  { ...type.caption, color: colors.onSurfaceVariant, textAlign: 'center' },
+
+  // Google button — white per Google brand guidelines
   googleBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    backgroundColor: colors.primary, borderRadius: radius.full,
+    backgroundColor: '#ffffff', borderRadius: radius.full,
     paddingVertical: 15, paddingHorizontal: 28, gap: 12,
-    ...shadow.float,
+    marginBottom: 20,
+    borderWidth: 1.5, borderColor: colors.outlineVariant,
+    ...shadow.card,
   },
-  googleIconBubble: { width: 26, height: 26, borderRadius: 13, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' },
-  googleIconText: { fontSize: 15, fontWeight: '800', color: colors.primary },
-  googleBtnText: { fontSize: 16, fontWeight: '700', color: colors.onPrimary },
+  googleBtnText: { ...type.title, color: colors.onSurface },
 
-  trustRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 16, gap: 10 },
-  avatarStack: { flexDirection: 'row', alignItems: 'center' },
-  trustAvatar: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: colors.surface },
-  trustAvatarText: { fontSize: 10, fontWeight: '700', color: colors.onSurface },
-  trustText: { fontSize: 13, color: colors.onSurfaceVariant, fontWeight: '500' },
-
-  feedSection: { marginTop: 32 },
-  feedTitle: { fontSize: 14, fontWeight: '700', color: colors.onSurfaceVariant, letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 14 },
-
-  postCard: { backgroundColor: colors.surfaceContainerLowest, borderRadius: radius.lg, padding: 14, marginBottom: 10, ...shadow.card },
-  postMeta: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10 },
-  postAvatar: { width: 36, height: 36, borderRadius: 18, backgroundColor: colors.primary + '22', alignItems: 'center', justifyContent: 'center' },
-  postAvatarText: { fontSize: 15, fontWeight: '700', color: colors.primary },
-  postAuthor: { fontSize: 13, fontWeight: '700', color: colors.onSurface },
-  postTime: { fontSize: 11, color: colors.outline, marginTop: 1 },
-  postBadge: { flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: colors.primary + '12', borderRadius: radius.full, paddingHorizontal: 8, paddingVertical: 3 },
-  postBadgeText: { fontSize: 10, fontWeight: '600', color: colors.primary },
-  postText: { fontSize: 14, color: colors.onSurface, lineHeight: 20 },
-  postQuoteBlock: { borderLeftWidth: 3, borderLeftColor: colors.primary, paddingLeft: 10, marginTop: 8 },
-  postQuoteText: { fontSize: 13, fontStyle: 'italic', color: colors.onSurfaceVariant, lineHeight: 19 },
-
-  bottomPad: { height: 20 },
+  // Trust badge
+  trustRow:       { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },
+  avatarStack:    { flexDirection: 'row', alignItems: 'center' },
+  trustAvatar:    { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: colors.surface },
+  trustAvatarText:{ ...type.eyebrow, color: colors.onSurface },
+  trustText:      { ...type.bodySm, color: colors.onSurfaceVariant },
 });

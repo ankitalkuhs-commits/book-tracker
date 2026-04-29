@@ -2,12 +2,18 @@ import React, { useState, useEffect, createContext, useRef } from 'react';
 import { View, ActivityIndicator, StyleSheet, AppState } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import * as Notifications from 'expo-notifications';
+import * as Font from 'expo-font';
+import * as SplashScreen from 'expo-splash-screen';
 
 import { authAPI, userAPI, userbooksAPI, notesAPI, notificationsAPI } from './src/services/api';
-import NotificationService from './src/services/NotificationService';
+import { registerExpoPushToken } from './src/services/NotificationService';
 import AppNavigator from './src/navigation/AppNavigator';
 import LoginScreen from './src/screens/LoginScreen';
-import { colors } from './src/theme';
+import { colors, fontMap } from './src/theme';
+import { NotificationContext } from './src/context/NotificationContext';
+
+// Keep splash visible until fonts + auth check are done
+SplashScreen.preventAutoHideAsync().catch(() => {});
 
 // ── Preload context (consumed by FeedScreen, LibraryScreen, ProfileScreen) ───
 export const PreloadContext = createContext(null);
@@ -22,12 +28,20 @@ Notifications.setNotificationHandler({
 });
 
 export default function App() {
-  const [authChecked, setAuthChecked] = useState(false);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [preloaded, setPreloaded] = useState(null);
-  const [unreadCount, setUnreadCount] = useState(0);
-  const pollRef = useRef(null);
+  const [fontsLoaded, setFontsLoaded]   = useState(false);
+  const [authChecked, setAuthChecked]   = useState(false);
+  const [isLoggedIn, setIsLoggedIn]     = useState(false);
+  const [preloaded, setPreloaded]       = useState(null);
+  const [unreadCount, setUnreadCount]   = useState(0);
+  const pollRef    = useRef(null);
   const appStateRef = useRef(AppState.currentState);
+
+  // ── Load custom fonts ────────────────────────────────────────────────────
+  useEffect(() => {
+    Font.loadAsync(fontMap)
+      .catch(() => {}) // non-fatal — fall back to system font
+      .finally(() => setFontsLoaded(true));
+  }, []);
 
   // ── Auth check on mount ──────────────────────────────────────────────────
   useEffect(() => {
@@ -47,7 +61,7 @@ export default function App() {
       const [profile, library, feed, count] = await Promise.allSettled([
         userAPI.getProfile(),
         userbooksAPI.getMyBooks(),
-        notesAPI.getFriendsFeed(20),
+        notesAPI.getCommunityFeed(50),
         notificationsAPI.getUnreadCount(),
       ]);
       setPreloaded({
@@ -55,7 +69,7 @@ export default function App() {
         library: library.status === 'fulfilled' ? library.value : [],
         feed:    feed.status    === 'fulfilled' ? feed.value    : [],
       });
-      if (count.status === 'fulfilled') setUnreadCount(count.value?.count ?? 0);
+      if (count.status === 'fulfilled') setUnreadCount(count.value?.unread ?? 0);
     } catch { /* non-critical — screens will load their own data */ }
   };
 
@@ -63,7 +77,7 @@ export default function App() {
   const fetchUnread = async () => {
     try {
       const data = await notificationsAPI.getUnreadCount();
-      setUnreadCount(data?.count ?? 0);
+      setUnreadCount(data?.unread ?? 0);
     } catch { /* ignore */ }
   };
 
@@ -88,7 +102,7 @@ export default function App() {
   // ── Push notification registration ──────────────────────────────────────
   useEffect(() => {
     if (!isLoggedIn) return;
-    NotificationService.registerForPushNotifications().catch(() => {});
+    authAPI.getToken().then(token => registerExpoPushToken(token)).catch(() => {});
   }, [isLoggedIn]);
 
   // ── Login / Logout ───────────────────────────────────────────────────────
@@ -104,8 +118,11 @@ export default function App() {
     setIsLoggedIn(false);
   };
 
-  // ── Loading splash ───────────────────────────────────────────────────────
-  if (!authChecked) {
+  // ── Loading splash — wait for both fonts + auth ──────────────────────────
+  const ready = fontsLoaded && authChecked;
+  if (ready) SplashScreen.hideAsync().catch(() => {});
+
+  if (!ready) {
     return (
       <View style={styles.splash}>
         <ActivityIndicator size="large" color={colors.primary} />
@@ -119,11 +136,17 @@ export default function App() {
   }
 
   return (
-    <PreloadContext.Provider value={preloaded}>
-      <NavigationContainer>
-        <AppNavigator unreadCount={unreadCount} onLogout={handleLogout} />
-      </NavigationContainer>
-    </PreloadContext.Provider>
+    <NotificationContext.Provider value={{ unreadCount }}>
+      <PreloadContext.Provider value={{
+          ...(preloaded || {}),
+          updateProfile: (patch) =>
+            setPreloaded(prev => ({ ...prev, profile: { ...(prev?.profile || {}), ...patch } })),
+        }}>
+        <NavigationContainer>
+          <AppNavigator onLogout={handleLogout} />
+        </NavigationContainer>
+      </PreloadContext.Provider>
+    </NotificationContext.Provider>
   );
 }
 

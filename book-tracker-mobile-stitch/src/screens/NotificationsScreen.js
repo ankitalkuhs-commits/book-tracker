@@ -5,8 +5,9 @@ import {
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { notificationsAPI } from '../services/api';
-import { colors, radius, shadow } from '../theme';
+import { colors, radius, shadow, type } from '../theme';
 
 function timeAgo(dateStr) {
   if (!dateStr) return '';
@@ -56,6 +57,7 @@ function NotifRow({ item, onPress }) {
 }
 
 export default function NotificationsScreen({ navigation }) {
+  const insets = useSafeAreaInsets();
   const [notifs,      setNotifs]      = useState([]);
   const [loading,     setLoading]     = useState(true);
   const [refreshing,  setRefreshing]  = useState(false);
@@ -104,9 +106,13 @@ export default function NotificationsScreen({ navigation }) {
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor={colors.surface} />
+      <View style={{ height: insets.top, backgroundColor: colors.surface }} />
       <View style={styles.header}>
-        <View>
-          <Text style={styles.headerLabel}>UPDATES</Text>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+          <Ionicons name="arrow-back" size={22} color={colors.onSurface} />
+        </TouchableOpacity>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.headerLabel}>YOUR LATEST UPDATES</Text>
           <Text style={styles.headerTitle}>Notifications</Text>
         </View>
         {unreadCount > 0 && (
@@ -155,27 +161,28 @@ export default function NotificationsScreen({ navigation }) {
 const styles = StyleSheet.create({
   container:   { flex: 1, backgroundColor: colors.surface },
   center:      { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surface },
-  header:      { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 56, paddingBottom: 16, backgroundColor: colors.surface },
-  headerLabel: { fontSize: 10, fontWeight: '700', letterSpacing: 1.5, color: colors.secondary, marginBottom: 2 },
-  headerTitle: { fontSize: 28, fontWeight: '800', color: colors.primary },
+  header:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 16, paddingBottom: 16, backgroundColor: colors.surface },
+  backBtn:     { marginRight: 12, padding: 4 },
+  headerLabel: { ...type.eyebrow, color: colors.secondary, marginBottom: 2 },
+  headerTitle: { ...type.headline, color: colors.onSurfaceVariant },
   markBtn:     { backgroundColor: colors.surfaceContainerHigh, borderRadius: radius.full, paddingHorizontal: 14, paddingVertical: 7 },
-  markBtnText: { fontSize: 12, fontWeight: '600', color: colors.primary },
+  markBtnText: { ...type.label, color: colors.primary },
 
   unreadBanner:     { backgroundColor: colors.primary + '12', paddingHorizontal: 20, paddingVertical: 8 },
-  unreadBannerText: { fontSize: 12, fontWeight: '600', color: colors.primary },
+  unreadBannerText: { ...type.label, color: colors.primary },
 
   list:        { paddingHorizontal: 16, paddingVertical: 8, paddingBottom: 24 },
   row:         { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surfaceContainerLowest, borderRadius: radius.lg, padding: 14, gap: 12, ...shadow.card },
   rowUnread:   { backgroundColor: colors.primary + '08', borderLeftWidth: 3, borderLeftColor: colors.primary },
   iconWrap:    { width: 40, height: 40, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
   rowBody:     { flex: 1, gap: 2 },
-  rowTitle:    { fontSize: 14, fontWeight: '700', color: colors.onSurface, lineHeight: 20 },
-  rowBodyText: { fontSize: 13, color: colors.onSurfaceVariant, lineHeight: 18 },
-  rowTime:     { fontSize: 11, color: colors.outline, marginTop: 2 },
+  rowTitle:    { ...type.body, fontFamily: 'Manrope_700Bold', fontWeight: '700', color: colors.onSurface },
+  rowBodyText: { ...type.bodySm, color: colors.onSurfaceVariant },
+  rowTime:     { ...type.caption, color: colors.outline, marginTop: 2 },
   unreadDot:   { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.primary, flexShrink: 0 },
   sep:         { height: 8 },
 
   empty:       { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 8, paddingBottom: 60 },
-  emptyTitle:  { fontSize: 20, fontWeight: '700', color: colors.onSurface, marginTop: 8 },
-  emptySub:    { fontSize: 14, color: colors.onSurfaceVariant },
+  emptyTitle:  { ...type.titleLg, color: colors.onSurface, marginTop: 8 },
+  emptySub:    { ...type.body, color: colors.onSurfaceVariant },
 });

@@ -45,12 +45,18 @@ export const authAPI = {
 // Books API
 export const booksAPI = {
   getAll: async () => (await api.get('/books/')).data,
-  search: async (query) => {
-    const response = await api.get(`/api/googlebooks/search?query=${encodeURIComponent(query)}`);
-    return response.data.results || [];
+  search: async (query, { genre, orderBy, startIndex } = {}) => {
+    const params = new URLSearchParams({ query });
+    if (genre && genre !== 'all') params.append('genre', genre);
+    if (orderBy && orderBy !== 'relevance') params.append('order_by', orderBy);
+    if (startIndex) params.append('start_index', startIndex);
+    const response = await api.get(`/api/googlebooks/search?${params.toString()}`);
+    // Return full response so callers can read has_more + next_start_index
+    return response.data;
   },
   getGoogleBookDetails: async (googleBooksId) => (await api.get(`/api/googlebooks/book/${googleBooksId}`)).data,
   addToLibrary: async (bookData) => (await api.post('/books/add-to-library', bookData)).data,
+  getRecommendations: async () => (await api.get('/books/recommendations')).data,
 };
 
 // UserBooks API
@@ -59,6 +65,7 @@ export const userbooksAPI = {
   getUserBooks: async (userId) => (await api.get(`/userbooks/user/${userId}`)).data,
   addBook: async (bookData) => (await api.post('/userbooks/', bookData)).data,
   updateProgress: async (userbookId, progressData) => (await api.put(`/userbooks/${userbookId}/progress`, progressData)).data,
+  patchUserbook: async (userbookId, fields) => (await api.patch(`/userbooks/${userbookId}`, fields)).data,
   finishBook: async (userbookId) => (await api.post(`/userbooks/${userbookId}/finish`)).data,
   deleteBook: async (userbookId) => (await api.delete(`/userbooks/${userbookId}`)).data,
   getFriendsReading: async (limit = 10) => (await api.get(`/userbooks/friends/currently-reading?limit=${limit}`)).data,

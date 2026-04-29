@@ -5,12 +5,13 @@ import {
   Platform, Dimensions,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { userAPI, authAPI, userbooksAPI, notesAPI, activityAPI, profileAPI } from '../services/api';
 import { PreloadContext } from '../../App';
 import { formatTimeAgo } from '../utils/bookUtils';
-import { colors, radius, shadow } from '../theme';
+import { colors, radius, shadow, type } from '../theme';
 
 const SCREEN_W = Dimensions.get('window').width;
 
@@ -291,6 +292,7 @@ function NewNoteModal({ visible, editNote, books, onClose, onSaved }) {
 
 // ── Profile Screen ─────────────────────────────────────────────────────────────
 export default function ProfileScreen({ navigation, onLogout }) {
+  const insets    = useSafeAreaInsets();
   const preloaded = useContext(PreloadContext);
   const [profile,  setProfile]   = useState(preloaded?.profile || null);
   const [books,    setBooks]     = useState(preloaded?.library || []);
@@ -347,6 +349,7 @@ export default function ProfileScreen({ navigation, onLogout }) {
     try {
       const updated = await profileAPI.uploadPicture(result.assets[0].uri);
       setProfile(prev => ({ ...prev, profile_picture: updated.profile_picture }));
+      preloaded?.updateProfile?.({ profile_picture: updated.profile_picture });
     } catch { Alert.alert('Error', 'Could not upload photo'); }
     finally { setUploadingPhoto(false); }
   };
@@ -410,9 +413,12 @@ export default function ProfileScreen({ navigation, onLogout }) {
   return (
     <View style={styles.container}>
       {/* ── Fixed header ── */}
-      <View style={styles.topBar}>
-        <View>
-          <Text style={styles.topBarLabel}>MY PROFILE</Text>
+      <View style={[styles.topBar, { paddingTop: insets.top + 16 }]}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+          <Ionicons name="arrow-back" size={22} color={colors.onSurface} />
+        </TouchableOpacity>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.topBarLabel}>YOUR READING STORY</Text>
           <Text style={styles.topBarTitle}>Profile</Text>
         </View>
         <TouchableOpacity onPress={() => navigation?.navigate('Settings')} style={styles.settingsBtn}>
@@ -629,48 +635,49 @@ const styles = StyleSheet.create({
   centered:  { flex: 1, justifyContent: 'center', alignItems: 'center' },
   scroll:    { flex: 1 },
 
-  topBar:      { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', paddingHorizontal: 20, paddingTop: 56, paddingBottom: 14, backgroundColor: colors.surface },
-  topBarLabel: { fontSize: 10, fontWeight: '700', letterSpacing: 1.5, color: colors.secondary, marginBottom: 2 },
-  topBarTitle: { fontSize: 28, fontWeight: '800', color: colors.primary },
+  topBar:      { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingBottom: 14, backgroundColor: colors.surface },
+  backBtn:     { marginRight: 12, padding: 4 },
+  topBarLabel: { ...type.eyebrow, color: colors.secondary, marginBottom: 2 },
+  topBarTitle: { ...type.headline, color: colors.onSurfaceVariant },
   settingsBtn: { width: 40, height: 40, borderRadius: radius.md, backgroundColor: colors.surfaceContainerHigh, alignItems: 'center', justifyContent: 'center' },
 
   heroCard:    { backgroundColor: colors.surfaceContainerLowest, margin: 16, padding: 24, borderRadius: radius.xl, ...shadow.card, alignItems: 'center' },
   avatarWrap:  { position: 'relative', marginBottom: 14 },
   avatarImg:   { width: 96, height: 96, borderRadius: 48, borderWidth: 3, borderColor: colors.primary },
   avatarFallback: { width: 96, height: 96, borderRadius: 48, backgroundColor: colors.primary, justifyContent: 'center', alignItems: 'center' },
-  avatarText:  { color: colors.onPrimary, fontSize: 36, fontWeight: '800' },
+  avatarText:  { color: colors.onPrimary, fontFamily: 'NotoSerif_700Bold', fontSize: 36, fontWeight: '700' },
   avatarOverlay: { position: 'absolute', bottom: 0, right: 0, width: 30, height: 30, borderRadius: 15, backgroundColor: colors.primaryContainer, justifyContent: 'center', alignItems: 'center' },
   avatarUploadBtn: { position: 'absolute', bottom: 0, right: 0, width: 30, height: 30, borderRadius: 15, backgroundColor: colors.primary, justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: '#fff' },
 
-  heroName:    { fontSize: 22, fontWeight: '800', color: colors.onSurface, marginBottom: 2 },
-  heroUsername:{ fontSize: 13, color: colors.onSurfaceVariant, marginBottom: 8 },
-  heroBio:     { fontSize: 14, color: colors.onSurfaceVariant, textAlign: 'center', lineHeight: 20, marginBottom: 14, paddingHorizontal: 8 },
-  heroBioPlaceholder: { fontSize: 14, color: colors.outlineVariant, fontStyle: 'italic', marginBottom: 14 },
+  heroName:    { ...type.titleLg, color: colors.onSurface, marginBottom: 2 },
+  heroUsername:{ ...type.bodySm, color: colors.onSurfaceVariant, marginBottom: 8 },
+  heroBio:     { ...type.body, color: colors.onSurfaceVariant, textAlign: 'center', marginBottom: 14, paddingHorizontal: 8 },
+  heroBioPlaceholder: { ...type.body, color: colors.outlineVariant, fontStyle: 'italic', marginBottom: 14 },
 
   statsPills:     { flexDirection: 'row', alignItems: 'center' },
   statPill:       { alignItems: 'center', paddingHorizontal: 18 },
-  statPillValue:  { fontSize: 18, fontWeight: '800', color: colors.onSurface },
-  statPillLabel:  { fontSize: 11, color: colors.onSurfaceVariant, marginTop: 1 },
+  statPillValue:  { fontFamily: 'NotoSerif_700Bold', fontSize: 18, fontWeight: '700', color: colors.onSurface },
+  statPillLabel:  { ...type.caption, color: colors.onSurfaceVariant, marginTop: 1 },
   statPillDivider:{ width: 1, height: 28, backgroundColor: colors.outlineVariant + '60' },
 
   sectionCard: { backgroundColor: colors.surfaceContainerLowest, marginHorizontal: 16, marginBottom: 12, padding: 18, borderRadius: radius.lg, ...shadow.card },
-  sectionTitle:{ fontSize: 16, fontWeight: '700', color: colors.onSurface, marginBottom: 4 },
+  sectionTitle:{ ...type.title, fontFamily: 'NotoSerif_700Bold', color: colors.onSurface, marginBottom: 4 },
   sectionSub:  { fontSize: 12, color: colors.onSurfaceVariant, marginBottom: 4 },
 
   analyticsRow:  { flexDirection: 'row', justifyContent: 'space-around', marginTop: 12 },
   analyticsItem: { alignItems: 'center', gap: 4 },
-  analyticsValue:{ fontSize: 18, fontWeight: '800', color: colors.onSurface },
-  analyticsLabel:{ fontSize: 11, color: colors.onSurfaceVariant },
+  analyticsValue:{ fontFamily: 'NotoSerif_700Bold', fontSize: 18, fontWeight: '700', color: colors.onSurface },
+  analyticsLabel:{ ...type.caption, color: colors.onSurfaceVariant },
 
   goalRow:    { flexDirection: 'row', alignItems: 'center', marginTop: 16, paddingTop: 14, borderTopWidth: 1, borderTopColor: colors.surfaceContainerHigh },
-  goalLabel:  { fontSize: 13, fontWeight: '700', color: colors.onSurface },
-  goalValue:  { fontSize: 12, color: colors.onSurfaceVariant, marginTop: 2 },
-  goalStatus: { fontSize: 12, fontWeight: '700', marginTop: 2 },
+  goalLabel:  { ...type.label, fontWeight: '700', color: colors.onSurface },
+  goalValue:  { ...type.caption, color: colors.onSurfaceVariant, marginTop: 2 },
+  goalStatus: { ...type.caption, fontWeight: '700', marginTop: 2 },
 
   readingRow:     { flexDirection: 'row', alignItems: 'center', gap: 12 },
   readingCover:   { width: 40, height: 56, borderRadius: radius.sm },
-  readingTitle:   { fontSize: 13, fontWeight: '700', color: colors.onSurface, lineHeight: 18, marginBottom: 2 },
-  readingAuthor:  { fontSize: 12, color: colors.onSurfaceVariant, marginBottom: 4 },
+  readingTitle:   { ...type.label, fontWeight: '700', color: colors.onSurface, marginBottom: 2 },
+  readingAuthor:  { ...type.caption, color: colors.onSurfaceVariant, marginBottom: 4 },
   readingProgress:{ flexDirection: 'row', alignItems: 'center', gap: 6 },
   readingTrack:   { flex: 1, height: 4, backgroundColor: colors.surfaceContainerHigh, borderRadius: 2, overflow: 'hidden' },
   readingFill:    { height: '100%', backgroundColor: colors.primary, borderRadius: 2 },
@@ -684,42 +691,42 @@ const styles = StyleSheet.create({
   newNoteBtn:     { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: colors.primary, paddingHorizontal: 12, paddingVertical: 6, borderRadius: radius.md },
   newNoteBtnText: { color: colors.onPrimary, fontSize: 12, fontWeight: '700' },
   notesEmpty:     { alignItems: 'center', paddingVertical: 24, gap: 8 },
-  notesEmptyText: { fontSize: 14, color: colors.onSurfaceVariant },
+  notesEmptyText: { ...type.body, color: colors.onSurfaceVariant },
   notesEmptyBtn:  { backgroundColor: colors.surfaceContainerHigh, paddingHorizontal: 16, paddingVertical: 8, borderRadius: radius.md },
-  notesEmptyBtnText: { fontSize: 13, color: colors.primary, fontWeight: '600' },
+  notesEmptyBtnText: { ...type.label, color: colors.primary, fontWeight: '600' },
 
   noteCard:    { backgroundColor: colors.surfaceContainerLow, borderRadius: radius.md, padding: 12 },
   noteHeader:  { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 },
   noteBookTag: { fontSize: 11, fontWeight: '600', color: colors.primary, marginBottom: 2 },
-  noteDate:    { fontSize: 11, color: colors.outline },
+  noteDate:    { ...type.caption, color: colors.outline },
   noteIconBtn: { width: 28, height: 28, alignItems: 'center', justifyContent: 'center' },
   quoteBlock:  { borderLeftWidth: 3, borderLeftColor: colors.primary, paddingLeft: 10, marginBottom: 8 },
-  quoteText:   { fontSize: 13, fontStyle: 'italic', color: colors.onSurfaceVariant, lineHeight: 19 },
-  noteText:    { fontSize: 14, color: colors.onSurface, lineHeight: 21, marginBottom: 8 },
+  quoteText:   { ...type.bodySm, fontFamily: 'NotoSerif_400Italic', fontStyle: 'italic', color: colors.onSurfaceVariant },
+  noteText:    { ...type.body, color: colors.onSurface, marginBottom: 8 },
   noteFooter:  { flexDirection: 'row', gap: 16, paddingTop: 8, borderTopWidth: 1, borderTopColor: colors.surfaceContainerHigh },
   noteAction:  { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  noteActionCount: { fontSize: 13, color: colors.onSurfaceVariant },
+  noteActionCount: { ...type.bodySm, color: colors.onSurfaceVariant },
 
   commentsSection: { marginTop: 10, gap: 8 },
   commentRow:    { flexDirection: 'row', gap: 8, alignItems: 'flex-start' },
   commentAvatar: { width: 26, height: 26, borderRadius: 13, backgroundColor: colors.primary, justifyContent: 'center', alignItems: 'center' },
-  commentAvatarText: { color: colors.onPrimary, fontSize: 11, fontWeight: '700' },
-  commentName:   { fontSize: 12, fontWeight: '700', color: colors.onSurface },
-  commentText:   { fontSize: 13, color: colors.onSurfaceVariant, lineHeight: 18 },
+  commentAvatarText: { color: colors.onPrimary, ...type.caption, fontFamily: 'Manrope_700Bold', fontWeight: '700' },
+  commentName:   { ...type.caption, fontFamily: 'Manrope_700Bold', fontWeight: '700', color: colors.onSurface },
+  commentText:   { ...type.bodySm, color: colors.onSurfaceVariant },
   commentInput:  { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4, borderTopWidth: 1, borderTopColor: colors.surfaceContainerHigh, paddingTop: 8 },
-  commentField:  { flex: 1, fontSize: 13, color: colors.onSurface, paddingVertical: 6 },
+  commentField:  { flex: 1, ...type.bodySm, color: colors.onSurface, paddingVertical: 6 },
 
   accountRow:    { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12 },
-  accountRowText:{ flex: 1, fontSize: 15, color: colors.onSurface, fontWeight: '500' },
+  accountRowText:{ flex: 1, ...type.body, color: colors.onSurface },
   accountDivider:{ height: 1, backgroundColor: colors.surfaceContainerHigh },
 
   // Note modal
   modalRoot:    { flex: 1, backgroundColor: colors.surface },
   modalHeader:  { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 18, paddingBottom: 14, borderBottomWidth: 1, borderBottomColor: colors.outlineVariant + '60' },
   modalCancel:  { fontSize: 15, color: colors.onSurfaceVariant },
-  modalTitle:   { fontSize: 17, fontWeight: '700', color: colors.onSurface },
-  modalSave:    { fontSize: 15, color: colors.primary, fontWeight: '700' },
-  fieldLabel:   { fontSize: 12, fontWeight: '700', color: colors.onSurfaceVariant, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 8 },
+  modalTitle:   { ...type.title, fontFamily: 'NotoSerif_700Bold', color: colors.onSurface },
+  modalSave:    { ...type.body, fontFamily: 'Manrope_700Bold', fontWeight: '700', color: colors.primary },
+  fieldLabel:   { ...type.eyebrow, color: colors.onSurfaceVariant, marginBottom: 8 },
   noteInput:    { borderWidth: 1, borderColor: colors.outlineVariant + '80', borderRadius: radius.md, padding: 12, fontSize: 15, color: colors.onSurface, minHeight: 110, textAlignVertical: 'top', marginBottom: 16 },
   bookChip:     { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 999, borderWidth: 1, borderColor: colors.outlineVariant, marginRight: 8, backgroundColor: colors.surfaceContainerLowest },
   bookChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
