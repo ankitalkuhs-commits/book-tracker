@@ -38,6 +38,15 @@ jobs:
       - name: Install dependencies
         run: npm install
 
+      - name: Inject build info
+        run: |
+          BUILD_DATE=$(date -u '+%Y-%m-%d %H:%M UTC')
+          cat > src/buildInfo.js << EOF
+          // Auto-generated at build time by GitHub Actions.
+          export const BUILD_NUMBER = '${{ github.run_number }}';
+          export const BUILD_DATE = '${BUILD_DATE}';
+          EOF
+
       - name: Build Android APK
         run: eas build --platform android --profile preview --local --output ./build.apk
 

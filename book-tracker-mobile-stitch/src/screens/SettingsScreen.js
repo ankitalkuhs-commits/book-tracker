@@ -9,6 +9,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { profileAPI, notificationsAPI, authAPI } from '../services/api';
 import { PreloadContext } from '../../App';
 import { colors, radius, shadow, type } from '../theme';
+import { BUILD_NUMBER, BUILD_DATE } from '../buildInfo';
 
 // Notification pref keys must match the backend
 const NOTIF_PREFS = [
@@ -417,6 +418,7 @@ export default function SettingsScreen({ navigation, onLogout }) {
             <Text style={styles.aboutText}>
               TrackMyRead — your social reading companion. Log progress, share highlights, and discover your next favorite read.
             </Text>
+            <Text style={styles.buildText}>Build #{BUILD_NUMBER} · {BUILD_DATE}</Text>
           </View>
         </View>
 
@@ -485,6 +487,7 @@ const styles = StyleSheet.create({
 
   aboutBlock: { padding: 16 },
   aboutText:  { ...type.body, color: colors.onSurfaceVariant },
+  buildText:  { fontSize: 11, color: colors.outline, marginTop: 10, fontWeight: '500' },
 
   // Avatar picker modal
   pickerOverlay:  { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
