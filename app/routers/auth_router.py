@@ -116,13 +116,15 @@ def google_auth(payload: GoogleAuthIn, db: Session = Depends(get_session)):
 
         # Check if user exists
         user = crud.get_user_by_email(db, email)
-        
+        is_new_user = False
+
         if not user:
             # Create new user with a random password (since they're using OAuth)
             import secrets
             random_password = secrets.token_urlsafe(32)
             hashed = auth.hash_password(random_password)
             user = crud.create_user(db, name=name, email=email, password_hash=hashed)
+            is_new_user = True
         
         # Update last_active only if date has changed
         today = date.today()
@@ -134,7 +136,7 @@ def google_auth(payload: GoogleAuthIn, db: Session = Depends(get_session)):
 
         # Create access token
         token = auth.create_access_token({"sub": user.email})
-        return {"access_token": token, "user": {"id": user.id, "name": user.name, "email": user.email}}
+        return {"access_token": token, "is_new": is_new_user, "user": {"id": user.id, "name": user.name, "email": user.email}}
 
     except ValueError as e:
         # Invalid token

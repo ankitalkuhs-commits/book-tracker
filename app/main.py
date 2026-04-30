@@ -5,7 +5,7 @@ from fastapi.security import OAuth2PasswordBearer
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
 from .database import init_db
-from .routers import auth_router, books_router, userbooks_router, notes_router, follow_router, profile_router, googlebooks_router, likes_comments, users_router, admin_router, reading_activity_router, push_router, groups_router
+from .routers import auth_router, books_router, userbooks_router, notes_router, follow_router, profile_router, googlebooks_router, likes_comments, users_router, admin_router, reading_activity_router, push_router, groups_router, import_router
 from .notifications.router import router as notifications_router
 import os
 # ---------------------
@@ -75,6 +75,7 @@ app.include_router(reading_activity_router.router)
 app.include_router(push_router.router)
 app.include_router(groups_router.router)
 app.include_router(notifications_router)
+app.include_router(import_router.router)
 
 # ---------------------
 # Step 4.5: Mount static files for uploads
