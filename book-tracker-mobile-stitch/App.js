@@ -1,5 +1,5 @@
 import React, { useState, useEffect, createContext, useRef } from 'react';
-import { View, ActivityIndicator, StyleSheet, AppState } from 'react-native';
+import { View, Text, Animated, ActivityIndicator, StyleSheet, AppState } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import * as Notifications from 'expo-notifications';
 import * as Font from 'expo-font';
@@ -27,12 +27,21 @@ Notifications.setNotificationHandler({
   }),
 });
 
+const SLIDES = [
+  { emoji: '📚', text: 'Track your reading journey' },
+  { emoji: '✍️', text: 'Journal your thoughts & notes' },
+  { emoji: '👥', text: 'Connect with fellow readers' },
+  { emoji: '🌟', text: 'Discover your next favourite read' },
+];
+
 export default function App() {
   const [fontsLoaded, setFontsLoaded]   = useState(false);
   const [authChecked, setAuthChecked]   = useState(false);
   const [isLoggedIn, setIsLoggedIn]     = useState(false);
   const [preloaded, setPreloaded]       = useState(null);
   const [unreadCount, setUnreadCount]   = useState(0);
+  const [slideIndex, setSlideIndex]     = useState(0);
+  const fadeAnim  = useRef(new Animated.Value(1)).current;
   const pollRef    = useRef(null);
   const appStateRef = useRef(AppState.currentState);
 
@@ -42,6 +51,19 @@ export default function App() {
       .catch(() => {}) // non-fatal — fall back to system font
       .finally(() => setFontsLoaded(true));
   }, []);
+
+  // ── Slide carousel animation (runs while loading) ───────────────────────
+  const ready = fontsLoaded && authChecked;
+  useEffect(() => {
+    if (ready) return;
+    const interval = setInterval(() => {
+      Animated.timing(fadeAnim, { toValue: 0, duration: 300, useNativeDriver: true }).start(() => {
+        setSlideIndex(prev => (prev + 1) % SLIDES.length);
+        Animated.timing(fadeAnim, { toValue: 1, duration: 300, useNativeDriver: true }).start();
+      });
+    }, 1800);
+    return () => clearInterval(interval);
+  }, [ready]);
 
   // ── Auth check on mount ──────────────────────────────────────────────────
   useEffect(() => {
@@ -119,13 +141,24 @@ export default function App() {
   };
 
   // ── Loading splash — wait for both fonts + auth ──────────────────────────
-  const ready = fontsLoaded && authChecked;
   if (ready) SplashScreen.hideAsync().catch(() => {});
 
   if (!ready) {
+    const slide = SLIDES[slideIndex];
     return (
       <View style={styles.splash}>
-        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={styles.splashLogo}>📖</Text>
+        <Text style={styles.splashTitle}>TrackMyRead</Text>
+        <Animated.View style={[styles.slideWrap, { opacity: fadeAnim }]}>
+          <Text style={styles.slideEmoji}>{slide.emoji}</Text>
+          <Text style={styles.slideText}>{slide.text}</Text>
+        </Animated.View>
+        <View style={styles.dots}>
+          {SLIDES.map((_, i) => (
+            <View key={i} style={[styles.dot, i === slideIndex && styles.dotActive]} />
+          ))}
+        </View>
+        <ActivityIndicator size="small" color={colors.primary} style={{ marginTop: 32 }} />
       </View>
     );
   }
@@ -151,5 +184,13 @@ export default function App() {
 }
 
 const styles = StyleSheet.create({
-  splash: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surface },
+  splash:      { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surface, paddingHorizontal: 40 },
+  splashLogo:  { fontSize: 64, marginBottom: 12 },
+  splashTitle: { fontSize: 28, fontWeight: '700', color: colors.primary, letterSpacing: -0.5, marginBottom: 56 },
+  slideWrap:   { alignItems: 'center', minHeight: 110, justifyContent: 'center' },
+  slideEmoji:  { fontSize: 48, marginBottom: 14 },
+  slideText:   { fontSize: 16, fontWeight: '500', color: colors.onSurfaceVariant, textAlign: 'center', lineHeight: 24 },
+  dots:        { flexDirection: 'row', gap: 6, marginTop: 28 },
+  dot:         { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.outlineVariant },
+  dotActive:   { backgroundColor: colors.primary, width: 18 },
 });
