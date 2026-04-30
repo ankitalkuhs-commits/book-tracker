@@ -212,7 +212,10 @@ export default function SettingsPage() {
 
   const handleCsvSelect = (file) => {
     if (!file) return
-    if (!file.name.toLowerCase().endsWith('.csv')) {
+    const name = file.name.toLowerCase()
+    const mime = file.type.toLowerCase()
+    const looksLikeCsv = name.endsWith('.csv') || mime.includes('csv') || mime.includes('excel') || mime.includes('spreadsheet')
+    if (!looksLikeCsv) {
       setImportError('Please select the .csv file exported from Goodreads.')
       return
     }
