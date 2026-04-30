@@ -46,7 +46,7 @@ export default function LoginScreen({ onLoginSuccess }) {
       const tokens = await GoogleSignin.getTokens();
       const data   = await authAPI.googleLogin(tokens.idToken);
       await authAPI.saveToken(data.access_token);
-      onLoginSuccess?.(data.is_new === true);
+      onLoginSuccess?.();
     } catch (error) {
       if (error.code === 'SIGN_IN_CANCELLED') { /* user dismissed */ }
       else if (error.code === 'IN_PROGRESS') Alert.alert('Please wait', 'Sign-in already in progress');

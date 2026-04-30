@@ -5,11 +5,12 @@ import * as Notifications from 'expo-notifications';
 import * as Font from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { authAPI, userAPI, userbooksAPI, notesAPI, notificationsAPI } from './src/services/api';
 import { registerExpoPushToken } from './src/services/NotificationService';
 import AppNavigator from './src/navigation/AppNavigator';
 import LoginScreen from './src/screens/LoginScreen';
-import OnboardingScreen from './src/screens/OnboardingScreen';
+import AppTour, { TOUR_KEY } from './src/components/AppTour';
 import { colors, fontMap } from './src/theme';
 import { NotificationContext } from './src/context/NotificationContext';
 
@@ -40,7 +41,7 @@ export default function App() {
   const [authChecked, setAuthChecked]   = useState(false);
   const [isLoggedIn, setIsLoggedIn]     = useState(false);
   const [preloaded, setPreloaded]       = useState(null);
-  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [showTour, setShowTour] = useState(false);
   const [unreadCount, setUnreadCount]   = useState(0);
   const [slideIndex, setSlideIndex]     = useState(0);
   const fadeAnim  = useRef(new Animated.Value(1)).current;
@@ -73,7 +74,9 @@ export default function App() {
       const loggedIn = await authAPI.isLoggedIn();
       if (loggedIn) {
         await preloadData();
+        const tourDone = await AsyncStorage.getItem(TOUR_KEY).catch(() => null);
         setIsLoggedIn(true);
+        if (!tourDone) setShowTour(true);
       }
       setAuthChecked(true);
     })();
@@ -130,17 +133,19 @@ export default function App() {
   }, [isLoggedIn]);
 
   // ── Login / Logout ───────────────────────────────────────────────────────
-  const handleLoginSuccess = async (isNewUser = false) => {
+  const handleLoginSuccess = async () => {
     await preloadData();
+    // Check if tour has been completed (AsyncStorage is async, read here)
+    const tourDone = await AsyncStorage.getItem(TOUR_KEY).catch(() => null);
     setIsLoggedIn(true);
-    if (isNewUser) setShowOnboarding(true);
+    if (!tourDone) setShowTour(true);
   };
 
   const handleLogout = async () => {
     clearInterval(pollRef.current);
     setPreloaded(null);
     setUnreadCount(0);
-    setShowOnboarding(false);
+    setShowTour(false);
     setIsLoggedIn(false);
   };
 
@@ -172,10 +177,6 @@ export default function App() {
     return <LoginScreen onLoginSuccess={handleLoginSuccess} />;
   }
 
-  if (showOnboarding) {
-    return <OnboardingScreen onComplete={() => setShowOnboarding(false)} />;
-  }
-
   return (
     <NotificationContext.Provider value={{ unreadCount }}>
       <PreloadContext.Provider value={{
@@ -186,6 +187,7 @@ export default function App() {
         <NavigationContainer>
           <AppNavigator onLogout={handleLogout} />
         </NavigationContainer>
+        {showTour && <AppTour onDone={() => setShowTour(false)} />}
       </PreloadContext.Provider>
     </NotificationContext.Provider>
   );
