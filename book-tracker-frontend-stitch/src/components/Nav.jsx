@@ -6,7 +6,6 @@ import { getUnreadCount } from '../services/api'
 const NAV_ITEMS = [
   { to: '/home',          label: 'Home',          tour: 'home' },
   { to: '/library',       label: 'Library',        tour: 'library' },
-  { to: '/search',        label: 'Search' },
   { to: '/groups',        label: 'Groups',         tour: 'groups' },
   { to: '/insights',      label: 'Insights',       tour: 'insights' },
   { to: '/notifications', label: 'Notifications' },

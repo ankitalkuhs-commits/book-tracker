@@ -46,6 +46,7 @@ def like_note(
             actor_id=current_user.id,
             actor_name=liker_name,
             recipient_ids=[note.user_id],
+            extra={"note_id": note_id},
         )
     
     return {"message": "Liked", "liked": True}

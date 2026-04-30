@@ -425,6 +425,8 @@ export default function SettingsPage() {
           { key: 'post_commented',           label: 'Comments',              desc: 'When someone comments on your post' },
           { key: 'book_completed',           label: 'Friend activity',       desc: 'When friends add or finish books' },
           { key: 'reading_streak_reminder',  label: 'Streak reminders',      desc: 'Daily reminder to keep your reading streak' },
+          { key: 'group_invite',             label: 'Circle invites',        desc: 'When someone invites you to join a Circle' },
+          { key: 'group_join_request',       label: 'Join requests',         desc: 'When someone requests to join your Circle (curators only)' },
         ].map(({ key, label, desc }) => (
           <div key={key} className="flex items-start justify-between gap-4">
             <div className="flex-1 min-w-0">

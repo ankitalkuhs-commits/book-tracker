@@ -19,6 +19,7 @@ import GroupDetailPage from './pages/GroupDetailPage'
 import JoinGroupPage from './pages/JoinGroupPage'
 import InsightsPage from './pages/InsightsPage'
 import OnboardingPage, { ONBOARDING_KEY } from './pages/OnboardingPage'
+import BookDetailPage from './pages/BookDetailPage'
 
 // Wraps all logged-in pages with the Nav bar + in-app tour for new users
 function AppLayout({ children }) {
@@ -77,6 +78,7 @@ export default function App() {
       <Route path="/onboarding" element={<OnboardingRoute />} />
       <Route path="/home" element={<PrivateRoute><HomePage /></PrivateRoute>} />
       <Route path="/library" element={<PrivateRoute><LibraryPage /></PrivateRoute>} />
+      <Route path="/library/book/:userbookId" element={<PrivateRoute><BookDetailPage /></PrivateRoute>} />
       <Route path="/search" element={<PrivateRoute><SearchPage /></PrivateRoute>} />
       <Route path="/profile" element={<PrivateRoute><ProfilePage /></PrivateRoute>} />
       <Route path="/profile/:userId" element={<PrivateRoute><UserProfilePage /></PrivateRoute>} />

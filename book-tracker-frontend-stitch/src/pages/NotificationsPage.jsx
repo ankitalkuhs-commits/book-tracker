@@ -25,14 +25,20 @@ function getDestination(n) {
   const actorId = data.actor_id || n.actor_id
   switch (n.event_type) {
     case 'new_follower':
+      return actorId ? `/profile/${actorId}` : null
     case 'post_liked':
+    case 'post_commented':
+      // Navigate to the actor's profile — full post deep-link not yet supported
+      return actorId ? `/profile/${actorId}` : null
     case 'book_completed':
     case 'book_added':
-      return actorId ? `/profile/${actorId}` : null
-    case 'post_commented':
-      return actorId ? `/profile/${actorId}` : null
+      // Show in the home feed (friends activity)
+      return '/home'
     case 'reading_streak_reminder':
       return '/insights'
+    case 'group_invite':
+    case 'group_join_request':
+      return data.group_id ? `/groups/${data.group_id}` : '/groups'
     default:
       return actorId ? `/profile/${actorId}` : null
   }
