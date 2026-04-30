@@ -248,6 +248,22 @@ export const searchUsersForInvite = (q) => apiFetch(`/users/search?q=${encodeURI
 // Account
 export const deleteAccount = () => apiFetch('/auth/delete-account/me', { method: 'POST' });
 
+// Import
+export const importGoodreads = async (file) => {
+  const token = getToken();
+  const form = new FormData();
+  form.append('file', file);
+  const res = await fetch(`${API_BASE}/import/goodreads`, {
+    method: 'POST',
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: form,
+  });
+  if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.detail || 'Import failed'); }
+  // Invalidate library cache so the new books appear immediately
+  cacheClear('/userbooks');
+  return res.json();
+};
+
 // Admin
 export const getAdminStats = () => apiFetch('/admin/stats');
 export const getAdminUsers = () => apiFetch('/admin/users');

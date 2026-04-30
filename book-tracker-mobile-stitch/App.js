@@ -9,6 +9,7 @@ import { authAPI, userAPI, userbooksAPI, notesAPI, notificationsAPI } from './sr
 import { registerExpoPushToken } from './src/services/NotificationService';
 import AppNavigator from './src/navigation/AppNavigator';
 import LoginScreen from './src/screens/LoginScreen';
+import OnboardingScreen from './src/screens/OnboardingScreen';
 import { colors, fontMap } from './src/theme';
 import { NotificationContext } from './src/context/NotificationContext';
 
@@ -39,6 +40,7 @@ export default function App() {
   const [authChecked, setAuthChecked]   = useState(false);
   const [isLoggedIn, setIsLoggedIn]     = useState(false);
   const [preloaded, setPreloaded]       = useState(null);
+  const [showOnboarding, setShowOnboarding] = useState(false);
   const [unreadCount, setUnreadCount]   = useState(0);
   const [slideIndex, setSlideIndex]     = useState(0);
   const fadeAnim  = useRef(new Animated.Value(1)).current;
@@ -128,15 +130,17 @@ export default function App() {
   }, [isLoggedIn]);
 
   // ── Login / Logout ───────────────────────────────────────────────────────
-  const handleLoginSuccess = async () => {
+  const handleLoginSuccess = async (isNewUser = false) => {
     await preloadData();
     setIsLoggedIn(true);
+    if (isNewUser) setShowOnboarding(true);
   };
 
   const handleLogout = async () => {
     clearInterval(pollRef.current);
     setPreloaded(null);
     setUnreadCount(0);
+    setShowOnboarding(false);
     setIsLoggedIn(false);
   };
 
@@ -166,6 +170,10 @@ export default function App() {
   // ── Auth gate ────────────────────────────────────────────────────────────
   if (!isLoggedIn) {
     return <LoginScreen onLoginSuccess={handleLoginSuccess} />;
+  }
+
+  if (showOnboarding) {
+    return <OnboardingScreen onComplete={() => setShowOnboarding(false)} />;
   }
 
   return (

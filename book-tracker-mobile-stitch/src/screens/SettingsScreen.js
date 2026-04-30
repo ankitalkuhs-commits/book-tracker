@@ -4,9 +4,10 @@ import {
   Switch, ActivityIndicator, Alert, Image, Modal, FlatList,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import * as DocumentPicker from 'expo-document-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { profileAPI, notificationsAPI, authAPI } from '../services/api';
+import { profileAPI, notificationsAPI, authAPI, importAPI } from '../services/api';
 import { PreloadContext } from '../../App';
 import { colors, radius, shadow, type } from '../theme';
 import { BUILD_NUMBER, BUILD_DATE } from '../buildInfo';
@@ -124,7 +125,9 @@ export default function SettingsScreen({ navigation, onLogout }) {
   const [isPrivate,       setIsPrivate]       = useState(false);
   const [savingPrivacy,   setSavingPrivacy]   = useState(false);
   const [uploadingPhoto,  setUploadingPhoto]  = useState(false);
-  const [showAvatarPicker, setShowAvatarPicker] = useState(false);
+  const [showAvatarPicker,   setShowAvatarPicker]   = useState(false);
+  const [importing,          setImporting]          = useState(false);
+  const [importResult,       setImportResult]       = useState(null); // { imported, skipped, failed, total }
 
   useEffect(() => {
     (async () => {
@@ -202,6 +205,33 @@ export default function SettingsScreen({ navigation, onLogout }) {
     setPrefs(updated);
     try { await notificationsAPI.updatePrefs({ [key]: updated[key] }); }
     catch { setPrefs(prefs); }
+  };
+
+  const handleGoodreadsImport = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: ['text/csv', 'text/comma-separated-values', 'application/csv', '*/*'],
+        copyToCacheDirectory: true,
+      });
+      if (result.canceled) return;
+
+      const asset = result.assets?.[0];
+      if (!asset) return;
+
+      // Quick sanity check — file should end in .csv
+      if (!asset.name?.toLowerCase().endsWith('.csv')) {
+        Alert.alert('Wrong file type', 'Please select the .csv file exported from Goodreads (Account → Import & Export → Export Library).');
+        return;
+      }
+
+      setImporting(true);
+      const data = await importAPI.importGoodreads(asset.uri, asset.name);
+      setImportResult(data);
+    } catch (e) {
+      Alert.alert('Import failed', e?.response?.data?.detail || e?.message || 'Something went wrong. Please try again.');
+    } finally {
+      setImporting(false);
+    }
   };
 
   const handleLogout = () => Alert.alert('Sign out', 'Are you sure?', [
@@ -401,6 +431,43 @@ export default function SettingsScreen({ navigation, onLogout }) {
           ))}
         </View>
 
+        {/* ── Your Data section ── */}
+        <SectionHeader label="Your Data" />
+        <View style={styles.card}>
+          <Row
+            icon="cloud-download-outline"
+            label="Import from Goodreads"
+            desc="Bring your entire Goodreads library — status, ratings, and reviews — into TrackMyRead."
+            onPress={importing ? undefined : handleGoodreadsImport}
+            rightEl={importing
+              ? <ActivityIndicator size="small" color={colors.primary} />
+              : undefined
+            }
+          />
+          <View style={styles.rowSep} />
+          <View style={styles.howToBlock}>
+            <Text style={styles.howToTitle}>How to export from Goodreads</Text>
+            {[
+              'Open goodreads.com in your phone browser',
+              'Go to Account → Import and Export',
+              'Tap "Export Library" and wait for the email',
+              'Download the .csv file to your phone',
+              'Come back here and tap Import',
+            ].map((step, i) => (
+              <View key={i} style={styles.howToRow}>
+                <View style={styles.howToNum}><Text style={styles.howToNumText}>{i + 1}</Text></View>
+                <Text style={styles.howToStep}>{step}</Text>
+              </View>
+            ))}
+          </View>
+          {importing && (
+            <View style={styles.importingBanner}>
+              <Ionicons name="sync-outline" size={14} color={colors.primary} />
+              <Text style={styles.importingText}>Importing your library… this may take a minute for large collections.</Text>
+            </View>
+          )}
+        </View>
+
         {/* ── Account section ── */}
         <SectionHeader label="Account" />
         <View style={styles.card}>
@@ -424,6 +491,52 @@ export default function SettingsScreen({ navigation, onLogout }) {
 
         <View style={{ height: 40 }} />
       </ScrollView>
+
+      {/* ── Import result modal ── */}
+      <Modal visible={!!importResult} animationType="fade" transparent onRequestClose={() => setImportResult(null)}>
+        <View style={styles.resultOverlay}>
+          <View style={styles.resultSheet}>
+            <Text style={styles.resultEmoji}>
+              {importResult?.imported > 0 ? '🎉' : '📋'}
+            </Text>
+            <Text style={styles.resultTitle}>Import Complete</Text>
+
+            <View style={styles.resultStats}>
+              <View style={styles.resultStat}>
+                <Text style={styles.resultStatNum}>{importResult?.imported ?? 0}</Text>
+                <Text style={styles.resultStatLabel}>Imported</Text>
+              </View>
+              <View style={styles.resultStatDivider} />
+              <View style={styles.resultStat}>
+                <Text style={styles.resultStatNum}>{importResult?.skipped ?? 0}</Text>
+                <Text style={styles.resultStatLabel}>Already in library</Text>
+              </View>
+              {(importResult?.failed ?? 0) > 0 && <>
+                <View style={styles.resultStatDivider} />
+                <View style={styles.resultStat}>
+                  <Text style={[styles.resultStatNum, { color: colors.error }]}>{importResult?.failed}</Text>
+                  <Text style={styles.resultStatLabel}>Errors</Text>
+                </View>
+              </>}
+            </View>
+
+            {importResult?.imported > 0 && (
+              <Text style={styles.resultDesc}>
+                Your Goodreads library is now in TrackMyRead. Ratings and reviews have been imported too.
+              </Text>
+            )}
+            {importResult?.imported === 0 && importResult?.skipped > 0 && (
+              <Text style={styles.resultDesc}>
+                All books were already in your library — nothing new to import.
+              </Text>
+            )}
+
+            <TouchableOpacity style={styles.resultBtn} onPress={() => setImportResult(null)}>
+              <Text style={styles.resultBtnText}>Done</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
 
       <AvatarPickerModal
         visible={showAvatarPicker}
@@ -502,4 +615,30 @@ const styles = StyleSheet.create({
   avatarTileCheck:{ position: 'absolute', bottom: 4, right: 4, backgroundColor: colors.surfaceContainerLowest, borderRadius: 10 },
   useAvatarBtn:   { marginHorizontal: 20, marginTop: 16, backgroundColor: colors.primary, paddingVertical: 14, borderRadius: radius.lg, alignItems: 'center' },
   useAvatarBtnText: { ...type.body, fontFamily: 'Manrope_700Bold', fontWeight: '700', color: colors.onPrimary },
+
+  // Goodreads how-to steps
+  howToBlock:   { paddingHorizontal: 14, paddingVertical: 12, gap: 10 },
+  howToTitle:   { fontSize: 12, fontWeight: '700', color: colors.onSurfaceVariant, marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.8 },
+  howToRow:     { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
+  howToNum:     { width: 20, height: 20, borderRadius: 10, backgroundColor: colors.primary + '18', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 },
+  howToNumText: { fontSize: 11, fontWeight: '700', color: colors.primary },
+  howToStep:    { flex: 1, fontSize: 13, fontWeight: '400', color: colors.onSurfaceVariant, lineHeight: 20 },
+
+  // Goodreads import banner
+  importingBanner: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginHorizontal: 14, marginBottom: 14, backgroundColor: colors.primary + '10', padding: 10, borderRadius: radius.md },
+  importingText:   { flex: 1, fontSize: 12, fontWeight: '400', color: colors.primary, lineHeight: 18 },
+
+  // Import result modal
+  resultOverlay:  { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', alignItems: 'center', justifyContent: 'center', padding: 32 },
+  resultSheet:    { backgroundColor: colors.surfaceContainerLowest, borderRadius: radius.xl, padding: 28, width: '100%', alignItems: 'center', ...shadow.float },
+  resultEmoji:    { fontSize: 52, marginBottom: 8 },
+  resultTitle:    { fontSize: 20, fontWeight: '700', color: colors.onSurface, marginBottom: 20 },
+  resultStats:    { flexDirection: 'row', alignItems: 'center', marginBottom: 20, backgroundColor: colors.surfaceContainerLow, borderRadius: radius.lg, padding: 16, width: '100%', justifyContent: 'center' },
+  resultStat:     { alignItems: 'center', flex: 1 },
+  resultStatNum:  { fontSize: 28, fontWeight: '700', color: colors.primary },
+  resultStatLabel:{ fontSize: 11, fontWeight: '500', color: colors.onSurfaceVariant, marginTop: 2, textAlign: 'center' },
+  resultStatDivider: { width: 1, height: 40, backgroundColor: colors.outlineVariant },
+  resultDesc:     { fontSize: 14, fontWeight: '400', color: colors.onSurfaceVariant, textAlign: 'center', lineHeight: 22, marginBottom: 20 },
+  resultBtn:      { backgroundColor: colors.primary, borderRadius: radius.full, paddingHorizontal: 40, paddingVertical: 13, width: '100%', alignItems: 'center' },
+  resultBtnText:  { fontSize: 15, fontWeight: '700', color: colors.onPrimary },
 });

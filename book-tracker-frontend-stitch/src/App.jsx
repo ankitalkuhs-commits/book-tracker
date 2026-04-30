@@ -16,6 +16,7 @@ import CreateGroupPage from './pages/CreateGroupPage'
 import GroupDetailPage from './pages/GroupDetailPage'
 import JoinGroupPage from './pages/JoinGroupPage'
 import InsightsPage from './pages/InsightsPage'
+import OnboardingPage, { ONBOARDING_KEY } from './pages/OnboardingPage'
 
 // Wraps all logged-in pages with the Nav bar
 function AppLayout({ children }) {
@@ -34,7 +35,18 @@ function PrivateRoute({ children }) {
       <span className="text-on-surface-variant font-sans">Loading...</span>
     </div>
   )
-  return user ? <AppLayout>{children}</AppLayout> : <Navigate to="/" replace />
+  if (!user) return <Navigate to="/" replace />
+  // Redirect to onboarding if not yet completed
+  if (!localStorage.getItem(ONBOARDING_KEY)) return <Navigate to="/onboarding" replace />
+  return <AppLayout>{children}</AppLayout>
+}
+
+function OnboardingRoute() {
+  const { user, loading } = useAuth()
+  if (loading) return null
+  if (!user) return <Navigate to="/" replace />
+  if (localStorage.getItem(ONBOARDING_KEY)) return <Navigate to="/home" replace />
+  return <OnboardingPage />
 }
 
 function AdminRoute({ children }) {
@@ -57,6 +69,7 @@ export default function App() {
   return (
     <Routes>
       <Route path="/" element={user ? <Navigate to="/home" replace /> : <LoginPage />} />
+      <Route path="/onboarding" element={<OnboardingRoute />} />
       <Route path="/home" element={<PrivateRoute><HomePage /></PrivateRoute>} />
       <Route path="/library" element={<PrivateRoute><LibraryPage /></PrivateRoute>} />
       <Route path="/search" element={<PrivateRoute><SearchPage /></PrivateRoute>} />

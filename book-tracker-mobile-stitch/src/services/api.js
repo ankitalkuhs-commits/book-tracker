@@ -171,4 +171,16 @@ export const activityAPI = {
   getInsights: async () => (await api.get('/reading-activity/insights')).data,
 };
 
+// Import API
+export const importAPI = {
+  importGoodreads: async (fileUri, fileName) => {
+    const formData = new FormData();
+    formData.append('file', { uri: fileUri, type: 'text/csv', name: fileName || 'goodreads_library.csv' });
+    return (await api.post('/import/goodreads', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 60000,  // large libraries can take a while
+    })).data;
+  },
+};
+
 export default api;

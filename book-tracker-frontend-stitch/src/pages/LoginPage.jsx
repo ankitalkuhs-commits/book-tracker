@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { googleLogin, setToken } from '../services/api'
 import { GoogleLogin } from '@react-oauth/google'
+import { ONBOARDING_KEY } from './OnboardingPage'
 
 const HERO_IMAGE = 'https://images.unsplash.com/photo-1507842217343-583bb7270b66?w=800&q=80'
 
@@ -17,7 +18,9 @@ export default function LoginPage() {
       const data = await googleLogin(credentialResponse.credential)
       setToken(data.access_token)
       login(data.user)
-      navigate('/home')
+      // New users → onboarding; returning users who've completed it → home
+      const destination = !localStorage.getItem(ONBOARDING_KEY) ? '/onboarding' : '/home'
+      navigate(destination)
     } catch (err) {
       console.error('Google login failed:', err)
       alert('Sign in failed. Please try again.')

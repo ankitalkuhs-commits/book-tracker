@@ -1,8 +1,8 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../components/Toast'
-import { getMyProfile, updateMyProfile, uploadProfilePicture, deleteAccount, getNotificationPrefs, updateNotificationPrefs } from '../services/api'
+import { getMyProfile, updateMyProfile, uploadProfilePicture, deleteAccount, getNotificationPrefs, updateNotificationPrefs, importGoodreads } from '../services/api'
 
 // Illustrated preset avatars via DiceBear adventurer style
 const PRESET_AVATARS = [
@@ -113,6 +113,14 @@ export default function SettingsPage() {
   })
   const [savingPref, setSavingPref] = useState(null) // key of pref currently saving
 
+  // Goodreads import
+  const csvInputRef = useRef()
+  const [importFile, setImportFile]     = useState(null)   // File object
+  const [importing, setImporting]       = useState(false)
+  const [importResult, setImportResult] = useState(null)   // { imported, skipped, failed, total }
+  const [importError, setImportError]   = useState(null)
+  const [dragging, setDragging]         = useState(false)
+
   useEffect(() => {
     getMyProfile().then(p => {
       setName(p.name || '')
@@ -200,6 +208,45 @@ export default function SettingsPage() {
       toast(e.message || 'Failed to update privacy', 'error')
     }
     setSavingPrivacy(false)
+  }
+
+  const handleCsvSelect = (file) => {
+    if (!file) return
+    if (!file.name.toLowerCase().endsWith('.csv')) {
+      setImportError('Please select the .csv file exported from Goodreads.')
+      return
+    }
+    setImportFile(file)
+    setImportResult(null)
+    setImportError(null)
+  }
+
+  const handleDrop = useCallback((e) => {
+    e.preventDefault()
+    setDragging(false)
+    const file = e.dataTransfer.files?.[0]
+    handleCsvSelect(file)
+  }, [])
+
+  const handleDragOver = (e) => { e.preventDefault(); setDragging(true) }
+  const handleDragLeave = () => setDragging(false)
+
+  const handleImport = async () => {
+    if (!importFile) return
+    setImporting(true)
+    setImportError(null)
+    setImportResult(null)
+    try {
+      const result = await importGoodreads(importFile)
+      setImportResult(result)
+      setImportFile(null)
+      if (result.imported > 0) {
+        toast(`${result.imported} books imported from Goodreads!`, 'success')
+      }
+    } catch (e) {
+      setImportError(e.message || 'Import failed. Please try again.')
+    }
+    setImporting(false)
   }
 
   const handleSignOut = () => {
@@ -396,6 +443,227 @@ export default function SettingsPage() {
             </button>
           </div>
         ))}
+      </section>
+
+      {/* ── Import Your Library ── */}
+      <section className="bg-surface-container-lowest rounded-3xl overflow-hidden">
+
+        {/* Header */}
+        <div className="px-8 pt-8 pb-5 border-b border-outline-variant/15">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-secondary/10 flex items-center justify-center shrink-0 mt-0.5">
+              <span className="material-symbols-outlined text-secondary text-xl">download</span>
+            </div>
+            <div>
+              <h2 className="font-sans text-base font-bold text-on-surface uppercase tracking-wider">Import Your Library</h2>
+              <p className="text-sm text-on-surface-variant mt-1 leading-relaxed">
+                Bring your entire Goodreads reading history into TrackMyRead — books, status, star ratings, and reviews.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Step-by-step guide */}
+        <div className="px-8 py-6 border-b border-outline-variant/15">
+          <p className="text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-4">How to export from Goodreads</p>
+          <ol className="space-y-3">
+            {[
+              {
+                n: '1',
+                text: 'Open the Goodreads Import & Export page (you\'ll need to be signed in)',
+                icon: 'open_in_new',
+                link: 'https://www.goodreads.com/review/import',
+                linkLabel: 'Go to Goodreads Import & Export →',
+              },
+              {
+                n: '2',
+                text: 'Scroll down to the "Export Library" section',
+                icon: 'manage_accounts',
+              },
+              {
+                n: '3',
+                text: 'Click "Export Library" — Goodreads will prepare your file',
+                icon: 'table_rows',
+              },
+              {
+                n: '4',
+                text: 'Goodreads generates your file — click "Your export from…" to download the .csv',
+                icon: 'download',
+              },
+              {
+                n: '5',
+                text: 'Upload that file below. Your books, ratings, and reviews all come across.',
+                icon: 'upload_file',
+              },
+            ].map(step => (
+              <li key={step.n} className="flex items-start gap-3">
+                <span className="w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">
+                  {step.n}
+                </span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm text-on-surface leading-relaxed">{step.text}</p>
+                  {step.link && (
+                    <a
+                      href={step.link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline mt-1"
+                    >
+                      <span className="material-symbols-outlined text-sm">open_in_new</span>
+                      {step.linkLabel}
+                    </a>
+                  )}
+                </div>
+              </li>
+            ))}
+          </ol>
+
+          {/* Visual tip showing what to look for */}
+          <div className="mt-4 flex items-start gap-2 bg-secondary/8 rounded-2xl px-4 py-3">
+            <span className="material-symbols-outlined text-secondary text-base shrink-0 mt-0.5">lightbulb</span>
+            <p className="text-xs text-on-surface-variant leading-relaxed">
+              <span className="font-semibold text-on-surface">Tip:</span> The exported file is named something like{' '}
+              <code className="bg-surface-container-high px-1.5 py-0.5 rounded text-xs font-mono">goodreads_library_export.csv</code>.
+              Make sure you download the file, not just open it.
+            </p>
+          </div>
+        </div>
+
+        {/* Upload zone */}
+        <div className="px-8 py-6">
+          {!importResult ? (
+            <>
+              {/* Drop zone */}
+              <div
+                onDrop={handleDrop}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onClick={() => !importFile && csvInputRef.current?.click()}
+                className={`relative border-2 border-dashed rounded-2xl transition-all cursor-pointer ${
+                  dragging
+                    ? 'border-primary bg-primary/5 scale-[1.01]'
+                    : importFile
+                    ? 'border-secondary/50 bg-secondary/5 cursor-default'
+                    : 'border-outline-variant hover:border-primary/50 hover:bg-surface-container-low'
+                }`}
+              >
+                <div className="flex flex-col items-center justify-center gap-2 py-8 px-6 text-center">
+                  {importFile ? (
+                    <>
+                      <span className="material-symbols-outlined text-4xl text-secondary" style={{ fontVariationSettings: "'FILL' 1" }}>description</span>
+                      <p className="font-semibold text-sm text-on-surface">{importFile.name}</p>
+                      <p className="text-xs text-on-surface-variant">{(importFile.size / 1024).toFixed(1)} KB · CSV file</p>
+                      <button
+                        type="button"
+                        onClick={e => { e.stopPropagation(); setImportFile(null); setImportError(null) }}
+                        className="text-xs text-on-surface-variant hover:text-error transition-colors mt-1"
+                      >
+                        Remove file
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <span className="material-symbols-outlined text-4xl text-outline-variant">upload_file</span>
+                      <div>
+                        <p className="font-semibold text-sm text-on-surface">Drop your Goodreads CSV here</p>
+                        <p className="text-xs text-on-surface-variant mt-1">or click to browse your files</p>
+                      </div>
+                      <p className="text-xs text-outline-variant">.csv files only</p>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              <input
+                ref={csvInputRef}
+                type="file"
+                accept=".csv,text/csv"
+                className="hidden"
+                onChange={e => handleCsvSelect(e.target.files?.[0])}
+              />
+
+              {/* Error */}
+              {importError && (
+                <div className="flex items-start gap-2 mt-3 text-sm text-error bg-error/8 rounded-xl px-4 py-3">
+                  <span className="material-symbols-outlined text-base shrink-0 mt-0.5">error</span>
+                  {importError}
+                </div>
+              )}
+
+              {/* Import button */}
+              {importFile && (
+                <button
+                  type="button"
+                  onClick={handleImport}
+                  disabled={importing}
+                  className="w-full mt-4 btn-primary py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 disabled:opacity-60"
+                >
+                  {importing ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      Importing your library…
+                    </>
+                  ) : (
+                    <>
+                      <span className="material-symbols-outlined text-base">upload</span>
+                      Import from Goodreads
+                    </>
+                  )}
+                </button>
+              )}
+              {importing && (
+                <p className="text-xs text-center text-on-surface-variant mt-2">
+                  This may take a minute for large collections — please don't close this tab.
+                </p>
+              )}
+            </>
+          ) : (
+            /* ── Result card ── */
+            <div className="animate-fadeInUp">
+              <div className="text-center mb-5">
+                <span className="text-5xl">{importResult.imported > 0 ? '🎉' : '📋'}</span>
+                <h3 className="font-serif text-xl font-bold text-on-surface mt-3">Import Complete</h3>
+              </div>
+
+              <div className="grid grid-cols-3 gap-3 mb-5">
+                <div className="bg-surface-container-low rounded-2xl p-4 text-center">
+                  <p className="text-2xl font-bold text-primary">{importResult.imported}</p>
+                  <p className="text-xs text-on-surface-variant mt-1 font-medium">Imported</p>
+                </div>
+                <div className="bg-surface-container-low rounded-2xl p-4 text-center">
+                  <p className="text-2xl font-bold text-on-surface-variant">{importResult.skipped}</p>
+                  <p className="text-xs text-on-surface-variant mt-1 font-medium">Already in library</p>
+                </div>
+                <div className="bg-surface-container-low rounded-2xl p-4 text-center">
+                  <p className={`text-2xl font-bold ${importResult.failed > 0 ? 'text-error' : 'text-on-surface-variant'}`}>
+                    {importResult.failed}
+                  </p>
+                  <p className="text-xs text-on-surface-variant mt-1 font-medium">Errors</p>
+                </div>
+              </div>
+
+              {importResult.imported > 0 && (
+                <p className="text-sm text-on-surface-variant text-center leading-relaxed mb-4">
+                  Your Goodreads library is now in TrackMyRead. Ratings and reviews have been saved too.
+                  Head to your <a href="/library" className="text-primary font-medium hover:underline">Library</a> to see everything.
+                </p>
+              )}
+              {importResult.imported === 0 && importResult.skipped > 0 && (
+                <p className="text-sm text-on-surface-variant text-center leading-relaxed mb-4">
+                  All books were already in your library — nothing new to import.
+                </p>
+              )}
+
+              <button
+                type="button"
+                onClick={() => { setImportResult(null); setImportError(null) }}
+                className="w-full py-2.5 rounded-xl border border-outline-variant text-sm font-medium text-on-surface-variant hover:bg-surface-container transition-colors"
+              >
+                Import another file
+              </button>
+            </div>
+          )}
+        </div>
       </section>
 
       {/* Account section */}
