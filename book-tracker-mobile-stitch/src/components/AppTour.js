@@ -21,7 +21,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors, radius, shadow } from '../theme';
-import { userAPI, profileAPI } from '../services/api';
+import { userAPI, profileAPI, booksAPI } from '../services/api';
 
 export const TOUR_KEY = 'bt_tour_v1';   // bump to reset for all users
 
@@ -114,6 +114,11 @@ function buildSteps(insets) {
       body:  "How many books do you want to read this year? You can always change this in Settings.",
     },
     {
+      type: 'book',
+      title: 'Add Your First Book',
+      body:  "Search for a book you're reading now, or want to read next.",
+    },
+    {
       type: 'done',
       title: "You're all set!",
       body:  "Explore the app, add books, and connect with fellow readers.",
@@ -140,6 +145,14 @@ export default function AppTour({ onDone }) {
   const [customGoal, setCustomGoal] = useState('');
   const [savingGoal, setSavingGoal] = useState(false);
 
+  // Book step state
+  const [bookQuery,    setBookQuery]    = useState('');
+  const [bookResults,  setBookResults]  = useState([]);
+  const [searchingBook,setSearchingBook]= useState(false);
+  const [addedBook,    setAddedBook]    = useState(null);
+  const [addingBook,   setAddingBook]   = useState(null); // google_books_id being added
+  const bookSearchTimer                  = useRef(null);
+
   const current = steps[step];
   const total   = steps.length;
 
@@ -159,6 +172,35 @@ export default function AppTour({ onDone }) {
       await AsyncStorage.setItem(TOUR_KEY, '1');
       onDone?.();
     });
+  };
+
+  const handleBookSearch = (query) => {
+    setBookQuery(query);
+    clearTimeout(bookSearchTimer.current);
+    if (!query.trim()) { setBookResults([]); return; }
+    bookSearchTimer.current = setTimeout(async () => {
+      setSearchingBook(true);
+      try {
+        const res = await booksAPI.search(query);
+        setBookResults((res.books || res || []).slice(0, 5));
+      } catch { setBookResults([]); }
+      finally { setSearchingBook(false); }
+    }, 500);
+  };
+
+  const handleAddBook = async (book) => {
+    setAddingBook(book.google_books_id);
+    try {
+      await booksAPI.addToLibrary({
+        google_books_id: book.google_books_id,
+        title:           book.title,
+        author:          book.authors?.[0] || book.author || '',
+        cover_url:       book.cover_url || book.thumbnail || '',
+        status:          'to-read',
+      });
+      setAddedBook(book);
+    } catch { /* non-fatal */ }
+    finally { setAddingBook(null); }
   };
 
   const handleNext = async () => {
@@ -188,7 +230,7 @@ export default function AppTour({ onDone }) {
 
   const spot = current.spot;
   const isLast = step === total - 1;
-  const isBusy = savingAvatar || savingGoal;
+  const isBusy = savingAvatar || savingGoal || !!addingBook;
 
   // ── Spotlight geometry ────────────────────────────────────────────────────
   const sl = spot ? spot.x - PAD : 0;
@@ -337,12 +379,89 @@ export default function AppTour({ onDone }) {
               </View>
             )}
 
-            {/* ── Done illustration (step 6) ───────────────────────────── */}
+            {/* ── Book search (step 6) ─────────────────────────────────── */}
+            {current.type === 'book' && (
+              <View style={styles.bookBlock}>
+                {addedBook ? (
+                  <View style={styles.bookAdded}>
+                    {addedBook.cover_url || addedBook.thumbnail ? (
+                      <Image source={{ uri: addedBook.cover_url || addedBook.thumbnail }} style={styles.bookAddedCover} />
+                    ) : null}
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.bookAddedTitle} numberOfLines={2}>{addedBook.title}</Text>
+                      <Text style={styles.bookAddedSub}>{addedBook.authors?.[0] || addedBook.author}</Text>
+                      <View style={styles.bookAddedBadge}>
+                        <Ionicons name="checkmark-circle" size={13} color={colors.primary} />
+                        <Text style={styles.bookAddedBadgeText}>Added to your shelf</Text>
+                      </View>
+                    </View>
+                    <TouchableOpacity onPress={() => { setAddedBook(null); setBookQuery(''); setBookResults([]); }} activeOpacity={0.7}>
+                      <Text style={styles.bookChangeText}>Change</Text>
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <>
+                    <View style={styles.bookSearchRow}>
+                      <Ionicons name="search" size={14} color={colors.outline} style={{ marginRight: 6 }} />
+                      <TextInput
+                        style={styles.bookSearchInput}
+                        value={bookQuery}
+                        onChangeText={handleBookSearch}
+                        placeholder="Search by title or author…"
+                        placeholderTextColor={colors.outline}
+                        returnKeyType="search"
+                        autoCorrect={false}
+                      />
+                      {searchingBook && <ActivityIndicator size="small" color={colors.primary} />}
+                    </View>
+                    {bookResults.length > 0 && (
+                      <ScrollView style={styles.bookResults} showsVerticalScrollIndicator={false} nestedScrollEnabled>
+                        {bookResults.map(book => (
+                          <TouchableOpacity
+                            key={book.google_books_id}
+                            style={styles.bookResultRow}
+                            onPress={() => handleAddBook(book)}
+                            disabled={!!addingBook}
+                            activeOpacity={0.75}
+                          >
+                            {book.cover_url || book.thumbnail ? (
+                              <Image source={{ uri: book.cover_url || book.thumbnail }} style={styles.bookResultCover} />
+                            ) : (
+                              <View style={[styles.bookResultCover, styles.bookResultCoverFallback]}>
+                                <Ionicons name="book" size={18} color={colors.outline} />
+                              </View>
+                            )}
+                            <View style={{ flex: 1 }}>
+                              <Text style={styles.bookResultTitle} numberOfLines={1}>{book.title}</Text>
+                              <Text style={styles.bookResultAuthor} numberOfLines={1}>{book.authors?.[0] || book.author}</Text>
+                            </View>
+                            {addingBook === book.google_books_id ? (
+                              <ActivityIndicator size="small" color={colors.primary} />
+                            ) : (
+                              <Ionicons name="add-circle-outline" size={20} color={colors.primary} />
+                            )}
+                          </TouchableOpacity>
+                        ))}
+                      </ScrollView>
+                    )}
+                    {!bookQuery && (
+                      <Text style={styles.bookSkipHint}>You can also skip and add books from your shelf later.</Text>
+                    )}
+                  </>
+                )}
+              </View>
+            )}
+
+            {/* ── Done illustration (step 7) ───────────────────────────── */}
             {current.type === 'done' && (
               <View style={styles.doneRow}>
-                {['📚 Library', '👥 Circles', '📈 Insights'].map(item => (
+                {[
+                  selectedAvatar ? '🖼 Avatar set' : null,
+                  `📖 Goal: ${useCustom ? (customGoal || '?') : goal} books`,
+                  addedBook ? `📚 ${addedBook.title}` : null,
+                ].filter(Boolean).map(item => (
                   <View key={item} style={styles.doneChip}>
-                    <Text style={styles.doneChipText}>{item}</Text>
+                    <Text style={styles.doneChipText} numberOfLines={1}>{item}</Text>
                   </View>
                 ))}
               </View>
@@ -493,6 +612,37 @@ const styles = StyleSheet.create({
     textAlign: 'center', marginBottom: 6,
   },
   goalHint: { fontSize: 12, color: colors.onSurfaceVariant },
+
+  // Book search
+  bookBlock: { marginBottom: 12 },
+  bookSearchRow: {
+    flexDirection: 'row', alignItems: 'center',
+    borderWidth: 1.5, borderColor: colors.outlineVariant,
+    borderRadius: radius.md, paddingHorizontal: 10, paddingVertical: 7,
+    marginBottom: 8, backgroundColor: colors.surfaceContainerLow,
+  },
+  bookSearchInput: { flex: 1, fontSize: 13, color: colors.onSurface },
+  bookResults: { maxHeight: 160 },
+  bookResultRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    paddingVertical: 7, borderBottomWidth: 1, borderBottomColor: colors.outlineVariant + '30',
+  },
+  bookResultCover: { width: 36, height: 52, borderRadius: 4, backgroundColor: colors.surfaceContainerHighest },
+  bookResultCoverFallback: { alignItems: 'center', justifyContent: 'center' },
+  bookResultTitle:  { fontSize: 12, fontWeight: '700', color: colors.onSurface },
+  bookResultAuthor: { fontSize: 11, color: colors.onSurfaceVariant, marginTop: 2 },
+  bookAdded: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    backgroundColor: colors.surfaceContainerLow, borderRadius: radius.md,
+    padding: 10, borderWidth: 1.5, borderColor: colors.primary + '40',
+  },
+  bookAddedCover:  { width: 40, height: 58, borderRadius: 4 },
+  bookAddedTitle:  { fontSize: 13, fontWeight: '700', color: colors.onSurface },
+  bookAddedSub:    { fontSize: 12, color: colors.onSurfaceVariant, marginTop: 2 },
+  bookAddedBadge:  { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 },
+  bookAddedBadgeText: { fontSize: 11, color: colors.primary, fontWeight: '600' },
+  bookChangeText:  { fontSize: 12, color: colors.secondary, fontWeight: '600' },
+  bookSkipHint:    { fontSize: 11, color: colors.outline, fontStyle: 'italic', textAlign: 'center', marginTop: 4 },
 
   // Done chips
   doneRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 8 },
