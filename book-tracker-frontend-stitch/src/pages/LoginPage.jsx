@@ -18,9 +18,7 @@ export default function LoginPage() {
       const data = await googleLogin(credentialResponse.credential)
       setToken(data.access_token)
       login(data.user)
-      // New users → onboarding; returning users who've completed it → home
-      const destination = !localStorage.getItem(ONBOARDING_KEY) ? '/onboarding' : '/home'
-      navigate(destination)
+      navigate('/home')   // tour auto-starts on /home if ONBOARDING_KEY absent
     } catch (err) {
       console.error('Google login failed:', err)
       alert('Sign in failed. Please try again.')

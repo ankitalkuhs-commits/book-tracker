@@ -1,6 +1,8 @@
+import { useState } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from './context/AuthContext'
 import Nav from './components/Nav'
+import AppTour from './components/AppTour'
 
 import LoginPage from './pages/LoginPage'
 import HomePage from './pages/HomePage'
@@ -18,12 +20,17 @@ import JoinGroupPage from './pages/JoinGroupPage'
 import InsightsPage from './pages/InsightsPage'
 import OnboardingPage, { ONBOARDING_KEY } from './pages/OnboardingPage'
 
-// Wraps all logged-in pages with the Nav bar
+// Wraps all logged-in pages with the Nav bar + in-app tour for new users
 function AppLayout({ children }) {
+  const [showTour, setShowTour] = useState(
+    () => !localStorage.getItem(ONBOARDING_KEY)
+  )
+
   return (
     <div className="min-h-screen bg-surface">
       <Nav />
       <div className="pt-16">{children}</div>
+      {showTour && <AppTour onDone={() => setShowTour(false)} />}
     </div>
   )
 }
@@ -36,8 +43,6 @@ function PrivateRoute({ children }) {
     </div>
   )
   if (!user) return <Navigate to="/" replace />
-  // Redirect to onboarding if not yet completed
-  if (!localStorage.getItem(ONBOARDING_KEY)) return <Navigate to="/onboarding" replace />
   return <AppLayout>{children}</AppLayout>
 }
 
@@ -45,7 +50,7 @@ function OnboardingRoute() {
   const { user, loading } = useAuth()
   if (loading) return null
   if (!user) return <Navigate to="/" replace />
-  if (localStorage.getItem(ONBOARDING_KEY)) return <Navigate to="/home" replace />
+  // /onboarding now only used if someone navigates there manually (e.g. "take tour again")
   return <OnboardingPage />
 }
 
