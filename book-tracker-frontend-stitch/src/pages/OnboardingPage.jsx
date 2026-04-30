@@ -10,8 +10,7 @@ const STEPS = ['welcome', 'tour', 'goal', 'import', 'done']
 
 const TABS = [
   {
-    icon: 'newspaper_variant',
-    iconFallback: 'article',
+    icon: 'newspaper',
     label: 'Feed',
     headline: 'Stay Connected',
     desc: "See what your friends are reading, their highlights and reading milestones — all in one place.",
