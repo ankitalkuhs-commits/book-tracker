@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useContext } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity,
-  Switch, ActivityIndicator, Alert, Image, Modal, FlatList,
+  Switch, ActivityIndicator, Alert, Image, Modal, FlatList, Linking,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
@@ -218,8 +218,11 @@ export default function SettingsScreen({ navigation, onLogout }) {
       const asset = result.assets?.[0];
       if (!asset) return;
 
-      // Quick sanity check — file should end in .csv
-      if (!asset.name?.toLowerCase().endsWith('.csv')) {
+      // Accept if: name ends in .csv OR mimeType contains csv/excel (Android often strips extension)
+      const name = asset.name?.toLowerCase() ?? '';
+      const mime = asset.mimeType?.toLowerCase() ?? '';
+      const looksLikeCsv = name.endsWith('.csv') || mime.includes('csv') || mime.includes('excel') || mime.includes('spreadsheet') || name.includes('goodreads');
+      if (!looksLikeCsv) {
         Alert.alert('Wrong file type', 'Please select the .csv file exported from Goodreads (Account → Import & Export → Export Library).');
         return;
       }
@@ -447,15 +450,26 @@ export default function SettingsScreen({ navigation, onLogout }) {
           <View style={styles.rowSep} />
           <View style={styles.howToBlock}>
             <Text style={styles.howToTitle}>How to export from Goodreads</Text>
+            {/* Step 1 — tappable link */}
+            <View style={styles.howToRow}>
+              <View style={styles.howToNum}><Text style={styles.howToNumText}>1</Text></View>
+              <Text style={styles.howToStep}>
+                Open Goodreads on desktop.{' '}
+                <Text
+                  style={styles.howToLink}
+                  onPress={() => Linking.openURL('https://www.goodreads.com/review/import')}
+                >
+                  Go to Import & Export →
+                </Text>
+              </Text>
+            </View>
             {[
-              'Open goodreads.com in your phone browser',
-              'Go to Account → Import and Export',
-              'Tap "Export Library" and wait for the email',
-              'Download the .csv file to your phone',
-              'Come back here and tap Import',
+              'Click "Export Library" — Goodreads will prepare the file',
+              'Download the .csv file to your phone (via email or cloud)',
+              'Come back here, tap Import, and select the file',
             ].map((step, i) => (
               <View key={i} style={styles.howToRow}>
-                <View style={styles.howToNum}><Text style={styles.howToNumText}>{i + 1}</Text></View>
+                <View style={styles.howToNum}><Text style={styles.howToNumText}>{i + 2}</Text></View>
                 <Text style={styles.howToStep}>{step}</Text>
               </View>
             ))}
@@ -623,6 +637,7 @@ const styles = StyleSheet.create({
   howToNum:     { width: 20, height: 20, borderRadius: 10, backgroundColor: colors.primary + '18', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 },
   howToNumText: { fontSize: 11, fontWeight: '700', color: colors.primary },
   howToStep:    { flex: 1, fontSize: 13, fontWeight: '400', color: colors.onSurfaceVariant, lineHeight: 20 },
+  howToLink:    { color: colors.primary, fontWeight: '600', textDecorationLine: 'underline' },
 
   // Goodreads import banner
   importingBanner: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginHorizontal: 14, marginBottom: 14, backgroundColor: colors.primary + '10', padding: 10, borderRadius: radius.md },
