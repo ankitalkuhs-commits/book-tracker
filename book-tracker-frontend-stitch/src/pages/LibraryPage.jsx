@@ -143,7 +143,7 @@ function AddBookModal({ onClose, onAdded }) {
     setSearching(true)
     try {
       const data = await searchGoogleBooks(query)
-      setResults(data || [])
+      setResults(data?.results || data || [])
     } catch { }
     setSearching(false)
   }
