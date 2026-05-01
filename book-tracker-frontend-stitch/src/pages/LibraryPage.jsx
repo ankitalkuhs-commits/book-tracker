@@ -133,19 +133,53 @@ function AddBookModal({ onClose, onAdded }) {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState([])
   const [searching, setSearching] = useState(false)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [hasMore, setHasMore] = useState(false)
+  const [nextStart, setNextStart] = useState(0)
   const [adding, setAdding] = useState(null)
   const inputRef = useRef()
+  const sentinelRef = useRef()
+  const currentQuery = useRef('')
 
   useEffect(() => { inputRef.current?.focus() }, [])
 
+  // Infinite scroll — fire when sentinel enters viewport
+  useEffect(() => {
+    if (!sentinelRef.current) return
+    const observer = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) loadMore() },
+      { threshold: 0.1 }
+    )
+    observer.observe(sentinelRef.current)
+    return () => observer.disconnect()
+  }, [hasMore, nextStart, loadingMore])
+
   const search = async () => {
     if (!query.trim()) return
+    currentQuery.current = query.trim()
     setSearching(true)
+    setResults([])
+    setHasMore(false)
+    setNextStart(0)
     try {
-      const data = await searchGoogleBooks(query)
-      setResults(data?.results || data || [])
+      const data = await searchGoogleBooks(currentQuery.current)
+      setResults(data?.results || [])
+      setHasMore(data?.has_more ?? false)
+      setNextStart(data?.next_start_index ?? 0)
     } catch { }
     setSearching(false)
+  }
+
+  const loadMore = async () => {
+    if (!hasMore || loadingMore || searching) return
+    setLoadingMore(true)
+    try {
+      const data = await searchGoogleBooks(currentQuery.current, { startIndex: nextStart })
+      setResults(prev => [...prev, ...(data?.results || [])])
+      setHasMore(data?.has_more ?? false)
+      setNextStart(data?.next_start_index ?? 0)
+    } catch { }
+    setLoadingMore(false)
   }
 
   const handleKey = (e) => { if (e.key === 'Enter') search() }
@@ -255,6 +289,10 @@ function AddBookModal({ onClose, onAdded }) {
               </div>
             )
           })}
+          {/* Infinite scroll sentinel */}
+          {hasMore && <div ref={sentinelRef} className="py-2 text-center text-xs text-on-surface-variant/50">
+            {loadingMore ? 'Loading more…' : ''}
+          </div>}
         </div>
       </div>
     </div>

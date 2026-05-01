@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext, useCallback } from 'react';
+import React, { useState, useEffect, useContext, useCallback, useRef } from 'react';
 import {
   View, Text, FlatList, StyleSheet, Image, TouchableOpacity,
   RefreshControl, ActivityIndicator, TextInput, Modal, ScrollView,
@@ -207,21 +207,42 @@ function AddBookModal({ visible, onClose, onAdded }) {
   const [query, setQuery]               = useState('');
   const [results, setResults]           = useState([]);
   const [searching, setSearching]       = useState(false);
+  const [loadingMore, setLoadingMore]   = useState(false);
+  const [hasMore, setHasMore]           = useState(false);
+  const [nextStart, setNextStart]       = useState(0);
   const [selectedBook, setSelectedBook] = useState(null);
   const [bookStatus, setBookStatus]     = useState('to-read');
   const [bookFormat, setBookFormat]     = useState('paperback');
   const [ownership, setOwnership]       = useState('owned');
   const [adding, setAdding]             = useState(false);
+  const currentQuery = useRef('');
 
   const searchBooks = async () => {
     if (!query.trim()) return;
+    currentQuery.current = query.trim();
     setSearching(true);
     setResults([]);
+    setHasMore(false);
+    setNextStart(0);
     try {
-      const res = await booksAPI.search(query.trim());
+      const res = await booksAPI.search(currentQuery.current);
       setResults(res?.results || []);
+      setHasMore(res?.has_more ?? false);
+      setNextStart(res?.next_start_index ?? 0);
     } catch { Alert.alert('Error', 'Search failed'); }
     finally { setSearching(false); }
+  };
+
+  const loadMoreBooks = async () => {
+    if (!hasMore || loadingMore || searching) return;
+    setLoadingMore(true);
+    try {
+      const res = await booksAPI.search(currentQuery.current, { startIndex: nextStart });
+      setResults(prev => [...prev, ...(res?.results || [])]);
+      setHasMore(res?.has_more ?? false);
+      setNextStart(res?.next_start_index ?? 0);
+    } catch { }
+    finally { setLoadingMore(false); }
   };
 
   const addBook = async () => {
@@ -302,6 +323,9 @@ function AddBookModal({ visible, onClose, onAdded }) {
                   data={results}
                   keyExtractor={(_, i) => i.toString()}
                   contentContainerStyle={styles.resultsList}
+                  onEndReached={loadMoreBooks}
+                  onEndReachedThreshold={0.3}
+                  ListFooterComponent={loadingMore ? <ActivityIndicator size="small" color={colors.primary} style={{ marginVertical: 12 }} /> : null}
                   renderItem={({ item }) => (
                     <TouchableOpacity
                       style={styles.resultCard}
