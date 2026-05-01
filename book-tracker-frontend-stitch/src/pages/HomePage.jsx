@@ -7,6 +7,7 @@ import {
   likeNote, unlikeNote, getComments, addComment,
   getFriendReading, getFollowing, searchUsers, getMyBooks,
   getRecommendations, addToLibrary, updateNote, deleteNote,
+  adminDeleteNote, adminDeleteComment,
 } from '../services/api'
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -38,7 +39,7 @@ function Avatar({ user, size = 10 }) {
 
 // ─── Post Card ───────────────────────────────────────────────────────────────
 
-function PostCard({ post, currentUserId, onLikeToggle, onDelete, onEdit }) {
+function PostCard({ post, currentUserId, isAdmin, onLikeToggle, onDelete, onEdit }) {
   const navigate = useNavigate()
   const toast = useToast()
   const [showComments, setShowComments] = useState(false)
@@ -50,6 +51,7 @@ function PostCard({ post, currentUserId, onLikeToggle, onDelete, onEdit }) {
   const [editing, setEditing] = useState(false)
   const [editText, setEditText] = useState(post.text || '')
   const [saving, setSaving] = useState(false)
+  const [deletingCommentId, setDeletingCommentId] = useState(null)
 
   const isOwn = post.user?.id === currentUserId || post.user_id === currentUserId
   const isEdited = post.updated_at && post.updated_at !== post.created_at
@@ -60,11 +62,27 @@ function PostCard({ post, currentUserId, onLikeToggle, onDelete, onEdit }) {
     setShowMenu(false)
     if (!window.confirm('Delete this post?')) return
     try {
-      await deleteNote(post.id)
+      if (isAdmin && !isOwn) {
+        await adminDeleteNote(post.id)
+      } else {
+        await deleteNote(post.id)
+      }
       onDelete(post.id)
     } catch (e) {
       toast(e.message || 'Failed to delete', 'error')
     }
+  }
+
+  const handleDeleteComment = async (commentId) => {
+    if (!window.confirm('Delete this comment?')) return
+    setDeletingCommentId(commentId)
+    try {
+      await adminDeleteComment(commentId)
+      setComments(prev => prev.filter(c => c.id !== commentId))
+    } catch (e) {
+      toast(e.message || 'Failed to delete comment', 'error')
+    }
+    setDeletingCommentId(null)
   }
 
   const handleSaveEdit = async () => {
@@ -147,7 +165,7 @@ function PostCard({ post, currentUserId, onLikeToggle, onDelete, onEdit }) {
             </div>
           </button>
 
-          {isOwn && (
+          {(isOwn || isAdmin) && (
             <div className="relative">
               <button
                 onClick={() => setShowMenu(v => !v)}
@@ -157,13 +175,15 @@ function PostCard({ post, currentUserId, onLikeToggle, onDelete, onEdit }) {
               </button>
               {showMenu && (
                 <div className="absolute right-0 top-8 bg-surface-container-lowest rounded-2xl shadow-float border border-outline-variant/15 z-10 min-w-[130px] overflow-hidden">
-                  <button
-                    onClick={() => { setShowMenu(false); setEditing(true) }}
-                    className="flex items-center gap-2 w-full px-4 py-2.5 text-sm text-on-surface hover:bg-surface-container transition-colors"
-                  >
-                    <span className="material-symbols-outlined text-sm">edit</span>
-                    Edit
-                  </button>
+                  {isOwn && (
+                    <button
+                      onClick={() => { setShowMenu(false); setEditing(true) }}
+                      className="flex items-center gap-2 w-full px-4 py-2.5 text-sm text-on-surface hover:bg-surface-container transition-colors"
+                    >
+                      <span className="material-symbols-outlined text-sm">edit</span>
+                      Edit
+                    </button>
+                  )}
                   <button
                     onClick={handleDelete}
                     className="flex items-center gap-2 w-full px-4 py-2.5 text-sm text-error hover:bg-error/5 transition-colors"
@@ -250,12 +270,24 @@ function PostCard({ post, currentUserId, onLikeToggle, onDelete, onEdit }) {
           <div className="space-y-3 pt-2 border-t border-outline-variant/15">
             {loadingComments && <p className="text-xs text-on-surface-variant">Loading...</p>}
             {comments.map(c => (
-              <div key={c.id} className="flex gap-2 text-sm">
+              <div key={c.id} className="flex gap-2 text-sm items-start">
                 <Avatar user={c.user} size={7} />
                 <div className="bg-surface-container-low rounded-xl px-3 py-2 flex-1 min-w-0">
                   <span className="font-bold text-on-surface text-xs">{c.user?.name} </span>
                   <span className="text-on-surface-variant">{c.text}</span>
                 </div>
+                {isAdmin && (
+                  <button
+                    onClick={() => handleDeleteComment(c.id)}
+                    disabled={deletingCommentId === c.id}
+                    className="shrink-0 text-on-surface-variant/30 hover:text-error transition-colors disabled:opacity-40 p-0.5"
+                    title="Delete comment"
+                  >
+                    <span className="material-symbols-outlined text-base">
+                      {deletingCommentId === c.id ? 'progress_activity' : 'delete'}
+                    </span>
+                  </button>
+                )}
               </div>
             ))}
             <form onSubmit={submitComment} className="flex gap-2 mt-2">
@@ -780,6 +812,7 @@ export default function HomePage() {
             key={post.id}
             post={post}
             currentUserId={user?.id}
+            isAdmin={user?.is_admin}
             onLikeToggle={handleLikeToggle}
             onDelete={handleDeletePost}
             onEdit={handleEditPost}

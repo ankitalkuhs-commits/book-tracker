@@ -19,13 +19,20 @@ function timeAgo(dateStr) {
 }
 
 const EVENT_CONFIG = {
-  follow:        { icon: 'person-add',       color: colors.primary,          navTarget: 'user' },
-  like:          { icon: 'heart',            color: '#e53935',               navTarget: 'note' },
-  comment:       { icon: 'chatbubble',       color: colors.secondary,        navTarget: 'note' },
-  book_added:    { icon: 'book',             color: colors.tertiary,         navTarget: null },
-  book_finished: { icon: 'checkmark-circle', color: colors.primary,          navTarget: null },
-  milestone:     { icon: 'flag',             color: colors.secondary,        navTarget: null },
-  default:       { icon: 'notifications',    color: colors.onSurfaceVariant, navTarget: null },
+  new_follower:            { icon: 'person-add',       color: colors.primary,          navTarget: 'user' },
+  follow:                  { icon: 'person-add',       color: colors.primary,          navTarget: 'user' },
+  post_liked:              { icon: 'heart',            color: '#e53935',               navTarget: 'feed' },
+  like:                    { icon: 'heart',            color: '#e53935',               navTarget: 'feed' },
+  post_commented:          { icon: 'chatbubble',       color: colors.secondary,        navTarget: 'feed' },
+  comment:                 { icon: 'chatbubble',       color: colors.secondary,        navTarget: 'feed' },
+  book_added:              { icon: 'book',             color: colors.tertiary,         navTarget: 'feed' },
+  book_completed:          { icon: 'checkmark-circle', color: colors.primary,          navTarget: 'feed' },
+  book_finished:           { icon: 'checkmark-circle', color: colors.primary,          navTarget: 'feed' },
+  reading_streak_reminder: { icon: 'flame',            color: '#f57c00',               navTarget: 'insights' },
+  group_invite:            { icon: 'people',           color: colors.secondary,        navTarget: 'group' },
+  group_join_request:      { icon: 'person-add',       color: colors.secondary,        navTarget: 'group' },
+  milestone:               { icon: 'flag',             color: colors.secondary,        navTarget: null },
+  default:                 { icon: 'notifications',    color: colors.onSurfaceVariant, navTarget: null },
 };
 
 function NotifIcon({ eventType }) {
@@ -88,13 +95,34 @@ export default function NotificationsScreen({ navigation }) {
     // Mark this one as read optimistically
     setNotifs(prev => prev.map(n => n.id === item.id ? { ...n, is_read: true } : n));
 
-    // Navigate based on event type and available data
     const cfg = EVENT_CONFIG[item.event_type] || EVENT_CONFIG.default;
-    if (cfg.navTarget === 'user' && item.actor_id) {
-      navigation?.navigate('UserProfile', { userId: item.actor_id });
+    const data = item.data || {};
+    const actorId = item.actor_id || data.actor_id;
+
+    switch (cfg.navTarget) {
+      case 'user':
+        if (actorId) navigation?.navigate('UserProfile', { userId: actorId });
+        break;
+      case 'feed':
+        // Navigate to Home tab — book/post events show in the feed
+        navigation?.navigate('Tabs', { screen: 'HomeTab' });
+        break;
+      case 'insights':
+        navigation?.navigate('Tabs', { screen: 'InsTab' });
+        break;
+      case 'group':
+        if (data.group_id) {
+          navigation?.navigate('Tabs', {
+            screen: 'CircTab',
+            params: { screen: 'GroupDetail', params: { groupId: data.group_id } },
+          });
+        } else {
+          navigation?.navigate('Tabs', { screen: 'CircTab' });
+        }
+        break;
+      default:
+        break;
     }
-    // For note-type events, navigating to Insights is the closest approximation
-    // since we'd need the note's stack context; show a reading insights view instead
   };
 
   const unreadCount = notifs.filter(n => !n.is_read).length;

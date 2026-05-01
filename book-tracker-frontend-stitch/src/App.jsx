@@ -1,6 +1,8 @@
+import { useState } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from './context/AuthContext'
 import Nav from './components/Nav'
+import AppTour from './components/AppTour'
 
 import LoginPage from './pages/LoginPage'
 import HomePage from './pages/HomePage'
@@ -16,13 +18,20 @@ import CreateGroupPage from './pages/CreateGroupPage'
 import GroupDetailPage from './pages/GroupDetailPage'
 import JoinGroupPage from './pages/JoinGroupPage'
 import InsightsPage from './pages/InsightsPage'
+import OnboardingPage, { ONBOARDING_KEY } from './pages/OnboardingPage'
+import BookDetailPage from './pages/BookDetailPage'
 
-// Wraps all logged-in pages with the Nav bar
+// Wraps all logged-in pages with the Nav bar + in-app tour for new users
 function AppLayout({ children }) {
+  const [showTour, setShowTour] = useState(
+    () => !localStorage.getItem(ONBOARDING_KEY)
+  )
+
   return (
     <div className="min-h-screen bg-surface">
       <Nav />
       <div className="pt-16">{children}</div>
+      {showTour && <AppTour onDone={() => setShowTour(false)} />}
     </div>
   )
 }
@@ -34,7 +43,16 @@ function PrivateRoute({ children }) {
       <span className="text-on-surface-variant font-sans">Loading...</span>
     </div>
   )
-  return user ? <AppLayout>{children}</AppLayout> : <Navigate to="/" replace />
+  if (!user) return <Navigate to="/" replace />
+  return <AppLayout>{children}</AppLayout>
+}
+
+function OnboardingRoute() {
+  const { user, loading } = useAuth()
+  if (loading) return null
+  if (!user) return <Navigate to="/" replace />
+  // /onboarding now only used if someone navigates there manually (e.g. "take tour again")
+  return <OnboardingPage />
 }
 
 function AdminRoute({ children }) {
@@ -57,8 +75,10 @@ export default function App() {
   return (
     <Routes>
       <Route path="/" element={user ? <Navigate to="/home" replace /> : <LoginPage />} />
+      <Route path="/onboarding" element={<OnboardingRoute />} />
       <Route path="/home" element={<PrivateRoute><HomePage /></PrivateRoute>} />
       <Route path="/library" element={<PrivateRoute><LibraryPage /></PrivateRoute>} />
+      <Route path="/library/book/:userbookId" element={<PrivateRoute><BookDetailPage /></PrivateRoute>} />
       <Route path="/search" element={<PrivateRoute><SearchPage /></PrivateRoute>} />
       <Route path="/profile" element={<PrivateRoute><ProfilePage /></PrivateRoute>} />
       <Route path="/profile/:userId" element={<PrivateRoute><UserProfilePage /></PrivateRoute>} />

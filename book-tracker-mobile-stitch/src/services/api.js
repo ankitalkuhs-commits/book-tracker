@@ -171,4 +171,19 @@ export const activityAPI = {
   getInsights: async () => (await api.get('/reading-activity/insights')).data,
 };
 
+// Import API
+export const importAPI = {
+  importGoodreads: async (fileUri, fileName) => {
+    const formData = new FormData();
+    // Send as octet-stream — backend validates by column structure, not MIME type
+    formData.append('file', { uri: fileUri, type: 'application/octet-stream', name: fileName || 'goodreads_library_export.csv' });
+    return (await api.post('/import/goodreads', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 120000,  // large libraries can take a while
+    })).data;
+  },
+  getCoversStatus: async () => (await api.get('/import/covers-status')).data,
+  fixCoversBatch: async (book_ids) => (await api.post('/import/fix-covers-batch', { book_ids })).data,
+};
+
 export default api;

@@ -186,7 +186,7 @@ function BookTile({ userbook, onPress }) {
 }
 
 // ── Shared chip component (proven to work on device) ─────────────────────────
-function OptionChip({ label, active, onPress }) {
+function OptionChip({ label, count, active, onPress }) {
   return (
     <TouchableOpacity
       style={[styles.chip, active && styles.chipActive]}
@@ -194,6 +194,9 @@ function OptionChip({ label, active, onPress }) {
       activeOpacity={0.75}
     >
       <Text style={[styles.chipText, active && styles.chipTextActive]}>{label}</Text>
+      {count !== undefined && (
+        <Text style={[styles.chipCount, active && styles.chipCountActive]}>({count})</Text>
+      )}
     </TouchableOpacity>
   );
 }
@@ -500,7 +503,8 @@ export default function LibraryScreen({ navigation }) {
         {TABS.map(({ key, label, count }) => (
           <OptionChip
             key={key}
-            label={`${label} ${count}`}
+            label={label}
+            count={count}
             active={activeTab === key}
             onPress={() => setActiveTab(key)}
           />
@@ -648,10 +652,12 @@ const styles = StyleSheet.create({
 
   optionLabel:  { ...type.eyebrow, color: colors.onSurfaceVariant, marginTop: 18, marginBottom: 8 },
   chipRow:      { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chip:         { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 999, borderWidth: 1, borderColor: colors.outlineVariant, backgroundColor: colors.surfaceContainerLowest },
+  chip:         { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 999, borderWidth: 1, borderColor: colors.outlineVariant, backgroundColor: colors.surfaceContainerLowest, alignItems: 'center' },
   chipActive:   { backgroundColor: colors.primary, borderColor: colors.primary },
-  chipText:     { ...type.bodySm, color: colors.onSurfaceVariant },
-  chipTextActive: { color: colors.onPrimary, fontFamily: 'Manrope_700Bold', fontWeight: '700' },
+  chipText:     { fontSize: 13, fontWeight: '600', color: colors.onSurfaceVariant },
+  chipTextActive: { fontSize: 13, fontWeight: '700', color: colors.onPrimary },
+  chipCount:    { fontSize: 11, fontWeight: '400', color: colors.outline, marginTop: 2 },
+  chipCountActive: { color: 'rgba(255,255,255,0.75)' },
 
   addBtn:       { marginTop: 32, backgroundColor: colors.primary, paddingVertical: 14, borderRadius: radius.lg, alignItems: 'center' },
   addBtnText:   { ...type.title, color: colors.onPrimary },

@@ -1,4 +1,4 @@
-name: Build Stitch APK (Preview)
+name: Build Stitch AAB (Production)
 
 on:
   workflow_dispatch:  # Manual trigger from GitHub Actions tab
@@ -47,12 +47,12 @@ jobs:
           export const BUILD_DATE = '${BUILD_DATE}';
           EOF
 
-      - name: Build Android APK
-        run: eas build --platform android --profile preview --local --output ./build.apk
+      - name: Build Android AAB
+        run: eas build --platform android --profile production --local --output ./build.aab
 
-      - name: Upload APK artifact
+      - name: Upload AAB artifact
         uses: actions/upload-artifact@v4
         with:
-          name: TrackMyRead-stitch-preview
-          path: book-tracker-mobile-stitch/build.apk
-          retention-days: 7
+          name: TrackMyRead-stitch-production
+          path: book-tracker-mobile-stitch/build.aab
+          retention-days: 14

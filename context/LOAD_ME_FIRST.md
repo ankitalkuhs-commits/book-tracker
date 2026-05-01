@@ -181,6 +181,72 @@ When user says **"wrap up"**, Claude automatically:
 - **CRITICAL PATTERN:** Never push `app/models.py` changes without confirming Supabase migration has been run. New model fields with no matching DB column will crash the entire backend (every User query fails). Run `context/supabase_migration.sql` in Supabase SQL Editor BEFORE or simultaneously with the push.
 - **GOTCHA — Vercel deployment:** `book-tracker-stitch` Vercel project production branch is set to `master`. Pushing to `stitch-experiment` creates a Preview deployment only. To update `book-tracker-stitch.vercel.app`, go to Overview → Active Branches → `...` next to `stitch-experiment` → Promote to Production. (Or change production branch in Settings → General.)
 
+**Parity Audit Fixes — April 30, 2026:**
+- **Notification deep-linking (mobile):** Full switch on event type in `NotificationsScreen.js` — group events → CircTab + GroupDetail (using `data.group_id`), book/post events → HomeTab, streak → InsTab, follow → UserProfile
+- **Notification deep-linking (web):** `getDestination()` in `NotificationsPage.jsx` — group_invite/group_join_request → `/groups/:id`, book events → `/home`, streak → `/insights`
+- **Backend:** `post_liked` now sends `extra={"note_id": note_id}` (same as `post_commented`) in `likes_comments.py`
+- **Web Settings notif prefs:** Added `group_invite` + `group_join_request` toggles to match mobile
+- **Web Nav:** Removed "Search" nav link — Library has "Add Book" modal already
+- **Web Search format filter:** Added FORMAT_OPTIONS chips (Paperback / Hardcover / eBook / Audiobook), client-side filtered via `filterByFormat()`
+- **Web Book Detail:** New `BookDetailPage.jsx` at `/library/book/:userbookId` — full dedicated page (like mobile BookDetailScreen) with cover, status selector, progress, notes, rating, description. LibraryPage book card click now navigates via `{ state: { userbook } }` instead of opening inline panel
+- **Goodreads CSV validation:** Both web and mobile now accept by MIME type (csv/excel/spreadsheet) in addition to `.csv` extension — fixes Android DocumentPicker stripping extension
+- **Mobile SettingsScreen:** Step 1 of how-to guide is now a tappable inline link opening `https://www.goodreads.com/review/import`
+- **stitch-experiment branch:** Backend import_router.py, main.py, auth_router.py ported from master — stitch Render backend now has `/import/goodreads`
+- **CONFIRMED:** Create Group ✓ and Private Profile toggle ✓ already exist on mobile — audit agent was wrong about these gaps
+
+**Web Onboarding (AUE) — April 30, 2026:**
+- **NEW: `src/pages/OnboardingPage.jsx`** — 5-step full-screen onboarding flow for web:
+  - Welcome → App Tour (4 section cards) → Reading Goal → Import from Goodreads → Done
+  - Step 4 is the Goodreads import (desktop is where this works — no doc picker needed, just drag-and-drop)
+  - Animated fade transition between steps, progress dots in top bar, Skip button
+  - Goal step saves `yearly_goal` via `updateMyProfile` before advancing
+  - Import step shows 4-step guide + drag-and-drop zone + result card
+  - Done step shows imported book count
+  - `export const ONBOARDING_KEY = 'bt_onboarding_v1'` — **bump this to reset for ALL users**
+- **`App.jsx`**: `OnboardingRoute` component — guards `/onboarding`; `PrivateRoute` redirects to `/onboarding` if `ONBOARDING_KEY` not in localStorage
+- **`LoginPage.jsx`**: after login, navigates to `/onboarding` if key absent, else `/home`
+- **RESET AUE FOR ALL USERS:** Change `ONBOARDING_KEY = 'bt_onboarding_v1'` → `'bt_onboarding_v2'` in `OnboardingPage.jsx`. On next login every user's localStorage won't have the new key → onboarding shows again.
+
+**Goodreads CSV Import — web UI (April 30, 2026):**
+- **`SettingsPage.jsx`**: New "Import Your Library" section (between Notifications + Account):
+  - 5-step visual guide with numbered circles (how to export from Goodreads, with direct link to goodreads.com)
+  - Tip box: shows expected filename pattern + "don't just open, download" warning
+  - Drag-and-drop upload zone: `onDrop` / `onDragOver` / `onDragLeave` + click-to-browse fallback
+  - File selected state shows filename + size; remove button to clear
+  - Import button with spinner + "don't close this tab" warning during upload
+  - Result card: 3-col grid (Imported / Already in library / Errors) + link to Library
+  - "Import another file" reset button
+- **`api.js`**: `importGoodreads(file)` — FormData POST to `/import/goodreads`, clears `/userbooks` cache on success
+
+**Goodreads CSV Import (April 30, 2026):**
+- **NEW: `app/routers/import_router.py`** — `POST /import/goodreads` (multipart CSV upload, auth required)
+  - Parses Goodreads export CSV (exact column names: `Book Id`, `Title`, `Author`, `ISBN`, `ISBN13`, `My Rating`, `Exclusive Shelf`, `Date Read`, `Date Added`, `My Review`, `Binding`, `Number of Pages`, `Publisher`)
+  - Maps: `read→finished`, `currently-reading→reading`, `to-read→to-read`; binding→format; rating 0→null
+  - Deduplicates: first by ISBN, then by title+author — skips books already in user's library
+  - Cover URL: Open Library Covers API (`covers.openlibrary.org/b/isbn/{ISBN13}-L.jpg`) — no API key needed
+  - Reviews imported as private Notes
+  - Returns `{ imported, skipped, failed, total, errors[:10] }`
+  - ISBN edge case: strips Goodreads/Excel `=""..."" ` quoting
+- **`package.json`**: added `expo-document-picker ~13.0.2`
+- **`api.js`**: added `importAPI.importGoodreads(fileUri, fileName)` — multipart POST, 60s timeout
+- **`SettingsScreen.js`**: new "Your Data" section with:
+  - Import row (calls `DocumentPicker.getDocumentAsync`, validates .csv extension, uploads)
+  - 5-step how-to instructions panel (works on mobile — user downloads CSV from Goodreads in phone browser)
+  - Importing banner with progress message
+  - Result modal: imported / already in library / errors counts + description
+- **MOBILE-FIRST DIFFERENTIATOR:** Other apps (StoryGraph, Literal) require desktop. Our flow works entirely on phone — download CSV from Goodreads in phone browser → Downloads folder → DocumentPicker → import in app.
+- **`main.py`**: registered `import_router.router`
+
+**Onboarding + Build (April 28, 2026):**
+- **New user onboarding (OnboardingScreen.js NEW):** 5-step flow shown on first Google login: Welcome → App Tour (4 tab cards) → Reading Goal (presets + custom) → Add First Book (search) → Done. Triggered by `is_new` flag from backend. File: `book-tracker-mobile-stitch/src/screens/OnboardingScreen.js`
+- **`auth_router.py`:** Returns `"is_new": is_new_user` in `/auth/google` response — `True` only on first-ever login for a Google account
+- **`LoginScreen.js`:** Passes `data.is_new` to `onLoginSuccess(isNew)` callback
+- **`App.js`:** `handleLoginSuccess(isNewUser)` → sets `showOnboarding(true)` if new user; gate renders `<OnboardingScreen>` before main app
+- **GitHub Actions workflow:** Fixed `ref: stitch-experiment` → `ref: master`; added "Inject build info" step that writes `BUILD_NUMBER` + `BUILD_DATE` to `src/buildInfo.js`
+- **SettingsScreen.js:** Shows `Build #N · YYYY-MM-DD HH:MM UTC` in About section from `buildInfo.js`
+- **Library pills (count on two lines):** Label bold on top, `(count)` smaller/dimmer below — uses `OptionChip` component with `count` prop
+- **GOTCHA:** GitHub Actions was hardcoded to `ref: stitch-experiment` — all APK builds were building old code. Fixed to `ref: master`.
+
 **Device-tested fixes (April 28, 2026):**
 - **LoginScreen:** Restored multicolor Google G icon — `react-native-svg@15.15.4` (was 15.8.0, broke New Architecture build); 4-path SVG (red/blue/yellow/green) matching webapp
 - **Library filter pills (LibraryScreen):** Multiple rounds of fixes:
@@ -205,7 +271,7 @@ When user says **"wrap up"**, Claude automatically:
 > Full plan: `context/PRODUCTION_CUTOVER_PLAN.md`
 > TL;DR order: cherry-pick Google Books fixes → run supabase_migration.sql → bump versionCode to 45 → merge stitch-experiment→master → change Vercel root dir → eas build + submit → staged rollout
 
-**Next Priorities — Phase 4 (remaining device bugs):**
+**Next Priorities — Phase 4 (remaining device bugs + parity):**
 
 HIGH (broken core functionality):
 1. **BookDetailScreen: status pill not persisting** — `handleStatusChange` not refreshing state or API URL wrong. Audit `booksAPI.updateStatus` call + endpoint.
@@ -216,9 +282,9 @@ MEDIUM (UX parity):
 4. **Recs modal + Friends reading → add-to-library sheet** — "Want to Read" / "Start Reading Now" bottom sheet on book tap in both "For You" recs shelf and Friends tab "What Friends Are Reading".
 5. **AppHeader avatar not showing photo** — show `user.profile_picture` as `<Image>` when set, fallback to initials.
 6. **Circles page shows `?` instead of avatar** — `user` prop not reaching AppHeader correctly in GroupsScreen.
-
-LOW (polish):
-7. **BookDetailScreen: book description missing** — add collapsible description section.
+7. **BookDetailScreen: book description missing** — add collapsible description section (now done on web, need mobile).
+8. **Web Search page:** still accessible at `/search` route but removed from Nav — confirm whether to keep or remove route entirely.
+9. **Onboarding tour "Add a Book" step (mobile):** verify book search + add flow working end-to-end after tour changes.
 
 **Typography system** — committed `7b60209` on `stitch-experiment` branch (Manrope + Noto Serif across all screens). Next APK build will include fonts.
 

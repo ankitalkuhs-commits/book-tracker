@@ -4,11 +4,10 @@ import { useEffect, useState } from 'react'
 import { getUnreadCount } from '../services/api'
 
 const NAV_ITEMS = [
-  { to: '/home', label: 'Home' },
-  { to: '/library', label: 'Library' },
-  { to: '/search', label: 'Search' },
-  { to: '/groups', label: 'Groups' },
-  { to: '/insights', label: 'Insights' },
+  { to: '/home',          label: 'Home',          tour: 'home' },
+  { to: '/library',       label: 'Library',        tour: 'library' },
+  { to: '/groups',        label: 'Groups',         tour: 'groups' },
+  { to: '/insights',      label: 'Insights',       tour: 'insights' },
   { to: '/notifications', label: 'Notifications' },
 ]
 
@@ -49,10 +48,11 @@ export default function Nav() {
 
         {/* Desktop nav links */}
         <div className="hidden md:flex items-center space-x-6 font-serif text-base tracking-tight">
-          {NAV_ITEMS.map(({ to, label }) => (
+          {NAV_ITEMS.map(({ to, label, tour }) => (
             <NavLink
               key={to}
               to={to}
+              {...(tour ? { 'data-tour': tour } : {})}
               className={({ isActive }) =>
                 isActive
                   ? 'text-primary border-b-2 border-primary pb-0.5 font-bold'
@@ -91,6 +91,7 @@ export default function Nav() {
           {/* Avatar + dropdown */}
           <div className="relative">
             <button
+              data-tour="avatar"
               onClick={() => setAvatarOpen((v) => !v)}
               className="w-9 h-9 rounded-full overflow-hidden border-2 border-primary-fixed-dim hover:scale-95 transition-transform focus:outline-none"
             >

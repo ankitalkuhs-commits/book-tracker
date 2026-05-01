@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useToast } from '../components/Toast'
 import {
   getMyBooks, updateProgress, updateUserBook, markFinished, removeFromLibrary,
@@ -142,7 +143,7 @@ function AddBookModal({ onClose, onAdded }) {
     setSearching(true)
     try {
       const data = await searchGoogleBooks(query)
-      setResults(data || [])
+      setResults(data?.results || data || [])
     } catch { }
     setSearching(false)
   }
@@ -737,12 +738,12 @@ function LibrarySidebar({ library, onAddBook }) {
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 export default function LibraryPage() {
+  const navigate = useNavigate()
   const [library, setLibrary] = useState([])
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('all')
   const [search, setSearch] = useState('')
   const [showAddModal, setShowAddModal] = useState(false)
-  const [selectedBook, setSelectedBook] = useState(null)
 
   const load = async () => {
     setLoading(true)
@@ -852,7 +853,7 @@ export default function LibraryPage() {
                 <BookCard
                   key={ub.id}
                   userbook={ub}
-                  onClick={() => setSelectedBook(ub)}
+                  onClick={() => navigate(`/library/book/${ub.id}`, { state: { userbook: ub } })}
                 />
               ))}
             </div>
@@ -871,17 +872,6 @@ export default function LibraryPage() {
         />
       )}
 
-      {selectedBook && (
-        <BookDetailPanel
-          userbook={selectedBook}
-          onClose={() => setSelectedBook(null)}
-          onUpdate={() => { load(); setSelectedBook(null) }}
-          onRemove={(id) => {
-            setLibrary(prev => prev.filter(b => b.id !== id))
-            setSelectedBook(null)
-          }}
-        />
-      )}
     </main>
   )
 }

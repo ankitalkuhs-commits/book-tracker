@@ -86,7 +86,10 @@ const FeedScreen = ({ navigation }) => {
     loadRecommendations();
   }, []);
 
-  useFocusEffect(useCallback(() => { setActiveTab('community'); }, []));
+  useFocusEffect(useCallback(() => {
+    setActiveTab('community');
+    loadCurrentUser();
+  }, []));
 
   useEffect(() => {
     if (!searchQuery.trim()) { setSearchResults([]); return; }

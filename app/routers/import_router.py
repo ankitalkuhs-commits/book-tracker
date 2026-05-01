@@ -13,18 +13,23 @@ Goodreads CSV columns (exact, as of 2024 export format):
 
 import csv
 import io
+import os
 import re
 from datetime import datetime
-from typing import Optional
+from typing import List, Optional
 
+import httpx
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
-from sqlmodel import Session, select
+from pydantic import BaseModel
+from sqlmodel import Session, or_, select
 
 from ..database import get_session
 from ..deps import get_current_user
 from .. import models
 
 router = APIRouter(prefix="/import", tags=["import"])
+
+GOOGLE_BOOKS_API_KEY = os.getenv("GOOGLE_BOOKS_API_KEY")
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -97,8 +102,21 @@ async def import_goodreads_csv(
     - Returns a summary: { imported, skipped, failed, total }.
     """
     # ── Validate file type ────────────────────────────────────────────────────
-    filename = file.filename or ''
-    if not filename.lower().endswith('.csv'):
+    # Accept .csv and any file that Android/iOS might mislabel (octet-stream,
+    # excel MIME types) — we validate by column structure below anyway.
+    filename = (file.filename or '').lower()
+    content_type = (file.content_type or '').lower()
+    looks_ok = (
+        filename.endswith('.csv')
+        or filename.endswith('.xls')
+        or filename.endswith('.xlsx')
+        or 'csv' in content_type
+        or 'excel' in content_type
+        or 'spreadsheet' in content_type
+        or 'octet-stream' in content_type  # Android often sends this
+        or content_type == ''              # some clients omit it
+    )
+    if not looks_ok:
         raise HTTPException(status_code=400, detail="File must be a .csv export from Goodreads")
 
     raw_bytes = await file.read()
@@ -254,3 +272,102 @@ async def import_goodreads_csv(
         "total":    imported + skipped + len(failed),
         "errors":   failed[:10],   # cap at 10 so response stays small
     }
+
+
+# ── Cover fix ─────────────────────────────────────────────────────────────────
+
+async def _fetch_google_cover(title: str, author: Optional[str], isbn: Optional[str]) -> Optional[str]:
+    """
+    Query Google Books API for a cover URL.
+    Tries ISBN first (most precise), falls back to title+author.
+    Returns a high-quality CDN cover URL or None.
+    """
+    params_list = []
+    if isbn:
+        params_list.append({"q": f"isbn:{isbn}"})
+    if title:
+        q = f'intitle:"{title}"'
+        if author:
+            q += f' inauthor:"{author}"'
+        params_list.append({"q": q})
+
+    if GOOGLE_BOOKS_API_KEY:
+        for p in params_list:
+            p["key"] = GOOGLE_BOOKS_API_KEY
+
+    try:
+        async with httpx.AsyncClient(timeout=8.0) as client:
+            for params in params_list:
+                resp = await client.get("https://www.googleapis.com/books/v1/volumes", params=params)
+                if resp.status_code != 200:
+                    continue
+                items = resp.json().get("items", [])
+                if not items:
+                    continue
+                vi = items[0].get("volumeInfo", {})
+                links = vi.get("imageLinks", {})
+                raw = links.get("thumbnail") or links.get("smallThumbnail")
+                if raw:
+                    # Upgrade to CDN high-res
+                    google_id = items[0].get("id", "")
+                    if google_id:
+                        return f"https://books.google.com/books/publisher/content/images/frontcover/{google_id}?fife=w300-h450"
+                    return raw.replace("http://", "https://")
+    except Exception:
+        pass
+    return None
+
+
+@router.get("/covers-status")
+async def get_covers_status(
+    db: Session = Depends(get_session),
+    current_user: models.User = Depends(get_current_user),
+):
+    """
+    Returns how many of the user's books are missing a cover,
+    and the book IDs to fix.
+    """
+    rows = db.exec(
+        select(models.Book.id)
+        .join(models.UserBook, models.UserBook.book_id == models.Book.id)
+        .where(
+            models.UserBook.user_id == current_user.id,
+            or_(models.Book.cover_url == None, models.Book.cover_url == ""),
+        )
+    ).all()
+    book_ids = list(set(rows))
+    return {"missing_count": len(book_ids), "book_ids": book_ids}
+
+
+class FixBatchRequest(BaseModel):
+    book_ids: List[int]
+
+
+@router.post("/fix-covers-batch")
+async def fix_covers_batch(
+    body: FixBatchRequest,
+    db: Session = Depends(get_session),
+    current_user: models.User = Depends(get_current_user),
+):
+    """
+    Given a list of book_ids, fetch covers from Google Books and update them.
+    Cap at 15 per request to stay within timeout limits.
+    Returns { fixed: int, results: [{book_id, cover_url}] }
+    """
+    ids = body.book_ids[:15]
+    fixed = []
+
+    for book_id in ids:
+        book = db.get(models.Book, book_id)
+        if not book or book.cover_url:
+            continue  # already has cover or not found
+        cover = await _fetch_google_cover(book.title, book.author, book.isbn)
+        if cover:
+            book.cover_url = cover
+            db.add(book)
+            fixed.append({"book_id": book_id, "cover_url": cover})
+
+    if fixed:
+        db.commit()
+
+    return {"fixed": len(fixed), "results": fixed}

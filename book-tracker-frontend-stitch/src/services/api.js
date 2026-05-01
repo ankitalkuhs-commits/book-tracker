@@ -248,6 +248,27 @@ export const searchUsersForInvite = (q) => apiFetch(`/users/search?q=${encodeURI
 // Account
 export const deleteAccount = () => apiFetch('/auth/delete-account/me', { method: 'POST' });
 
+// Import
+export const importGoodreads = async (file) => {
+  const token = getToken();
+  const form = new FormData();
+  form.append('file', file);
+  const res = await fetch(`${API_BASE}/import/goodreads`, {
+    method: 'POST',
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: form,
+  });
+  if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.detail || 'Import failed'); }
+  cacheClear('/userbooks');
+  return res.json();
+};
+
+export const getCoversStatus = () => apiFetch('/import/covers-status');
+export const fixCoversBatch = (book_ids) => apiFetch('/import/fix-covers-batch', {
+  method: 'POST',
+  body: JSON.stringify({ book_ids }),
+});
+
 // Admin
 export const getAdminStats = () => apiFetch('/admin/stats');
 export const getAdminUsers = () => apiFetch('/admin/users');
@@ -258,3 +279,7 @@ export const sendTestPush = (userId) =>
 export const broadcastPush = (data) =>
   apiFetch('/admin/push/broadcast', { method: 'POST', body: JSON.stringify(data) });
 export const triggerBot = () => apiFetch('/admin/bot/trigger', { method: 'POST' });
+export const getAdminNotes = (limit = 50) => apiFetch(`/admin/content/notes?limit=${limit}`);
+export const getAdminComments = (limit = 100) => apiFetch(`/admin/content/comments?limit=${limit}`);
+export const adminDeleteNote = (id) => apiFetch(`/admin/content/note/${id}`, { method: 'DELETE' });
+export const adminDeleteComment = (id) => apiFetch(`/admin/content/comment/${id}`, { method: 'DELETE' });

@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  ActivityIndicator, Alert, RefreshControl, Image, Dimensions,
+  ActivityIndicator, Alert, RefreshControl, Image, Dimensions, Modal,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { userAPI, userbooksAPI, activityAPI, notesAPI } from '../services/api';
+import { userAPI, userbooksAPI, activityAPI, notesAPI, booksAPI } from '../services/api';
 import { colors, radius, shadow, type } from '../theme';
 
 const SCREEN_W   = Dimensions.get('window').width;
@@ -90,13 +90,15 @@ export default function UserProfileScreen({ route, navigation }) {
   const [refreshing,   setRefreshing]   = useState(false);
   const [followLoading, setFollowLoading] = useState(false);
   const [showAllBooks,  setShowAllBooks]  = useState(false);
+  const [shelfModal,    setShelfModal]    = useState(null); // { book } | null
+  const [shelving,      setShelving]      = useState(false);
   const likingInFlight = useRef(new Set());
 
   const load = useCallback(async (isRefresh = false, days = 30) => {
     if (isRefresh) setRefreshing(true);
     try {
       const [u, s, b, n, act] = await Promise.allSettled([
-        userAPI.getUser(userId),
+        userAPI.getPublicProfile(userId),   // has name, followers_count, following_count, is_following
         userAPI.getUserStats(userId),
         userbooksAPI.getUserBooks(userId),
         userAPI.getUserNotes(userId),
@@ -126,6 +128,26 @@ export default function UserProfileScreen({ route, navigation }) {
       else           { await userAPI.followUser(userId);   setFollowing(true);  }
     } catch (e) { Alert.alert('Error', e?.response?.data?.detail || 'Could not update follow'); }
     setFollowLoading(false);
+  };
+
+  const handleShelfBook = async (status) => {
+    if (!shelfModal?.book) return;
+    setShelving(true);
+    try {
+      const book = shelfModal.book;
+      await booksAPI.addToLibrary({
+        google_books_id: book.google_books_id || book.google_id || null,
+        title: book.title || book.book?.title,
+        author: book.author || book.book?.author || '',
+        cover_url: book.cover_url || book.book?.cover_url || null,
+        total_pages: book.total_pages || book.book?.total_pages || null,
+        status,
+      });
+      setShelfModal(null);
+      Alert.alert('Added!', status === 'reading' ? 'Happy reading!' : 'Added to your Want to Read list.');
+    } catch (e) {
+      Alert.alert('Error', e?.response?.data?.detail || 'Could not add book');
+    } finally { setShelving(false); }
   };
 
   const handleLike = async (noteId, isLiked) => {
@@ -166,8 +188,49 @@ export default function UserProfileScreen({ route, navigation }) {
     if (uid && uid !== userId) navigation.push('UserProfile', { userId: uid });
   };
 
+  const renderShelfModal = () => {
+    if (!shelfModal) return null;
+    const book = shelfModal.book;
+    const coverUrl = book?.cover_url;
+    return (
+      <Modal visible animationType="slide" transparent onRequestClose={() => setShelfModal(null)}>
+        <TouchableOpacity style={styles.shelfOverlay} activeOpacity={1} onPress={() => setShelfModal(null)} />
+        <View style={styles.shelfSheet}>
+          <View style={styles.shelfHandle} />
+          <View style={styles.shelfBookRow}>
+            {coverUrl
+              ? <Image source={{ uri: coverUrl }} style={styles.shelfCover} />
+              : <View style={[styles.shelfCover, styles.shelfCoverFallback]}><Ionicons name="book-outline" size={28} color={colors.outline} /></View>
+            }
+            <View style={{ flex: 1 }}>
+              <Text style={styles.shelfTitle} numberOfLines={2}>{book?.title || 'Unknown'}</Text>
+              <Text style={styles.shelfAuthor} numberOfLines={1}>{book?.author || ''}</Text>
+            </View>
+          </View>
+          <Text style={styles.shelfPrompt}>Where would you like to shelve this?</Text>
+          <TouchableOpacity style={styles.shelfBtnPrimary} onPress={() => handleShelfBook('to-read')} disabled={shelving}>
+            {shelving ? <ActivityIndicator size="small" color={colors.onPrimary} /> : (
+              <>
+                <Ionicons name="bookmark-outline" size={18} color={colors.onPrimary} style={{ marginRight: 8 }} />
+                <Text style={styles.shelfBtnPrimaryText}>Want to Read</Text>
+              </>
+            )}
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.shelfBtnSecondary} onPress={() => handleShelfBook('reading')} disabled={shelving}>
+            <Ionicons name="book-outline" size={18} color={colors.primary} style={{ marginRight: 8 }} />
+            <Text style={styles.shelfBtnSecondaryText}>Start Reading Now</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.shelfCancelBtn} onPress={() => setShelfModal(null)}>
+            <Text style={styles.shelfCancelText}>Cancel</Text>
+          </TouchableOpacity>
+        </View>
+      </Modal>
+    );
+  };
+
   return (
     <View style={styles.container}>
+      {renderShelfModal()}
       {/* Back bar */}
       <View style={[styles.topBar, { paddingTop: insets.top + 10 }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
@@ -197,18 +260,18 @@ export default function UserProfileScreen({ route, navigation }) {
           {/* Stats pills */}
           <View style={styles.statsPills}>
             <TouchableOpacity style={styles.statPill}>
-              <Text style={styles.statPillValue}>{user?.followers_count ?? 0}</Text>
+              <Text style={styles.statPillValue}>{fmt(user?.followers_count ?? 0)}</Text>
               <Text style={styles.statPillLabel}>FOLLOWERS</Text>
             </TouchableOpacity>
             <View style={styles.statPillDivider} />
             <TouchableOpacity style={styles.statPill}>
-              <Text style={styles.statPillValue}>{user?.following_count ?? 0}</Text>
+              <Text style={styles.statPillValue}>{fmt(user?.following_count ?? 0)}</Text>
               <Text style={styles.statPillLabel}>FOLLOWING</Text>
             </TouchableOpacity>
             <View style={styles.statPillDivider} />
             <TouchableOpacity style={styles.statPill}>
-              <Text style={styles.statPillValue}>{books.length}</Text>
-              <Text style={styles.statPillLabel}>COLLECTIONS</Text>
+              <Text style={styles.statPillValue}>{fmt(books.length)}</Text>
+              <Text style={styles.statPillLabel}>BOOKS</Text>
             </TouchableOpacity>
           </View>
 
@@ -282,7 +345,12 @@ export default function UserProfileScreen({ route, navigation }) {
                 </View>
                 <View style={styles.bookGrid}>
                   {displayedBooks.map(ub => (
-                    <View key={ub.id} style={styles.bookTile}>
+                    <TouchableOpacity
+                      key={ub.id}
+                      style={styles.bookTile}
+                      activeOpacity={0.8}
+                      onPress={() => setShelfModal({ book: ub.book || ub })}
+                    >
                       {ub.book?.cover_url ? (
                         <Image source={{ uri: ub.book.cover_url }} style={styles.bookCover} />
                       ) : (
@@ -292,7 +360,7 @@ export default function UserProfileScreen({ route, navigation }) {
                       )}
                       <Text style={styles.bookTileTitle} numberOfLines={2}>{ub.book?.title || 'Unknown'}</Text>
                       <Text style={styles.bookTileAuthor} numberOfLines={1}>{ub.book?.author || ''}</Text>
-                    </View>
+                    </TouchableOpacity>
                   ))}
                 </View>
               </View>
@@ -510,4 +578,21 @@ const styles = StyleSheet.create({
 
   empty:     { alignItems: 'center', paddingTop: 60, gap: 12 },
   emptyText: { fontSize: 15, color: colors.onSurfaceVariant },
+
+  // Shelf modal
+  shelfOverlay:       { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)' },
+  shelfSheet:         { backgroundColor: colors.surfaceContainerLowest, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40 },
+  shelfHandle:        { width: 40, height: 4, backgroundColor: colors.outlineVariant, borderRadius: 2, alignSelf: 'center', marginBottom: 20 },
+  shelfBookRow:       { flexDirection: 'row', gap: 14, marginBottom: 20 },
+  shelfCover:         { width: 72, height: 108, borderRadius: radius.md },
+  shelfCoverFallback: { backgroundColor: colors.surfaceContainerHigh, justifyContent: 'center', alignItems: 'center' },
+  shelfTitle:         { ...type.titleLg, color: colors.onSurface, marginBottom: 4 },
+  shelfAuthor:        { ...type.body, color: colors.onSurfaceVariant, marginBottom: 4 },
+  shelfPrompt:        { ...type.body, color: colors.onSurfaceVariant, textAlign: 'center', marginBottom: 16 },
+  shelfBtnPrimary:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: colors.primary, borderRadius: radius.full, paddingVertical: 14, marginBottom: 12 },
+  shelfBtnPrimaryText: { ...type.title, color: colors.onPrimary },
+  shelfBtnSecondary:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', borderRadius: radius.full, paddingVertical: 14, borderWidth: 1.5, borderColor: colors.primary, marginBottom: 12 },
+  shelfBtnSecondaryText: { ...type.title, color: colors.primary },
+  shelfCancelBtn:     { alignItems: 'center', paddingVertical: 10 },
+  shelfCancelText:    { ...type.body, color: colors.onSurfaceVariant },
 });

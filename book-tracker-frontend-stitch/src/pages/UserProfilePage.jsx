@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext'
 import { useToast } from '../components/Toast'
 import {
   getPublicProfile, getUserBooks, getUserActivity, getUserNotes,
-  followUser, unfollowUser,
+  followUser, unfollowUser, adminDeleteNote,
 } from '../services/api'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -110,7 +110,7 @@ function BookCover({ book }) {
 
 // ─── Public Note Card ─────────────────────────────────────────────────────────
 
-function PublicNoteCard({ note, profileUrl }) {
+function PublicNoteCard({ note, profileUrl, isAdmin, onDelete }) {
   const toast = useToast()
 
   const handleShare = async () => {
@@ -133,14 +133,25 @@ function PublicNoteCard({ note, profileUrl }) {
 
   return (
     <article className="bg-surface-container-low rounded-2xl p-5 space-y-3 relative">
-      {/* Share icon */}
-      <button
-        onClick={handleShare}
-        className="absolute top-4 right-4 text-on-surface-variant/30 hover:text-on-surface-variant transition-colors"
-        title="Share this note"
-      >
-        <span className="material-symbols-outlined text-base">ios_share</span>
-      </button>
+      {/* Top-right actions */}
+      <div className="absolute top-4 right-4 flex items-center gap-1">
+        {isAdmin && (
+          <button
+            onClick={() => onDelete(note.id)}
+            className="text-on-surface-variant/30 hover:text-error transition-colors"
+            title="Delete note (admin)"
+          >
+            <span className="material-symbols-outlined text-base">delete</span>
+          </button>
+        )}
+        <button
+          onClick={handleShare}
+          className="text-on-surface-variant/30 hover:text-on-surface-variant transition-colors"
+          title="Share this note"
+        >
+          <span className="material-symbols-outlined text-base">ios_share</span>
+        </button>
+      </div>
 
       {/* Quote or text */}
       {note.quote ? (
@@ -229,6 +240,17 @@ export default function UserProfilePage() {
       })
     }).catch(() => {}).finally(() => setLoading(false))
   }, [userId, isOwnProfile])
+
+  const handleAdminDeleteNote = async (noteId) => {
+    if (!window.confirm('Delete this note?')) return
+    try {
+      await adminDeleteNote(noteId)
+      setNotes(prev => prev.filter(n => n.id !== noteId))
+      toast('Note deleted', 'info')
+    } catch (e) {
+      toast(e.message || 'Failed to delete', 'error')
+    }
+  }
 
   const toggleFollow = async () => {
     setFollowLoading(true)
@@ -451,7 +473,7 @@ export default function UserProfilePage() {
           ) : (
             <div className="space-y-4">
               {notes.map(note => (
-                <PublicNoteCard key={note.id} note={note} profileUrl={`${window.location.origin}/profile/${userId}`} />
+                <PublicNoteCard key={note.id} note={note} profileUrl={`${window.location.origin}/profile/${userId}`} isAdmin={me?.is_admin} onDelete={handleAdminDeleteNote} />
               ))}
             </div>
           )}

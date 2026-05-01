@@ -20,6 +20,14 @@ const STATUS_OPTIONS = [
   { value: 'finished', label: 'Already Read' },
 ]
 
+const FORMAT_OPTIONS = [
+  { key: 'all',       label: 'All formats' },
+  { key: 'paperback', label: 'Paperback' },
+  { key: 'hardcover', label: 'Hardcover' },
+  { key: 'ebook',     label: 'eBook' },
+  { key: 'audiobook', label: 'Audiobook' },
+]
+
 // ── Helpers ──────────────────────────────────────────────────────────────────
 function extractYear(d) {
   if (!d) return null
@@ -165,6 +173,7 @@ export default function SearchPage() {
   const [query,         setQuery]         = useState('')
   const [tab,           setTab]           = useState('google')    // 'google' | 'community'
   const [activeGenre,   setActiveGenre]   = useState('all')
+  const [activeFormat,  setActiveFormat]  = useState('all')
   const [activeSort,    setActiveSort]    = useState('relevance') // 'relevance' | 'newest'
   const [googleResults, setGoogleResults] = useState([])
   const [localResults,  setLocalResults]  = useState([])
@@ -243,7 +252,19 @@ export default function SearchPage() {
     setHasMore(false)
   }
 
-  const activeResults = tab === 'google' ? googleResults : localResults
+  const filterByFormat = (books) => {
+    if (activeFormat === 'all') return books
+    return books.filter(b => {
+      const binding = (b.binding || b.format || '').toLowerCase()
+      if (activeFormat === 'ebook')     return binding.includes('ebook') || binding.includes('kindle') || binding.includes('digital')
+      if (activeFormat === 'audiobook') return binding.includes('audio')
+      if (activeFormat === 'paperback') return binding.includes('paper') || (!binding && true) // default
+      if (activeFormat === 'hardcover') return binding.includes('hard')
+      return true
+    })
+  }
+
+  const activeResults = tab === 'google' ? filterByFormat(googleResults) : localResults
 
   return (
     <main className="pb-12 max-w-screen-lg mx-auto px-4 md:px-8 pt-8 space-y-6">
@@ -273,20 +294,37 @@ export default function SearchPage() {
 
       {/* Genre chips (Google tab only) */}
       {tab === 'google' && (
-        <div className="flex flex-wrap gap-2">
-          {GENRES.map(g => (
-            <button
-              key={g.key}
-              onClick={() => handleGenreChange(g.key)}
-              className={`px-3.5 py-1.5 rounded-full text-sm font-medium border transition-all ${
-                activeGenre === g.key
-                  ? 'bg-primary text-on-primary border-primary font-bold'
-                  : 'bg-surface-container-lowest text-on-surface-variant border-outline/30 hover:border-primary/40'
-              }`}
-            >
-              {g.label}
-            </button>
-          ))}
+        <div className="space-y-2">
+          <div className="flex flex-wrap gap-2">
+            {GENRES.map(g => (
+              <button
+                key={g.key}
+                onClick={() => handleGenreChange(g.key)}
+                className={`px-3.5 py-1.5 rounded-full text-sm font-medium border transition-all ${
+                  activeGenre === g.key
+                    ? 'bg-primary text-on-primary border-primary font-bold'
+                    : 'bg-surface-container-lowest text-on-surface-variant border-outline/30 hover:border-primary/40'
+                }`}
+              >
+                {g.label}
+              </button>
+            ))}
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {FORMAT_OPTIONS.map(f => (
+              <button
+                key={f.key}
+                onClick={() => setActiveFormat(f.key)}
+                className={`px-3.5 py-1.5 rounded-full text-xs font-medium border transition-all ${
+                  activeFormat === f.key
+                    ? 'bg-secondary text-on-secondary border-secondary font-bold'
+                    : 'bg-surface-container-lowest text-on-surface-variant border-outline/30 hover:border-secondary/40'
+                }`}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
         </div>
       )}
 

@@ -1,7 +1,7 @@
 # Book Tracker - Project Context
 
-**Last Updated:** April 19, 2026  
-**Project Version:** 1.3.0 (stitch-experiment branch)
+**Last Updated:** April 30, 2026  
+**Project Version:** 1.4.0 (master / stitch branch)
 
 ---
 
@@ -143,21 +143,34 @@ SQLite Database (book_tracker.db)
 
 ## Frontend Architecture
 
-### Component Hierarchy
+### Component Hierarchy (Stitch — book-tracker-frontend-stitch/)
 ```
 App.jsx
-├── ModernHeader (modern pages) / Header (legacy)
-├── Footer (modern pages only)
+├── Nav.jsx (top nav: Home, Library, Groups, Insights, Notifications — Search removed)
+├── AppTour.jsx (in-app spotlight coach marks — 8 steps: 4 nav + avatar + goal + book + done)
 └── Pages
-    ├── HomePage (Community Feed)
-    ├── LibraryPage (Personal Books)
-    ├── AdminPage (Platform Statistics)
-    ├── AboutPage (SEO landing)
-    ├── PrivacyPage (Privacy Policy)
-    ├── TermsPage (Terms of Service)
-    ├── HelpPage (FAQ)
-    └── ContactPage (Contact info)
+    ├── LoginPage         (/login)
+    ├── OnboardingPage    (/onboarding — ONBOARDING_KEY gated)
+    ├── HomePage          (/home — community + friends feed)
+    ├── LibraryPage       (/library — book grid, Add Book modal)
+    ├── BookDetailPage    (/library/book/:userbookId — dedicated book detail page)
+    ├── SearchPage        (/search — genre + format filter chips, Google Books + community)
+    ├── GroupsPage        (/groups)
+    ├── GroupDetailPage   (/groups/:groupId)
+    ├── CreateGroupPage   (/groups/new)
+    ├── JoinGroupPage     (/join/:inviteCode)
+    ├── InsightsPage      (/insights)
+    ├── NotificationsPage (/notifications — push permission banner, deep-link routing)
+    ├── ProfilePage       (/profile)
+    ├── UserProfilePage   (/profile/:userId)
+    ├── SettingsPage      (/settings — notif prefs incl. group_invite/group_join_request, Goodreads import)
+    └── AdminPage         (/admin — is_admin gated)
 ```
+
+### Key Web Routing Notes
+- **BookDetailPage** — pass userbook via router state: `navigate('/library/book/:id', { state: { userbook } })`
+- **Search** — `/search` route exists but not in Nav; LibraryPage Add Book modal handles quick adds
+- **Onboarding** — `ONBOARDING_KEY` in `OnboardingPage.jsx`; bump value to reset tour for all users
 
 ### State Management Strategy
 - Auth context for user session
