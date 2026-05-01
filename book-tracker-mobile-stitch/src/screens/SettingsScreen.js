@@ -563,9 +563,21 @@ export default function SettingsScreen({ navigation, onLogout }) {
             <View style={styles.coverFixBanner}>
               <View style={styles.coverFixRow}>
                 <Ionicons name="alert-circle-outline" size={14} color={colors.error} />
-                <Text style={[styles.coverFixText, { color: colors.error }]}>Cover fetch failed. Tap Import again to retry.</Text>
+                <Text style={[styles.coverFixText, { color: colors.error }]}>Cover fetch failed. Tap below to retry.</Text>
               </View>
             </View>
+          )}
+
+          {/* Fix covers button — shown when not currently running */}
+          {(!coverFixState || coverFixState.phase === 'done' || coverFixState.phase === 'error') && (
+            <TouchableOpacity
+              style={styles.coverFixBtn}
+              onPress={() => { setCoverFixState(null); setTimeout(() => runCoverFix(false), 50); }}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="image-outline" size={15} color={colors.onSurfaceVariant} />
+              <Text style={styles.coverFixBtnText}>Fix missing book covers</Text>
+            </TouchableOpacity>
           )}
         </View>
 
@@ -730,11 +742,13 @@ const styles = StyleSheet.create({
   importingBanner: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginHorizontal: 14, marginBottom: 14, backgroundColor: colors.primary + '10', padding: 10, borderRadius: radius.md },
   importingText:   { flex: 1, fontSize: 12, fontWeight: '400', color: colors.primary, lineHeight: 18 },
 
-  coverFixBanner:  { marginHorizontal: 14, marginBottom: 14, backgroundColor: colors.primary + '08', padding: 12, borderRadius: radius.md, gap: 8 },
+  coverFixBanner:  { marginHorizontal: 14, marginBottom: 8, backgroundColor: colors.primary + '08', padding: 12, borderRadius: radius.md, gap: 8 },
   coverFixRow:     { flexDirection: 'row', alignItems: 'center', gap: 6 },
   coverFixText:    { flex: 1, fontSize: 12, fontWeight: '500', color: colors.primary },
   coverFixTrack:   { height: 4, backgroundColor: colors.surfaceContainerHigh, borderRadius: 2, overflow: 'hidden' },
   coverFixFill:    { height: '100%', backgroundColor: colors.primary, borderRadius: 2 },
+  coverFixBtn:     { flexDirection: 'row', alignItems: 'center', gap: 8, marginHorizontal: 14, marginBottom: 14, paddingVertical: 10, paddingHorizontal: 14, borderRadius: radius.md, borderWidth: 1, borderColor: colors.outlineVariant },
+  coverFixBtnText: { fontSize: 13, fontWeight: '500', color: colors.onSurfaceVariant },
 
   // Import result modal
   resultOverlay:  { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', alignItems: 'center', justifyContent: 'center', padding: 32 },

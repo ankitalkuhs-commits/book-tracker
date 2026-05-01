@@ -698,6 +698,18 @@ export default function SettingsPage() {
             </div>
           )}
 
+          {/* ── Fix Missing Covers button ── */}
+          {!coverFix && (
+            <button
+              type="button"
+              onClick={runCoverFix}
+              className="w-full mt-2 flex items-center justify-center gap-2 py-2.5 rounded-xl border border-outline-variant/40 text-sm font-medium text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors"
+            >
+              <span className="material-symbols-outlined text-base">image_search</span>
+              Fix missing book covers
+            </button>
+          )}
+
           {/* ── Cover fix progress bar ── */}
           {coverFix && (
             <div className="mt-4 rounded-2xl border border-outline-variant/20 bg-surface-container-low p-4 space-y-2">
