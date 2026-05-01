@@ -17,8 +17,8 @@ import { updateMyProfile, uploadProfilePicture, searchGoogleBooks, addToLibrary 
 const PAD = 8
 
 // ── Preset avatars (DiceBear) — synced with mobile ───────────────────────────
-const AVATAR_SEEDS = ['Aneka','Buster','Callie','Destiny','Emery','Felix','Gracie','Harley']
-const AVATAR_BGS   = ['c8e6f5','dcc8f0','c8e6c9','f5dcc8','f5c8c8','c8ddf5','e8c8f5','f5f0c8']
+const AVATAR_SEEDS = ['Aneka','Buster','Callie','Destiny','Emery','Felix','Gracie','Harley','Iris','Jasper','Kali','Lexi']
+const AVATAR_BGS   = ['c8e6f5','dcc8f0','c8e6c9','f5dcc8','f5c8c8','c8ddf5','e8c8f5','f5f0c8','c8f0e8','f0c8d8','d8f0c8','c8d8f0']
 const PRESET_AVATARS = AVATAR_SEEDS.map((seed, i) => ({
   id: seed,
   url: `https://api.dicebear.com/9.x/adventurer/png?seed=${seed}&size=200&backgroundColor=${AVATAR_BGS[i]}`,
