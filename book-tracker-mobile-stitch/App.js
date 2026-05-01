@@ -41,6 +41,7 @@ export default function App() {
   const [fontsLoaded, setFontsLoaded]   = useState(false);
   const [authChecked, setAuthChecked]   = useState(false);
   const [isLoggedIn, setIsLoggedIn]     = useState(false);
+  const [transitioning, setTransitioning] = useState(false);
   const [preloaded, setPreloaded]       = useState(null);
   const [showTour, setShowTour] = useState(false);
   const [unreadCount, setUnreadCount]   = useState(0);
@@ -56,10 +57,10 @@ export default function App() {
       .finally(() => setFontsLoaded(true));
   }, []);
 
-  // ── Slide carousel animation (runs while loading) ───────────────────────
+  // ── Slide carousel animation (runs while loading or transitioning) ────────
   const ready = fontsLoaded && authChecked;
   useEffect(() => {
-    if (ready) return;
+    if (ready && !transitioning) return;
     const interval = setInterval(() => {
       Animated.timing(fadeAnim, { toValue: 0, duration: 300, useNativeDriver: true }).start(() => {
         setSlideIndex(prev => (prev + 1) % SLIDES.length);
@@ -67,7 +68,7 @@ export default function App() {
       });
     }, 1800);
     return () => clearInterval(interval);
-  }, [ready]);
+  }, [ready, transitioning]);
 
   // ── Auth check on mount ──────────────────────────────────────────────────
   useEffect(() => {
@@ -135,9 +136,10 @@ export default function App() {
 
   // ── Login / Logout ───────────────────────────────────────────────────────
   const handleLoginSuccess = async () => {
+    setTransitioning(true);
     await preloadData();
-    // Check if tour has been completed (AsyncStorage is async, read here)
     const tourDone = await AsyncStorage.getItem(TOUR_KEY).catch(() => null);
+    setTransitioning(false);
     setIsLoggedIn(true);
     if (!tourDone) setShowTour(true);
   };
@@ -154,6 +156,27 @@ export default function App() {
   if (ready) SplashScreen.hideAsync().catch(() => {});
 
   if (!ready) {
+    const slide = SLIDES[slideIndex];
+    return (
+      <View style={styles.splash}>
+        <Text style={styles.splashLogo}>📖</Text>
+        <Text style={styles.splashTitle}>TrackMyRead</Text>
+        <Animated.View style={[styles.slideWrap, { opacity: fadeAnim }]}>
+          <Text style={styles.slideEmoji}>{slide.emoji}</Text>
+          <Text style={styles.slideText}>{slide.text}</Text>
+        </Animated.View>
+        <View style={styles.dots}>
+          {SLIDES.map((_, i) => (
+            <View key={i} style={[styles.dot, i === slideIndex && styles.dotActive]} />
+          ))}
+        </View>
+        <ActivityIndicator size="small" color={colors.primary} style={{ marginTop: 32 }} />
+      </View>
+    );
+  }
+
+  // ── Post-login transition — show carousel while preloading data ─────────
+  if (transitioning) {
     const slide = SLIDES[slideIndex];
     return (
       <View style={styles.splash}>
