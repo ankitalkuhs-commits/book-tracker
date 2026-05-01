@@ -236,7 +236,7 @@ function AddBookStep({ onSave }) {
     setLoading(true)
     try {
       const data = await searchGoogleBooks(q)
-      setResults((data?.items || []).slice(0, 5))
+      setResults((data?.results || []).slice(0, 5))
     } catch { setResults([]) }
     setLoading(false)
   }
@@ -249,14 +249,14 @@ function AddBookStep({ onSave }) {
   }
 
   const handleAdd = async (book) => {
-    setAdding(book.id)
+    setAdding(book.google_books_id)
     try {
       await addToLibrary({
-        google_books_id: book.id,
-        title:  book.volumeInfo?.title,
-        author: book.volumeInfo?.authors?.join(', '),
-        cover_url: book.volumeInfo?.imageLinks?.thumbnail,
-        total_pages: book.volumeInfo?.pageCount || null,
+        google_books_id: book.google_books_id,
+        title:  book.title,
+        author: book.author,
+        cover_url: book.cover_url,
+        total_pages: book.total_pages || null,
         status: 'reading',
       })
       setAdded(book)
@@ -269,12 +269,12 @@ function AddBookStep({ onSave }) {
     return (
       <div className="space-y-4">
         <div className="flex items-center gap-3 bg-surface-container-low rounded-2xl p-3">
-          {added.volumeInfo?.imageLinks?.thumbnail && (
-            <img src={added.volumeInfo.imageLinks.thumbnail} alt="" className="w-10 h-14 object-cover rounded-lg shrink-0" />
+          {added.cover_url && (
+            <img src={added.cover_url} alt="" className="w-10 h-14 object-cover rounded-lg shrink-0" />
           )}
           <div className="flex-1 min-w-0">
-            <p className="font-semibold text-sm text-on-surface truncate">{added.volumeInfo?.title}</p>
-            <p className="text-xs text-on-surface-variant truncate">{added.volumeInfo?.authors?.join(', ')}</p>
+            <p className="font-semibold text-sm text-on-surface truncate">{added.title}</p>
+            <p className="text-xs text-on-surface-variant truncate">{added.author}</p>
             <div className="flex items-center gap-1 mt-1 text-xs text-primary font-medium">
               <span className="material-symbols-outlined text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
               Added to your library!
@@ -313,24 +313,24 @@ function AddBookStep({ onSave }) {
         <div className="space-y-1 max-h-52 overflow-y-auto rounded-xl border border-outline-variant/20">
           {results.map(book => (
             <button
-              key={book.id}
+              key={book.google_books_id}
               type="button"
               onClick={() => handleAdd(book)}
-              disabled={adding === book.id}
+              disabled={adding === book.google_books_id}
               className="w-full flex items-center gap-3 p-2.5 hover:bg-surface-container-low transition-colors text-left border-b border-outline-variant/10 last:border-0"
             >
-              {book.volumeInfo?.imageLinks?.thumbnail
-                ? <img src={book.volumeInfo.imageLinks.thumbnail} alt="" className="w-8 h-11 object-cover rounded shrink-0" />
+              {book.cover_url
+                ? <img src={book.cover_url} alt="" className="w-8 h-11 object-cover rounded shrink-0" />
                 : <div className="w-8 h-11 bg-surface-container-high rounded shrink-0 flex items-center justify-center">
                     <span className="material-symbols-outlined text-outline text-sm">menu_book</span>
                   </div>
               }
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-on-surface truncate leading-snug">{book.volumeInfo?.title}</p>
-                <p className="text-xs text-on-surface-variant truncate">{book.volumeInfo?.authors?.[0]}</p>
+                <p className="text-sm font-medium text-on-surface truncate leading-snug">{book.title}</p>
+                <p className="text-xs text-on-surface-variant truncate">{book.author}</p>
               </div>
               <div className="shrink-0 bg-primary text-on-primary text-xs font-bold px-3 py-1 rounded-full">
-                {adding === book.id ? '…' : 'Add'}
+                {adding === book.google_books_id ? '…' : 'Add'}
               </div>
             </button>
           ))}
