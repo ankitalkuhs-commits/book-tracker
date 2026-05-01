@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { getAdminStats, getAdminUsers, sendTestPush, broadcastPush, setAdminRole, triggerBot } from '../services/api'
+import { getAdminStats, getAdminUsers, sendTestPush, broadcastPush, setAdminRole, triggerBot, getAdminNotes, getAdminComments, adminDeleteNote, adminDeleteComment } from '../services/api'
 
 function StatCard({ label, value, sub }) {
   return (
@@ -31,6 +31,15 @@ export default function AdminPage() {
   // Bot trigger
   const [botLoading, setBotLoading] = useState(false)
   const [botResult, setBotResult] = useState(null)
+
+  // Content moderation
+  const [notes, setNotes]               = useState([])
+  const [comments, setComments]         = useState([])
+  const [contentLoading, setContentLoading] = useState(false)
+  const [contentLoaded, setContentLoaded]   = useState(false)
+  const [deletingNote, setDeletingNote]     = useState(null)
+  const [deletingComment, setDeletingComment] = useState(null)
+  const [contentSearch, setContentSearch]   = useState('')
 
   // Make admin
   const [makingAdmin, setMakingAdmin] = useState(null)
@@ -99,7 +108,40 @@ export default function AdminPage() {
     setTestLoading(false)
   }
 
-  const TABS = ['overview', 'users', 'push']
+  const loadContent = async () => {
+    if (contentLoaded) return
+    setContentLoading(true)
+    try {
+      const [n, c] = await Promise.all([getAdminNotes(), getAdminComments()])
+      setNotes(n || [])
+      setComments(c || [])
+      setContentLoaded(true)
+    } catch { }
+    setContentLoading(false)
+  }
+
+  const handleDeleteNote = async (id) => {
+    if (!window.confirm('Delete this post and all its likes/comments?')) return
+    setDeletingNote(id)
+    try {
+      await adminDeleteNote(id)
+      setNotes(prev => prev.filter(n => n.id !== id))
+      setComments(prev => prev.filter(c => c.note_id !== id))
+    } catch { }
+    setDeletingNote(null)
+  }
+
+  const handleDeleteComment = async (id) => {
+    if (!window.confirm('Delete this comment?')) return
+    setDeletingComment(id)
+    try {
+      await adminDeleteComment(id)
+      setComments(prev => prev.filter(c => c.id !== id))
+    } catch { }
+    setDeletingComment(null)
+  }
+
+  const TABS = ['overview', 'users', 'content', 'push']
 
   return (
     <main className="max-w-screen-xl mx-auto px-4 md:px-8 pt-8 pb-12 space-y-8">
@@ -114,7 +156,7 @@ export default function AdminPage() {
         {TABS.map(tab => (
           <button
             key={tab}
-            onClick={() => setActiveTab(tab)}
+            onClick={() => { setActiveTab(tab); if (tab === 'content') loadContent() }}
             className={`pb-3 px-4 text-sm font-sans capitalize transition-colors ${
               activeTab === tab
                 ? 'text-primary font-bold border-b-2 border-primary'
@@ -269,6 +311,126 @@ export default function AdminPage() {
               </>
             )
           })()}
+        </div>
+      )}
+
+      {/* Content moderation tab */}
+      {activeTab === 'content' && (
+        <div className="space-y-6">
+          {/* Search */}
+          <div className="relative max-w-sm">
+            <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline/50 text-base">search</span>
+            <input
+              value={contentSearch}
+              onChange={e => setContentSearch(e.target.value)}
+              placeholder="Filter by user or text…"
+              className="w-full bg-surface-container-low rounded-xl pl-10 pr-4 py-2.5 text-sm border-none focus:outline-none focus:ring-2 focus:ring-primary/20"
+            />
+          </div>
+
+          {contentLoading && (
+            <div className="space-y-2">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="bg-surface-container-lowest rounded-2xl h-16 animate-pulse" />
+              ))}
+            </div>
+          )}
+
+          {/* Posts (Notes) */}
+          {!contentLoading && (
+            <section className="space-y-3">
+              <h2 className="text-xs font-bold uppercase tracking-wider text-on-surface-variant">
+                Posts ({notes.length})
+              </h2>
+              <div className="bg-surface-container-lowest rounded-2xl overflow-hidden divide-y divide-outline-variant/10">
+                {notes
+                  .filter(n => {
+                    const q = contentSearch.toLowerCase()
+                    return !q ||
+                      (n.text || '').toLowerCase().includes(q) ||
+                      (n.quote || '').toLowerCase().includes(q) ||
+                      (n.user_name || '').toLowerCase().includes(q)
+                  })
+                  .map(n => (
+                    <div key={n.id} className="flex items-start gap-4 px-5 py-3 hover:bg-surface-container-low transition-colors">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-xs font-bold text-on-surface">{n.user_name || `User #${n.user_id}`}</span>
+                          {n.emotion && (
+                            <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary">{n.emotion}</span>
+                          )}
+                          {!n.is_public && (
+                            <span className="text-xs px-2 py-0.5 rounded-full bg-surface-container-high text-on-surface-variant">private</span>
+                          )}
+                          <span className="text-xs text-on-surface-variant/50">{new Date(n.created_at).toLocaleDateString()}</span>
+                          <span className="text-xs text-on-surface-variant/40">♥ {n.likes_count} · 💬 {n.comments_count}</span>
+                        </div>
+                        {n.quote && (
+                          <p className="text-xs italic text-on-surface-variant mt-0.5 truncate">"{n.quote}"</p>
+                        )}
+                        {n.text && (
+                          <p className="text-sm text-on-surface mt-0.5 line-clamp-2">{n.text}</p>
+                        )}
+                      </div>
+                      <button
+                        onClick={() => handleDeleteNote(n.id)}
+                        disabled={deletingNote === n.id}
+                        className="shrink-0 flex items-center gap-1 text-xs font-medium text-error/70 hover:text-error transition-colors disabled:opacity-40 px-2 py-1 rounded-lg hover:bg-error/5"
+                      >
+                        <span className="material-symbols-outlined text-base">delete</span>
+                        {deletingNote === n.id ? '…' : 'Delete'}
+                      </button>
+                    </div>
+                  ))
+                }
+                {notes.length === 0 && (
+                  <p className="px-5 py-6 text-sm text-on-surface-variant text-center">No posts yet.</p>
+                )}
+              </div>
+            </section>
+          )}
+
+          {/* Comments */}
+          {!contentLoading && (
+            <section className="space-y-3">
+              <h2 className="text-xs font-bold uppercase tracking-wider text-on-surface-variant">
+                Comments ({comments.length})
+              </h2>
+              <div className="bg-surface-container-lowest rounded-2xl overflow-hidden divide-y divide-outline-variant/10">
+                {comments
+                  .filter(c => {
+                    const q = contentSearch.toLowerCase()
+                    return !q ||
+                      (c.text || '').toLowerCase().includes(q) ||
+                      (c.user_name || '').toLowerCase().includes(q)
+                  })
+                  .map(c => (
+                    <div key={c.id} className="flex items-start gap-4 px-5 py-3 hover:bg-surface-container-low transition-colors">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-xs font-bold text-on-surface">{c.user_name || `User #${c.user_id}`}</span>
+                          <span className="text-xs text-on-surface-variant/40">on post #{c.note_id}</span>
+                          <span className="text-xs text-on-surface-variant/50">{new Date(c.created_at).toLocaleDateString()}</span>
+                        </div>
+                        <p className="text-sm text-on-surface mt-0.5 line-clamp-2">{c.text}</p>
+                      </div>
+                      <button
+                        onClick={() => handleDeleteComment(c.id)}
+                        disabled={deletingComment === c.id}
+                        className="shrink-0 flex items-center gap-1 text-xs font-medium text-error/70 hover:text-error transition-colors disabled:opacity-40 px-2 py-1 rounded-lg hover:bg-error/5"
+                      >
+                        <span className="material-symbols-outlined text-base">delete</span>
+                        {deletingComment === c.id ? '…' : 'Delete'}
+                      </button>
+                    </div>
+                  ))
+                }
+                {comments.length === 0 && (
+                  <p className="px-5 py-6 text-sm text-on-surface-variant text-center">No comments yet.</p>
+                )}
+              </div>
+            </section>
+          )}
         </div>
       )}
 

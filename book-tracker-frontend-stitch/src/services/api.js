@@ -274,3 +274,7 @@ export const sendTestPush = (userId) =>
 export const broadcastPush = (data) =>
   apiFetch('/admin/push/broadcast', { method: 'POST', body: JSON.stringify(data) });
 export const triggerBot = () => apiFetch('/admin/bot/trigger', { method: 'POST' });
+export const getAdminNotes = (limit = 50) => apiFetch(`/admin/content/notes?limit=${limit}`);
+export const getAdminComments = (limit = 100) => apiFetch(`/admin/content/comments?limit=${limit}`);
+export const adminDeleteNote = (id) => apiFetch(`/admin/content/note/${id}`, { method: 'DELETE' });
+export const adminDeleteComment = (id) => apiFetch(`/admin/content/comment/${id}`, { method: 'DELETE' });

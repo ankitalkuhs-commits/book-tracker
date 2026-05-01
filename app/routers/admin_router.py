@@ -403,6 +403,137 @@ def broadcast_push_notification(
     }
 
 
+# ─── Content moderation ──────────────────────────────────────────────────────
+
+class NoteAdminView(BaseModel):
+    id: int
+    user_id: int
+    user_name: str | None
+    text: str | None
+    quote: str | None
+    emotion: str | None
+    is_public: bool
+    created_at: datetime
+    likes_count: int
+    comments_count: int
+
+class CommentAdminView(BaseModel):
+    id: int
+    note_id: int
+    user_id: int
+    user_name: str | None
+    text: str
+    created_at: datetime
+
+
+@router.get("/content/notes", response_model=List[NoteAdminView])
+def list_recent_notes(
+    limit: int = 50,
+    db: Session = Depends(get_session),
+    admin_user=Depends(get_admin_user),
+):
+    notes = db.exec(
+        select(models.Note)
+        .order_by(models.Note.created_at.desc())
+        .limit(limit)
+    ).all()
+
+    note_ids = [n.id for n in notes]
+    user_ids = list({n.user_id for n in notes})
+    users_map = {u.id: u for u in db.exec(select(models.User).where(models.User.id.in_(user_ids))).all()} if user_ids else {}
+
+    likes_map = {r[0]: r[1] for r in db.exec(
+        select(models.Like.note_id, func.count(models.Like.id))
+        .where(models.Like.note_id.in_(note_ids))
+        .group_by(models.Like.note_id)
+    ).all()} if note_ids else {}
+
+    comments_map = {r[0]: r[1] for r in db.exec(
+        select(models.Comment.note_id, func.count(models.Comment.id))
+        .where(models.Comment.note_id.in_(note_ids))
+        .group_by(models.Comment.note_id)
+    ).all()} if note_ids else {}
+
+    result = []
+    for n in notes:
+        u = users_map.get(n.user_id)
+        result.append(NoteAdminView(
+            id=n.id,
+            user_id=n.user_id,
+            user_name=(u.name or u.username or u.email.split('@')[0]) if u else None,
+            text=n.text,
+            quote=n.quote,
+            emotion=n.emotion,
+            is_public=n.is_public,
+            created_at=n.created_at,
+            likes_count=likes_map.get(n.id, 0),
+            comments_count=comments_map.get(n.id, 0),
+        ))
+    return result
+
+
+@router.get("/content/comments", response_model=List[CommentAdminView])
+def list_recent_comments(
+    limit: int = 100,
+    db: Session = Depends(get_session),
+    admin_user=Depends(get_admin_user),
+):
+    comments = db.exec(
+        select(models.Comment)
+        .order_by(models.Comment.created_at.desc())
+        .limit(limit)
+    ).all()
+
+    user_ids = list({c.user_id for c in comments})
+    users_map = {u.id: u for u in db.exec(select(models.User).where(models.User.id.in_(user_ids))).all()} if user_ids else {}
+
+    result = []
+    for c in comments:
+        u = users_map.get(c.user_id)
+        result.append(CommentAdminView(
+            id=c.id,
+            note_id=c.note_id,
+            user_id=c.user_id,
+            user_name=(u.name or u.username or u.email.split('@')[0]) if u else None,
+            text=c.text,
+            created_at=c.created_at,
+        ))
+    return result
+
+
+@router.delete("/content/note/{note_id}")
+def delete_note(
+    note_id: int,
+    db: Session = Depends(get_session),
+    admin_user=Depends(get_admin_user),
+):
+    note = db.get(models.Note, note_id)
+    if not note:
+        raise HTTPException(status_code=404, detail="Note not found")
+    # Delete likes and comments first
+    for like in db.exec(select(models.Like).where(models.Like.note_id == note_id)).all():
+        db.delete(like)
+    for comment in db.exec(select(models.Comment).where(models.Comment.note_id == note_id)).all():
+        db.delete(comment)
+    db.delete(note)
+    db.commit()
+    return {"deleted": "note", "id": note_id}
+
+
+@router.delete("/content/comment/{comment_id}")
+def delete_comment(
+    comment_id: int,
+    db: Session = Depends(get_session),
+    admin_user=Depends(get_admin_user),
+):
+    comment = db.get(models.Comment, comment_id)
+    if not comment:
+        raise HTTPException(status_code=404, detail="Comment not found")
+    db.delete(comment)
+    db.commit()
+    return {"deleted": "comment", "id": comment_id}
+
+
 @router.post("/push/test/{user_id}")
 def test_push_notification(
     user_id: int,
