@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../components/Toast'
-import { getMyProfile, updateMyProfile, uploadProfilePicture, deleteAccount, getNotificationPrefs, updateNotificationPrefs, importGoodreads } from '../services/api'
+import { getMyProfile, updateMyProfile, uploadProfilePicture, deleteAccount, getNotificationPrefs, updateNotificationPrefs, importGoodreads, getCoversStatus, fixCoversBatch } from '../services/api'
 
 // Illustrated preset avatars via DiceBear adventurer style — synced with mobile
 const AVATAR_SEEDS = ['Aneka','Buster','Callie','Destiny','Emery','Felix','Gracie','Harley','Iris','Jasper','Kali','Lexi']
@@ -112,6 +112,42 @@ export default function SettingsPage() {
   const [importResult, setImportResult] = useState(null)   // { imported, skipped, failed, total }
   const [importError, setImportError]   = useState(null)
   const [dragging, setDragging]         = useState(false)
+
+  // Cover fix
+  // null | { phase: 'scanning'|'fixing'|'done'|'error', total, done, fixed }
+  const [coverFix, setCoverFix]         = useState(null)
+  const coverFixRunning                 = useRef(false)
+
+  const runCoverFix = async () => {
+    if (coverFixRunning.current) return
+    coverFixRunning.current = true
+    try {
+      setCoverFix({ phase: 'scanning', total: 0, done: 0, fixed: 0 })
+      const status = await getCoversStatus()
+      const ids = status.book_ids || []
+      if (ids.length === 0) {
+        setCoverFix({ phase: 'done', total: 0, done: 0, fixed: 0 })
+        coverFixRunning.current = false
+        return
+      }
+      setCoverFix({ phase: 'fixing', total: ids.length, done: 0, fixed: 0 })
+      const BATCH = 10
+      let totalFixed = 0
+      for (let i = 0; i < ids.length; i += BATCH) {
+        const batch = ids.slice(i, i + BATCH)
+        try {
+          const res = await fixCoversBatch(batch)
+          totalFixed += res.fixed || 0
+        } catch { /* continue on batch error */ }
+        setCoverFix(prev => ({ ...prev, done: Math.min(i + BATCH, ids.length), fixed: totalFixed }))
+      }
+      setCoverFix({ phase: 'done', total: ids.length, done: ids.length, fixed: totalFixed })
+    } catch {
+      setCoverFix(prev => ({ ...(prev || {}), phase: 'error' }))
+    } finally {
+      coverFixRunning.current = false
+    }
+  }
 
   useEffect(() => {
     getMyProfile().then(p => {
@@ -237,6 +273,7 @@ export default function SettingsPage() {
       setImportFile(null)
       if (result.imported > 0) {
         toast(`${result.imported} books imported from Goodreads!`, 'success')
+        runCoverFix()
       }
     } catch (e) {
       setImportError(e.message || 'Import failed. Please try again.')
@@ -658,6 +695,43 @@ export default function SettingsPage() {
               >
                 Import another file
               </button>
+            </div>
+          )}
+
+          {/* ── Cover fix progress bar ── */}
+          {coverFix && (
+            <div className="mt-4 rounded-2xl border border-outline-variant/20 bg-surface-container-low p-4 space-y-2">
+              <div className="flex items-center gap-2">
+                {coverFix.phase === 'done' ? (
+                  <span className="material-symbols-outlined text-base text-secondary" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+                ) : coverFix.phase === 'error' ? (
+                  <span className="material-symbols-outlined text-base text-error">error</span>
+                ) : (
+                  <div className="w-3.5 h-3.5 border-2 border-primary border-t-transparent rounded-full animate-spin shrink-0" />
+                )}
+                <p className="text-sm font-medium text-on-surface">
+                  {coverFix.phase === 'scanning' && 'Scanning for missing book covers…'}
+                  {coverFix.phase === 'fixing' && `Fetching book covers… ${coverFix.done} / ${coverFix.total}`}
+                  {coverFix.phase === 'done' && (coverFix.fixed > 0
+                    ? `${coverFix.fixed} cover${coverFix.fixed > 1 ? 's' : ''} updated successfully`
+                    : 'All covers are up to date')}
+                  {coverFix.phase === 'error' && 'Cover fetch failed — you can retry by importing again'}
+                </p>
+              </div>
+              {coverFix.phase !== 'error' && (
+                <div className="w-full h-1.5 bg-surface-container-high rounded-full overflow-hidden">
+                  <div
+                    className="h-full rounded-full transition-all duration-500"
+                    style={{
+                      width: coverFix.phase === 'scanning' ? '8%'
+                        : coverFix.phase === 'done' ? '100%'
+                        : coverFix.total > 0 ? `${Math.round((coverFix.done / coverFix.total) * 100)}%`
+                        : '0%',
+                      backgroundColor: coverFix.phase === 'done' ? 'var(--color-secondary)' : 'var(--color-primary)',
+                    }}
+                  />
+                </div>
+              )}
             </div>
           )}
         </div>

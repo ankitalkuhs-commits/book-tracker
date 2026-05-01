@@ -259,10 +259,15 @@ export const importGoodreads = async (file) => {
     body: form,
   });
   if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.detail || 'Import failed'); }
-  // Invalidate library cache so the new books appear immediately
   cacheClear('/userbooks');
   return res.json();
 };
+
+export const getCoversStatus = () => apiFetch('/import/covers-status');
+export const fixCoversBatch = (book_ids) => apiFetch('/import/fix-covers-batch', {
+  method: 'POST',
+  body: JSON.stringify({ book_ids }),
+});
 
 // Admin
 export const getAdminStats = () => apiFetch('/admin/stats');

@@ -7,7 +7,7 @@ import * as Font from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { authAPI, userAPI, userbooksAPI, notesAPI, notificationsAPI } from './src/services/api';
+import { authAPI, userAPI, userbooksAPI, notesAPI, notificationsAPI, importAPI } from './src/services/api';
 import { registerExpoPushToken } from './src/services/NotificationService';
 import AppNavigator from './src/navigation/AppNavigator';
 import LoginScreen from './src/screens/LoginScreen';
@@ -100,6 +100,21 @@ export default function App() {
       });
       if (count.status === 'fulfilled') setUnreadCount(count.value?.unread ?? 0);
     } catch { /* non-critical — screens will load their own data */ }
+
+    // Silently fix any books missing covers in the background
+    _silentCoverFix();
+  };
+
+  const _silentCoverFix = async () => {
+    try {
+      const status = await importAPI.getCoversStatus();
+      const ids = status.book_ids || [];
+      if (ids.length === 0) return;
+      const BATCH = 10;
+      for (let i = 0; i < ids.length; i += BATCH) {
+        await importAPI.fixCoversBatch(ids.slice(i, i + BATCH)).catch(() => {});
+      }
+    } catch { /* fully silent — never surface errors to user */ }
   };
 
   // ── Notification badge polling ───────────────────────────────────────────
