@@ -37,115 +37,21 @@ function Avatar({ user, size = 10 }) {
   )
 }
 
-// ─── Bot post parser ─────────────────────────────────────────────────────────
-function parseBotPost(text) {
-  const lines = (text || '').trim().split('\n').map(l => l.trim()).filter(Boolean)
-  const titleLine = lines.find(l => l.startsWith('📚')) || ''
-  const rankLine  = lines.find(l => l.startsWith('🏆')) || ''
-  const rankIdx   = lines.findIndex(l => l.startsWith('🏆'))
-  const teaser    = rankIdx >= 0 ? lines.slice(rankIdx + 1).join(' ') : ''
-
-  const titleMatch = titleLine.replace('📚 ', '').match(/^(.+?) by (.+)$/)
-  const rankMatch  = rankLine.replace('🏆 ', '').match(/^#(\S+)\s+(.+?)(?:\s*·\s*(\d+) weeks?)?$/)
-
-  return {
-    title:    titleMatch?.[1] || '',
-    author:   titleMatch?.[2] || '',
-    rank:     rankMatch?.[1] || '',
-    listName: rankMatch?.[2]?.trim() || 'NYT Bestseller',
-    weeks:    rankMatch?.[3] || '',
-    teaser,
-  }
-}
-
 // ─── Post Card ───────────────────────────────────────────────────────────────
 
-// ─── Shared comment section ───────────────────────────────────────────────────
-function CommentsSection({ postId, isAdmin }) {
-  const toast = useToast()
-  const [comments, setComments] = useState([])
-  const [commentText, setCommentText] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [submitting, setSubmitting] = useState(false)
-  const [deletingId, setDeletingId] = useState(null)
-
-  useEffect(() => {
-    setLoading(true)
-    getComments(postId).then(d => setComments(d || [])).catch(() => {}).finally(() => setLoading(false))
-  }, [postId])
-
-  const submit = async (e) => {
-    e.preventDefault()
-    if (!commentText.trim() || submitting) return
-    setSubmitting(true)
-    try {
-      const c = await addComment(postId, commentText.trim())
-      setComments(prev => [...prev, c])
-      setCommentText('')
-    } catch (e) { toast(e.message || 'Failed to post comment', 'error') }
-    setSubmitting(false)
-  }
-
-  const handleDelete = async (id) => {
-    if (!window.confirm('Delete this comment?')) return
-    setDeletingId(id)
-    try {
-      await adminDeleteComment(id)
-      setComments(prev => prev.filter(c => c.id !== id))
-    } catch (e) { toast(e.message || 'Failed to delete comment', 'error') }
-    setDeletingId(null)
-  }
-
-  return (
-    <div className="space-y-3 px-5 pb-4 pt-3 border-t border-outline-variant/10">
-      {loading && <p className="text-xs text-on-surface-variant/50">Loading…</p>}
-      {comments.map(c => (
-        <div key={c.id} className="flex gap-2.5 items-start group">
-          <Avatar user={c.user} size={7} />
-          <div className="flex-1 min-w-0 bg-surface-container-low rounded-2xl px-3.5 py-2.5">
-            <span className="font-bold text-xs text-on-surface">{c.user?.name} </span>
-            <span className="text-sm text-on-surface-variant">{c.text}</span>
-          </div>
-          {isAdmin && (
-            <button
-              onClick={() => handleDelete(c.id)}
-              disabled={deletingId === c.id}
-              className="opacity-0 group-hover:opacity-100 transition-opacity text-on-surface-variant/30 hover:text-error disabled:opacity-40 mt-1"
-              title="Delete comment"
-            >
-              <span className="material-symbols-outlined text-base">delete</span>
-            </button>
-          )}
-        </div>
-      ))}
-      <form onSubmit={submit} className="flex gap-2 pt-1">
-        <input
-          value={commentText}
-          onChange={e => setCommentText(e.target.value)}
-          placeholder="Add a comment…"
-          className="flex-1 bg-surface-container-low rounded-2xl px-4 py-2.5 text-sm border-none focus:outline-none focus:ring-2 focus:ring-primary/20"
-        />
-        <button
-          type="submit"
-          disabled={submitting || !commentText.trim()}
-          className="btn-primary px-4 py-2 text-xs rounded-2xl disabled:opacity-40 shrink-0"
-        >
-          {submitting ? '…' : 'Post'}
-        </button>
-      </form>
-    </div>
-  )
-}
-
-// ─── User Post Card (redesigned) ──────────────────────────────────────────────
 function PostCard({ post, currentUserId, isAdmin, onLikeToggle, onDelete, onEdit }) {
   const navigate = useNavigate()
   const toast = useToast()
   const [showComments, setShowComments] = useState(false)
+  const [comments, setComments] = useState([])
+  const [commentText, setCommentText] = useState('')
+  const [loadingComments, setLoadingComments] = useState(false)
+  const [submittingComment, setSubmittingComment] = useState(false)
   const [showMenu, setShowMenu] = useState(false)
   const [editing, setEditing] = useState(false)
   const [editText, setEditText] = useState(post.text || '')
   const [saving, setSaving] = useState(false)
+  const [deletingCommentId, setDeletingCommentId] = useState(null)
 
   const isOwn = post.user?.id === currentUserId || post.user_id === currentUserId
   const isEdited = post.updated_at && post.updated_at !== post.created_at
@@ -156,10 +62,27 @@ function PostCard({ post, currentUserId, isAdmin, onLikeToggle, onDelete, onEdit
     setShowMenu(false)
     if (!window.confirm('Delete this post?')) return
     try {
-      if (isAdmin && !isOwn) await adminDeleteNote(post.id)
-      else await deleteNote(post.id)
+      if (isAdmin && !isOwn) {
+        await adminDeleteNote(post.id)
+      } else {
+        await deleteNote(post.id)
+      }
       onDelete(post.id)
-    } catch (e) { toast(e.message || 'Failed to delete', 'error') }
+    } catch (e) {
+      toast(e.message || 'Failed to delete', 'error')
+    }
+  }
+
+  const handleDeleteComment = async (commentId) => {
+    if (!window.confirm('Delete this comment?')) return
+    setDeletingCommentId(commentId)
+    try {
+      await adminDeleteComment(commentId)
+      setComments(prev => prev.filter(c => c.id !== commentId))
+    } catch (e) {
+      toast(e.message || 'Failed to delete comment', 'error')
+    }
+    setDeletingCommentId(null)
   }
 
   const handleSaveEdit = async () => {
@@ -169,262 +92,218 @@ function PostCard({ post, currentUserId, isAdmin, onLikeToggle, onDelete, onEdit
       const updated = await updateNote(post.id, { text: editText.trim() })
       onEdit(post.id, updated)
       setEditing(false)
-    } catch (e) { toast(e.message || 'Failed to save', 'error') }
+    } catch (e) {
+      toast(e.message || 'Failed to save', 'error')
+    }
     setSaving(false)
   }
 
-  return (
-    <article className="bg-surface-container-lowest rounded-3xl overflow-hidden transition-all hover:shadow-[0_12px_40px_-12px_rgba(0,70,74,0.12)]">
-      {/* ── Header ── */}
-      <div className="flex items-center justify-between px-5 pt-5 pb-1">
-        <button
-          className="flex items-center gap-3 hover:opacity-80 transition-opacity"
-          onClick={() => navigate(`/profile/${post.user?.id || post.user_id}`)}
-        >
-          <Avatar user={post.user} size={9} />
-          <div className="text-left">
-            <h4 className="font-bold text-sm text-on-surface leading-none">{post.user?.name || 'User'}</h4>
-            <p className="text-xs text-on-surface-variant/50 mt-0.5">
-              {timeAgo(post.created_at)}{isEdited && <span className="italic"> · Edited</span>}
-            </p>
-          </div>
-        </button>
+  const toggleComments = async () => {
+    if (!showComments && comments.length === 0) {
+      setLoadingComments(true)
+      try {
+        const data = await getComments(post.id)
+        setComments(data || [])
+      } catch { }
+      setLoadingComments(false)
+    }
+    setShowComments(v => !v)
+  }
 
-        {(isOwn || isAdmin) && (
-          <div className="relative">
-            <button
-              onClick={() => setShowMenu(v => !v)}
-              className="text-on-surface-variant/40 hover:text-on-surface transition-colors p-1 rounded-lg hover:bg-surface-container"
-            >
-              <span className="material-symbols-outlined text-lg">more_horiz</span>
-            </button>
-            {showMenu && (
-              <div className="absolute right-0 top-8 bg-surface-container-lowest rounded-2xl shadow-float border border-outline-variant/15 z-10 min-w-[130px] overflow-hidden">
-                {isOwn && (
-                  <button
-                    onClick={() => { setShowMenu(false); setEditing(true) }}
-                    className="flex items-center gap-2 w-full px-4 py-2.5 text-sm text-on-surface hover:bg-surface-container transition-colors"
-                  >
-                    <span className="material-symbols-outlined text-sm">edit</span>Edit
-                  </button>
-                )}
-                <button
-                  onClick={handleDelete}
-                  className="flex items-center gap-2 w-full px-4 py-2.5 text-sm text-error hover:bg-error/5 transition-colors"
-                >
-                  <span className="material-symbols-outlined text-sm">delete</span>Delete
-                </button>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* ── Body: text left, cover right ── */}
-      <div className="flex gap-4 px-5 pt-3 pb-4 items-start">
-        <div className="flex-1 min-w-0 space-y-3">
-          {/* Book chip */}
-          {book && (
-            <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-secondary bg-secondary/10 px-3 py-1 rounded-full">
-              <span className="material-symbols-outlined text-xs" style={{ fontSize: 13 }}>menu_book</span>
-              {book.title}
-            </span>
-          )}
-
-          {/* Text / edit mode */}
-          {editing ? (
-            <div className="space-y-2">
-              <textarea
-                autoFocus
-                value={editText}
-                onChange={e => setEditText(e.target.value)}
-                rows={3}
-                className="w-full bg-surface-container-low rounded-xl p-3 text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none border-none"
-              />
-              <div className="flex gap-2">
-                <button onClick={handleSaveEdit} disabled={saving} className="btn-primary px-4 py-1.5 text-xs rounded-lg">
-                  {saving ? 'Saving…' : 'Save'}
-                </button>
-                <button
-                  onClick={() => { setEditing(false); setEditText(post.text || '') }}
-                  className="px-4 py-1.5 text-xs rounded-lg border border-outline-variant/30 text-on-surface-variant hover:bg-surface-container transition-colors"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          ) : post.text ? (
-            <p className="text-on-surface leading-relaxed text-[15px]">{post.text}</p>
-          ) : null}
-
-          {/* Pull-quote */}
-          {post.quote && (
-            <div className="pl-1 space-y-0.5">
-              <span className="font-serif text-5xl text-secondary/20 leading-none block" style={{ lineHeight: 1 }}>"</span>
-              <p className="font-serif italic text-on-surface text-base leading-relaxed pl-3 -mt-2">{post.quote}</p>
-            </div>
-          )}
-
-          {/* Image attachment */}
-          {post.image_url && (
-            <img
-              src={post.image_url}
-              alt="Post"
-              className="rounded-2xl max-h-52 object-cover"
-              onError={e => { e.target.parentElement.style.display = 'none' }}
-            />
-          )}
-        </div>
-
-        {/* Book cover — right side, tall */}
-        {book && coverUrl && (
-          <div className="shrink-0 w-[68px] h-[102px] rounded-xl overflow-hidden shadow-[0_4px_16px_-4px_rgba(0,0,0,0.25)] bg-surface-container-high">
-            <img
-              src={coverUrl}
-              alt={book.title}
-              className="w-full h-full object-cover"
-              onError={e => { e.target.parentElement.style.display = 'none' }}
-            />
-          </div>
-        )}
-      </div>
-
-      {/* ── Action bar ── */}
-      <div className="flex items-center gap-6 px-5 py-3 border-t border-outline-variant/10">
-        <button
-          className={`flex items-center gap-2 transition-colors ${post.liked_by_me ? 'text-error' : 'text-on-surface-variant/60 hover:text-error'}`}
-          onClick={() => onLikeToggle(post)}
-        >
-          <span className="material-symbols-outlined text-xl" style={{ fontVariationSettings: post.liked_by_me ? "'FILL' 1" : "'FILL' 0" }}>
-            favorite
-          </span>
-          <span className="text-sm font-semibold">{post.likes_count || 0}</span>
-        </button>
-
-        <button
-          className={`flex items-center gap-2 transition-colors ${showComments ? 'text-primary' : 'text-on-surface-variant/60 hover:text-primary'}`}
-          onClick={() => setShowComments(v => !v)}
-        >
-          <span className="material-symbols-outlined text-xl">chat_bubble</span>
-          <span className="text-sm font-semibold">{post.comments_count || 0}</span>
-        </button>
-      </div>
-
-      {/* ── Comments ── */}
-      {showComments && <CommentsSection postId={post.id} isAdmin={isAdmin} />}
-    </article>
-  )
-}
-
-// ─── Editorial / Bot Post Card ────────────────────────────────────────────────
-function BotPostCard({ post, isAdmin, onLikeToggle, onDelete }) {
-  const toast = useToast()
-  const [showComments, setShowComments] = useState(false)
-  const { title, author, rank, listName, weeks, teaser } = parseBotPost(post.text)
-  const coverUrl = post.image_url
-
-  const handleDelete = async () => {
-    if (!window.confirm('Delete this editorial post?')) return
+  const submitComment = async (e) => {
+    e.preventDefault()
+    if (!commentText.trim() || submittingComment) return
+    setSubmittingComment(true)
     try {
-      await adminDeleteNote(post.id)
-      onDelete(post.id)
-    } catch (e) { toast(e.message || 'Failed to delete', 'error') }
+      const c = await addComment(post.id, commentText.trim())
+      setComments(prev => [...prev, c])
+      setCommentText('')
+    } catch (e) {
+      toast(e.message || 'Failed to post comment', 'error')
+    } finally {
+      setSubmittingComment(false)
+    }
   }
 
   return (
-    <article className="rounded-3xl overflow-hidden border border-outline-variant/20 bg-gradient-to-br from-surface-container-lowest to-surface-container-low transition-all hover:shadow-[0_12px_40px_-12px_rgba(0,70,74,0.15)]">
-      {/* ── Editorial badge row ── */}
-      <div className="flex items-center justify-between px-5 pt-4 pb-0">
-        <div className="flex items-center gap-2">
-          <span className="text-[10px] font-black uppercase tracking-[0.12em] text-primary/50">✦ NYT Bestseller</span>
-          <span className="w-1 h-1 rounded-full bg-outline-variant/40 inline-block" />
-          <span className="text-[10px] font-semibold text-on-surface-variant/40 uppercase tracking-wider">Today's Pick</span>
+    <article className="bg-surface-container-lowest rounded-3xl p-5 md:p-8 flex flex-row gap-4 md:gap-8 transition-all hover:shadow-[0_20px_50px_-20px_rgba(0,70,74,0.1)]">
+      {/* Book cover — small thumbnail */}
+      {book && (
+        <div className="shrink-0 w-12 md:w-20" style={{ alignSelf: 'flex-start' }}>
+          <div className="w-12 h-[72px] md:w-20 md:h-[120px] rounded-lg overflow-hidden shadow-md bg-surface-container-high">
+            {coverUrl ? (
+              <img
+                src={coverUrl}
+                alt={book.title}
+                className="w-full h-full object-cover"
+                onError={e => { e.target.parentElement.style.display = 'none' }}
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center">
+                <span className="material-symbols-outlined text-lg text-outline">menu_book</span>
+              </div>
+            )}
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-on-surface-variant/30">{timeAgo(post.created_at)}</span>
-          {isAdmin && (
-            <button
-              onClick={handleDelete}
-              className="text-on-surface-variant/20 hover:text-error transition-colors"
-              title="Delete post (admin)"
-            >
-              <span className="material-symbols-outlined text-base">delete</span>
-            </button>
-          )}
-        </div>
-      </div>
+      )}
 
-      {/* ── Main content ── */}
-      <div className="flex gap-5 px-5 pt-4 pb-5 items-start">
-        {/* Left: structured metadata */}
-        <div className="flex-1 min-w-0 space-y-2.5">
-          {rank && (
-            <div className="flex items-baseline gap-2">
-              <span className="font-serif font-black text-4xl text-primary/15 leading-none">#{rank}</span>
+      {/* Content */}
+      <div className="flex-grow space-y-4 min-w-0">
+        {/* Header */}
+        <div className="flex justify-between items-start">
+          <button
+            className="flex items-center space-x-3 hover:opacity-80 transition-opacity"
+            onClick={() => navigate(`/profile/${post.user?.id || post.user_id}`)}
+          >
+            <Avatar user={post.user} size={10} />
+            <div className="text-left">
+              <h4 className="font-bold text-on-surface text-sm">{post.user?.name || 'User'}</h4>
+              <p className="text-xs text-on-surface-variant/60">
+                {timeAgo(post.created_at)}
+                {isEdited && <span className="ml-1 italic">· Edited</span>}
+              </p>
+            </div>
+          </button>
+
+          {(isOwn || isAdmin) && (
+            <div className="relative">
+              <button
+                onClick={() => setShowMenu(v => !v)}
+                className="text-on-surface-variant hover:text-on-surface transition-colors p-1 rounded-lg hover:bg-surface-container"
+              >
+                <span className="material-symbols-outlined text-lg">more_horiz</span>
+              </button>
+              {showMenu && (
+                <div className="absolute right-0 top-8 bg-surface-container-lowest rounded-2xl shadow-float border border-outline-variant/15 z-10 min-w-[130px] overflow-hidden">
+                  {isOwn && (
+                    <button
+                      onClick={() => { setShowMenu(false); setEditing(true) }}
+                      className="flex items-center gap-2 w-full px-4 py-2.5 text-sm text-on-surface hover:bg-surface-container transition-colors"
+                    >
+                      <span className="material-symbols-outlined text-sm">edit</span>
+                      Edit
+                    </button>
+                  )}
+                  <button
+                    onClick={handleDelete}
+                    className="flex items-center gap-2 w-full px-4 py-2.5 text-sm text-error hover:bg-error/5 transition-colors"
+                  >
+                    <span className="material-symbols-outlined text-sm">delete</span>
+                    Delete
+                  </button>
+                </div>
+              )}
             </div>
           )}
-
-          {listName && (
-            <span className="inline-block text-[11px] font-bold text-secondary bg-secondary/10 px-3 py-1 rounded-full uppercase tracking-wide">
-              {listName}
-            </span>
-          )}
-
-          <div>
-            <h3 className="font-serif font-bold text-lg text-on-surface leading-snug">{title || 'NYT Bestseller'}</h3>
-            {author && <p className="text-xs text-on-surface-variant/60 mt-0.5">by {author}</p>}
-          </div>
-
-          {teaser && (
-            <p className="text-sm text-on-surface-variant leading-relaxed line-clamp-3">{teaser}</p>
-          )}
-
-          {weeks && (
-            <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/30">
-              {weeks} weeks on list
-            </p>
-          )}
         </div>
 
-        {/* Right: book cover */}
-        {coverUrl ? (
-          <div className="shrink-0 w-24 h-36 rounded-2xl overflow-hidden shadow-[0_8px_24px_-6px_rgba(0,0,0,0.3)] bg-surface-container-high">
-            <img
-              src={coverUrl}
-              alt={title}
-              className="w-full h-full object-cover"
-              onError={e => { e.target.parentElement.style.display = 'none' }}
+        {/* Book title */}
+        {book && (
+          <p className="text-xs font-bold text-secondary uppercase tracking-widest">
+            {book.title}
+          </p>
+        )}
+
+        {/* Note text / inline edit */}
+        {editing ? (
+          <div className="space-y-2">
+            <textarea
+              value={editText}
+              onChange={e => setEditText(e.target.value)}
+              rows={3}
+              className="w-full bg-surface-container-low rounded-xl p-3 text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none border-none"
             />
+            <div className="flex gap-2">
+              <button onClick={handleSaveEdit} disabled={saving} className="btn-primary px-4 py-1.5 text-xs rounded-lg">
+                {saving ? 'Saving…' : 'Save'}
+              </button>
+              <button onClick={() => { setEditing(false); setEditText(post.text || '') }} className="px-4 py-1.5 text-xs rounded-lg border border-outline-variant/30 text-on-surface-variant hover:bg-surface-container transition-colors">
+                Cancel
+              </button>
+            </div>
           </div>
-        ) : (
-          <div className="shrink-0 w-24 h-36 rounded-2xl bg-gradient-to-br from-primary/10 to-secondary/10 flex items-center justify-center">
-            <span className="material-symbols-outlined text-3xl text-primary/30">menu_book</span>
+        ) : post.text ? (
+          <p className="text-on-surface leading-relaxed font-sans">{post.text}</p>
+        ) : null}
+
+        {/* Quote */}
+        {post.quote && (
+          <div className="bg-surface-container-low p-4 rounded-2xl border-l-4 border-secondary/40 italic text-on-surface-variant font-serif text-sm">
+            "{post.quote}"
+          </div>
+        )}
+
+        {/* Image */}
+        {post.image_url && (
+          <img
+            src={post.image_url}
+            alt="Post"
+            className="rounded-xl max-h-48 object-cover max-w-[160px]"
+            onError={e => { e.target.parentElement.style.display = 'none' }}
+          />
+        )}
+
+        {/* Actions */}
+        <div className="flex items-center space-x-5 pt-2">
+          <button
+            className={`flex items-center space-x-1.5 transition-colors ${post.liked_by_me ? 'text-error' : 'text-on-surface-variant hover:text-error'}`}
+            onClick={() => onLikeToggle(post)}
+          >
+            <span className="material-symbols-outlined text-xl"
+              style={{ fontVariationSettings: post.liked_by_me ? "'FILL' 1" : "'FILL' 0" }}>
+              favorite
+            </span>
+            <span className="text-sm font-bold">{post.likes_count || 0}</span>
+          </button>
+
+          <button
+            className="flex items-center space-x-1.5 text-on-surface-variant hover:text-primary transition-colors"
+            onClick={toggleComments}
+          >
+            <span className="material-symbols-outlined text-xl">chat_bubble</span>
+            <span className="text-sm font-bold">{post.comments_count || 0}</span>
+          </button>
+        </div>
+
+        {/* Comments section */}
+        {showComments && (
+          <div className="space-y-3 pt-2 border-t border-outline-variant/15">
+            {loadingComments && <p className="text-xs text-on-surface-variant">Loading...</p>}
+            {comments.map(c => (
+              <div key={c.id} className="flex gap-2 text-sm items-start">
+                <Avatar user={c.user} size={7} />
+                <div className="bg-surface-container-low rounded-xl px-3 py-2 flex-1 min-w-0">
+                  <span className="font-bold text-on-surface text-xs">{c.user?.name} </span>
+                  <span className="text-on-surface-variant">{c.text}</span>
+                </div>
+                {isAdmin && (
+                  <button
+                    onClick={() => handleDeleteComment(c.id)}
+                    disabled={deletingCommentId === c.id}
+                    className="shrink-0 text-on-surface-variant/30 hover:text-error transition-colors disabled:opacity-40 p-0.5"
+                    title="Delete comment"
+                  >
+                    <span className="material-symbols-outlined text-base">
+                      {deletingCommentId === c.id ? 'progress_activity' : 'delete'}
+                    </span>
+                  </button>
+                )}
+              </div>
+            ))}
+            <form onSubmit={submitComment} className="flex gap-2 mt-2">
+              <input
+                value={commentText}
+                onChange={e => setCommentText(e.target.value)}
+                placeholder="Add a comment..."
+                className="flex-1 bg-surface-container-low rounded-xl px-3 py-2 text-sm border-none focus:outline-none focus:ring-2 focus:ring-primary/20"
+              />
+              <button type="submit" disabled={submittingComment || !commentText.trim()} className="btn-primary px-4 py-2 text-xs rounded-xl disabled:opacity-50">
+                {submittingComment ? '...' : 'Post'}
+              </button>
+            </form>
           </div>
         )}
       </div>
-
-      {/* ── Action bar ── */}
-      <div className="flex items-center gap-6 px-5 py-3 border-t border-outline-variant/10">
-        <button
-          className={`flex items-center gap-2 transition-colors ${post.liked_by_me ? 'text-error' : 'text-on-surface-variant/60 hover:text-error'}`}
-          onClick={() => onLikeToggle(post)}
-        >
-          <span className="material-symbols-outlined text-xl" style={{ fontVariationSettings: post.liked_by_me ? "'FILL' 1" : "'FILL' 0" }}>
-            favorite
-          </span>
-          <span className="text-sm font-semibold">{post.likes_count || 0}</span>
-        </button>
-
-        <button
-          className={`flex items-center gap-2 transition-colors ${showComments ? 'text-primary' : 'text-on-surface-variant/60 hover:text-primary'}`}
-          onClick={() => setShowComments(v => !v)}
-        >
-          <span className="material-symbols-outlined text-xl">chat_bubble</span>
-          <span className="text-sm font-semibold">{post.comments_count || 0}</span>
-        </button>
-      </div>
-
-      {showComments && <CommentsSection postId={post.id} isAdmin={isAdmin} />}
     </article>
   )
 }
@@ -928,27 +807,17 @@ export default function HomePage() {
           </div>
         )}
 
-        {!loading && !error && posts.map(post =>
-          post.user?.email === 'tmrbot@trackmyread.com' ? (
-            <BotPostCard
-              key={post.id}
-              post={post}
-              isAdmin={user?.is_admin}
-              onLikeToggle={handleLikeToggle}
-              onDelete={handleDeletePost}
-            />
-          ) : (
-            <PostCard
-              key={post.id}
-              post={post}
-              currentUserId={user?.id}
-              isAdmin={user?.is_admin}
-              onLikeToggle={handleLikeToggle}
-              onDelete={handleDeletePost}
-              onEdit={handleEditPost}
-            />
-          )
-        )}
+        {!loading && !error && posts.map(post => (
+          <PostCard
+            key={post.id}
+            post={post}
+            currentUserId={user?.id}
+            isAdmin={user?.is_admin}
+            onLikeToggle={handleLikeToggle}
+            onDelete={handleDeletePost}
+            onEdit={handleEditPost}
+          />
+        ))}
       </div>
 
       {/* Sidebar */}
