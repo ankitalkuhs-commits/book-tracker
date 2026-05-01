@@ -327,12 +327,18 @@ async def get_covers_status(
     Returns how many of the user's books are missing a cover,
     and the book IDs to fix.
     """
+    # Also include books whose cover is an Open Library URL — those return a
+    # 1×1 transparent GIF when the cover doesn't exist, so they look broken.
     rows = db.exec(
         select(models.Book.id)
         .join(models.UserBook, models.UserBook.book_id == models.Book.id)
         .where(
             models.UserBook.user_id == current_user.id,
-            or_(models.Book.cover_url == None, models.Book.cover_url == ""),
+            or_(
+                models.Book.cover_url == None,
+                models.Book.cover_url == "",
+                models.Book.cover_url.like("%openlibrary.org%"),
+            ),
         )
     ).all()
     book_ids = list(set(rows))
@@ -359,8 +365,11 @@ async def fix_covers_batch(
 
     for book_id in ids:
         book = db.get(models.Book, book_id)
-        if not book or book.cover_url:
-            continue  # already has cover or not found
+        if not book:
+            continue
+        # Skip only if it has a real (non-Open Library) cover already
+        if book.cover_url and "openlibrary.org" not in book.cover_url:
+            continue
         cover = await _fetch_google_cover(book.title, book.author, book.isbn)
         if cover:
             book.cover_url = cover
