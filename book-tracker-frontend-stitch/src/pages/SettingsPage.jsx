@@ -4,21 +4,13 @@ import { useAuth } from '../context/AuthContext'
 import { useToast } from '../components/Toast'
 import { getMyProfile, updateMyProfile, uploadProfilePicture, deleteAccount, getNotificationPrefs, updateNotificationPrefs, importGoodreads } from '../services/api'
 
-// Illustrated preset avatars via DiceBear adventurer style
-const PRESET_AVATARS = [
-  { id: 'sage',     url: 'https://api.dicebear.com/9.x/adventurer/svg?seed=sage&backgroundColor=b6e3f4' },
-  { id: 'luna',     url: 'https://api.dicebear.com/9.x/adventurer/svg?seed=luna&backgroundColor=c0aede' },
-  { id: 'felix',    url: 'https://api.dicebear.com/9.x/adventurer/svg?seed=felix&backgroundColor=d1d4f9' },
-  { id: 'nova',     url: 'https://api.dicebear.com/9.x/adventurer/svg?seed=nova&backgroundColor=ffdfbf' },
-  { id: 'arlo',     url: 'https://api.dicebear.com/9.x/adventurer/svg?seed=arlo&backgroundColor=ffd5dc' },
-  { id: 'quinn',    url: 'https://api.dicebear.com/9.x/adventurer/svg?seed=quinn&backgroundColor=b6e3f4' },
-  { id: 'ember',    url: 'https://api.dicebear.com/9.x/adventurer/svg?seed=ember&backgroundColor=c0aede' },
-  { id: 'river',    url: 'https://api.dicebear.com/9.x/adventurer/svg?seed=river&backgroundColor=d1f9e0' },
-  { id: 'blake',    url: 'https://api.dicebear.com/9.x/adventurer/svg?seed=blake&backgroundColor=ffeaad' },
-  { id: 'cedar',    url: 'https://api.dicebear.com/9.x/adventurer/svg?seed=cedar&backgroundColor=e0d5f9' },
-  { id: 'haven',    url: 'https://api.dicebear.com/9.x/adventurer/svg?seed=haven&backgroundColor=d1f9f4' },
-  { id: 'lyric',    url: 'https://api.dicebear.com/9.x/adventurer/svg?seed=lyric&backgroundColor=f9d5d5' },
-]
+// Illustrated preset avatars via DiceBear adventurer style — synced with mobile
+const AVATAR_SEEDS = ['Aneka','Buster','Callie','Destiny','Emery','Felix','Gracie','Harley','Iris','Jasper','Kali','Lexi']
+const AVATAR_BGS   = ['c8e6f5','dcc8f0','c8e6c9','f5dcc8','f5c8c8','c8ddf5','e8c8f5','f5f0c8','c8f0e8','f0c8d8','d8f0c8','c8d8f0']
+const PRESET_AVATARS = AVATAR_SEEDS.map((seed, i) => ({
+  id: seed,
+  url: `https://api.dicebear.com/9.x/adventurer/png?seed=${seed}&size=200&backgroundColor=${AVATAR_BGS[i]}`,
+}))
 
 function AvatarPickerModal({ current, onSelect, onClose }) {
   const [selected, setSelected] = useState(current)

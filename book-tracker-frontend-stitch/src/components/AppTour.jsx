@@ -16,17 +16,13 @@ import { updateMyProfile, uploadProfilePicture, searchGoogleBooks, addToLibrary 
 
 const PAD = 8
 
-// ── Preset avatars (DiceBear) ─────────────────────────────────────────────────
-const PRESET_AVATARS = [
-  { id: 'sage',   url: 'https://api.dicebear.com/9.x/adventurer/svg?seed=sage&backgroundColor=b6e3f4' },
-  { id: 'luna',   url: 'https://api.dicebear.com/9.x/adventurer/svg?seed=luna&backgroundColor=c0aede' },
-  { id: 'felix',  url: 'https://api.dicebear.com/9.x/adventurer/svg?seed=felix&backgroundColor=d1d4f9' },
-  { id: 'nova',   url: 'https://api.dicebear.com/9.x/adventurer/svg?seed=nova&backgroundColor=ffdfbf' },
-  { id: 'arlo',   url: 'https://api.dicebear.com/9.x/adventurer/svg?seed=arlo&backgroundColor=ffd5dc' },
-  { id: 'quinn',  url: 'https://api.dicebear.com/9.x/adventurer/svg?seed=quinn&backgroundColor=b6e3f4' },
-  { id: 'ember',  url: 'https://api.dicebear.com/9.x/adventurer/svg?seed=ember&backgroundColor=c0aede' },
-  { id: 'river',  url: 'https://api.dicebear.com/9.x/adventurer/svg?seed=river&backgroundColor=d1f9e0' },
-]
+// ── Preset avatars (DiceBear) — synced with mobile ───────────────────────────
+const AVATAR_SEEDS = ['Aneka','Buster','Callie','Destiny','Emery','Felix','Gracie','Harley']
+const AVATAR_BGS   = ['c8e6f5','dcc8f0','c8e6c9','f5dcc8','f5c8c8','c8ddf5','e8c8f5','f5f0c8']
+const PRESET_AVATARS = AVATAR_SEEDS.map((seed, i) => ({
+  id: seed,
+  url: `https://api.dicebear.com/9.x/adventurer/png?seed=${seed}&size=200&backgroundColor=${AVATAR_BGS[i]}`,
+}))
 
 const GOAL_PRESETS = [6, 12, 24, 36, 52]
 
