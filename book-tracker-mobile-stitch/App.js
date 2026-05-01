@@ -1,6 +1,7 @@
 import React, { useState, useEffect, createContext, useRef } from 'react';
 import { View, Text, Animated, ActivityIndicator, StyleSheet, AppState } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import * as Notifications from 'expo-notifications';
 import * as Font from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
@@ -178,18 +179,20 @@ export default function App() {
   }
 
   return (
-    <NotificationContext.Provider value={{ unreadCount }}>
-      <PreloadContext.Provider value={{
-          ...(preloaded || {}),
-          updateProfile: (patch) =>
-            setPreloaded(prev => ({ ...prev, profile: { ...(prev?.profile || {}), ...patch } })),
-        }}>
-        <NavigationContainer>
-          <AppNavigator onLogout={handleLogout} />
-        </NavigationContainer>
-        {showTour && <AppTour onDone={() => setShowTour(false)} />}
-      </PreloadContext.Provider>
-    </NotificationContext.Provider>
+    <SafeAreaProvider>
+      <NotificationContext.Provider value={{ unreadCount }}>
+        <PreloadContext.Provider value={{
+            ...(preloaded || {}),
+            updateProfile: (patch) =>
+              setPreloaded(prev => ({ ...prev, profile: { ...(prev?.profile || {}), ...patch } })),
+          }}>
+          <NavigationContainer>
+            <AppNavigator onLogout={handleLogout} />
+          </NavigationContainer>
+          {showTour && <AppTour onDone={() => setShowTour(false)} />}
+        </PreloadContext.Provider>
+      </NotificationContext.Provider>
+    </SafeAreaProvider>
   );
 }
 

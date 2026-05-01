@@ -181,6 +181,19 @@ When user says **"wrap up"**, Claude automatically:
 - **CRITICAL PATTERN:** Never push `app/models.py` changes without confirming Supabase migration has been run. New model fields with no matching DB column will crash the entire backend (every User query fails). Run `context/supabase_migration.sql` in Supabase SQL Editor BEFORE or simultaneously with the push.
 - **GOTCHA — Vercel deployment:** `book-tracker-stitch` Vercel project production branch is set to `master`. Pushing to `stitch-experiment` creates a Preview deployment only. To update `book-tracker-stitch.vercel.app`, go to Overview → Active Branches → `...` next to `stitch-experiment` → Promote to Production. (Or change production branch in Settings → General.)
 
+**Parity Audit Fixes — April 30, 2026:**
+- **Notification deep-linking (mobile):** Full switch on event type in `NotificationsScreen.js` — group events → CircTab + GroupDetail (using `data.group_id`), book/post events → HomeTab, streak → InsTab, follow → UserProfile
+- **Notification deep-linking (web):** `getDestination()` in `NotificationsPage.jsx` — group_invite/group_join_request → `/groups/:id`, book events → `/home`, streak → `/insights`
+- **Backend:** `post_liked` now sends `extra={"note_id": note_id}` (same as `post_commented`) in `likes_comments.py`
+- **Web Settings notif prefs:** Added `group_invite` + `group_join_request` toggles to match mobile
+- **Web Nav:** Removed "Search" nav link — Library has "Add Book" modal already
+- **Web Search format filter:** Added FORMAT_OPTIONS chips (Paperback / Hardcover / eBook / Audiobook), client-side filtered via `filterByFormat()`
+- **Web Book Detail:** New `BookDetailPage.jsx` at `/library/book/:userbookId` — full dedicated page (like mobile BookDetailScreen) with cover, status selector, progress, notes, rating, description. LibraryPage book card click now navigates via `{ state: { userbook } }` instead of opening inline panel
+- **Goodreads CSV validation:** Both web and mobile now accept by MIME type (csv/excel/spreadsheet) in addition to `.csv` extension — fixes Android DocumentPicker stripping extension
+- **Mobile SettingsScreen:** Step 1 of how-to guide is now a tappable inline link opening `https://www.goodreads.com/review/import`
+- **stitch-experiment branch:** Backend import_router.py, main.py, auth_router.py ported from master — stitch Render backend now has `/import/goodreads`
+- **CONFIRMED:** Create Group ✓ and Private Profile toggle ✓ already exist on mobile — audit agent was wrong about these gaps
+
 **Web Onboarding (AUE) — April 30, 2026:**
 - **NEW: `src/pages/OnboardingPage.jsx`** — 5-step full-screen onboarding flow for web:
   - Welcome → App Tour (4 section cards) → Reading Goal → Import from Goodreads → Done
@@ -258,7 +271,7 @@ When user says **"wrap up"**, Claude automatically:
 > Full plan: `context/PRODUCTION_CUTOVER_PLAN.md`
 > TL;DR order: cherry-pick Google Books fixes → run supabase_migration.sql → bump versionCode to 45 → merge stitch-experiment→master → change Vercel root dir → eas build + submit → staged rollout
 
-**Next Priorities — Phase 4 (remaining device bugs):**
+**Next Priorities — Phase 4 (remaining device bugs + parity):**
 
 HIGH (broken core functionality):
 1. **BookDetailScreen: status pill not persisting** — `handleStatusChange` not refreshing state or API URL wrong. Audit `booksAPI.updateStatus` call + endpoint.
@@ -269,9 +282,9 @@ MEDIUM (UX parity):
 4. **Recs modal + Friends reading → add-to-library sheet** — "Want to Read" / "Start Reading Now" bottom sheet on book tap in both "For You" recs shelf and Friends tab "What Friends Are Reading".
 5. **AppHeader avatar not showing photo** — show `user.profile_picture` as `<Image>` when set, fallback to initials.
 6. **Circles page shows `?` instead of avatar** — `user` prop not reaching AppHeader correctly in GroupsScreen.
-
-LOW (polish):
-7. **BookDetailScreen: book description missing** — add collapsible description section.
+7. **BookDetailScreen: book description missing** — add collapsible description section (now done on web, need mobile).
+8. **Web Search page:** still accessible at `/search` route but removed from Nav — confirm whether to keep or remove route entirely.
+9. **Onboarding tour "Add a Book" step (mobile):** verify book search + add flow working end-to-end after tour changes.
 
 **Typography system** — committed `7b60209` on `stitch-experiment` branch (Manrope + Noto Serif across all screens). Next APK build will include fonts.
 
