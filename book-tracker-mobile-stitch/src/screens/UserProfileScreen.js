@@ -176,13 +176,26 @@ export default function UserProfileScreen({ route, navigation }) {
   const finished         = books.filter(b => b.status === 'finished');
   const displayedBooks   = showAllBooks ? books : books.slice(0, 6);
 
-  // Progress ring data
-  const goalTarget   = stats?.yearly_goal ?? 0;
-  const goalFinished = stats?.finished_books ?? finished.length;
-  const goalPct      = goalTarget > 0 ? Math.min(100, Math.round((goalFinished / goalTarget) * 100)) : 0;
-  const avgPpd       = stats?.avg_pages_per_day ?? null;
-  const totalPages   = stats?.total_pages_read   ?? 0;
-  const currentYear  = new Date().getFullYear();
+  // Stats (field names from GET /users/{id}/stats)
+  const finishedCount  = stats?.finished   ?? finished.length;
+  const readingCount   = stats?.reading    ?? currentlyReading.length;
+  const thisYear       = stats?.this_year  ?? 0;
+  const totalPages     = stats?.total_pages ?? 0;
+  const currentYear    = new Date().getFullYear();
+
+  // Avg pages/day computed from last-30-day activity
+  const avgPpd = activity.length > 0
+    ? Math.round(activity.reduce((s, d) => s + (d.pages_read || 0), 0) / activity.length)
+    : null;
+
+  // Yearly goal (from profile, not stats)
+  const goalTarget  = user?.yearly_goal ?? 0;
+  const goalPct     = goalTarget > 0 ? Math.min(100, Math.round((finishedCount / goalTarget) * 100)) : 0;
+
+  // Join date
+  const joinedDate = user?.created_at
+    ? new Date(user.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+    : null;
 
   const goToProfile = (uid) => {
     if (uid && uid !== userId) navigation.push('UserProfile', { userId: uid });
@@ -256,6 +269,12 @@ export default function UserProfileScreen({ route, navigation }) {
           <Text style={styles.userName}>{name}</Text>
           {user?.username && <Text style={styles.heroUsername}>@{user.username}</Text>}
           {user?.bio && <Text style={styles.userBio}>{user.bio}</Text>}
+          {joinedDate && (
+            <View style={styles.joinedRow}>
+              <Ionicons name="calendar-outline" size={13} color={colors.onSurfaceVariant} />
+              <Text style={styles.joinedText}>Member since {joinedDate}</Text>
+            </View>
+          )}
 
           {/* Stats pills */}
           <View style={styles.statsPills}>
@@ -305,23 +324,35 @@ export default function UserProfileScreen({ route, navigation }) {
           </View>
         ) : (
           <>
-            {/* ── Yearly Progress ── */}
-            {goalTarget > 0 && (
+            {/* ── This Year ── */}
+            {(thisYear > 0 || goalTarget > 0 || totalPages > 0) && (
               <View style={styles.progressSection}>
-                <Text style={styles.progressEyebrow}>{currentYear} PROGRESS</Text>
+                <Text style={styles.progressEyebrow}>{currentYear}</Text>
                 <View style={styles.progressBody}>
-                  <Text style={styles.progressNum}>{goalFinished}</Text>
-                  <Text style={styles.progressOf}> / {goalTarget} books</Text>
+                  <Text style={styles.progressNum}>{finishedCount}</Text>
+                  <Text style={styles.progressOf}>
+                    {goalTarget > 0 ? ` / ${goalTarget} books` : ' books finished'}
+                  </Text>
                 </View>
-                <View style={styles.progressTrack}>
-                  <View style={[styles.progressFill, { width: `${goalPct}%` }]} />
-                </View>
-                {totalPages > 0 && (
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 }}>
-                    <Ionicons name="document-text-outline" size={13} color={colors.onSurfaceVariant} />
-                    <Text style={styles.progressPages}>{fmt(totalPages)} pages read</Text>
+                {goalTarget > 0 && (
+                  <View style={styles.progressTrack}>
+                    <View style={[styles.progressFill, { width: `${goalPct}%` }]} />
                   </View>
                 )}
+                <View style={{ flexDirection: 'row', gap: 16, marginTop: 8 }}>
+                  {thisYear > 0 && (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                      <Ionicons name="checkmark-circle-outline" size={13} color={colors.secondary} />
+                      <Text style={styles.progressPages}>{thisYear} finished this year</Text>
+                    </View>
+                  )}
+                  {totalPages > 0 && (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                      <Ionicons name="document-text-outline" size={13} color={colors.onSurfaceVariant} />
+                      <Text style={styles.progressPages}>{fmt(totalPages)} pages read</Text>
+                    </View>
+                  )}
+                </View>
               </View>
             )}
 
@@ -375,14 +406,21 @@ export default function UserProfileScreen({ route, navigation }) {
                   <Text style={styles.numberLabel}>In Library</Text>
                 </View>
                 <View style={styles.numberCard}>
-                  <Text style={styles.numberValue}>{finished.length}</Text>
+                  <Text style={styles.numberValue}>{finishedCount}</Text>
                   <Text style={styles.numberLabel}>Finished</Text>
                 </View>
                 <View style={styles.numberCard}>
-                  <Text style={styles.numberValue}>{avgPpd ? Math.round(avgPpd) : '—'}</Text>
-                  <Text style={styles.numberLabel}>Avg pages/day</Text>
+                  <Text style={styles.numberValue}>{readingCount}</Text>
+                  <Text style={styles.numberLabel}>Reading</Text>
                 </View>
               </View>
+              {avgPpd != null && avgPpd > 0 && (
+                <View style={styles.speedCard}>
+                  <Ionicons name="speedometer-outline" size={18} color={colors.primary} />
+                  <Text style={styles.speedValue}>{avgPpd}</Text>
+                  <Text style={styles.speedLabel}>avg pages / day (last 30 days)</Text>
+                </View>
+              )}
 
               {/* Currently Reading */}
               {currentlyReading.length > 0 && (
@@ -495,6 +533,9 @@ const styles = StyleSheet.create({
   heroUsername:   { ...type.bodySm, color: colors.onSurfaceVariant, marginBottom: 6 },
   userBio:        { ...type.body, color: colors.onSurfaceVariant, textAlign: 'center', marginBottom: 14, paddingHorizontal: 16 },
 
+  joinedRow:   { flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 14 },
+  joinedText:  { ...type.caption, color: colors.onSurfaceVariant },
+
   statsPills:      { flexDirection: 'row', alignItems: 'center', marginBottom: 18 },
   statPill:        { alignItems: 'center', paddingHorizontal: 16 },
   statPillValue:   { fontFamily: 'NotoSerif_700Bold', fontSize: 18, fontWeight: '700', color: colors.onSurface },
@@ -543,6 +584,10 @@ const styles = StyleSheet.create({
   bookCoverFallback: { backgroundColor: colors.surfaceContainerHigh, justifyContent: 'center', alignItems: 'center' },
   bookTileTitle:   { fontSize: 11, fontWeight: '700', color: colors.onSurface, lineHeight: 15 },
   bookTileAuthor:  { fontSize: 10, color: colors.onSurfaceVariant },
+
+  speedCard:   { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: colors.primaryContainer, borderRadius: radius.lg, padding: 14, marginTop: 10 },
+  speedValue:  { fontFamily: 'NotoSerif_700Bold', fontSize: 22, fontWeight: '700', color: colors.primary },
+  speedLabel:  { ...type.caption, color: colors.primary, flex: 1 },
 
   // By The Numbers
   numbersGrid:     { flexDirection: 'row', gap: 10, marginBottom: 16 },
