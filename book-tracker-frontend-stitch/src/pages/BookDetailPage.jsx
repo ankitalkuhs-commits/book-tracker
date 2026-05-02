@@ -71,6 +71,20 @@ function BookCover({ book }) {
   )
 }
 
+// ── Amazon affiliate helper ───────────────────────────────────────────────────
+
+const AMAZON_TAG_IN  = 'trackmyread-21'
+const AMAZON_TAG_COM = 'trackmyread-20'
+
+function getAmazonUrl(title, author) {
+  const q  = encodeURIComponent(`${title} ${author || ''}`.trim())
+  const tz = Intl.DateTimeFormat().resolvedOptions().timeZone
+  const india = tz === 'Asia/Calcutta' || tz === 'Asia/Kolkata'
+  const domain = india ? 'amazon.in' : 'amazon.com'
+  const tag    = india ? AMAZON_TAG_IN : AMAZON_TAG_COM
+  return `https://www.${domain}/s?k=${q}&tag=${tag}`
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function BookDetailPage() {
@@ -254,6 +268,20 @@ export default function BookDetailPage() {
               {book?.isbn          && <p><span className="font-medium text-on-surface">ISBN:</span> {book.isbn}</p>}
             </div>
           )}
+
+          {/* Buy on Amazon */}
+          {book?.title && (
+            <a
+              href={getAmazonUrl(book.title, book.author)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-center gap-2 w-full px-4 py-2.5 rounded-xl border border-amber-400 text-amber-700 bg-amber-50 hover:bg-amber-100 transition-colors text-sm font-semibold"
+            >
+              <span className="material-symbols-outlined text-base" style={{ fontVariationSettings: "'FILL' 1" }}>shopping_cart</span>
+              Buy on Amazon
+            </a>
+          )}
+          <p className="text-center text-xs text-on-surface-variant/50 -mt-2">Affiliate link · helps support TrackMyRead</p>
         </div>
 
         {/* Right column — main content */}

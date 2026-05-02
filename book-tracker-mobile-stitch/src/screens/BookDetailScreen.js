@@ -1,12 +1,24 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  TextInput, ActivityIndicator, Alert, Image, Modal,
+  TextInput, ActivityIndicator, Alert, Image, Modal, Linking,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { userbooksAPI, notesAPI, booksAPI } from '../services/api';
 import { colors, radius, shadow, type } from '../theme';
+
+const AMAZON_TAG_IN  = 'trackmyread-21';
+const AMAZON_TAG_COM = 'trackmyread-20';
+
+function getAmazonUrl(title, author) {
+  const q  = encodeURIComponent(`${title} ${author || ''}`.trim());
+  const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const india  = tz === 'Asia/Calcutta' || tz === 'Asia/Kolkata';
+  const domain = india ? 'amazon.in' : 'amazon.com';
+  const tag    = india ? AMAZON_TAG_IN : AMAZON_TAG_COM;
+  return `https://www.${domain}/s?k=${q}&tag=${tag}`;
+}
 
 const STATUS_OPTIONS = [
   { key: 'to-read',  label: 'Want to Read', icon: 'bookmark-outline' },
@@ -241,6 +253,21 @@ export default function BookDetailScreen({ route, navigation }) {
               <Text style={styles.descToggleText}>{descExpanded ? 'Show less' : 'Show more'}</Text>
             </TouchableOpacity>
           ) : null}
+
+          {/* Buy on Amazon */}
+          {book.title ? (
+            <>
+              <TouchableOpacity
+                style={styles.amazonBtn}
+                onPress={() => Linking.openURL(getAmazonUrl(book.title, book.author))}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="cart-outline" size={16} color="#92400e" />
+                <Text style={styles.amazonBtnText}>Buy on Amazon</Text>
+              </TouchableOpacity>
+              <Text style={styles.amazonDisclaimer}>Affiliate link · helps support TrackMyRead</Text>
+            </>
+          ) : null}
         </View>
 
         {/* ── Status ── */}
@@ -407,6 +434,10 @@ const styles = StyleSheet.create({
   descToggle:      { marginTop: 10, paddingHorizontal: 4 },
   descText:        { ...type.bodySm, color: colors.onSurfaceVariant, textAlign: 'center', lineHeight: 20 },
   descToggleText:  { ...type.label, color: colors.primary, textAlign: 'center', marginTop: 4 },
+
+  amazonBtn:         { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, marginTop: 14, paddingVertical: 10, paddingHorizontal: 20, borderRadius: radius.lg, borderWidth: 1.5, borderColor: '#f59e0b', backgroundColor: '#fffbeb' },
+  amazonBtnText:     { fontSize: 14, fontFamily: 'Manrope_700Bold', fontWeight: '700', color: '#92400e' },
+  amazonDisclaimer:  { ...type.caption, color: colors.outline, textAlign: 'center', marginTop: 6 },
 
   section:      { marginTop: 20, paddingHorizontal: 16 },
   sectionLabel: { ...type.eyebrow, color: colors.onSurfaceVariant, marginBottom: 12 },
