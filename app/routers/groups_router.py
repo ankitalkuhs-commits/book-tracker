@@ -852,8 +852,13 @@ def get_leaderboard(
     # Keep only most-recently-updated per user
     reading_map: dict = {}
     for ub in reading_ubs:
-        if ub.user_id not in reading_map or (ub.updated_at or 0) > (reading_map[ub.user_id].updated_at or 0):
+        if ub.user_id not in reading_map:
             reading_map[ub.user_id] = ub
+        else:
+            a = ub.updated_at or datetime.min
+            b = reading_map[ub.user_id].updated_at or datetime.min
+            if a > b:
+                reading_map[ub.user_id] = ub
     reading_book_ids = [ub.book_id for ub in reading_map.values() if ub.book_id]
     reading_books = {b.id: b for b in db.exec(select(models.Book).where(models.Book.id.in_(reading_book_ids))).all()} if reading_book_ids else {}
 
