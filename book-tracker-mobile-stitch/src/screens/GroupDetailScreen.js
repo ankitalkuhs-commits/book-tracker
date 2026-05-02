@@ -9,7 +9,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { groupsAPI, booksAPI, usersAPI } from '../services/api';
 import { colors, radius, shadow, type } from '../theme';
 
-const WEB_APP_URL = 'https://tracker-stitch.vercel.app';
+const WEB_APP_URL = 'https://www.trackmyread.com';
 
 function timeAgo(dateStr) {
   if (!dateStr) return '';
