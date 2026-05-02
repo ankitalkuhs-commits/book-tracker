@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity,
   ActivityIndicator, RefreshControl, Alert, StatusBar, Modal,
@@ -54,79 +54,183 @@ function activityText(ev) {
 
 // ── Set Group Book Modal ──────────────────────────────────────────────────────
 function SetGroupBookModal({ visible, onClose, onSet }) {
-  const [query,     setQuery]     = useState('');
-  const [results,   setResults]   = useState([]);
-  const [searching, setSearching] = useState(false);
-  const [setting,   setSetting]   = useState(false);
+  const insets = useSafeAreaInsets();
+  const [query,        setQuery]        = useState('');
+  const [results,      setResults]      = useState([]);
+  const [searching,    setSearching]    = useState(false);
+  const [loadingMore,  setLoadingMore]  = useState(false);
+  const [hasMore,      setHasMore]      = useState(false);
+  const [nextStart,    setNextStart]    = useState(0);
+  const [selectedBook, setSelectedBook] = useState(null);
+  const [setting,      setSetting]      = useState(false);
+  const currentQuery = useRef('');
 
   const search = async () => {
     if (!query.trim()) return;
+    currentQuery.current = query.trim();
     setSearching(true);
+    setResults([]);
+    setHasMore(false);
+    setNextStart(0);
     try {
-      const r = await booksAPI.search(query.trim());
+      const r = await booksAPI.search(currentQuery.current);
       setResults(r?.results || []);
+      setHasMore(r?.has_more ?? false);
+      setNextStart(r?.next_start_index ?? 0);
     } catch { /* ignore */ }
     setSearching(false);
   };
 
-  const pick = async (book) => {
+  const loadMore = async () => {
+    if (!hasMore || loadingMore || searching) return;
+    setLoadingMore(true);
+    try {
+      const r = await booksAPI.search(currentQuery.current, { startIndex: nextStart });
+      setResults(prev => [...prev, ...(r?.results || [])]);
+      setHasMore(r?.has_more ?? false);
+      setNextStart(r?.next_start_index ?? 0);
+    } catch { }
+    setLoadingMore(false);
+  };
+
+  const handleSet = async () => {
+    if (!selectedBook) return;
     setSetting(true);
     try {
-      await onSet(book);
-      setQuery(''); setResults([]);
-      onClose();
+      await onSet(selectedBook);
+      handleClose();
     } catch (e) { Alert.alert('Error', e?.response?.data?.detail || 'Could not set book'); }
     setSetting(false);
   };
 
+  const handleClose = () => {
+    setQuery(''); setResults([]); setSelectedBook(null);
+    setHasMore(false); setNextStart(0);
+    onClose();
+  };
+
   return (
-    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
+    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={handleClose}>
       <View style={styles.modalRoot}>
-        <View style={styles.modalHeader}>
-          <TouchableOpacity onPress={onClose}><Text style={styles.modalCancel}>Cancel</Text></TouchableOpacity>
+        {/* Header */}
+        <View style={[styles.modalHeader, { paddingTop: insets.top + 14 }]}>
+          <TouchableOpacity onPress={handleClose}>
+            <Text style={styles.modalCancel}>Cancel</Text>
+          </TouchableOpacity>
           <Text style={styles.modalTitle}>Set Group Book</Text>
           <View style={{ width: 56 }} />
         </View>
-        <View style={styles.searchRow}>
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search for a book…"
-            placeholderTextColor={colors.outline}
-            value={query}
-            onChangeText={setQuery}
-            onSubmitEditing={search}
-            returnKeyType="search"
-            autoFocus
-          />
-          <TouchableOpacity style={styles.searchBtn} onPress={search} disabled={searching}>
-            {searching
-              ? <ActivityIndicator size="small" color={colors.onPrimary} />
-              : <Ionicons name="search" size={20} color={colors.onPrimary} />
-            }
-          </TouchableOpacity>
-        </View>
-        {setting && <ActivityIndicator style={{ marginTop: 20 }} color={colors.primary} />}
-        <FlatList
-          data={results}
-          keyExtractor={(_, i) => i.toString()}
-          contentContainerStyle={{ padding: 14 }}
-          renderItem={({ item }) => (
-            <TouchableOpacity style={styles.bookResultRow} onPress={() => pick(item)} activeOpacity={0.8}>
-              {item.cover_url ? (
-                <Image source={{ uri: item.cover_url }} style={styles.bookResultCover} />
-              ) : (
-                <View style={[styles.bookResultCover, { backgroundColor: colors.surfaceContainerHigh, justifyContent: 'center', alignItems: 'center' }]}>
-                  <Ionicons name="book-outline" size={20} color={colors.outline} />
-                </View>
-              )}
-              <View style={{ flex: 1 }}>
-                <Text style={styles.bookResultTitle} numberOfLines={2}>{item.title}</Text>
-                <Text style={styles.bookResultAuthor} numberOfLines={1}>{item.authors?.join(', ') || 'Unknown'}</Text>
+
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
+          {!selectedBook ? (
+            /* ── Search panel ── */
+            <View style={{ flex: 1 }}>
+              <View style={styles.searchRow}>
+                <TextInput
+                  style={styles.searchInput}
+                  placeholder="Search by title or author…"
+                  placeholderTextColor={colors.outline}
+                  value={query}
+                  onChangeText={setQuery}
+                  onSubmitEditing={search}
+                  returnKeyType="search"
+                  autoFocus
+                />
+                <TouchableOpacity style={styles.searchBtn} onPress={search} disabled={searching}>
+                  {searching
+                    ? <ActivityIndicator size="small" color={colors.onPrimary} />
+                    : <Ionicons name="search" size={20} color={colors.onPrimary} />
+                  }
+                </TouchableOpacity>
               </View>
-              <Ionicons name="checkmark-circle-outline" size={20} color={colors.primary} />
-            </TouchableOpacity>
+
+              {results.length === 0 && !searching ? (
+                <View style={styles.searchEmpty}>
+                  <Ionicons name="search-outline" size={48} color={colors.outlineVariant} />
+                  <Text style={styles.searchEmptyText}>Search for a book to set</Text>
+                </View>
+              ) : (
+                <FlatList
+                  data={results}
+                  keyExtractor={(_, i) => i.toString()}
+                  contentContainerStyle={styles.resultsList}
+                  onEndReached={loadMore}
+                  onEndReachedThreshold={0.3}
+                  ListFooterComponent={loadingMore ? <ActivityIndicator size="small" color={colors.primary} style={{ marginVertical: 12 }} /> : null}
+                  renderItem={({ item }) => (
+                    <TouchableOpacity
+                      style={styles.resultCard}
+                      onPress={() => setSelectedBook(item)}
+                      activeOpacity={0.8}
+                    >
+                      <View style={styles.resultCoverWrap}>
+                        <Image
+                          source={{ uri: item.cover_url }}
+                          style={styles.resultCover}
+                          resizeMode="cover"
+                        />
+                      </View>
+                      <View style={styles.resultInfo}>
+                        <Text style={styles.resultTitle} numberOfLines={2}>{item.title}</Text>
+                        <Text style={styles.resultAuthor} numberOfLines={1}>
+                          {item.authors?.join(', ') || 'Unknown'}
+                        </Text>
+                        {item.publisher ? (
+                          <Text style={styles.resultPublisher} numberOfLines={1}>{item.publisher}</Text>
+                        ) : item.total_pages > 0 ? (
+                          <Text style={styles.resultPublisher}>{item.total_pages} pages</Text>
+                        ) : null}
+                      </View>
+                      <Ionicons name="chevron-forward" size={18} color={colors.outline} style={{ alignSelf: 'center' }} />
+                    </TouchableOpacity>
+                  )}
+                />
+              )}
+            </View>
+          ) : (
+            /* ── Confirm panel ── */
+            <ScrollView contentContainerStyle={styles.optionsScroll}>
+              <TouchableOpacity onPress={() => setSelectedBook(null)} style={styles.backBtn}>
+                <Ionicons name="chevron-back" size={18} color={colors.primary} />
+                <Text style={styles.backBtnText}>Back</Text>
+              </TouchableOpacity>
+
+              <View style={styles.selectedHero}>
+                {selectedBook.cover_url ? (
+                  <Image source={{ uri: selectedBook.cover_url }} style={styles.selectedCoverLarge} resizeMode="cover" />
+                ) : (
+                  <View style={[styles.selectedCoverLarge, { backgroundColor: colors.surfaceContainerHigh, justifyContent: 'center', alignItems: 'center' }]}>
+                    <Ionicons name="book-outline" size={32} color={colors.outline} />
+                  </View>
+                )}
+                <View style={styles.selectedMeta}>
+                  <Text style={styles.selectedTitle} numberOfLines={3}>{selectedBook.title}</Text>
+                  <Text style={styles.selectedAuthor}>{selectedBook.authors?.join(', ') || 'Unknown'}</Text>
+                  {selectedBook.publisher ? <Text style={styles.selectedPublisher}>{selectedBook.publisher}</Text> : null}
+                  {selectedBook.published_date ? <Text style={styles.selectedPublisher}>{selectedBook.published_date.slice(0, 4)}</Text> : null}
+                  {selectedBook.total_pages > 0 ? <Text style={styles.selectedPages}>{selectedBook.total_pages} pages</Text> : null}
+                </View>
+              </View>
+
+              {selectedBook.description ? (
+                <View style={styles.descriptionBox}>
+                  <Text style={styles.descriptionText} numberOfLines={5}>{selectedBook.description}</Text>
+                </View>
+              ) : null}
+
+              <TouchableOpacity
+                style={[styles.addBtn, setting && { opacity: 0.6 }]}
+                onPress={handleSet}
+                disabled={setting}
+              >
+                {setting
+                  ? <ActivityIndicator size="small" color={colors.onPrimary} />
+                  : <Text style={styles.addBtnText}>Set as Group Book</Text>
+                }
+              </TouchableOpacity>
+            </ScrollView>
           )}
-        />
+        </KeyboardAvoidingView>
       </View>
     </Modal>
   );
@@ -775,8 +879,34 @@ const styles = StyleSheet.create({
   searchRow:    { flexDirection: 'row', margin: 14, gap: 10 },
   searchInput:  { flex: 1, height: 46, backgroundColor: colors.surfaceContainerLow, borderRadius: radius.md, paddingHorizontal: 14, fontSize: 14, color: colors.onSurface, borderWidth: 1, borderColor: colors.outlineVariant + '60' },
   searchBtn:    { width: 46, height: 46, backgroundColor: colors.primary, borderRadius: radius.md, justifyContent: 'center', alignItems: 'center' },
-  bookResultRow:  { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: colors.surfaceContainerHigh },
-  bookResultCover:{ width: 48, height: 72, borderRadius: radius.sm },
-  bookResultTitle:{ fontSize: 14, fontWeight: '700', color: colors.onSurface, lineHeight: 20, marginBottom: 3 },
+  // ── shared search result styles (mirrors LibraryScreen) ──
+  searchEmpty:     { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 12 },
+  searchEmptyText: { ...type.body, color: colors.onSurfaceVariant },
+  resultsList:     { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 20 },
+  resultCard:      { flexDirection: 'row', alignItems: 'center', gap: 14, backgroundColor: colors.surfaceContainerLowest, borderRadius: radius.lg, padding: 12, marginBottom: 12, ...shadow.card },
+  resultCoverWrap: { flexShrink: 0 },
+  resultCover:     { width: 72, height: 108, borderRadius: radius.md, backgroundColor: colors.surfaceContainerHigh },
+  resultInfo:      { flex: 1 },
+  resultTitle:     { ...type.body, fontFamily: 'Manrope_700Bold', fontWeight: '700', color: colors.onSurface, marginBottom: 3 },
+  resultAuthor:    { ...type.label, color: colors.onSurfaceVariant, marginBottom: 2 },
+  resultPublisher: { ...type.caption, color: colors.outline },
+  optionsScroll:   { padding: 20, paddingTop: 12 },
+  backBtn:         { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
+  backBtnText:     { ...type.body, color: colors.primary, fontFamily: 'Manrope_600SemiBold', fontWeight: '600' },
+  selectedHero:    { flexDirection: 'row', gap: 16, marginBottom: 16, backgroundColor: colors.surfaceContainerLowest, borderRadius: radius.lg, padding: 14, ...shadow.card },
+  selectedCoverLarge: { width: 110, height: 165, borderRadius: radius.md, backgroundColor: colors.surfaceContainerHigh, flexShrink: 0 },
+  selectedMeta:    { flex: 1, justifyContent: 'flex-start', gap: 4 },
+  selectedTitle:   { ...type.title, fontFamily: 'NotoSerif_700Bold', color: colors.onSurface, marginBottom: 2 },
+  selectedAuthor:  { ...type.bodySm, fontFamily: 'Manrope_600SemiBold', fontWeight: '600', color: colors.primary },
+  selectedPublisher: { ...type.caption, color: colors.onSurfaceVariant },
+  selectedPages:   { ...type.caption, color: colors.outline, marginTop: 2 },
+  descriptionBox:  { backgroundColor: colors.surfaceContainerLowest, borderRadius: radius.lg, padding: 14, marginBottom: 4, ...shadow.card },
+  descriptionText: { ...type.bodySm, color: colors.onSurfaceVariant },
+  addBtn:          { marginTop: 32, backgroundColor: colors.primary, paddingVertical: 14, borderRadius: radius.lg, alignItems: 'center' },
+  addBtnText:      { ...type.title, color: colors.onPrimary },
+  // ── legacy (unused after refactor, kept to avoid runtime errors) ──
+  bookResultRow:   { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10 },
+  bookResultCover: { width: 48, height: 72, borderRadius: radius.sm },
+  bookResultTitle: { fontSize: 14, fontWeight: '700', color: colors.onSurface, lineHeight: 20, marginBottom: 3 },
   bookResultAuthor: { fontSize: 12, color: colors.onSurfaceVariant },
 });
