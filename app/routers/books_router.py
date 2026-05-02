@@ -211,11 +211,11 @@ def get_recommendations(limit: int = 12, db: Session = Depends(get_db), current_
         r for r in db.exec(select(Follow.followed_id).where(Follow.follower_id == current_user.id)).all()
     ]
 
-    recs = {}  # book_id -> {"book": Book, "reason": str, "score": int}
+    recs = {}  # book_id -> {"book": Book, "reason": str, "score": int, "friend_name": str|None}
 
-    def add_rec(book, reason, score):
+    def add_rec(book, reason, score, friend_name=None):
         if book.id not in my_book_ids and book.id not in recs:
-            recs[book.id] = {"book": book, "reason": reason, "score": score}
+            recs[book.id] = {"book": book, "reason": reason, "score": score, "friend_name": friend_name}
         elif book.id in recs:
             recs[book.id]["score"] = max(recs[book.id]["score"], score)
 
@@ -229,10 +229,14 @@ def get_recommendations(limit: int = 12, db: Session = Depends(get_db), current_
         ).all()
         fr_book_ids = [ub.book_id for ub in friend_reading if ub.book_id]
         fr_books = {b.id: b for b in db.exec(select(Book).where(Book.id.in_(fr_book_ids))).all()} if fr_book_ids else {}
+        fr_user_ids = list({ub.user_id for ub in friend_reading})
+        fr_users = {u.id: u for u in db.exec(select(User).where(User.id.in_(fr_user_ids))).all()} if fr_user_ids else {}
         for ub in friend_reading:
             book = fr_books.get(ub.book_id)
+            friend = fr_users.get(ub.user_id)
+            friend_name = (friend.name or friend.username or '').split()[0] if friend else None
             if book:
-                add_rec(book, "friends_reading", 3)
+                add_rec(book, "friends_reading", 3, friend_name)
 
     # 2. Books friends finished with rating >= 4
     if following_ids:
@@ -245,10 +249,14 @@ def get_recommendations(limit: int = 12, db: Session = Depends(get_db), current_
         ).all()
         fl_book_ids = [ub.book_id for ub in friend_loved if ub.book_id]
         fl_books = {b.id: b for b in db.exec(select(Book).where(Book.id.in_(fl_book_ids))).all()} if fl_book_ids else {}
+        fl_user_ids = list({ub.user_id for ub in friend_loved})
+        fl_users = {u.id: u for u in db.exec(select(User).where(User.id.in_(fl_user_ids))).all()} if fl_user_ids else {}
         for ub in friend_loved:
             book = fl_books.get(ub.book_id)
+            friend = fl_users.get(ub.user_id)
+            friend_name = (friend.name or friend.username or '').split()[0] if friend else None
             if book:
-                add_rec(book, "friends_loved", 4)
+                add_rec(book, "friends_loved", 4, friend_name)
 
     # 3. Author affinity — other books by authors I've read
     my_ubs = db.exec(select(UserBook).where(UserBook.user_id == current_user.id)).all()
@@ -281,6 +289,7 @@ def get_recommendations(limit: int = 12, db: Session = Depends(get_db), current_
             "total_pages": r["book"].total_pages,
             "description": r["book"].description,
             "reason": r["reason"],
+            "friend_name": r.get("friend_name"),
         }
         for r in sorted_recs
     ]

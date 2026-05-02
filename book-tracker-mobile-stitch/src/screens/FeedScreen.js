@@ -70,6 +70,7 @@ const FeedScreen = ({ navigation }) => {
   const [currentUser, setCurrentUser] = useState(null);
   const [menuPostId, setMenuPostId] = useState(null);
   const likingInFlight = useRef(new Set());
+  const followInFlight = useRef(new Set());
 
   // Comment state
   const [expandedComments, setExpandedComments] = useState({});  // postId → { comments, loading, text }
@@ -147,19 +148,35 @@ const FeedScreen = ({ navigation }) => {
   };
 
   const handleFollow = async (userId) => {
+    if (followInFlight.current.has(userId)) return;
+    followInFlight.current.add(userId);
+    setSearchResults(prev => prev.map(u => u.id === userId ? { ...u, _followLoading: true } : u));
     try {
       await userAPI.followUser(userId);
-      setSearchResults(prev => prev.map(u => u.id === userId ? { ...u, is_following: true, is_mutual: u.follows_you } : u));
+      setSearchResults(prev => prev.map(u => u.id === userId ? { ...u, is_following: true, is_mutual: u.follows_you, _followLoading: false } : u));
       loadFriendsReading();
-    } catch (error) { Alert.alert('Error', error.response?.data?.detail || 'Failed to follow user'); }
+    } catch (error) {
+      setSearchResults(prev => prev.map(u => u.id === userId ? { ...u, _followLoading: false } : u));
+      Alert.alert('Error', error.response?.data?.detail || 'Failed to follow user');
+    } finally {
+      followInFlight.current.delete(userId);
+    }
   };
 
   const handleUnfollow = async (userId) => {
+    if (followInFlight.current.has(userId)) return;
+    followInFlight.current.add(userId);
+    setSearchResults(prev => prev.map(u => u.id === userId ? { ...u, _followLoading: true } : u));
     try {
       await userAPI.unfollowUser(userId);
-      setSearchResults(prev => prev.map(u => u.id === userId ? { ...u, is_following: false, is_mutual: false } : u));
+      setSearchResults(prev => prev.map(u => u.id === userId ? { ...u, is_following: false, is_mutual: false, _followLoading: false } : u));
       loadFriendsReading();
-    } catch { Alert.alert('Error', 'Failed to unfollow user'); }
+    } catch {
+      setSearchResults(prev => prev.map(u => u.id === userId ? { ...u, _followLoading: false } : u));
+      Alert.alert('Error', 'Failed to unfollow user');
+    } finally {
+      followInFlight.current.delete(userId);
+    }
   };
 
   const onRefresh = async () => {
@@ -171,7 +188,7 @@ const FeedScreen = ({ navigation }) => {
   const pickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') { Alert.alert('Permission needed', 'Please grant camera roll permissions'); return; }
-    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, allowsEditing: true, aspect: [4, 3], quality: 0.8 });
+    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, allowsEditing: true, aspect: [2, 3], quality: 0.8 });
     if (!result.canceled) setSelectedImage(result.assets[0].uri);
   };
 
@@ -247,15 +264,19 @@ const FeedScreen = ({ navigation }) => {
 
   const handlePostComment = async (postId) => {
     const state = expandedComments[postId];
-    if (!state?.text?.trim()) return;
+    if (!state?.text?.trim() || state?.submitting) return;
+    setExpandedComments(prev => ({ ...prev, [postId]: { ...prev[postId], submitting: true } }));
     try {
       const newComment = await notesAPI.addComment(postId, state.text.trim());
       setExpandedComments(prev => ({
         ...prev,
-        [postId]: { ...prev[postId], comments: [...(prev[postId]?.comments || []), newComment], text: '' },
+        [postId]: { ...prev[postId], comments: [...(prev[postId]?.comments || []), newComment], text: '', submitting: false },
       }));
       setPosts(prev => prev.map(p => p.id === postId ? { ...p, comments_count: (p.comments_count || 0) + 1 } : p));
-    } catch { Alert.alert('Error', 'Could not post comment'); }
+    } catch {
+      setExpandedComments(prev => ({ ...prev, [postId]: { ...prev[postId], submitting: false } }));
+      Alert.alert('Error', 'Could not post comment');
+    }
   };
 
   const handleShelfBook = async (status) => {
@@ -271,6 +292,7 @@ const FeedScreen = ({ navigation }) => {
         total_pages: book.total_pages || null,
         status,
       });
+      setRecs(prev => prev.filter(r => r.id !== book.id));
       setShelfModal(null);
       Alert.alert('Added!', status === 'reading' ? 'Happy reading!' : 'Added to your Want to Read list.');
     } catch (e) {
@@ -280,10 +302,15 @@ const FeedScreen = ({ navigation }) => {
 
   const getInitials = (name) => name ? name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : '?';
 
-  const REASON_LABEL = {
-    friends_reading: 'Friend is reading',
-    friends_loved: 'Friend loved it',
-    author_affinity: 'From an author you like',
+  const getReasonLabel = (book) => {
+    if (book.friend_name) {
+      if (book.reason === 'friends_reading') return `${book.friend_name} is reading`;
+      if (book.reason === 'friends_loved') return `${book.friend_name} loved it`;
+    }
+    if (book.reason === 'author_affinity') return 'From an author you like';
+    if (book.reason === 'friends_reading') return 'Friend is reading';
+    if (book.reason === 'friends_loved') return 'Friend loved it';
+    return '';
   };
 
   const renderComposer = () => (
@@ -425,7 +452,7 @@ const FeedScreen = ({ navigation }) => {
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.recsScroll}>
           {recs.map(book => (
             <TouchableOpacity key={book.id} style={styles.recCard} activeOpacity={0.8}
-              onPress={() => setShelfModal({ book, reason: REASON_LABEL[book.reason] || '' })}>
+              onPress={() => setShelfModal({ book, reason: getReasonLabel(book) })}>
               <View style={styles.recCoverContainer}>
                 {book.cover_url
                   ? <Image source={{ uri: book.cover_url }} style={styles.recCover} />
@@ -433,7 +460,7 @@ const FeedScreen = ({ navigation }) => {
                 }
               </View>
               <Text style={styles.recTitle} numberOfLines={2}>{book.title}</Text>
-              <Text style={styles.recReason}>{REASON_LABEL[book.reason] || ''}</Text>
+              <Text style={styles.recReason}>{getReasonLabel(book)}</Text>
             </TouchableOpacity>
           ))}
         </ScrollView>
@@ -498,12 +525,16 @@ const FeedScreen = ({ navigation }) => {
           <Text style={styles.userUsername}>@{username}</Text>
         </View>
         <TouchableOpacity
-          style={[styles.followButton, user.is_following ? styles.followButtonActive : styles.followButtonInactive]}
+          style={[styles.followButton, user.is_following ? styles.followButtonActive : styles.followButtonInactive, user._followLoading && { opacity: 0.55 }]}
           onPress={(e) => { e.stopPropagation(); user.is_following ? handleUnfollow(user.id) : handleFollow(user.id); }}
+          disabled={!!user._followLoading}
         >
-          <Text style={[styles.followButtonText, user.is_following && styles.followButtonTextActive]}>
-            {user.is_following ? 'Following' : user.follows_you ? 'Follow Back' : 'Follow'}
-          </Text>
+          {user._followLoading
+            ? <ActivityIndicator size="small" color={user.is_following ? colors.onSurfaceVariant : colors.onPrimary} />
+            : <Text style={[styles.followButtonText, user.is_following && styles.followButtonTextActive]}>
+                {user.is_following ? 'Following' : user.follows_you ? 'Follow Back' : 'Follow'}
+              </Text>
+          }
         </TouchableOpacity>
       </View>
     );
@@ -521,16 +552,23 @@ const FeedScreen = ({ navigation }) => {
       <View key={post.id || Math.random().toString()} style={styles.postCard}>
         <View style={styles.postHeader}>
           {/* Book cover thumbnail — shown when post has a tagged book */}
-          {post.book && (
-            <View style={styles.postBookCoverWrap}>
-              {post.book.cover_url
-                ? <Image source={{ uri: post.book.cover_url }} style={styles.postBookCover} resizeMode="cover" />
-                : <View style={[styles.postBookCover, styles.postBookCoverFallback]}>
-                    <Ionicons name="book-outline" size={16} color={colors.outline} />
-                  </View>
-              }
-            </View>
-          )}
+          {post.book && (() => {
+            const COVER_PALETTES = ['#00695c','#2e7d32','#e65100','#880e4f','#283593','#6a1b9a','#1565c0','#bf360c'];
+            const spineColor = COVER_PALETTES[(post.book.id || 0) % COVER_PALETTES.length];
+            return (
+              <View style={styles.postBookCoverWrap}>
+                {post.book.cover_url
+                  ? <Image source={{ uri: post.book.cover_url }} style={styles.postBookCover} resizeMode="cover" />
+                  : <View style={[styles.postBookCover, { backgroundColor: spineColor + '28', justifyContent: 'center', alignItems: 'center', padding: 4 }]}>
+                      <Ionicons name="book-outline" size={12} color={spineColor} style={{ marginBottom: 3 }} />
+                      <Text style={{ fontSize: 7, fontWeight: '700', color: spineColor, textAlign: 'center', lineHeight: 10 }} numberOfLines={4}>
+                        {post.book.title}
+                      </Text>
+                    </View>
+                }
+              </View>
+            );
+          })()}
 
           <TouchableOpacity
             style={styles.userInfo}
@@ -631,11 +669,14 @@ const FeedScreen = ({ navigation }) => {
                 onSubmitEditing={() => handlePostComment(post.id)}
               />
               <TouchableOpacity
-                style={[styles.commentPostBtn, !expandedComments[post.id]?.text?.trim() && { opacity: 0.4 }]}
+                style={[styles.commentPostBtn, (!expandedComments[post.id]?.text?.trim() || expandedComments[post.id]?.submitting) && { opacity: 0.4 }]}
                 onPress={() => handlePostComment(post.id)}
-                disabled={!expandedComments[post.id]?.text?.trim()}
+                disabled={!expandedComments[post.id]?.text?.trim() || !!expandedComments[post.id]?.submitting}
               >
-                <Text style={styles.commentPostBtnText}>Post</Text>
+                {expandedComments[post.id]?.submitting
+                  ? <ActivityIndicator size="small" color={colors.onPrimary} />
+                  : <Text style={styles.commentPostBtnText}>Post</Text>
+                }
               </TouchableOpacity>
             </View>
           </View>

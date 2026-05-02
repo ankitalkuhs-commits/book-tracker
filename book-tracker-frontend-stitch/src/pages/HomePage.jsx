@@ -128,24 +128,31 @@ function PostCard({ post, currentUserId, isAdmin, onLikeToggle, onDelete, onEdit
   return (
     <article className="bg-surface-container-lowest rounded-3xl p-5 md:p-8 flex flex-row gap-4 md:gap-8 transition-all hover:shadow-[0_20px_50px_-20px_rgba(0,70,74,0.1)]">
       {/* Book cover — small thumbnail */}
-      {book && (
-        <div className="shrink-0 w-12 md:w-20" style={{ alignSelf: 'flex-start' }}>
-          <div className="w-12 h-[72px] md:w-20 md:h-[120px] rounded-lg overflow-hidden shadow-md bg-surface-container-high">
-            {coverUrl ? (
-              <img
-                src={coverUrl}
-                alt={book.title}
-                className="w-full h-full object-cover"
-                onError={e => { e.target.parentElement.style.display = 'none' }}
-              />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center">
-                <span className="material-symbols-outlined text-lg text-outline">menu_book</span>
-              </div>
-            )}
+      {book && (() => {
+        const COVER_COLORS = ['#00695c','#2e7d32','#e65100','#880e4f','#283593','#6a1b9a','#1565c0','#bf360c']
+        const spineColor = COVER_COLORS[(book.id || 0) % COVER_COLORS.length]
+        return (
+          <div className="shrink-0 w-12 md:w-20" style={{ alignSelf: 'flex-start' }}>
+            <div className="w-12 h-[72px] md:w-20 md:h-[120px] rounded-lg overflow-hidden shadow-md">
+              {coverUrl ? (
+                <img
+                  src={coverUrl}
+                  alt={book.title}
+                  className="w-full h-full object-cover"
+                  onError={e => { e.target.parentElement.style.display = 'none' }}
+                />
+              ) : (
+                <div className="w-full h-full flex flex-col items-center justify-center p-1.5 gap-1"
+                  style={{ backgroundColor: spineColor + '28' }}>
+                  <span className="material-symbols-outlined text-sm" style={{ color: spineColor }}>menu_book</span>
+                  <p className="text-[7px] font-bold text-center leading-tight line-clamp-4"
+                    style={{ color: spineColor }}>{book.title}</p>
+                </div>
+              )}
+            </div>
           </div>
-        </div>
-      )}
+        )
+      })()}
 
       {/* Content */}
       <div className="flex-grow space-y-4 min-w-0">
@@ -434,10 +441,15 @@ function PostComposer({ user, onPost }) {
 
 // ─── Recommendations Shelf ────────────────────────────────────────────────────
 
-const REASON_LABEL = {
-  friends_reading: 'Friend is reading',
-  friends_loved:   'Friend loved it',
-  author_affinity: 'From an author you like',
+function getReasonLabel(book) {
+  if (book.friend_name) {
+    if (book.reason === 'friends_reading') return `${book.friend_name} is reading`
+    if (book.reason === 'friends_loved') return `${book.friend_name} loved it`
+  }
+  if (book.reason === 'author_affinity') return 'From an author you like'
+  if (book.reason === 'friends_reading') return 'Friend is reading'
+  if (book.reason === 'friends_loved') return 'Friend loved it'
+  return ''
 }
 
 function RecommendationsShelf() {
@@ -508,7 +520,7 @@ function RecommendationsShelf() {
                 </button>
               </div>
               <p className="text-xs font-bold text-on-surface line-clamp-2 leading-snug">{book.title}</p>
-              <p className="text-[10px] text-secondary font-medium">{REASON_LABEL[book.reason] || ''}</p>
+              <p className="text-[10px] text-secondary font-medium">{getReasonLabel(book)}</p>
             </div>
           ))}
         </div>
@@ -537,7 +549,7 @@ function RecommendationsShelf() {
               <div className="flex-1 min-w-0 pt-1">
                 <p className="font-serif font-bold text-on-surface leading-snug line-clamp-2">{pendingBook.title}</p>
                 <p className="text-sm text-on-surface-variant mt-0.5">{pendingBook.author}</p>
-                <p className="text-[10px] text-secondary font-semibold mt-1.5">{REASON_LABEL[pendingBook.reason] || ''}</p>
+                <p className="text-[10px] text-secondary font-semibold mt-1.5">{getReasonLabel(pendingBook)}</p>
               </div>
             </div>
 

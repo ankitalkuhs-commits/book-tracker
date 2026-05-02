@@ -560,11 +560,17 @@ def delete_note(
     current_user: models.User = Depends(get_current_user)
 ):
     """Note owner or admin can delete a note/post."""
+    from sqlmodel import select
     note = crud.get_note_by_id(db, note_id=note_id)
     if not note:
         raise HTTPException(status_code=404, detail="Note not found")
     if note.user_id != current_user.id and not getattr(current_user, "is_admin", False):
         raise HTTPException(status_code=403, detail="Not authorized to delete this note")
+    # Delete likes and comments first to avoid FK constraint violations in PostgreSQL
+    for like in db.exec(select(models.Like).where(models.Like.note_id == note_id)).all():
+        db.delete(like)
+    for comment in db.exec(select(models.Comment).where(models.Comment.note_id == note_id)).all():
+        db.delete(comment)
     db.delete(note)
     db.commit()
     return {"message": "Note deleted successfully"}

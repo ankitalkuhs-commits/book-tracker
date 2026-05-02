@@ -511,18 +511,12 @@ export default function LibraryScreen({ navigation }) {
       />
       {/* ── Header ── */}
       <View style={styles.header}>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.headerEyebrow}>YOUR READING JOURNEY</Text>
-          <Text style={styles.headerTitle}>Your Library</Text>
-          <Text style={styles.headerSubtitle}>Curating your personal journey through words and wisdom.</Text>
-        </View>
-        <TouchableOpacity style={styles.addBookBtn} onPress={() => setShowAddModal(true)}>
-          <Ionicons name="add" size={18} color={colors.onPrimary} />
-          <Text style={styles.addBookBtnText}>Add Book</Text>
-        </TouchableOpacity>
+        <Text style={styles.headerEyebrow}>YOUR READING JOURNEY</Text>
+        <Text style={styles.headerTitle}>Your Library</Text>
+        <Text style={styles.headerSubtitle}>Curating your personal journey through words and wisdom.</Text>
       </View>
 
-      {/* ── Status tabs ── */}
+      {/* ── Status tabs + Add button ── */}
       <View style={styles.tabRow}>
         {TABS.map(({ key, label, count }) => (
           <OptionChip
@@ -533,6 +527,10 @@ export default function LibraryScreen({ navigation }) {
             onPress={() => setActiveTab(key)}
           />
         ))}
+        <TouchableOpacity style={styles.addBookBtn} onPress={() => setShowAddModal(true)}>
+          <Ionicons name="add" size={18} color={colors.onPrimary} />
+          <Text style={styles.addBookBtnText}>Add Book</Text>
+        </TouchableOpacity>
       </View>
 
       {/* ── Search bar ── */}
@@ -600,17 +598,17 @@ export default function LibraryScreen({ navigation }) {
 const styles = StyleSheet.create({
   container:    { flex: 1, backgroundColor: colors.surface },
   centered:     { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
-  header:       { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', paddingHorizontal: 20, paddingBottom: 12, paddingTop: 16 },
+  header:       { paddingHorizontal: 20, paddingBottom: 12, paddingTop: 16 },
   headerEyebrow:{ ...type.eyebrow, color: colors.secondary, marginBottom: 4 },
   headerTitle:  { ...type.headline, color: colors.onSurfaceVariant },
   headerSubtitle: { ...type.bodySm, color: colors.onSurfaceVariant, marginTop: 3, paddingRight: 12 },
-  addBookBtn:   { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: colors.primary, paddingHorizontal: 14, paddingVertical: 8, borderRadius: radius.md },
+  addBookBtn:   { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: colors.primary, paddingHorizontal: 14, paddingVertical: 8, borderRadius: radius.md, marginLeft: 'auto' },
   addBookBtnText: { ...type.label, color: colors.onPrimary, fontFamily: 'Manrope_700Bold', fontWeight: '700' },
 
   searchBar:    { flexDirection: 'row', alignItems: 'center', marginHorizontal: 16, marginTop: 4, marginBottom: 10, backgroundColor: colors.surfaceContainerLow, borderRadius: radius.lg, paddingHorizontal: 14, paddingVertical: 10, borderWidth: 1, borderColor: colors.outlineVariant + '60' },
   searchInput:  { ...type.body, flex: 1, color: colors.onSurface, padding: 0, textAlignVertical: 'center' },
 
-  tabRow:        { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 14, paddingVertical: 8, gap: 8 },
+  tabRow:        { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 8, gap: 8 },
 
   grid:         { padding: GRID_PAD, gap: GRID_GAP },
   gridRow:      { gap: GRID_GAP, justifyContent: 'flex-start' },
