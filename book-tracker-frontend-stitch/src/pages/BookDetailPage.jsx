@@ -83,6 +83,7 @@ export default function BookDetailPage() {
 
   const [status,         setStatus]         = useState(userbook?.status || 'to-read')
   const [page,           setPage]           = useState(userbook?.current_page || '')
+  const [displayPage,    setDisplayPage]    = useState(userbook?.current_page || 0)
   const [savingProgress, setSavingProgress] = useState(false)
   const [changingStatus, setChangingStatus] = useState(false)
   const [rating,         setRating]         = useState(userbook?.rating || 0)
@@ -135,11 +136,14 @@ export default function BookDetailPage() {
   const saveProgress = async () => {
     const p = parseInt(page, 10)
     if (isNaN(p) || p < 0) return
+    const prev = displayPage
+    setDisplayPage(p)
     setSavingProgress(true)
     try {
       await updateProgress(userbook.id, p)
       toast('Progress saved!', 'success')
     } catch (e) {
+      setDisplayPage(prev)
       toast(e.message || 'Something went wrong', 'error')
     }
     setSavingProgress(false)
@@ -196,7 +200,7 @@ export default function BookDetailPage() {
     }
   }
 
-  const progress = pct(userbook.current_page, book?.total_pages)
+  const progress = pct(displayPage, book?.total_pages)
 
   return (
     <main className="max-w-screen-lg mx-auto px-4 md:px-8 pt-6 pb-16">
@@ -294,7 +298,7 @@ export default function BookDetailPage() {
               {book?.total_pages && (
                 <div className="space-y-1">
                   <div className="flex justify-between text-xs text-on-surface-variant">
-                    <span>{userbook.current_page || 0} of {book.total_pages} pages</span>
+                    <span>{displayPage} of {book.total_pages} pages</span>
                     <span className="font-bold text-primary">{progress}%</span>
                   </div>
                   <div className="h-2 bg-surface-container-high rounded-full overflow-hidden">
