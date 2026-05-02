@@ -124,6 +124,7 @@ export const addToLibrary = (data) =>
 // User Books
 export const getMyBooks = (status = '') =>
   apiFetch(`/userbooks/${status ? `?status=${status}` : ''}`);
+export const getUserbook = (userbookId) => apiFetch(`/userbooks/${userbookId}`);
 export const getUserBooks = (userId) => apiFetch(`/userbooks/user/${userId}`);
 export const updateUserBook = (userbookId, data) =>
   apiFetch(`/userbooks/${userbookId}`, { method: 'PATCH', body: JSON.stringify(data) })

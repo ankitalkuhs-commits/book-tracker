@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useToast } from '../components/Toast'
 import {
   updateProgress, updateUserBook, markFinished, removeFromLibrary,
-  getNotesForBook, createNote, deleteNote,
+  getNotesForBook, createNote, deleteNote, getUserbook,
 } from '../services/api'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -74,40 +74,60 @@ function BookCover({ book }) {
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function BookDetailPage() {
-  const { state } = useLocation()
-  const navigate  = useNavigate()
-  const toast     = useToast()
-  const userbook  = state?.userbook
+  const { state }         = useLocation()
+  const { userbookId }    = useParams()
+  const navigate          = useNavigate()
+  const toast             = useToast()
 
-  const book = userbook?.book
-
-  const [status,         setStatus]         = useState(userbook?.status || 'to-read')
-  const [page,           setPage]           = useState(userbook?.current_page || '')
-  const [displayPage,    setDisplayPage]    = useState(userbook?.current_page || 0)
+  const [userbook,       setUserbook]       = useState(state?.userbook || null)
+  const [loadingBook,    setLoadingBook]    = useState(!state?.userbook)
+  const [status,         setStatus]         = useState(state?.userbook?.status || 'to-read')
+  const [page,           setPage]           = useState(state?.userbook?.current_page || '')
+  const [displayPage,    setDisplayPage]    = useState(state?.userbook?.current_page || 0)
   const [savingProgress, setSavingProgress] = useState(false)
   const [changingStatus, setChangingStatus] = useState(false)
-  const [rating,         setRating]         = useState(userbook?.rating || 0)
+  const [rating,         setRating]         = useState(state?.userbook?.rating || 0)
   const [notes,          setNotes]          = useState([])
-  const [loadingNotes,   setLoadingNotes]   = useState(true)
+  const [loadingNotes,   setLoadingNotes]   = useState(false)
   const [noteText,       setNoteText]       = useState('')
   const [noteQuote,      setNoteQuote]      = useState('')
   const [postingNote,    setPostingNote]    = useState(false)
   const [removing,       setRemoving]       = useState(false)
   const [descExpanded,   setDescExpanded]   = useState(false)
 
+  // Fetch userbook from API if page was refreshed (no location.state)
+  useEffect(() => {
+    if (state?.userbook) return
+    if (!userbookId) { navigate('/library', { replace: true }); return }
+    getUserbook(userbookId)
+      .then(ub => {
+        setUserbook(ub)
+        setStatus(ub.status || 'to-read')
+        setPage(ub.current_page || '')
+        setDisplayPage(ub.current_page || 0)
+        setRating(ub.rating || 0)
+      })
+      .catch(() => navigate('/library', { replace: true }))
+      .finally(() => setLoadingBook(false))
+  }, [userbookId]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Fetch notes once userbook is available
   useEffect(() => {
     if (!userbook?.id) return
+    setLoadingNotes(true)
     getNotesForBook(userbook.id)
       .then(data => setNotes(data || []))
       .catch(() => {})
       .finally(() => setLoadingNotes(false))
   }, [userbook?.id])
 
-  // If navigated directly without state, redirect back to library
-  if (!userbook) {
-    navigate('/library', { replace: true })
-    return null
-  }
+  if (loadingBook) return (
+    <main className="max-w-screen-lg mx-auto px-4 pt-16 flex justify-center">
+      <span className="text-on-surface-variant text-sm">Loading…</span>
+    </main>
+  )
+
+  const book = userbook?.book
 
   const handleStatusChange = async (newStatus) => {
     if (newStatus === status) return

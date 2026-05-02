@@ -303,6 +303,42 @@ def list_userbooks(
     return results
 
 
+@router.get("/{userbook_id}", response_model=dict)
+def get_userbook(
+    userbook_id: int,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user),
+):
+    ub = db.get(UserBook, userbook_id)
+    if not ub or ub.user_id != current_user.id:
+        raise HTTPException(status_code=404, detail="Not found")
+    book = db.get(Book, ub.book_id) if ub.book_id else None
+    return {
+        "id": ub.id,
+        "user_id": ub.user_id,
+        "book_id": ub.book_id,
+        "status": ub.status,
+        "current_page": ub.current_page,
+        "rating": ub.rating,
+        "private_notes": ub.private_notes,
+        "format": ub.format,
+        "ownership_status": ub.ownership_status,
+        "borrowed_from": ub.borrowed_from,
+        "loaned_to": ub.loaned_to,
+        "created_at": ub.created_at,
+        "updated_at": ub.updated_at,
+        "book": {
+            "id": book.id,
+            "title": book.title,
+            "author": book.author,
+            "description": book.description,
+            "total_pages": book.total_pages,
+            "cover_url": normalize_google_cover_url(book.cover_url),
+            "pages_source": getattr(book, "pages_source", None),
+        } if book else None,
+    }
+
+
 @router.patch("/{userbook_id}", status_code=status.HTTP_200_OK)
 def patch_userbook(userbook_id: int, payload: dict, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     ub = crud.get_userbook(db, userbook_id=userbook_id)
