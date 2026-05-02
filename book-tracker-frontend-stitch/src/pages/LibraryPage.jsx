@@ -818,7 +818,16 @@ export default function LibraryPage() {
         <div className="col-span-12 lg:col-span-9 space-y-6">
           {/* Header */}
           <div>
-            <h1 className="font-serif text-4xl md:text-5xl font-bold text-primary leading-tight">Your Library</h1>
+            <div className="flex items-center justify-between gap-4">
+              <h1 className="font-serif text-4xl md:text-5xl font-bold text-primary leading-tight">Your Library</h1>
+              <button
+                onClick={() => setShowAddModal(true)}
+                className="shrink-0 flex items-center gap-2 bg-primary text-on-primary px-4 py-2.5 rounded-xl font-bold text-sm hover:bg-primary/90 transition-colors shadow-sm"
+              >
+                <span className="material-symbols-outlined text-base">add</span>
+                Add Book
+              </button>
+            </div>
             <p className="text-on-surface-variant mt-2 text-sm">Curating your personal journey through words and wisdom.</p>
           </div>
 

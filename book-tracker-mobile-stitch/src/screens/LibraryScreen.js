@@ -512,11 +512,17 @@ export default function LibraryScreen({ navigation }) {
       {/* ── Header ── */}
       <View style={styles.header}>
         <Text style={styles.headerEyebrow}>YOUR READING JOURNEY</Text>
-        <Text style={styles.headerTitle}>Your Library</Text>
+        <View style={styles.headerTitleRow}>
+          <Text style={styles.headerTitle}>Your Library</Text>
+          <TouchableOpacity style={styles.addBookBtn} onPress={() => setShowAddModal(true)}>
+            <Ionicons name="add" size={18} color={colors.onPrimary} />
+            <Text style={styles.addBookBtnText}>Add Book</Text>
+          </TouchableOpacity>
+        </View>
         <Text style={styles.headerSubtitle}>Curating your personal journey through words and wisdom.</Text>
       </View>
 
-      {/* ── Status tabs + Add button ── */}
+      {/* ── Status tabs ── */}
       <View style={styles.tabRow}>
         {TABS.map(({ key, label, count }) => (
           <OptionChip
@@ -527,10 +533,6 @@ export default function LibraryScreen({ navigation }) {
             onPress={() => setActiveTab(key)}
           />
         ))}
-        <TouchableOpacity style={styles.addBookBtn} onPress={() => setShowAddModal(true)}>
-          <Ionicons name="add" size={18} color={colors.onPrimary} />
-          <Text style={styles.addBookBtnText}>Add Book</Text>
-        </TouchableOpacity>
       </View>
 
       {/* ── Search bar ── */}
@@ -598,9 +600,10 @@ export default function LibraryScreen({ navigation }) {
 const styles = StyleSheet.create({
   container:    { flex: 1, backgroundColor: colors.surface },
   centered:     { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
-  header:       { paddingHorizontal: 20, paddingBottom: 12, paddingTop: 16 },
-  headerEyebrow:{ ...type.eyebrow, color: colors.secondary, marginBottom: 4 },
-  headerTitle:  { ...type.headline, color: colors.onSurfaceVariant },
+  header:         { paddingHorizontal: 20, paddingBottom: 12, paddingTop: 16 },
+  headerEyebrow:  { ...type.eyebrow, color: colors.secondary, marginBottom: 4 },
+  headerTitleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  headerTitle:    { ...type.headline, color: colors.onSurfaceVariant },
   headerSubtitle: { ...type.bodySm, color: colors.onSurfaceVariant, marginTop: 3, paddingRight: 12 },
   addBookBtn:   { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: colors.primary, paddingHorizontal: 14, paddingVertical: 8, borderRadius: radius.md, marginLeft: 'auto' },
   addBookBtnText: { ...type.label, color: colors.onPrimary, fontFamily: 'Manrope_700Bold', fontWeight: '700' },
