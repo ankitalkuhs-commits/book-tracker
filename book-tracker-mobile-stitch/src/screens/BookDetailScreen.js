@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  TextInput, ActivityIndicator, Alert, Image,
+  TextInput, ActivityIndicator, Alert, Image, Modal,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -14,13 +14,14 @@ const STATUS_OPTIONS = [
   { key: 'finished', label: 'Finished',      icon: 'checkmark-circle-outline' },
 ];
 
-function timeAgo(ts) {
+function formatNoteDate(ts) {
   if (!ts) return '';
-  const diff = (Date.now() - new Date(ts)) / 1000;
-  if (diff < 60) return 'just now';
-  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
-  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
-  return `${Math.floor(diff / 86400)}d ago`;
+  const d = new Date(ts);
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const h = d.getHours() % 12 || 12;
+  const m = d.getMinutes().toString().padStart(2, '0');
+  const ampm = d.getHours() >= 12 ? 'PM' : 'AM';
+  return `${months[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()} · ${h}:${m} ${ampm}`;
 }
 
 function StarRating({ value = 0, onChange }) {
@@ -55,6 +56,9 @@ export default function BookDetailScreen({ route, navigation }) {
   const [noteQuote,       setNoteQuote]       = useState('');
   const [savingNote,      setSavingNote]      = useState(false);
   const [rating,          setRating]          = useState(ub.rating || 0);
+  // Modal for asking total pages when user finishes a book with no total_pages metadata
+  const [totalPagesModal, setTotalPagesModal] = useState(false);
+  const [totalPagesInput, setTotalPagesInput] = useState('');
 
   const loadNotes = useCallback(async () => {
     setNotesLoading(true);
@@ -69,28 +73,67 @@ export default function BookDetailScreen({ route, navigation }) {
 
   const [descExpanded, setDescExpanded] = useState(false);
 
-  const handleStatusChange = async (newStatus) => {
-    if (newStatus === ub.status) return;
+  const doStatusChange = async (newStatus, newPage, newTotalPages) => {
     const prevStatus = ub.status;
-    // Optimistic update — pill switches immediately
-    setUb(prev => ({ ...prev, status: newStatus }));
+    const prevPage   = ub.current_page;
+    // Optimistic update
+    setUb(prev => ({ ...prev, status: newStatus, current_page: newPage,
+      book: newTotalPages ? { ...prev.book, total_pages: newTotalPages } : prev.book }));
+    setPageInput(String(newPage));
     setSavingStatus(true);
     try {
-      const result = await userbooksAPI.patchUserbook(ub.id, { status: newStatus });
+      const payload = { status: newStatus, current_page: newPage };
+      if (newTotalPages) payload.total_pages = newTotalPages;
+      const result = await userbooksAPI.patchUserbook(ub.id, payload);
       const serverUb = result?.userbook || result;
-      // Sync any extra fields the server returned, preserve nested book
-      setUb(prev => ({ ...prev, ...serverUb, status: newStatus, book: prev.book }));
+      const serverTotal = result?.book_total_pages;
+      setUb(prev => ({
+        ...prev, ...serverUb, status: newStatus, current_page: newPage,
+        book: { ...prev.book, ...(serverTotal ? { total_pages: serverTotal } : {}) },
+      }));
     } catch (e) {
-      // Revert on failure
-      setUb(prev => ({ ...prev, status: prevStatus }));
+      setUb(prev => ({ ...prev, status: prevStatus, current_page: prevPage }));
+      setPageInput(String(prevPage));
       Alert.alert('Error', e?.response?.data?.detail || 'Could not update status');
     }
     setSavingStatus(false);
   };
 
+  const handleStatusChange = (newStatus) => {
+    if (newStatus === ub.status) return;
+    if (newStatus === 'to-read') {
+      doStatusChange('to-read', 0);
+    } else if (newStatus === 'reading') {
+      doStatusChange('reading', 0);
+    } else if (newStatus === 'finished') {
+      if (!totalPages) {
+        // Unknown total pages — ask the user
+        setTotalPagesInput('');
+        setTotalPagesModal(true);
+      } else {
+        doStatusChange('finished', totalPages);
+      }
+    }
+  };
+
+  const handleConfirmTotalPages = () => {
+    const pages = parseInt(totalPagesInput, 10);
+    if (isNaN(pages) || pages <= 0) {
+      Alert.alert('Invalid', 'Please enter a valid number of pages');
+      return;
+    }
+    setTotalPagesModal(false);
+    doStatusChange('finished', pages, pages);
+  };
+
   const handleSaveProgress = async () => {
     const page = parseInt(pageInput, 10);
     if (isNaN(page) || page < 0) { Alert.alert('Invalid page', 'Enter a valid page number'); return; }
+    if (totalPages > 0 && page > totalPages) {
+      Alert.alert('Too many pages', `This book only has ${totalPages} pages`);
+      setPageInput(String(ub.current_page || 0));
+      return;
+    }
     setSavingProgress(true);
     try {
       const updated = await userbooksAPI.updateProgress(ub.id, { current_page: page });
@@ -137,6 +180,33 @@ export default function BookDetailScreen({ route, navigation }) {
 
   return (
     <View style={styles.container}>
+      {/* Total pages modal — shown when marking finished with no total_pages */}
+      <Modal visible={totalPagesModal} transparent animationType="fade" onRequestClose={() => setTotalPagesModal(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalBox}>
+            <Text style={styles.modalTitle}>How many pages?</Text>
+            <Text style={styles.modalSubtitle}>We don't have the page count for this book. Enter it to track your progress accurately.</Text>
+            <TextInput
+              style={styles.modalInput}
+              value={totalPagesInput}
+              onChangeText={setTotalPagesInput}
+              keyboardType="numeric"
+              placeholder="e.g. 320"
+              placeholderTextColor={colors.outline}
+              autoFocus
+            />
+            <View style={styles.modalActions}>
+              <TouchableOpacity style={styles.modalCancel} onPress={() => setTotalPagesModal(false)}>
+                <Text style={styles.modalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.modalConfirm} onPress={handleConfirmTotalPages}>
+                <Text style={styles.modalConfirmText}>Confirm</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       {/* Top bar */}
       <View style={[styles.topBar, { paddingTop: insets.top + 10 }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
@@ -299,7 +369,7 @@ export default function BookDetailScreen({ route, navigation }) {
                   </View>
                 ) : null}
                 <View style={styles.noteFooter}>
-                  <Text style={styles.noteTime}>{timeAgo(n.created_at)}</Text>
+                  <Text style={styles.noteTime}>{formatNoteDate(n.created_at)}</Text>
                   <TouchableOpacity onPress={() => handleDeleteNote(n.id)}>
                     <Ionicons name="trash-outline" size={15} color={colors.outline} />
                   </TouchableOpacity>
@@ -384,4 +454,16 @@ const styles = StyleSheet.create({
 
   removeLink:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 24, marginBottom: 8 },
   removeLinkText: { ...type.body, fontFamily: 'Manrope_600SemiBold', fontWeight: '600', color: colors.error },
+
+  // Total pages modal
+  modalOverlay:   { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', alignItems: 'center', padding: 24 },
+  modalBox:       { backgroundColor: colors.surfaceContainerLowest, borderRadius: radius.lg, padding: 24, width: '100%', ...shadow.float },
+  modalTitle:     { ...type.titleLg, color: colors.onSurface, marginBottom: 8 },
+  modalSubtitle:  { ...type.bodySm, color: colors.onSurfaceVariant, marginBottom: 16, lineHeight: 20 },
+  modalInput:     { ...type.body, backgroundColor: colors.surfaceContainerLow, borderRadius: radius.md, paddingHorizontal: 14, paddingVertical: 12, color: colors.onSurface, borderWidth: 1, borderColor: colors.outlineVariant + '60', marginBottom: 20 },
+  modalActions:   { flexDirection: 'row', gap: 10 },
+  modalCancel:    { flex: 1, paddingVertical: 12, borderRadius: radius.md, borderWidth: 1, borderColor: colors.outlineVariant, alignItems: 'center' },
+  modalCancelText:{ ...type.label, color: colors.onSurfaceVariant },
+  modalConfirm:   { flex: 1, paddingVertical: 12, borderRadius: radius.md, backgroundColor: colors.primary, alignItems: 'center' },
+  modalConfirmText:{ ...type.label, color: colors.onPrimary, fontFamily: 'Manrope_700Bold', fontWeight: '700' },
 });

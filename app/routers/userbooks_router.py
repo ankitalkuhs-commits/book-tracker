@@ -311,14 +311,26 @@ def patch_userbook(userbook_id: int, payload: dict, db: Session = Depends(get_db
 
     allowed = {"status", "current_page", "rating", "private_notes", "format", "ownership_status", "borrowed_from", "loaned_to"}
     update_fields = {k: v for k, v in payload.items() if k in allowed}
-    if not update_fields:
+
+    # If total_pages provided, update the Book model directly
+    new_total_pages = payload.get("total_pages")
+    if new_total_pages is not None and not update_fields:
+        # total_pages alone is valid
+        pass
+    elif not update_fields and new_total_pages is None:
         raise HTTPException(status_code=400, detail="No valid fields to update")
 
     old_status = ub.status
     ub = crud.update_userbook(db, ub, **update_fields)
 
-    new_status = update_fields.get("status")
     book = db.get(Book, ub.book_id) if ub.book_id else None
+    if book and new_total_pages is not None:
+        book.total_pages = new_total_pages
+        db.add(book)
+        db.commit()
+        db.refresh(book)
+
+    new_status = update_fields.get("status")
     book_title = book.title if book else "a book"
 
     # Notify followers when status manually changed to 'finished'
@@ -343,7 +355,7 @@ def patch_userbook(userbook_id: int, payload: dict, db: Session = Depends(get_db
             {"book_title": book_title, "book_id": ub.book_id},
         )
 
-    return {"status": "ok", "userbook": ub}
+    return {"status": "ok", "userbook": ub, "book_total_pages": book.total_pages if book else None}
 
 
 @router.delete("/{userbook_id}", status_code=status.HTTP_200_OK)
