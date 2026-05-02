@@ -72,7 +72,7 @@ When user says **"wrap up"**, Claude automatically:
 ## Project Status
 
 **Current Version:** 1.1.0
-**Last Updated:** March 21, 2026  
+**Last Updated:** May 2, 2026  
 **Active Development:** Yes
 
 **Recently Added/Fixed (March 21, 2026):**
@@ -271,22 +271,44 @@ When user says **"wrap up"**, Claude automatically:
 > Full plan: `context/PRODUCTION_CUTOVER_PLAN.md`
 > TL;DR order: cherry-pick Google Books fixes → run supabase_migration.sql → bump versionCode to 45 → merge stitch-experiment→master → change Vercel root dir → eas build + submit → staged rollout
 
-**Next Priorities — Phase 4 (remaining device bugs + parity):**
+**Bug Fixes + Features — May 2, 2026:**
 
-HIGH (broken core functionality):
-1. **BookDetailScreen: status pill not persisting** — `handleStatusChange` not refreshing state or API URL wrong. Audit `booksAPI.updateStatus` call + endpoint.
-2. **FeedScreen: comment icon non-functional** — need inline comment expand or comment sheet on post tap.
-3. **FeedScreen "For You" tab: shows only friends** — backend likely has `all` scope flag. Check `feedAPI.getCommunityFeed()` vs webapp's API call.
+- **Fixed: Delete post (PostgreSQL FK constraint)** — `notes_router.py` now deletes Likes + Comments before deleting the Note; was violating FK constraint on prod
+- **Fixed: Comment double-post loading state** — `handlePostComment` in `FeedScreen.js` sets `submitting` flag; Post button shows ActivityIndicator while in-flight
+- **Fixed: Follow button loading state** — `followInFlight` ref pattern; button shows spinner during API call
+- **Fixed: Image crop aspect ratio** — changed `aspect: [4, 3]` → `aspect: [2, 3]` in FeedScreen image picker (was horizontal, layout needs vertical)
+- **Fixed: For You recs — remove after shelving** — `handleShelfBook` filters rec out of list on success (web + mobile)
+- **Fixed: For You recs — show friend name** — `books_router.py` recommendations now return `friend_name`; displayed as "Ankit is reading" / "Ankit loved it"
+- **Fixed: Library Add Book button clipping** — moved from title row to tab row (`marginLeft: 'auto'`) so it never wraps/clips
+- **Fixed: Default book cover inconsistency** — both feed post and library use same colored-bg + icon + title fallback pattern
+- **Fixed: BookDetailScreen status not persisting (mobile)** — cold start on Render (free tier, ~30s wake time) was timing out before 10s axios limit. Increased timeout to 30s + added optimistic update pattern (`doStatusChange`)
+- **Fixed: BookDetailScreen — optimistic status updates** — status pills change instantly; revert on API error
+- **Fixed: BookDetailScreen — page resets on status change** — to-read → 0 pages; reading → 0 pages (unless already reading); finished → total pages or prompt for unknown
+- **Fixed: BookDetailScreen — unknown total pages modal** — custom `Modal` + `TextInput` (not `Alert.prompt` which is iOS-only) for entering total pages when marking finished
+- **Fixed: BookDetailScreen — max page validation** — can't save progress beyond total pages
+- **Fixed: BookDetailScreen — absolute note timestamps** — `formatNoteDate()` → "May 2, 2026 · 12:45 PM" instead of relative "2d ago"
+- **Fixed: Web BookDetailPage — progress bar instant update** — added `displayPage` state; optimistic update on "Update progress" click; reverts on error
+- **Fixed: Web BookDetailPage — refresh loses data** — page now survives refresh; fetches userbook list on mount if `location.state` is missing, finds matching ID; shows loading spinner
+- **GOTCHA: Single-item GET /userbooks/{id} endpoint returned stale data** — added it to backend but frontend uses `GET /userbooks/` list + filter by ID instead (list endpoint proven reliable); new backend endpoint kept but not used as primary
+- **Fixed: stitch-experiment branch** — was deleted; everything now on `master`. Render `book-tracker-stitch` service already points to master. Memory file updated.
+- **Feat: Member profile (mobile + web)** — tapping a member in Group leaderboard navigates to `UserProfileScreen` / `UserProfilePage`. Both now show:
+  - "Member since [Month Year]" using `user.created_at`
+  - By The Numbers: In Library · Finished · Reading (was showing wrong field names — `stats?.finished_books` → `stats?.finished`)
+  - Speed: avg pages/day computed from last-30-day activity data
+  - This Year: books finished this year + total pages, always visible (was gated on yearly goal)
+  - Web: now fetches `getUserStats(userId)` separately (was using `profile.stats || {}` which is always `{}`)
+- **CRITICAL PATTERN — stitch-experiment is gone:** All backend + frontend changes go to `master` only. Render deploys `book-tracker-stitch` from master. `stitch-experiment` was deleted after merge.
+
+**Next Priorities:**
+
+HIGH:
+1. **FeedScreen: comment icon non-functional** — need inline comment expand or comment sheet on post tap.
+2. **AppHeader avatar not showing photo** — show `user.profile_picture` as `<Image>` when set, fallback to initials.
+3. **Circles page shows `?` instead of avatar** — `user` prop not reaching AppHeader correctly in GroupsScreen.
 
 MEDIUM (UX parity):
-4. **Recs modal + Friends reading → add-to-library sheet** — "Want to Read" / "Start Reading Now" bottom sheet on book tap in both "For You" recs shelf and Friends tab "What Friends Are Reading".
-5. **AppHeader avatar not showing photo** — show `user.profile_picture` as `<Image>` when set, fallback to initials.
-6. **Circles page shows `?` instead of avatar** — `user` prop not reaching AppHeader correctly in GroupsScreen.
-7. **BookDetailScreen: book description missing** — add collapsible description section (now done on web, need mobile).
-8. **Web Search page:** still accessible at `/search` route but removed from Nav — confirm whether to keep or remove route entirely.
-9. **Onboarding tour "Add a Book" step (mobile):** verify book search + add flow working end-to-end after tour changes.
-
-**Typography system** — committed `7b60209` on `stitch-experiment` branch (Manrope + Noto Serif across all screens). Next APK build will include fonts.
+4. **Web Search page:** still accessible at `/search` route but removed from Nav — confirm whether to keep or remove route entirely.
+5. **Onboarding tour "Add a Book" step (mobile):** verify book search + add flow working end-to-end after tour changes.
 
 ---
 

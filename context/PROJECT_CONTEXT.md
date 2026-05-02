@@ -1,7 +1,7 @@
 # Book Tracker - Project Context
 
-**Last Updated:** April 30, 2026  
-**Project Version:** 1.4.0 (master / stitch branch)
+**Last Updated:** May 2, 2026  
+**Project Version:** 1.5.0 (master)
 
 ---
 
@@ -41,8 +41,9 @@ A social book tracking platform where users can:
 - **Build System:** EAS (NOT Expo Go — uses native modules)
 - **Styling:** `src/theme.js` design tokens matching Stitch palette
 - **Navigation:** React Navigation (bottom tabs + stacks)
-- **API Client:** `book-tracker-mobile/src/services/api.js` → `https://book-tracker-stitch.onrender.com`
+- **API Client:** `book-tracker-mobile-stitch/src/services/api.js` → `https://book-tracker-stitch.onrender.com` (axios, 30s timeout)
 - **Push:** Expo FCM (Android) + VAPID (web)
+- **Branch:** Everything on `master` — `stitch-experiment` was deleted and merged
 
 ### Data Flow
 ```
@@ -168,9 +169,10 @@ App.jsx
 ```
 
 ### Key Web Routing Notes
-- **BookDetailPage** — pass userbook via router state: `navigate('/library/book/:id', { state: { userbook } })`
+- **BookDetailPage** — pass userbook via router state: `navigate('/library/book/:id', { state: { userbook } })`. On refresh (no state), fetches `GET /userbooks/` list + finds by ID. Route: `/library/book/:userbookId`.
 - **Search** — `/search` route exists but not in Nav; LibraryPage Add Book modal handles quick adds
 - **Onboarding** — `ONBOARDING_KEY` in `OnboardingPage.jsx`; bump value to reset tour for all users
+- **UserProfilePage** — fetches profile + stats + books + notes + activity separately; `getUserStats(userId)` is required for real stats (profile endpoint does not embed stats)
 
 ### State Management Strategy
 - Auth context for user session

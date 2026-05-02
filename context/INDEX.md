@@ -1,6 +1,6 @@
 # Book Tracker - Context Index
 
-**Last Updated:** March 20, 2026
+**Last Updated:** May 2, 2026
 
 ## Overview
 This index maps all context files for the Book Tracker project. Use this as your starting point to navigate project documentation and AI context.
@@ -34,13 +34,13 @@ This index maps all context files for the Book Tracker project. Use this as your
 
 ### 📚 [Library Management](library/)
 **Files:**
-- `app/routers/books_router.py` - Book catalog endpoints
-- `app/routers/userbooks_router.py` - User reading status
+- `app/routers/books_router.py` - Book catalog + recommendations (returns `friend_name` in rec results)
+- `app/routers/userbooks_router.py` - User reading status; `PATCH /{id}` accepts `total_pages`; `GET /{id}` single-item endpoint added
 - `app/routers/googlebooks_router.py` - External book search
-- `book-tracker-frontend/src/pages/LibraryPage.jsx` - Library UI
-- `book-tracker-frontend/src/components/library/` - Library components
-- `book-tracker-mobile/src/screens/LibraryScreen.js` - Mobile library (tabs with counts, search+clear)
-- `book-tracker-mobile/src/screens/BookDetailScreen.js` - Mobile book detail + notes
+- `book-tracker-frontend-stitch/src/pages/LibraryPage.jsx` - Library UI
+- `book-tracker-frontend-stitch/src/pages/BookDetailPage.jsx` - Dedicated book detail page (`/library/book/:userbookId`); survives refresh via list fetch; optimistic progress bar
+- `book-tracker-mobile-stitch/src/screens/LibraryScreen.js` - Mobile library; Add Book button in tab row
+- `book-tracker-mobile-stitch/src/screens/BookDetailScreen.js` - Mobile book detail; optimistic status changes; total-pages modal; absolute note timestamps
 
 **Key Decisions:** See [library/README.md](library/README.md)
 
@@ -50,16 +50,13 @@ This index maps all context files for the Book Tracker project. Use this as your
 **Files:**
 - `app/routers/follow_router.py` - Follow/unfollow system
 - `app/routers/likes_comments.py` - Social interactions
-- `app/routers/journals.py` - Reading journals
-- `app/routers/notes_router.py` - Notes/posts + feed
-- `book-tracker-frontend/src/pages/HomePage.jsx` - Social feed (Community/Your Friends pill tabs, no sidebar)
-- `book-tracker-frontend/src/components/home/YourFriendsTab.jsx` - **NEW** Find Friends search + What Friends Are Reading
-- `book-tracker-frontend/src/components/home/HomeSidebar.jsx` - Sidebar (friends widget removed, now empty)
-- `book-tracker-frontend/src/components/home/` - Community components
-- `book-tracker-mobile/src/screens/FeedScreen.js` - Mobile feed (PostImage component, friend search, clear button)
-- `book-tracker-mobile/src/screens/ProfileScreen.js` - Mobile profile (bio editing)
-- `book-tracker-mobile/src/services/NotificationService.js` - Push token registration + daily 9PM nudge notifications; includes `registrationInProgress` + `lastRegisteredExpoToken` dedup guards and full diagnostic logging
-- `book-tracker-mobile/App.js` - Root app; `authTokenRef` + `safePushRegistration()` fix for push race condition on login
+- `app/routers/notes_router.py` - Notes/posts + feed; **delete_note now removes Likes+Comments first** (PostgreSQL FK fix)
+- `book-tracker-frontend-stitch/src/pages/HomePage.jsx` - Social feed (Community/Your Friends pill tabs); For You recs show friend name, remove on shelve
+- `book-tracker-frontend-stitch/src/pages/UserProfilePage.jsx` - Fetches `getUserStats()` separately; shows member since, finished/reading/this-year, speed
+- `book-tracker-mobile-stitch/src/screens/FeedScreen.js` - Mobile feed; `followInFlight` ref, comment `submitting` flag, aspect [2,3] image crop, For You recs with friend name
+- `book-tracker-mobile-stitch/src/screens/UserProfileScreen.js` - Shows member since, correct stats fields (`stats.finished` not `stats.finished_books`), reading count, speed from activity, this-year always visible
+- `book-tracker-mobile-stitch/src/services/NotificationService.js` - Push token registration; 30s axios timeout
+- `book-tracker-mobile-stitch/App.js` - Root app; `authTokenRef` + `safePushRegistration()` fix
 
 **Key Decisions:** See [community/README.md](community/README.md)
 
