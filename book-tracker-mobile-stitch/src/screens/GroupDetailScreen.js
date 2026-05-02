@@ -387,6 +387,26 @@ export default function GroupDetailScreen({ route, navigation }) {
     }},
   ]);
 
+  const handleJoin = async () => {
+    try {
+      const res = await groupsAPI.joinGroup(groupId);
+      // Optimistically update membership status
+      setGroup(prev => ({
+        ...prev,
+        membership_status: res?.status === 'pending' ? 'pending' : 'active',
+        membership_role: 'member',
+        member_count: res?.status !== 'pending' ? (prev.member_count || 0) + 1 : prev.member_count,
+      }));
+      if (res?.status === 'pending') {
+        Alert.alert('Request Sent', 'The curator will review your request to join.');
+      } else {
+        load(); // Reload to get full member data
+      }
+    } catch (e) {
+      Alert.alert('Error', e?.response?.data?.detail || 'Could not join group');
+    }
+  };
+
   const handleLeave = () => Alert.alert('Leave circle', `Leave ${group?.name}?`, [
     { text: 'Cancel', style: 'cancel' },
     { text: 'Leave', style: 'destructive', onPress: async () => {
@@ -474,6 +494,21 @@ export default function GroupDetailScreen({ route, navigation }) {
             <TouchableOpacity onPress={handleLeave} style={styles.leaveBtn}>
               <Text style={styles.leaveBtnText}>Leave Circle</Text>
             </TouchableOpacity>
+          )}
+          {!isMember && !group?.is_private && (
+            <TouchableOpacity onPress={handleJoin} style={[styles.leaveBtn, { backgroundColor: colors.secondary, borderColor: colors.secondary }]}>
+              <Text style={styles.leaveBtnText}>Join Circle</Text>
+            </TouchableOpacity>
+          )}
+          {!isMember && group?.is_private && group?.membership_status !== 'pending' && (
+            <TouchableOpacity onPress={handleJoin} style={[styles.leaveBtn, { borderColor: 'rgba(255,255,255,0.5)' }]}>
+              <Text style={styles.leaveBtnText}>Request to Join</Text>
+            </TouchableOpacity>
+          )}
+          {group?.membership_status === 'pending' && (
+            <View style={[styles.leaveBtn, { opacity: 0.6 }]}>
+              <Text style={styles.leaveBtnText}>Request Pending…</Text>
+            </View>
           )}
         </View>
 
