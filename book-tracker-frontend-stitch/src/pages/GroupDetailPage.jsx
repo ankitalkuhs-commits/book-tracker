@@ -8,7 +8,7 @@ import {
   getPendingMembers, approveGroupMember, rejectGroupMember, removeGroupMember,
   inviteToGroup, leaveGroup, deleteGroup, updateGroup,
   setGroupBook, clearGroupBook, searchUsersForInvite, searchGoogleBooks,
-  joinByInviteCode, apiFetch,
+  joinByInviteCode, apiFetch, getMyBooks,
 } from '../services/api'
 import { GroupCover } from './GroupsPage'
 
@@ -265,16 +265,29 @@ function EditGroupModal({ group, onClose, onSave }) {
 // ─── New Post Modal ───────────────────────────────────────────────────────────
 
 function NewPostModal({ onClose, onPost }) {
-  const [text, setText] = useState('')
-  const [quote, setQuote] = useState('')
-  const [posting, setPosting] = useState(false)
+  const { user } = useAuth()
   const toast = useToast()
+  const [text,           setText]           = useState('')
+  const [quote,          setQuote]          = useState('')
+  const [emotion,        setEmotion]        = useState('')
+  const [selectedBook,   setSelectedBook]   = useState(null)
+  const [showBookPicker, setShowBookPicker] = useState(false)
+  const [myBooks,        setMyBooks]        = useState([])
+  const [posting,        setPosting]        = useState(false)
+
+  useEffect(() => {
+    getMyBooks().then(data => setMyBooks(data || [])).catch(() => {})
+  }, [])
 
   const handlePost = async () => {
     if (!text.trim()) { toast('Write something!', 'error'); return }
     setPosting(true)
     try {
-      await onPost({ text: text.trim(), quote: quote.trim() || null })
+      await onPost({
+        text: text.trim(),
+        quote: quote.trim() || null,
+        userbook_id: selectedBook?.id || null,
+      })
       onClose()
     } catch (e) {
       toast(e.message || 'Failed to post', 'error')
@@ -282,42 +295,110 @@ function NewPostModal({ onClose, onPost }) {
     setPosting(false)
   }
 
+  const initials = user?.name?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() || '?'
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
-      <div className="bg-surface-container-lowest rounded-3xl p-6 w-full max-w-md shadow-float space-y-4">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm" onClick={onClose}>
+      <div
+        className="bg-surface-container-lowest rounded-t-3xl sm:rounded-3xl p-6 w-full sm:max-w-lg shadow-float space-y-4"
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Header */}
         <div className="flex items-center justify-between">
           <h3 className="font-serif text-lg font-bold text-on-surface">Share with the Circle</h3>
           <button onClick={onClose} className="text-on-surface-variant hover:text-on-surface">
             <span className="material-symbols-outlined">close</span>
           </button>
         </div>
-        <div className="space-y-3">
-          <div>
-            <label className="text-xs font-bold uppercase tracking-wider text-on-surface-variant block mb-1">Your Thoughts</label>
+
+        {/* Composer row */}
+        <div className="flex items-start gap-3">
+          {/* Avatar */}
+          <div className="shrink-0 w-10 h-10 rounded-full bg-primary flex items-center justify-center text-on-primary text-sm font-bold overflow-hidden">
+            {user?.profile_picture
+              ? <img src={user.profile_picture} alt={user.name} className="w-full h-full object-cover" />
+              : initials
+            }
+          </div>
+
+          <div className="flex-1 space-y-3">
+            {/* Main text */}
             <textarea
               value={text}
               onChange={e => setText(e.target.value)}
               rows={3}
+              autoFocus
               placeholder="What's on your mind?"
               className="w-full bg-surface-container-low rounded-xl px-4 py-2.5 text-sm border-none focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none"
             />
-          </div>
-          <div>
-            <label className="text-xs font-bold uppercase tracking-wider text-on-surface-variant block mb-1">Quote <span className="font-normal normal-case">(optional)</span></label>
-            <input
-              value={quote}
-              onChange={e => setQuote(e.target.value)}
-              placeholder="A passage that moved you..."
-              className="w-full bg-surface-container-low rounded-xl px-4 py-2.5 text-sm border-none focus:outline-none focus:ring-2 focus:ring-primary/20"
-            />
+
+            {/* Book picker */}
+            {myBooks.length > 0 && (
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setShowBookPicker(v => !v)}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm transition-colors ${
+                    selectedBook ? 'bg-primary/10 text-primary font-medium' : 'bg-surface-container-low text-on-surface-variant hover:bg-surface-container'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-base">menu_book</span>
+                  {selectedBook ? selectedBook.book?.title : 'Tag a book (optional)'}
+                  {selectedBook && (
+                    <span
+                      className="material-symbols-outlined text-sm ml-1 text-on-surface-variant hover:text-error"
+                      onClick={e => { e.stopPropagation(); setSelectedBook(null) }}
+                    >close</span>
+                  )}
+                </button>
+                {showBookPicker && (
+                  <div className="absolute top-full left-0 mt-1 z-20 bg-surface-container-lowest rounded-2xl shadow-float border border-outline-variant/15 overflow-hidden w-64 max-h-48 overflow-y-auto">
+                    {myBooks.map(ub => (
+                      <button
+                        key={ub.id}
+                        onClick={() => { setSelectedBook(ub); setShowBookPicker(false) }}
+                        className="w-full text-left px-4 py-3 text-sm hover:bg-surface-container-low transition-colors flex items-center gap-3"
+                      >
+                        <span className="material-symbols-outlined text-base text-secondary">auto_stories</span>
+                        <span className="truncate font-medium text-on-surface">{ub.book?.title}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Quote + Emotion row */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="relative">
+                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline/60 text-base">format_quote</span>
+                <input
+                  value={quote}
+                  onChange={e => setQuote(e.target.value)}
+                  placeholder="Add a quote..."
+                  className="w-full bg-surface-container-low rounded-xl pl-9 pr-4 py-2.5 text-sm border-none focus:outline-none focus:ring-2 focus:ring-primary/20"
+                />
+              </div>
+              <div className="relative">
+                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline/60 text-base">mood</span>
+                <input
+                  value={emotion}
+                  onChange={e => setEmotion(e.target.value)}
+                  placeholder="Current mood..."
+                  className="w-full bg-surface-container-low rounded-xl pl-9 pr-4 py-2.5 text-sm border-none focus:outline-none focus:ring-2 focus:ring-primary/20"
+                />
+              </div>
+            </div>
           </div>
         </div>
-        <div className="flex gap-3 pt-2">
-          <button onClick={onClose} className="flex-1 py-2.5 text-sm font-bold text-on-surface-variant border border-outline-variant rounded-xl hover:bg-surface-container transition-colors">
+
+        {/* Actions */}
+        <div className="flex justify-end gap-3 pt-1">
+          <button onClick={onClose} className="px-5 py-2.5 text-sm font-bold text-on-surface-variant border border-outline-variant rounded-xl hover:bg-surface-container transition-colors">
             Cancel
           </button>
-          <button onClick={handlePost} disabled={posting} className="flex-1 py-2.5 text-sm font-bold bg-primary text-on-primary rounded-xl hover:bg-primary/90 transition-colors disabled:opacity-50">
-            {posting ? 'Posting...' : 'Post'}
+          <button onClick={handlePost} disabled={posting || !text.trim()} className="btn-primary px-7 py-2.5 text-sm font-bold rounded-xl disabled:opacity-50">
+            {posting ? 'Posting...' : 'Post Reflection'}
           </button>
         </div>
       </div>

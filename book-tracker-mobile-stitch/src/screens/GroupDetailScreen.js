@@ -6,7 +6,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { groupsAPI, booksAPI, usersAPI } from '../services/api';
+import { groupsAPI, booksAPI, usersAPI, userAPI, userbooksAPI } from '../services/api';
 import { colors, radius, shadow, type } from '../theme';
 
 const WEB_APP_URL = 'https://www.trackmyread.com';
@@ -254,6 +254,12 @@ export default function GroupDetailScreen({ route, navigation }) {
   const [postText,    setPostText]    = useState(false);
   const [posting,     setPosting]     = useState(false);
   const [postInput,   setPostInput]   = useState('');
+  const [postQuote,   setPostQuote]   = useState('');
+  const [postEmotion, setPostEmotion] = useState('');
+  const [postBook,    setPostBook]    = useState(null);
+  const [showBookPicker, setShowBookPicker] = useState(false);
+  const [myBooks,     setMyBooks]     = useState([]);
+  const [currentUser, setCurrentUser] = useState(null);
   const [inviteQuery,   setInviteQuery]   = useState('');
   const [inviteResults, setInviteResults] = useState([]);
   const [inviting,      setInviting]      = useState(null);
@@ -291,6 +297,11 @@ export default function GroupDetailScreen({ route, navigation }) {
 
   useEffect(() => { load(); }, []);
 
+  useEffect(() => {
+    userAPI.getProfile().then(u => setCurrentUser(u)).catch(() => {});
+    userbooksAPI.getMyBooks().then(b => setMyBooks(Array.isArray(b) ? b : [])).catch(() => {});
+  }, []);
+
   const handleLbPeriod = (p) => setLbPeriod(p);
 
   const handleInviteSearch = async (q) => {
@@ -318,9 +329,16 @@ export default function GroupDetailScreen({ route, navigation }) {
     if (!postInput.trim()) return;
     setPosting(true);
     try {
-      const post = await groupsAPI.createGroupPost(groupId, { text: postInput.trim() });
+      const post = await groupsAPI.createGroupPost(groupId, {
+        text: postInput.trim(),
+        quote: postQuote.trim() || null,
+        userbook_id: postBook?.id || null,
+      });
       setPosts(prev => [post, ...prev]);
       setPostInput('');
+      setPostQuote('');
+      setPostEmotion('');
+      setPostBook(null);
       setShowComposer(false);
     } catch (e) { Alert.alert('Error', e?.response?.data?.detail || 'Could not post'); }
     setPosting(false);
@@ -717,29 +735,108 @@ export default function GroupDetailScreen({ route, navigation }) {
       </ScrollView>
 
       {/* Post composer modal */}
-      <Modal visible={showComposer} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowComposer(false)}>
+      <Modal visible={showComposer} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => { setShowComposer(false); setPostInput(''); setPostQuote(''); setPostEmotion(''); setPostBook(null); }}>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
           <View style={styles.composerRoot}>
+            {/* Header */}
             <View style={styles.composerHeader}>
-              <TouchableOpacity onPress={() => { setShowComposer(false); setPostInput(''); }}>
+              <TouchableOpacity onPress={() => { setShowComposer(false); setPostInput(''); setPostQuote(''); setPostEmotion(''); setPostBook(null); }}>
                 <Text style={styles.composerCancel}>Cancel</Text>
               </TouchableOpacity>
-              <Text style={styles.composerTitle}>New Post</Text>
+              <Text style={styles.composerTitle}>Share with Circle</Text>
               <TouchableOpacity onPress={handleCreatePost} disabled={posting || !postInput.trim()}>
-                <Text style={[styles.composerPost, (!postInput.trim() || posting) && { opacity: 0.4 }]}>
-                  {posting ? 'Posting…' : 'Post'}
-                </Text>
+                {posting
+                  ? <ActivityIndicator size="small" color={colors.primary} />
+                  : <Text style={[styles.composerPost, !postInput.trim() && { opacity: 0.4 }]}>Post</Text>
+                }
               </TouchableOpacity>
             </View>
-            <TextInput
-              style={styles.composerInput}
-              value={postInput}
-              onChangeText={setPostInput}
-              placeholder="Share a thought with the circle…"
-              placeholderTextColor={colors.outline}
-              multiline
-              autoFocus
-            />
+
+            <ScrollView style={{ flex: 1 }} keyboardShouldPersistTaps="handled">
+              {/* Avatar + main text row */}
+              <View style={styles.composerBody}>
+                <View style={styles.composerAvatar}>
+                  {currentUser?.profile_picture
+                    ? <Image source={{ uri: currentUser.profile_picture }} style={{ width: 40, height: 40, borderRadius: 20 }} />
+                    : <Text style={styles.composerAvatarText}>
+                        {(currentUser?.name || '?').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                      </Text>
+                  }
+                </View>
+                <TextInput
+                  style={styles.composerInput}
+                  value={postInput}
+                  onChangeText={setPostInput}
+                  placeholder="What's on your mind?"
+                  placeholderTextColor={colors.outline}
+                  multiline
+                  autoFocus
+                />
+              </View>
+
+              {/* Book picker */}
+              {myBooks.length > 0 && (
+                <View style={styles.composerSection}>
+                  <TouchableOpacity
+                    style={[styles.composerChip, postBook && styles.composerChipActive]}
+                    onPress={() => setShowBookPicker(v => !v)}
+                  >
+                    <Ionicons name="book-outline" size={15} color={postBook ? colors.primary : colors.onSurfaceVariant} />
+                    <Text style={[styles.composerChipText, postBook && styles.composerChipTextActive]} numberOfLines={1}>
+                      {postBook ? postBook.book?.title : 'Tag a book'}
+                    </Text>
+                    {postBook && (
+                      <TouchableOpacity onPress={() => setPostBook(null)}>
+                        <Ionicons name="close-circle" size={15} color={colors.onSurfaceVariant} />
+                      </TouchableOpacity>
+                    )}
+                  </TouchableOpacity>
+
+                  {showBookPicker && (
+                    <View style={styles.bookPickerList}>
+                      {myBooks.slice(0, 20).map(ub => (
+                        <TouchableOpacity
+                          key={ub.id}
+                          style={styles.bookPickerRow}
+                          onPress={() => { setPostBook(ub); setShowBookPicker(false); }}
+                        >
+                          <Ionicons name="book-outline" size={14} color={colors.secondary} />
+                          <Text style={styles.bookPickerTitle} numberOfLines={1}>{ub.book?.title}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  )}
+                </View>
+              )}
+
+              {/* Quote field */}
+              <View style={styles.composerSection}>
+                <View style={styles.composerFieldRow}>
+                  <Ionicons name="quote" size={16} color={colors.outline} style={{ marginTop: 10 }} />
+                  <TextInput
+                    style={styles.composerField}
+                    value={postQuote}
+                    onChangeText={setPostQuote}
+                    placeholder="Add a striking quote…"
+                    placeholderTextColor={colors.outline}
+                  />
+                </View>
+              </View>
+
+              {/* Emotion field */}
+              <View style={styles.composerSection}>
+                <View style={styles.composerFieldRow}>
+                  <Ionicons name="happy-outline" size={16} color={colors.outline} style={{ marginTop: 10 }} />
+                  <TextInput
+                    style={styles.composerField}
+                    value={postEmotion}
+                    onChangeText={setPostEmotion}
+                    placeholder="Current mood or emotion…"
+                    placeholderTextColor={colors.outline}
+                  />
+                </View>
+              </View>
+            </ScrollView>
           </View>
         </KeyboardAvoidingView>
       </Modal>
@@ -872,7 +969,20 @@ const styles = StyleSheet.create({
   composerCancel: { fontSize: 16, color: colors.onSurfaceVariant },
   composerTitle:  { ...type.title, fontFamily: 'NotoSerif_700Bold', color: colors.onSurface },
   composerPost:   { ...type.title, fontFamily: 'Manrope_700Bold', fontWeight: '700', color: colors.primary },
-  composerInput:  { flex: 1, padding: 20, ...type.title, color: colors.onSurface, textAlignVertical: 'top' },
+  composerBody:   { flexDirection: 'row', alignItems: 'flex-start', paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8, gap: 12 },
+  composerAvatar: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  composerAvatarText: { color: colors.onPrimary, fontFamily: 'Manrope_700Bold', fontWeight: '700', fontSize: 15 },
+  composerInput:  { flex: 1, minHeight: 80, ...type.title, color: colors.onSurface, textAlignVertical: 'top' },
+  composerSection:    { paddingHorizontal: 16, paddingBottom: 12 },
+  composerChip:       { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', paddingHorizontal: 12, paddingVertical: 7, borderRadius: 999, borderWidth: 1, borderColor: colors.outlineVariant, backgroundColor: colors.surfaceContainerLow },
+  composerChipActive: { borderColor: colors.primary, backgroundColor: colors.primary + '12' },
+  composerChipText:   { fontSize: 13, color: colors.onSurfaceVariant, fontFamily: 'Manrope_600SemiBold', fontWeight: '600', maxWidth: 220 },
+  composerChipTextActive: { color: colors.primary },
+  bookPickerList: { marginTop: 8, backgroundColor: colors.surfaceContainerLow, borderRadius: 12, overflow: 'hidden' },
+  bookPickerRow:  { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 14, paddingVertical: 11, borderBottomWidth: 1, borderBottomColor: colors.outlineVariant + '30' },
+  bookPickerTitle:{ flex: 1, fontSize: 13, fontFamily: 'Manrope_600SemiBold', fontWeight: '600', color: colors.onSurface },
+  composerFieldRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, backgroundColor: colors.surfaceContainerLow, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 4 },
+  composerField:    { flex: 1, fontSize: 14, color: colors.onSurface, paddingVertical: 10, textAlignVertical: 'top' },
 
   modalRoot:    { flex: 1, backgroundColor: colors.surface },
   modalHeader:  { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 18, paddingBottom: 14, borderBottomWidth: 1, borderBottomColor: colors.outlineVariant + '60' },
