@@ -31,7 +31,13 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 # Step 3: Allow CORS (so frontends can talk to it)
 # ---------------------
 # Read comma-separated origins from env var (set this in Render)
-_localhost_origins = [
+_known_origins = [
+    # Production
+    "https://www.trackmyread.com",
+    "https://trackmyread.com",
+    "https://tracker-stitch.vercel.app",
+    "https://book-tracker-stitch.vercel.app",
+    # Local dev
     "http://localhost:5173",
     "http://localhost:5174",
     "http://localhost:5175",
@@ -46,9 +52,9 @@ _localhost_origins = [
 cors_env = os.getenv("CORS_ORIGINS", "")
 if cors_env:
     _env_origins = [o.strip() for o in cors_env.split(",") if o.strip()]
-    origins = list(dict.fromkeys(_env_origins + _localhost_origins))  # env first, no dupes
+    origins = list(dict.fromkeys(_env_origins + _known_origins))
 else:
-    origins = _localhost_origins
+    origins = _known_origins
 
 app.add_middleware(
     CORSMiddleware,
