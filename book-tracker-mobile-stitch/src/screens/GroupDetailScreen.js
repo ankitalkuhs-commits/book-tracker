@@ -427,8 +427,14 @@ export default function GroupDetailScreen({ route, navigation }) {
       <StatusBar barStyle="light-content" backgroundColor={colors.primary} />
       <View style={{ height: insets.top, backgroundColor: colors.primary }} />
 
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={0}
+      >
       <ScrollView
         contentContainerStyle={styles.scroll}
+        keyboardShouldPersistTaps="handled"
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => load(true)} tintColor={colors.onPrimary} />}
       >
         {/* ── Hero card ── */}
@@ -733,6 +739,7 @@ export default function GroupDetailScreen({ route, navigation }) {
 
         <View style={{ height: 40 }} />
       </ScrollView>
+      </KeyboardAvoidingView>
 
       {/* Post composer modal */}
       <Modal visible={showComposer} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => { setShowComposer(false); setPostInput(''); setPostQuote(''); setPostEmotion(''); setPostBook(null); }}>
