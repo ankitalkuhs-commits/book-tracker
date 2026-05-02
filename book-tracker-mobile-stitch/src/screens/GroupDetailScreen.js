@@ -691,7 +691,7 @@ export default function GroupDetailScreen({ route, navigation }) {
             )}
           </View>
           {groupBook ? (
-            <View style={styles.groupBookRow}>
+            <TouchableOpacity style={styles.groupBookRow} onPress={() => navigation.navigate('BookPreview', { book: groupBook })} activeOpacity={0.8}>
               {groupBook.cover_url ? (
                 <Image source={{ uri: groupBook.cover_url }} style={styles.groupBookCover} />
               ) : (
@@ -709,7 +709,7 @@ export default function GroupDetailScreen({ route, navigation }) {
                   </TouchableOpacity>
                 )}
               </View>
-            </View>
+            </TouchableOpacity>
           ) : (
             <View style={styles.groupBookEmpty}>
               <Ionicons name="book-outline" size={32} color={colors.outlineVariant} />

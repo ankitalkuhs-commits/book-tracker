@@ -15,6 +15,7 @@ import ProfileScreen from '../screens/ProfileScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import UserProfileScreen from '../screens/UserProfileScreen';
 import BookDetailScreen from '../screens/BookDetailScreen';
+import BookPreviewScreen from '../screens/BookPreviewScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -26,6 +27,8 @@ function FeedStack() {
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="Feed" component={FeedScreen} />
       <Stack.Screen name="UserProfile" component={UserProfileScreen} />
+      <Stack.Screen name="BookPreview" component={BookPreviewScreen} />
+      <Stack.Screen name="BookDetail" component={BookDetailScreen} />
     </Stack.Navigator>
   );
 }
@@ -35,6 +38,7 @@ function LibraryStack() {
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="Library" component={LibraryScreen} />
       <Stack.Screen name="BookDetail" component={BookDetailScreen} />
+      <Stack.Screen name="BookPreview" component={BookPreviewScreen} />
     </Stack.Navigator>
   );
 }
@@ -45,6 +49,8 @@ function GroupsStack() {
       <Stack.Screen name="Groups" component={GroupsScreen} />
       <Stack.Screen name="GroupDetail" component={GroupDetailScreen} />
       <Stack.Screen name="UserProfile" component={UserProfileScreen} />
+      <Stack.Screen name="BookPreview" component={BookPreviewScreen} />
+      <Stack.Screen name="BookDetail" component={BookDetailScreen} />
     </Stack.Navigator>
   );
 }
@@ -54,6 +60,7 @@ function InsightsStack() {
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="Insights" component={InsightsScreen} />
       <Stack.Screen name="BookDetail" component={BookDetailScreen} />
+      <Stack.Screen name="BookPreview" component={BookPreviewScreen} />
     </Stack.Navigator>
   );
 }
@@ -66,6 +73,7 @@ function ProfileStack({ onLogout }) {
       <Stack.Screen name="ProfileRoot">{(props) => <ProfileScreen {...props} onLogout={onLogout} />}</Stack.Screen>
       <Stack.Screen name="Settings">{(props) => <SettingsScreen {...props} onLogout={onLogout} />}</Stack.Screen>
       <Stack.Screen name="UserProfile" component={UserProfileScreen} />
+      <Stack.Screen name="BookPreview" component={BookPreviewScreen} />
       <Stack.Screen name="BookDetail" component={BookDetailScreen} />
     </Stack.Navigator>
   );

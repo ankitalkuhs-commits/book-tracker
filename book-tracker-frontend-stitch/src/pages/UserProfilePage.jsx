@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../components/Toast'
+import BookPreviewModal from '../components/BookPreviewModal'
 import {
   getPublicProfile, getUserBooks, getUserActivity, getUserNotes, getUserStats,
   followUser, unfollowUser, adminDeleteNote,
@@ -215,6 +216,7 @@ export default function UserProfilePage() {
   const [loading, setLoading] = useState(true)
   const [followLoading, setFollowLoading] = useState(false)
   const [showAllBooks, setShowAllBooks] = useState(false)
+  const [previewBook, setPreviewBook] = useState(null)
 
   const isOwnProfile = me?.id?.toString() === userId?.toString()
 
@@ -482,11 +484,13 @@ export default function UserProfilePage() {
           ) : (
             <div className="grid grid-cols-3 gap-3 md:gap-4">
               {displayBooks.map(ub => (
-                <div key={ub.id} className="space-y-2">
-                  <BookCover book={ub.book} />
+                <button key={ub.id} className="space-y-2 text-left group" onClick={() => ub.book && setPreviewBook(ub.book)}>
+                  <div className="group-hover:opacity-90 transition-opacity">
+                    <BookCover book={ub.book} />
+                  </div>
                   <p className="text-xs font-bold text-on-surface line-clamp-2 leading-snug">{ub.book?.title}</p>
                   <p className="text-[10px] text-on-surface-variant/60 truncate">{ub.book?.author}</p>
-                </div>
+                </button>
               ))}
             </div>
           )}
@@ -510,6 +514,7 @@ export default function UserProfilePage() {
           )}
         </div>
       </div></>}
+      {previewBook && <BookPreviewModal book={previewBook} onClose={() => setPreviewBook(null)} />}
     </main>
   )
 }

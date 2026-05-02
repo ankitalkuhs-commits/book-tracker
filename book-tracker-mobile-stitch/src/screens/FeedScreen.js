@@ -455,7 +455,7 @@ const FeedScreen = ({ navigation }) => {
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.recsScroll}>
           {recs.map(book => (
             <TouchableOpacity key={book.id} style={styles.recCard} activeOpacity={0.8}
-              onPress={() => setShelfModal({ book, reason: getReasonLabel(book) })}>
+              onPress={() => navigation.navigate('BookPreview', { book })}>
               <View style={styles.recCoverContainer}>
                 {book.cover_url
                   ? <Image source={{ uri: book.cover_url }} style={styles.recCover} />
@@ -496,7 +496,7 @@ const FeedScreen = ({ navigation }) => {
             const book = bookItem.book;
             return (
               <TouchableOpacity key={bookItem.id} style={styles.bookCard} activeOpacity={0.8}
-                onPress={() => book && setShelfModal({ book, reason: `${item.user?.name || 'A friend'} is reading this` })}>
+                onPress={() => book && navigation.navigate('BookPreview', { book })}>
                 <View style={styles.bookCoverContainer}>
                   {book?.cover_url
                     ? <Image source={{ uri: book.cover_url }} style={styles.friendReadingBookCover} />
@@ -563,7 +563,7 @@ const FeedScreen = ({ navigation }) => {
             const COVER_PALETTES = ['#00695c','#2e7d32','#e65100','#880e4f','#283593','#6a1b9a','#1565c0','#bf360c'];
             const spineColor = COVER_PALETTES[(post.book.id || 0) % COVER_PALETTES.length];
             return (
-              <View style={styles.postBookCoverWrap}>
+              <TouchableOpacity style={styles.postBookCoverWrap} onPress={() => navigation.navigate('BookPreview', { book: post.book })} activeOpacity={0.8}>
                 {post.book.cover_url
                   ? <Image source={{ uri: post.book.cover_url }} style={styles.postBookCover} resizeMode="cover" />
                   : <View style={[styles.postBookCover, { backgroundColor: spineColor + '28', justifyContent: 'center', alignItems: 'center', padding: 4 }]}>
@@ -573,7 +573,7 @@ const FeedScreen = ({ navigation }) => {
                       </Text>
                     </View>
                 }
-              </View>
+              </TouchableOpacity>
             );
           })()}
 

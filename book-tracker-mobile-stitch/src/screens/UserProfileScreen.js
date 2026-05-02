@@ -380,7 +380,7 @@ export default function UserProfileScreen({ route, navigation }) {
                       key={ub.id}
                       style={styles.bookTile}
                       activeOpacity={0.8}
-                      onPress={() => setShelfModal({ book: ub.book || ub })}
+                      onPress={() => navigation.navigate('BookPreview', { book: ub.book || ub })}
                     >
                       {ub.book?.cover_url ? (
                         <Image source={{ uri: ub.book.cover_url }} style={styles.bookCover} />
@@ -430,7 +430,7 @@ export default function UserProfileScreen({ route, navigation }) {
                     const total = ub.book?.total_pages || 0;
                     const pct   = total > 0 ? Math.min(100, Math.round(((ub.current_page || 0) / total) * 100)) : 0;
                     return (
-                      <View key={ub.id} style={styles.currentlyReadingRow}>
+                      <TouchableOpacity key={ub.id} style={styles.currentlyReadingRow} activeOpacity={0.8} onPress={() => navigation.navigate('BookPreview', { book: ub.book || ub })}>
                         {ub.book?.cover_url ? (
                           <Image source={{ uri: ub.book.cover_url }} style={styles.currentlyCover} />
                         ) : (
@@ -450,7 +450,7 @@ export default function UserProfileScreen({ route, navigation }) {
                             </View>
                           )}
                         </View>
-                      </View>
+                      </TouchableOpacity>
                     );
                   })}
                   {currentlyReading.length > 3 && (

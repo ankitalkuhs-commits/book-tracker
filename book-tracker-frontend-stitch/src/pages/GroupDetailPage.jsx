@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../components/Toast'
+import BookPreviewModal from '../components/BookPreviewModal'
 import {
   getGroup, getGroupMembers, getGroupLeaderboard, getGroupGoal,
   getGroupPosts, createGroupPost, deleteGroupPost,
@@ -418,6 +419,7 @@ export default function GroupDetailPage() {
   const [members, setMembers] = useState([])
   const [leaderboard, setLeaderboard] = useState([])
   const [leaderPeriod, setLeaderPeriod] = useState('monthly')
+  const [previewBook, setPreviewBook] = useState(null)
   const [goal, setGoal] = useState(null)
   const [posts, setPosts] = useState([])
   const [visiblePosts, setVisiblePosts] = useState(10)
@@ -900,19 +902,26 @@ export default function GroupDetailPage() {
 
             {group.current_book ? (
               <div className="flex items-center gap-4">
-                {group.current_book.cover_url ? (
-                  <img
-                    src={group.current_book.cover_url}
-                    alt={group.current_book.title}
-                    className="w-16 h-24 object-cover rounded-xl shrink-0 shadow-sm"
-                  />
-                ) : (
-                  <div className="w-16 h-24 bg-surface-container rounded-xl shrink-0 flex items-center justify-center">
-                    <span className="material-symbols-outlined text-outline/40 text-2xl">menu_book</span>
-                  </div>
-                )}
+                <button
+                  className="shrink-0 hover:opacity-80 transition-opacity"
+                  onClick={() => setPreviewBook(group.current_book)}
+                >
+                  {group.current_book.cover_url ? (
+                    <img
+                      src={group.current_book.cover_url}
+                      alt={group.current_book.title}
+                      className="w-16 h-24 object-cover rounded-xl shadow-sm"
+                    />
+                  ) : (
+                    <div className="w-16 h-24 bg-surface-container rounded-xl flex items-center justify-center">
+                      <span className="material-symbols-outlined text-outline/40 text-2xl">menu_book</span>
+                    </div>
+                  )}
+                </button>
                 <div className="flex-1 min-w-0 space-y-1">
-                  <p className="font-serif font-bold text-on-surface leading-snug">{group.current_book.title}</p>
+                  <button className="text-left hover:text-primary transition-colors" onClick={() => setPreviewBook(group.current_book)}>
+                    <p className="font-serif font-bold text-on-surface leading-snug">{group.current_book.title}</p>
+                  </button>
                   <p className="text-xs text-on-surface-variant">{group.current_book.author}</p>
                   {isCurator && (
                     <button
@@ -1122,6 +1131,7 @@ export default function GroupDetailPage() {
           </div>
         </div>
       )}
+      {previewBook && <BookPreviewModal book={previewBook} onClose={() => setPreviewBook(null)} />}
     </main>
   )
 }

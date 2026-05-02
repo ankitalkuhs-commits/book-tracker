@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../components/Toast'
+import BookPreviewModal from '../components/BookPreviewModal'
 import {
   getCommunityFeed, getFriendsFeed, createNote,
   likeNote, unlikeNote, getComments, addComment,
@@ -453,46 +454,14 @@ function getReasonLabel(book) {
 }
 
 function RecommendationsShelf() {
-  const toast = useToast()
   const [recs, setRecs] = useState([])
-  const [pendingBook, setPendingBook] = useState(null)  // book awaiting confirmation
-  const [adding, setAdding] = useState(false)
-  const [added, setAdded] = useState(false)
+  const [previewBook, setPreviewBook] = useState(null)
 
   useEffect(() => {
     getRecommendations().then(setRecs).catch(() => {})
   }, [])
 
   if (!recs.length) return null
-
-  const handleConfirmAdd = async (status) => {
-    if (!pendingBook) return
-    setAdding(true)
-    try {
-      await addToLibrary({
-        title: pendingBook.title, author: pendingBook.author,
-        cover_url: pendingBook.cover_url, total_pages: pendingBook.total_pages,
-        description: pendingBook.description, status,
-      })
-      setAdded(true)
-      setTimeout(() => {
-        setRecs(prev => prev.filter(r => r.id !== pendingBook.id))
-        setPendingBook(null)
-        setAdded(false)
-        toast(`"${pendingBook.title}" added to your library`, 'success')
-      }, 1000)
-    } catch (e) {
-      toast(e.message || 'Already in your library', 'info')
-      setPendingBook(null)
-    }
-    setAdding(false)
-  }
-
-  const closeModal = () => {
-    if (adding) return
-    setPendingBook(null)
-    setAdded(false)
-  }
 
   return (
     <>
@@ -503,8 +472,8 @@ function RecommendationsShelf() {
         </div>
         <div className="flex gap-4 overflow-x-auto pb-2 -mx-1 px-1 scrollbar-hide">
           {recs.slice(0, 8).map(book => (
-            <div key={book.id} className="shrink-0 w-28 space-y-2 group">
-              <div className="relative aspect-[2/3] rounded-xl overflow-hidden bg-surface-container-high shadow-md group-hover:shadow-xl transition-shadow">
+            <button key={book.id} className="shrink-0 w-28 space-y-2 group text-left" onClick={() => setPreviewBook(book)}>
+              <div className="aspect-[2/3] rounded-xl overflow-hidden bg-surface-container-high shadow-md group-hover:shadow-xl transition-shadow">
                 {book.cover_url ? (
                   <img src={book.cover_url} alt={book.title} className="w-full h-full object-cover" />
                 ) : (
@@ -512,85 +481,15 @@ function RecommendationsShelf() {
                     <span className="material-symbols-outlined text-2xl text-outline/40">menu_book</span>
                   </div>
                 )}
-                <button
-                  onClick={() => { setPendingBook(book); setAdded(false) }}
-                  className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
-                >
-                  <span className="text-white text-[10px] font-bold text-center px-2">+ Add to Library</span>
-                </button>
               </div>
               <p className="text-xs font-bold text-on-surface line-clamp-2 leading-snug">{book.title}</p>
               <p className="text-[10px] text-secondary font-medium">{getReasonLabel(book)}</p>
-            </div>
+            </button>
           ))}
         </div>
       </section>
 
-      {/* Confirmation modal */}
-      {pendingBook && (
-        <div
-          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-on-surface/30 backdrop-blur-sm"
-          onClick={closeModal}
-        >
-          <div
-            className="bg-surface-container-lowest rounded-t-3xl sm:rounded-3xl shadow-float w-full sm:max-w-sm p-6 space-y-5"
-            onClick={e => e.stopPropagation()}
-          >
-            {/* Book info */}
-            <div className="flex gap-4 items-start">
-              <div className="w-14 shrink-0">
-                <div className="aspect-[2/3] rounded-lg overflow-hidden bg-surface-container-high">
-                  {pendingBook.cover_url
-                    ? <img src={pendingBook.cover_url} alt={pendingBook.title} className="w-full h-full object-cover" />
-                    : <div className="w-full h-full flex items-center justify-center"><span className="material-symbols-outlined text-xl text-outline/40">menu_book</span></div>
-                  }
-                </div>
-              </div>
-              <div className="flex-1 min-w-0 pt-1">
-                <p className="font-serif font-bold text-on-surface leading-snug line-clamp-2">{pendingBook.title}</p>
-                <p className="text-sm text-on-surface-variant mt-0.5">{pendingBook.author}</p>
-                <p className="text-[10px] text-secondary font-semibold mt-1.5">{getReasonLabel(pendingBook)}</p>
-              </div>
-            </div>
-
-            {/* State: adding / added / choose */}
-            {added ? (
-              <div className="flex items-center justify-center gap-2 py-3 text-secondary font-bold">
-                <span className="material-symbols-outlined text-xl">check_circle</span>
-                Added to your library!
-              </div>
-            ) : adding ? (
-              <div className="flex items-center justify-center gap-2 py-3 text-on-surface-variant text-sm">
-                <span className="material-symbols-outlined text-base animate-spin">progress_activity</span>
-                Adding to your library…
-              </div>
-            ) : (
-              <>
-                <p className="text-sm text-on-surface-variant text-center">Where would you like to shelve this?</p>
-                <div className="space-y-2">
-                  <button
-                    onClick={() => handleConfirmAdd('to-read')}
-                    className="w-full btn-primary py-3 rounded-2xl text-sm font-bold flex items-center justify-center gap-2"
-                  >
-                    <span className="material-symbols-outlined text-base">bookmark</span>
-                    Want to Read
-                  </button>
-                  <button
-                    onClick={() => handleConfirmAdd('reading')}
-                    className="w-full py-3 rounded-2xl text-sm font-bold border border-primary text-primary hover:bg-primary/5 transition-colors flex items-center justify-center gap-2"
-                  >
-                    <span className="material-symbols-outlined text-base">menu_book</span>
-                    Start Reading Now
-                  </button>
-                </div>
-                <button onClick={closeModal} className="w-full text-center text-sm text-on-surface-variant/60 hover:text-on-surface-variant transition-colors pt-1">
-                  Cancel
-                </button>
-              </>
-            )}
-          </div>
-        </div>
-      )}
+      {previewBook && <BookPreviewModal book={previewBook} onClose={() => setPreviewBook(null)} />}
     </>
   )
 }
@@ -603,6 +502,7 @@ function Sidebar() {
   const [friendReading, setFriendReading] = useState([])
   const [userSearch, setUserSearch] = useState('')
   const [searchResults, setSearchResults] = useState([])
+  const [previewBook, setPreviewBook] = useState(null)
 
   useEffect(() => {
     getFollowing().then(setFollowing).catch(() => {})
@@ -679,7 +579,7 @@ function Sidebar() {
           <h3 className="text-lg font-bold text-primary font-serif">Currently Reading</h3>
           <div className="grid grid-cols-2 gap-3">
             {friendReading.slice(0, 4).map(item => (
-              <div key={item.id} className="space-y-1.5 group cursor-pointer" onClick={() => item.user?.id && navigate(`/profile/${item.user.id}`)}>
+              <button key={item.id} className="space-y-1.5 group text-left" onClick={() => item.book && setPreviewBook(item.book)}>
                 <div className="aspect-[2/3] rounded-lg overflow-hidden shadow-md group-hover:shadow-xl transition-shadow relative bg-surface-container-high">
                   {item.book?.cover_url ? (
                     <img
@@ -705,11 +605,12 @@ function Sidebar() {
                 </div>
                 <p className="text-xs font-bold truncate">{item.book?.title}</p>
                 <p className="text-[10px] text-on-surface-variant/60">{item.user?.name}</p>
-              </div>
+              </button>
             ))}
           </div>
         </section>
       )}
+      {previewBook && <BookPreviewModal book={previewBook} onClose={() => setPreviewBook(null)} />}
     </aside>
   )
 }
