@@ -131,6 +131,7 @@ export const groupsAPI = {
   createGroupPost: async (id, data) => (await api.post(`/groups/${id}/posts`, data)).data,
   getGroupMembers: async (id) => (await api.get(`/groups/${id}/members`)).data,
   getLeaderboard: async (id, period = 'monthly') => (await api.get(`/groups/${id}/leaderboard?period=${period}`)).data,
+  inviteToGroup: async (id, userId) => (await api.post(`/groups/${id}/invite/${userId}`)).data,
   getMyInvites: async () => (await api.get('/groups/invites/pending')).data,
   getPendingMembers: async (id) => (await api.get(`/groups/${id}/pending`)).data,
   approveGroupMember: async (id, userId) => (await api.post(`/groups/${id}/approve/${userId}`)).data,

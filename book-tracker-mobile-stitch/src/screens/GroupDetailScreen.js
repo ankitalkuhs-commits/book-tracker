@@ -6,8 +6,10 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { groupsAPI, booksAPI } from '../services/api';
+import { groupsAPI, booksAPI, usersAPI } from '../services/api';
 import { colors, radius, shadow, type } from '../theme';
+
+const WEB_APP_URL = 'https://trackmyread.vercel.app'; // update if domain changes
 
 function timeAgo(dateStr) {
   if (!dateStr) return '';
@@ -62,7 +64,7 @@ function SetGroupBookModal({ visible, onClose, onSet }) {
     setSearching(true);
     try {
       const r = await booksAPI.search(query.trim());
-      setResults(r || []);
+      setResults(r?.results || []);
     } catch { /* ignore */ }
     setSearching(false);
   };
@@ -148,20 +150,23 @@ export default function GroupDetailScreen({ route, navigation }) {
   const [postText,    setPostText]    = useState(false);
   const [posting,     setPosting]     = useState(false);
   const [postInput,   setPostInput]   = useState('');
+  const [inviteQuery,   setInviteQuery]   = useState('');
+  const [inviteResults, setInviteResults] = useState([]);
+  const [inviting,      setInviting]      = useState(null);
 
-  const safe = fn => Promise.resolve(fn).catch(() => null);
+  const safe = (fn, label) => Promise.resolve(fn).catch(e => { console.warn(`[Group] ${label || '?'} failed:`, e?.response?.data || e?.message); return null; });
 
   const load = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
     try {
       const [g, p, act, m, lbMonthly, lbAlltime, pend] = await Promise.all([
-        safe(groupsAPI.getGroup(groupId)),
-        safe(groupsAPI.getGroupPosts(groupId)),
-        safe(groupsAPI.getGroupActivity(groupId)),
-        safe(groupsAPI.getGroupMembers(groupId)),
-        safe(groupsAPI.getLeaderboard(groupId, 'monthly')),
-        safe(groupsAPI.getLeaderboard(groupId, 'alltime')),
-        safe(groupsAPI.getPendingMembers(groupId).catch(() => [])),
+        safe(groupsAPI.getGroup(groupId), 'getGroup'),
+        safe(groupsAPI.getGroupPosts(groupId), 'getPosts'),
+        safe(groupsAPI.getGroupActivity(groupId), 'getActivity'),
+        safe(groupsAPI.getGroupMembers(groupId), 'getMembers'),
+        safe(groupsAPI.getLeaderboard(groupId, 'monthly'), 'leaderboard-monthly'),
+        safe(groupsAPI.getLeaderboard(groupId, 'alltime'), 'leaderboard-alltime'),
+        safe(groupsAPI.getPendingMembers(groupId).catch(() => []), 'getPending'),
       ]);
       if (g) setGroup(g);
       setPosts(Array.isArray(p) ? p : []);
@@ -183,6 +188,27 @@ export default function GroupDetailScreen({ route, navigation }) {
   useEffect(() => { load(); }, []);
 
   const handleLbPeriod = (p) => setLbPeriod(p);
+
+  const handleInviteSearch = async (q) => {
+    setInviteQuery(q);
+    if (q.trim().length < 2) { setInviteResults([]); return; }
+    try {
+      const res = await usersAPI.searchUsers(q.trim());
+      const memberIds = new Set(members.map(m => m.user_id));
+      setInviteResults((res || []).filter(u => !memberIds.has(u.id)));
+    } catch { setInviteResults([]); }
+  };
+
+  const handleInvite = async (user) => {
+    setInviting(user.id);
+    try {
+      await groupsAPI.inviteToGroup(groupId, user.id);
+      Alert.alert('Invited!', `${user.name} has been invited.`);
+      setInviteQuery('');
+      setInviteResults([]);
+    } catch (e) { Alert.alert('Error', e?.response?.data?.detail || 'Could not invite'); }
+    setInviting(null);
+  };
 
   const handleCreatePost = async () => {
     if (!postInput.trim()) return;
@@ -261,7 +287,7 @@ export default function GroupDetailScreen({ route, navigation }) {
   const handleCopyInviteLink = () => {
     const link = group?.invite_code ? `/join/${group.invite_code}` : '';
     if (link) {
-      Clipboard.setString(`https://tracker-stitch.vercel.app${link}`);
+      Clipboard.setString(`${WEB_APP_URL}${link}`);
       Alert.alert('Copied!', 'Invite link copied to clipboard');
     }
   };
@@ -540,8 +566,37 @@ export default function GroupDetailScreen({ route, navigation }) {
             ) : null}
             <View style={styles.searchWrap}>
               <Ionicons name="search-outline" size={15} color={colors.outline} />
-              <Text style={styles.searchPlaceholder}>Search by username...</Text>
+              <TextInput
+                style={{ flex: 1, fontSize: 13, color: colors.onSurface }}
+                placeholder="Search by username..."
+                placeholderTextColor={colors.outline}
+                value={inviteQuery}
+                onChangeText={handleInviteSearch}
+                autoCorrect={false}
+                autoCapitalize="none"
+              />
             </View>
+            {inviteResults.length > 0 && (
+              <View style={styles.inviteDropdown}>
+                {inviteResults.slice(0, 5).map(u => (
+                  <TouchableOpacity
+                    key={u.id}
+                    style={styles.inviteRow}
+                    onPress={() => handleInvite(u)}
+                    disabled={inviting === u.id}
+                  >
+                    <Avatar name={u.name} size={30} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.inviteName}>{u.name}</Text>
+                      <Text style={styles.inviteUsername}>@{u.username}</Text>
+                    </View>
+                    <Text style={styles.inviteBtn}>
+                      {inviting === u.id ? '…' : 'Invite'}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
           </View>
         )}
 
@@ -648,6 +703,11 @@ const styles = StyleSheet.create({
   copyBtnText:    { fontSize: 12, fontWeight: '700', color: colors.onPrimary },
   searchWrap:     { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: colors.surfaceContainerLow, borderRadius: radius.md, paddingHorizontal: 12, paddingVertical: 10 },
   searchPlaceholder: { fontSize: 13, color: colors.outline },
+  inviteDropdown: { marginTop: 4, backgroundColor: colors.surfaceContainerLow, borderRadius: radius.md, overflow: 'hidden' },
+  inviteRow:      { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 12, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: colors.outlineVariant + '30' },
+  inviteName:     { fontSize: 13, fontWeight: '600', color: colors.onSurface },
+  inviteUsername: { fontSize: 12, color: colors.onSurfaceVariant },
+  inviteBtn:      { fontSize: 12, fontWeight: '700', color: colors.primary },
 
   // Disband
   disbandBtn:   { marginHorizontal: 16, marginBottom: 8, paddingVertical: 14, alignItems: 'center' },
