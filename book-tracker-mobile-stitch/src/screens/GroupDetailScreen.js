@@ -313,6 +313,20 @@ export default function GroupDetailScreen({ route, navigation }) {
     userbooksAPI.getMyBooks().then(b => setMyBooks(Array.isArray(b) ? b : [])).catch(() => {});
   }, []);
 
+  const isCuratorRef = group?.membership_role === 'curator';
+  useEffect(() => {
+    if (!isCuratorRef) return;
+    const poll = async () => {
+      try {
+        const p = await groupsAPI.getPendingMembers(groupId);
+        setPending(Array.isArray(p) ? p : []);
+      } catch { /* silent */ }
+    };
+    poll(); // immediate
+    const timer = setInterval(poll, 20000);
+    return () => clearInterval(timer);
+  }, [isCuratorRef, groupId]);
+
   const handleLbPeriod = (p) => setLbPeriod(p);
 
   const handleInviteSearch = async (q) => {

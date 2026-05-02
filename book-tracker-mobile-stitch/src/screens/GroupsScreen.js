@@ -4,6 +4,7 @@ import {
   ActivityIndicator, RefreshControl, Alert, Modal, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import { groupsAPI } from '../services/api';
 import { PreloadContext } from '../../App';
 import { colors, radius, shadow, type } from '../theme';
@@ -301,6 +302,12 @@ export default function GroupsScreen({ navigation }) {
     const t = setTimeout(() => loadDiscover(discoverQ), 350);
     return () => clearTimeout(t);
   }, [discoverQ]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadPending();
+    }, [loadPending])
+  );
 
   if (loading) return <View style={styles.center}><ActivityIndicator size="large" color={colors.primary} /></View>;
 

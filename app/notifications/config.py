@@ -92,6 +92,20 @@ NOTIFICATION_EVENTS: dict[str, dict] = {
         "daily_cap": False,
     },
 
+    "group_join_approved": {
+        "title": "Join request approved ✅",
+        "body": "You're now a member of {group_name}!",
+        "is_active": True,
+        "daily_cap": False,
+    },
+
+    "group_join_rejected": {
+        "title": "Join request declined",
+        "body": "Your request to join {group_name} was not approved.",
+        "is_active": True,
+        "daily_cap": False,
+    },
+
     # "reading_milestone": {
     #     "title": "{actor} hit a reading milestone 🏆",
     #     "body": "{actor} has read {milestone} books this year!",

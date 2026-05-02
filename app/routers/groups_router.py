@@ -619,6 +619,16 @@ def approve_member(
     m.status = "active"
     db.add(m)
     db.commit()
+    fire_group_activity(db, group_id, user_id, "member_joined")
+    g = _group_or_404(db, group_id)
+    fire_event(
+        db=db,
+        event_type="group_join_approved",
+        actor_id=me.id,
+        actor_name=me.name or me.username or "The curator",
+        recipient_ids=[user_id],
+        extra={"group_name": g.name, "group_id": group_id},
+    )
     return {"ok": True}
 
 
@@ -632,8 +642,17 @@ def reject_member(
         raise HTTPException(status_code=403, detail="Curator only")
     m = _is_member(db, group_id, user_id, require_active=False)
     if m:
+        g = _group_or_404(db, group_id)
         db.delete(m)
         db.commit()
+        fire_event(
+            db=db,
+            event_type="group_join_rejected",
+            actor_id=me.id,
+            actor_name=me.name or me.username or "The curator",
+            recipient_ids=[user_id],
+            extra={"group_name": g.name, "group_id": group_id},
+        )
 
 
 @router.delete("/{group_id}/remove/{user_id}", status_code=204)
