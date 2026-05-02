@@ -71,14 +71,20 @@ export default function BookDetailScreen({ route, navigation }) {
 
   const handleStatusChange = async (newStatus) => {
     if (newStatus === ub.status) return;
+    const prevStatus = ub.status;
+    // Optimistic update — pill switches immediately
+    setUb(prev => ({ ...prev, status: newStatus }));
     setSavingStatus(true);
     try {
-      // PATCH returns { status: "ok", userbook: <flat UserBook> }
-      // Preserve the nested book object from prev since backend returns flat model
       const result = await userbooksAPI.patchUserbook(ub.id, { status: newStatus });
       const serverUb = result?.userbook || result;
-      setUb(prev => ({ ...prev, ...serverUb, book: prev.book }));
-    } catch (e) { Alert.alert('Error', e?.response?.data?.detail || 'Could not update status'); }
+      // Sync any extra fields the server returned, preserve nested book
+      setUb(prev => ({ ...prev, ...serverUb, status: newStatus, book: prev.book }));
+    } catch (e) {
+      // Revert on failure
+      setUb(prev => ({ ...prev, status: prevStatus }));
+      Alert.alert('Error', e?.response?.data?.detail || 'Could not update status');
+    }
     setSavingStatus(false);
   };
 
