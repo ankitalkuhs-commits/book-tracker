@@ -267,6 +267,7 @@ export default function GroupsScreen({ navigation }) {
   const preloaded = useContext(PreloadContext);
   const currentUser = preloaded?.profile || null;
   const [myGroups, setMyGroups] = useState([]);
+  const [pendingGroups, setPendingGroups] = useState([]);
   const [discover, setDiscover] = useState([]);
   const [discoverQ, setDiscoverQ] = useState('');
   const [loading, setLoading] = useState(true);
@@ -279,6 +280,11 @@ export default function GroupsScreen({ navigation }) {
     catch { setMyGroups([]); }
   }, []);
 
+  const loadPending = useCallback(async () => {
+    try { const data = await groupsAPI.getMyPendingGroups(); setPendingGroups(Array.isArray(data) ? data : []); }
+    catch { setPendingGroups([]); }
+  }, []);
+
   const loadDiscover = useCallback(async (q = '') => {
     try { const data = await groupsAPI.discoverGroups(q); setDiscover(Array.isArray(data) ? data : []); }
     catch { setDiscover([]); }
@@ -286,7 +292,7 @@ export default function GroupsScreen({ navigation }) {
 
   const load = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
-    await Promise.all([loadMine(), loadDiscover(discoverQ)]);
+    await Promise.all([loadMine(), loadPending(), loadDiscover(discoverQ)]);
     setLoading(false); setRefreshing(false);
   }, [discoverQ]);
 
@@ -348,6 +354,35 @@ export default function GroupsScreen({ navigation }) {
             </>
           )}
         </View>
+
+        {/* ── Pending Requests ── */}
+        {pendingGroups.length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Pending Requests</Text>
+            <Text style={styles.sectionSub}>Waiting for curator approval.</Text>
+            {pendingGroups.map(g => (
+              <TouchableOpacity
+                key={g.id}
+                style={[styles.card, { borderWidth: 1, borderColor: colors.outlineVariant, borderStyle: 'dashed' }]}
+                onPress={() => navigation.navigate('GroupDetail', { groupId: g.id })}
+                activeOpacity={0.75}
+              >
+                <GroupCover preset={g.cover_preset} size={80} />
+                <View style={styles.cardBody}>
+                  <Text style={[styles.curatorBadge, { color: colors.tertiary }]}>REQUEST PENDING</Text>
+                  <Text style={styles.cardName} numberOfLines={1}>{g.name}</Text>
+                  {g.description ? (
+                    <Text style={styles.cardDesc} numberOfLines={2}>{g.description}</Text>
+                  ) : null}
+                  <View style={styles.cardMeta}>
+                    <Ionicons name="people-outline" size={13} color={colors.onSurfaceVariant} />
+                    <Text style={styles.cardMetaText}>{g.member_count ?? 0} members</Text>
+                  </View>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
 
         {/* ── Discover Groups ── */}
         <View style={styles.section}>

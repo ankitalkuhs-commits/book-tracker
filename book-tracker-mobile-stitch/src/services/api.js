@@ -117,6 +117,7 @@ export const notificationsAPI = {
 // Groups API
 export const groupsAPI = {
   getMyGroups: async () => (await api.get('/groups/my')).data,
+  getMyPendingGroups: async () => (await api.get('/groups/my/pending')).data,
   discoverGroups: async (q = '') => {
     const url = q ? `/groups/discover?q=${encodeURIComponent(q)}` : '/groups/discover';
     return (await api.get(url)).data;

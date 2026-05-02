@@ -246,6 +246,41 @@ def get_my_groups(
     return result
 
 
+@router.get("/my/pending")
+def get_my_pending_groups(
+    db: Session = Depends(get_db),
+    me: models.User = Depends(get_current_user),
+):
+    """Groups where the current user has a pending join request (self-initiated)."""
+    memberships = db.exec(
+        select(models.GroupMember).where(
+            models.GroupMember.user_id == me.id,
+            models.GroupMember.status == "pending",
+            models.GroupMember.invited_by == None,  # self-join requests only
+        )
+    ).all()
+    if not memberships:
+        return []
+    group_ids = [m.group_id for m in memberships]
+    all_groups = db.exec(select(models.ReadingGroup).where(models.ReadingGroup.id.in_(group_ids))).all()
+    return [
+        {
+            "id": g.id,
+            "name": g.name,
+            "description": g.description,
+            "is_private": g.is_private,
+            "cover_preset": g.cover_preset,
+            "member_count": db.exec(
+                select(func.count(models.GroupMember.id)).where(
+                    models.GroupMember.group_id == g.id,
+                    models.GroupMember.status == "active",
+                )
+            ).one(),
+        }
+        for g in all_groups
+    ]
+
+
 @router.get("/discover")
 def discover_groups(
     q: Optional[str] = None,
