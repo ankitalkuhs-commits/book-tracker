@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../components/Toast'
 import {
-  getPublicProfile, getUserBooks, getUserActivity, getUserNotes,
+  getPublicProfile, getUserBooks, getUserActivity, getUserNotes, getUserStats,
   followUser, unfollowUser, adminDeleteNote,
 } from '../services/api'
 
@@ -206,6 +206,7 @@ export default function UserProfilePage() {
   const toast = useToast()
 
   const [profile, setProfile] = useState(null)
+  const [stats, setStats] = useState(null)
   const [books, setBooks] = useState([])
   const [notes, setNotes] = useState([])
   const [activity30, setActivity30] = useState([])
@@ -232,11 +233,13 @@ export default function UserProfilePage() {
         safe(getUserNotes(userId)),
         safe(getUserActivity(userId, 30)),
         safe(getUserActivity(userId, 90)),
-      ]).then(([b, n, a30, a90]) => {
+        safe(getUserStats(userId)),
+      ]).then(([b, n, a30, a90, s]) => {
         setBooks(b || [])
         setNotes(n || [])
         setActivity30(a30 || [])
         setActivity90(a90 || [])
+        setStats(s || null)
       })
     }).catch(() => {}).finally(() => setLoading(false))
   }, [userId, isOwnProfile])
@@ -267,16 +270,18 @@ export default function UserProfilePage() {
         toast(`Following ${profile?.name || 'user'}`, 'success')
         // Load content now that we have access
         const safe = (p) => p.catch(() => null)
-        const [b, n, a30, a90] = await Promise.all([
+        const [b, n, a30, a90, s] = await Promise.all([
           safe(getUserBooks(userId)),
           safe(getUserNotes(userId)),
           safe(getUserActivity(userId, 30)),
           safe(getUserActivity(userId, 90)),
+          safe(getUserStats(userId)),
         ])
         setBooks(b || [])
         setNotes(n || [])
         setActivity30(a30 || [])
         setActivity90(a90 || [])
+        setStats(s || null)
       }
     } catch (e) {
       toast(e.message || 'Failed', 'error')
@@ -305,10 +310,19 @@ export default function UserProfilePage() {
     )
   }
 
-  const initials = profile.name?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() || '?'
-  const stats = profile.stats || {}
-  const totalPages = activity90.reduce((s, d) => s + (d.pages_read || 0), 0)
+  const initials     = profile.name?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() || '?'
+  const totalPages   = activity90.reduce((s, d) => s + (d.pages_read || 0), 0)
   const displayBooks = showAllBooks ? books : books.slice(0, 6)
+  const finishedCount = stats?.finished ?? books.filter(b => b.status === 'finished').length
+  const readingCount  = stats?.reading  ?? books.filter(b => b.status === 'reading').length
+  const thisYear      = stats?.this_year ?? 0
+  const avgPpd        = activity30.length > 0
+    ? Math.round(activity30.reduce((s, d) => s + (d.pages_read || 0), 0) / activity30.length)
+    : null
+  const joinedDate = profile.created_at
+    ? new Date(profile.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+    : null
+  const currentYear = new Date().getFullYear()
 
   return (
     <main className="max-w-screen-xl mx-auto px-4 md:px-8 pt-8 pb-16 space-y-6">
@@ -338,6 +352,12 @@ export default function UserProfilePage() {
             {profile.bio && (
               <p className="text-sm italic text-primary/80 leading-relaxed max-w-2xl font-serif">
                 "{profile.bio}"
+              </p>
+            )}
+            {joinedDate && (
+              <p className="text-xs text-on-surface-variant/60 flex items-center gap-1.5">
+                <span className="material-symbols-outlined text-sm">calendar_month</span>
+                Member since {joinedDate}
               </p>
             )}
 
@@ -388,32 +408,43 @@ export default function UserProfilePage() {
       {/* ── Progress + Velocity ─────────────────────────────────── */}
       {!profile.locked && <><div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-start">
 
-        {/* Progress card */}
+        {/* Stats card */}
         <div className="md:col-span-4">
-          <div className="bg-surface-container-lowest rounded-3xl p-6 space-y-4 h-full">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-secondary">
-              {new Date().getFullYear()} Progress
-            </p>
+          <div className="bg-surface-container-lowest rounded-3xl p-6 space-y-5 h-full">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-secondary">{currentYear}</p>
 
-            <div className="space-y-1">
-              <div className="flex items-baseline gap-2">
-                <span className="font-serif text-5xl font-bold text-on-surface">{stats?.finished || 0}</span>
-                <span className="text-sm text-on-surface-variant">/ {stats?.total_books || 0} books</span>
-              </div>
-              {stats?.total_books > 0 && (
-                <div className="h-2 bg-surface-container-high rounded-full overflow-hidden mt-3">
-                  <div
-                    className="h-full bg-secondary rounded-full transition-all"
-                    style={{ width: `${pct(stats.finished, stats.total_books)}%` }}
-                  />
+            {/* Book counts */}
+            <div className="grid grid-cols-3 gap-3 text-center">
+              {[
+                { value: finishedCount, label: 'Finished' },
+                { value: readingCount,  label: 'Reading' },
+                { value: thisYear,      label: 'This Year' },
+              ].map(({ value, label }) => (
+                <div key={label} className="bg-surface-container rounded-2xl py-3 px-1">
+                  <p className="font-serif text-2xl font-bold text-on-surface leading-none">{value}</p>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant/60 mt-1">{label}</p>
                 </div>
-              )}
+              ))}
             </div>
 
-            <div className="flex items-center gap-2 text-sm text-on-surface-variant pt-1">
-              <span className="material-symbols-outlined text-base text-on-surface-variant/40">description</span>
-              {totalPages.toLocaleString()} pages read
-            </div>
+            {/* Pages */}
+            {totalPages > 0 && (
+              <div className="flex items-center gap-2 text-sm text-on-surface-variant">
+                <span className="material-symbols-outlined text-base text-on-surface-variant/40">description</span>
+                {totalPages.toLocaleString()} pages read (90d)
+              </div>
+            )}
+
+            {/* Speed */}
+            {avgPpd != null && avgPpd > 0 && (
+              <div className="flex items-center gap-2 bg-primary/8 rounded-2xl px-4 py-3">
+                <span className="material-symbols-outlined text-base text-primary">speed</span>
+                <div>
+                  <span className="font-serif text-lg font-bold text-primary">{avgPpd}</span>
+                  <span className="text-xs text-primary/70 ml-1">avg pages/day</span>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
