@@ -124,7 +124,13 @@ export const addToLibrary = (data) =>
 // User Books
 export const getMyBooks = (status = '') =>
   apiFetch(`/userbooks/${status ? `?status=${status}` : ''}`);
-export const getUserbook = (userbookId) => apiFetch(`/userbooks/${userbookId}`);
+export const getUserbook = async (userbookId) => {
+  const id = parseInt(userbookId, 10)
+  const books = await apiFetch('/userbooks/')
+  const found = (books || []).find(b => b.id === id)
+  if (!found) throw new Error('Not found')
+  return found
+};
 export const getUserBooks = (userId) => apiFetch(`/userbooks/user/${userId}`);
 export const updateUserBook = (userbookId, data) =>
   apiFetch(`/userbooks/${userbookId}`, { method: 'PATCH', body: JSON.stringify(data) })
