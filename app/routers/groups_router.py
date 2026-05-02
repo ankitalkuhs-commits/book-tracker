@@ -820,21 +820,27 @@ def get_leaderboard(
     users_map = {u.id: u for u in db.exec(select(models.User).where(models.User.id.in_(member_ids))).all()}
 
     # Batch: books finished per user
-    ub_q = select(models.UserBook.user_id, func.count(models.UserBook.id)).where(
-        models.UserBook.user_id.in_(member_ids),
-        models.UserBook.status == "finished",
-    )
-    if since:
-        ub_q = ub_q.where(models.UserBook.updated_at >= since)
-    finished_map = {r[0]: r[1] for r in db.exec(ub_q.group_by(models.UserBook.user_id)).all()}
+    try:
+        ub_q = select(models.UserBook.user_id, func.count(models.UserBook.id)).where(
+            models.UserBook.user_id.in_(member_ids),
+            models.UserBook.status == "finished",
+        )
+        if since:
+            ub_q = ub_q.where(models.UserBook.updated_at >= since)
+        finished_map = {r[0]: r[1] for r in db.exec(ub_q.group_by(models.UserBook.user_id)).all()}
+    except Exception:
+        finished_map = {}
 
     # Batch: pages read per user from activity
-    ra_q = select(models.ReadingActivity.user_id, func.sum(models.ReadingActivity.pages_read)).where(
-        models.ReadingActivity.user_id.in_(member_ids),
-    )
-    if since:
-        ra_q = ra_q.where(models.ReadingActivity.date >= since)
-    pages_map = {r[0]: r[1] or 0 for r in db.exec(ra_q.group_by(models.ReadingActivity.user_id)).all()}
+    try:
+        ra_q = select(models.ReadingActivity.user_id, func.sum(models.ReadingActivity.pages_read)).where(
+            models.ReadingActivity.user_id.in_(member_ids),
+        )
+        if since:
+            ra_q = ra_q.where(models.ReadingActivity.date >= since)
+        pages_map = {r[0]: r[1] or 0 for r in db.exec(ra_q.group_by(models.ReadingActivity.user_id)).all()}
+    except Exception:
+        pages_map = {}
 
     # Batch: currently reading book per user (one per user)
     reading_ubs = db.exec(

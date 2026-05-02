@@ -362,7 +362,7 @@ export default function GroupDetailPage() {
   const isCurator = group?.membership_role === 'curator'
   const isMember = group?.membership_status === 'active'
 
-  const safe = fn => fn.catch(() => null)
+  const safe = (fn, label) => fn.catch(e => { console.warn('[Group]', label, e?.message); return null; })
 
   const load = async () => {
     setLoading(true)
@@ -371,11 +371,11 @@ export default function GroupDetailPage() {
       setGroup(g)
 
       const [m, lb, gl, p, act] = await Promise.all([
-        safe(getGroupMembers(parseInt(groupId))),
-        safe(getGroupLeaderboard(parseInt(groupId), leaderPeriod)),
-        safe(getGroupGoal(parseInt(groupId))),
-        safe(getGroupPosts(parseInt(groupId))),
-        safe(apiFetch(`/groups/${parseInt(groupId)}/activity`)),
+        safe(getGroupMembers(parseInt(groupId)), 'members'),
+        safe(getGroupLeaderboard(parseInt(groupId), leaderPeriod), 'leaderboard'),
+        safe(getGroupGoal(parseInt(groupId)), 'goal'),
+        safe(getGroupPosts(parseInt(groupId)), 'posts'),
+        safe(apiFetch(`/groups/${parseInt(groupId)}/activity`), 'activity'),
       ])
       setMembers(m || [])
       setLeaderboard(lb || [])
