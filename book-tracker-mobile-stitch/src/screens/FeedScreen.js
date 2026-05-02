@@ -317,9 +317,12 @@ const FeedScreen = ({ navigation }) => {
     <View style={styles.composerCard}>
       <View style={styles.composerRow}>
         {/* Avatar */}
-        <View style={styles.composerAvatar}>
-          <Text style={styles.composerAvatarText}>{getInitials(currentUser?.name || currentUser?.email || '')}</Text>
-        </View>
+        <TouchableOpacity style={styles.composerAvatar} onPress={() => navigation.navigate('Profile')}>
+          {currentUser?.profile_picture
+            ? <Image source={{ uri: currentUser.profile_picture }} style={{ width: 38, height: 38, borderRadius: 19 }} />
+            : <Text style={styles.composerAvatarText}>{getInitials(currentUser?.name || currentUser?.email || '')}</Text>
+          }
+        </TouchableOpacity>
 
         <View style={{ flex: 1 }}>
           {/* Text area */}
@@ -474,7 +477,11 @@ const FeedScreen = ({ navigation }) => {
     const bookCount = item.books?.length || 0;
     return (
       <View key={item.user?.id || item.user?.email} style={styles.friendReadingCard}>
-        <View style={styles.friendReadingHeader}>
+        <TouchableOpacity
+          style={styles.friendReadingHeader}
+          activeOpacity={0.7}
+          onPress={() => item.user?.id && navigation.navigate('UserProfile', { userId: item.user.id })}
+        >
           {item.user?.profile_picture
             ? <Image source={{ uri: item.user.profile_picture }} style={[styles.avatarImg, { width: 36, height: 36, borderRadius: 18 }]} />
             : <View style={styles.friendReadingAvatar}><Text style={styles.friendReadingAvatarText}>{initials}</Text></View>
@@ -483,7 +490,7 @@ const FeedScreen = ({ navigation }) => {
             <Text style={styles.friendReadingHeaderName}>{userName}</Text>
             <Text style={styles.friendReadingStatus}>reading {bookCount} book{bookCount === 1 ? '' : 's'}</Text>
           </View>
-        </View>
+        </TouchableOpacity>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.booksScroll} contentContainerStyle={styles.booksScrollContent}>
           {item.books?.map((bookItem) => {
             const book = bookItem.book;

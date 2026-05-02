@@ -679,7 +679,7 @@ function Sidebar() {
           <h3 className="text-lg font-bold text-primary font-serif">Currently Reading</h3>
           <div className="grid grid-cols-2 gap-3">
             {friendReading.slice(0, 4).map(item => (
-              <div key={item.id} className="space-y-1.5 group cursor-pointer">
+              <div key={item.id} className="space-y-1.5 group cursor-pointer" onClick={() => item.user?.id && navigate(`/profile/${item.user.id}`)}>
                 <div className="aspect-[2/3] rounded-lg overflow-hidden shadow-md group-hover:shadow-xl transition-shadow relative bg-surface-container-high">
                   {item.book?.cover_url ? (
                     <img

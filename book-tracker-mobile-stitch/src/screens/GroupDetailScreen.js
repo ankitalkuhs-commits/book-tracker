@@ -572,7 +572,9 @@ export default function GroupDetailScreen({ route, navigation }) {
             posts.slice(0, 20).map(post => (
               <View key={post.id} style={styles.postCard}>
                 <View style={styles.postHeader}>
-                  <Avatar name={post.user?.name} size={36} />
+                  <TouchableOpacity activeOpacity={0.7} onPress={() => post.user?.id && navigation.navigate('UserProfile', { userId: post.user.id })}>
+                    <Avatar name={post.user?.name} size={36} />
+                  </TouchableOpacity>
                   <View style={styles.postMeta}>
                     <Text style={styles.postAuthor}>{post.user?.name || 'Member'}</Text>
                     <Text style={styles.postTime}>{timeAgo(post.created_at)}</Text>

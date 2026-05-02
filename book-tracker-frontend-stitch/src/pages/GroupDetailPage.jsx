@@ -97,14 +97,16 @@ function ActivityRow({ event }) {
 
 // ─── Post Card ────────────────────────────────────────────────────────────────
 
-function PostCard({ post, isCurator, isOwn, onDelete }) {
+function PostCard({ post, isCurator, isOwn, onDelete, onUserClick }) {
   return (
     <div className="bg-surface-container-lowest rounded-2xl p-4 space-y-2">
       <div className="flex items-start gap-3">
-        <Avatar user={post.user} size={9} />
+        <button onClick={() => post.user?.id && onUserClick?.(post.user.id)} className="shrink-0">
+          <Avatar user={post.user} size={9} />
+        </button>
         <div className="flex-1 min-w-0">
           <div className="flex items-baseline gap-2 flex-wrap">
-            <span className="font-bold text-sm text-on-surface">{post.user?.name}</span>
+            <button onClick={() => post.user?.id && onUserClick?.(post.user.id)} className="font-bold text-sm text-on-surface hover:text-primary transition-colors">{post.user?.name}</button>
             <span className="text-[11px] text-on-surface-variant/50">{timeAgo(post.created_at)}</span>
           </div>
           {post.quote && (
@@ -648,9 +650,10 @@ export default function GroupDetailPage() {
             ) : (
               <div className="space-y-3">
                 {leaderboard.map((row) => (
-                  <div
+                  <button
                     key={row.user_id}
-                    className={`flex items-center gap-4 p-3 rounded-2xl transition-colors ${
+                    onClick={() => navigate(`/profile/${row.user_id}`)}
+                    className={`w-full flex items-center gap-4 p-3 rounded-2xl transition-colors hover:bg-surface-container-high text-left ${
                       row.rank <= 3 ? 'bg-surface-container' : ''
                     } ${row.user_id === user?.id ? 'ring-1 ring-primary/20' : ''}`}
                   >
@@ -673,7 +676,7 @@ export default function GroupDetailPage() {
                       <p className="text-sm font-bold text-on-surface">{row.pages_read.toLocaleString()} <span className="text-xs font-normal text-on-surface-variant">pages</span></p>
                       <p className="text-[11px] text-on-surface-variant/60">{row.books_finished} book{row.books_finished !== 1 ? 's' : ''} finished</p>
                     </div>
-                  </div>
+                  </button>
                 ))}
               </div>
             )}
@@ -740,6 +743,7 @@ export default function GroupDetailPage() {
                     isCurator={isCurator}
                     isOwn={post.user?.id === user?.id}
                     onDelete={handleDeletePost}
+                    onUserClick={(uid) => navigate(`/profile/${uid}`)}
                   />
                 ))}
                 {posts.length > visiblePosts && (
@@ -762,7 +766,9 @@ export default function GroupDetailPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {members.map(m => (
                 <div key={m.user_id} className="flex items-center gap-3 p-3 rounded-xl bg-surface-container">
-                  <Avatar user={m} size={9} />
+                  <button onClick={() => navigate(`/profile/${m.user_id}`)} className="shrink-0">
+                    <Avatar user={m} size={9} />
+                  </button>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5">
                       <p className="text-sm font-bold text-on-surface truncate">{m.name}</p>
