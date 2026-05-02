@@ -264,6 +264,17 @@ export default function GroupDetailScreen({ route, navigation }) {
   const [inviteResults, setInviteResults] = useState([]);
   const [inviting,      setInviting]      = useState(null);
 
+  const scrollRef       = useRef(null);
+  const inviteSectionRef = useRef(null);
+
+  const scrollToInvite = () => {
+    inviteSectionRef.current?.measureLayout(
+      scrollRef.current?.getInnerViewNode?.() ?? scrollRef.current,
+      (_x, y) => { scrollRef.current?.scrollTo({ y: y - 16, animated: true }); },
+      () => {}
+    );
+  };
+
   const safe = (fn, label) => Promise.resolve(fn).catch(e => { console.warn(`[Group] ${label || '?'} failed:`, e?.response?.data || e?.message); return null; });
 
   const load = useCallback(async (isRefresh = false) => {
@@ -427,12 +438,8 @@ export default function GroupDetailScreen({ route, navigation }) {
       <StatusBar barStyle="light-content" backgroundColor={colors.primary} />
       <View style={{ height: insets.top, backgroundColor: colors.primary }} />
 
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={0}
-      >
       <ScrollView
+        ref={scrollRef}
         contentContainerStyle={styles.scroll}
         keyboardShouldPersistTaps="handled"
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => load(true)} tintColor={colors.onPrimary} />}
@@ -683,7 +690,7 @@ export default function GroupDetailScreen({ route, navigation }) {
 
         {/* ── Invite Friends ── */}
         {isCurator && (
-          <View style={styles.section}>
+          <View ref={inviteSectionRef} style={styles.section}>
             <Text style={styles.sectionLabel}>EXPAND THE CIRCLE</Text>
             <Text style={styles.sectionTitle}>Invite Friends</Text>
             {group?.invite_code ? (
@@ -702,6 +709,7 @@ export default function GroupDetailScreen({ route, navigation }) {
                 placeholderTextColor={colors.outline}
                 value={inviteQuery}
                 onChangeText={handleInviteSearch}
+                onFocus={scrollToInvite}
                 autoCorrect={false}
                 autoCapitalize="none"
               />
@@ -739,7 +747,6 @@ export default function GroupDetailScreen({ route, navigation }) {
 
         <View style={{ height: 40 }} />
       </ScrollView>
-      </KeyboardAvoidingView>
 
       {/* Post composer modal */}
       <Modal visible={showComposer} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => { setShowComposer(false); setPostInput(''); setPostQuote(''); setPostEmotion(''); setPostBook(null); }}>
