@@ -9,7 +9,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { groupsAPI, booksAPI, usersAPI } from '../services/api';
 import { colors, radius, shadow, type } from '../theme';
 
-const WEB_APP_URL = 'https://trackmyread.vercel.app'; // update if domain changes
+const WEB_APP_URL = 'https://tracker-stitch.vercel.app';
 
 function timeAgo(dateStr) {
   if (!dateStr) return '';
