@@ -1,11 +1,11 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../components/Toast'
 import BookPreviewModal from '../components/BookPreviewModal'
 import {
   getPublicProfile, getUserBooks, getUserActivity, getUserNotes, getUserStats,
-  followUser, unfollowUser, adminDeleteNote,
+  followUser, unfollowUser, adminDeleteNote, likeNote, unlikeNote,
 } from '../services/api'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -111,7 +111,7 @@ function BookCover({ book }) {
 
 // ─── Public Note Card ─────────────────────────────────────────────────────────
 
-function PublicNoteCard({ note, profileUrl, isAdmin, onDelete }) {
+function PublicNoteCard({ note, profileUrl, isAdmin, onDelete, onLike }) {
   const toast = useToast()
 
   const handleShare = async () => {
@@ -178,22 +178,27 @@ function PublicNoteCard({ note, profileUrl, isAdmin, onDelete }) {
         )}
       </div>
 
-      {note.likes_count > 0 || note.comments_count > 0 ? (
-        <div className="flex items-center gap-4 pt-0.5 border-t border-outline-variant/10 text-xs font-bold text-on-surface-variant/50">
-          {note.likes_count > 0 && (
-            <span className="flex items-center gap-1">
-              <span className="material-symbols-outlined text-sm text-error/50" style={{ fontVariationSettings: "'FILL' 1" }}>favorite</span>
-              {note.likes_count}
-            </span>
-          )}
-          {note.comments_count > 0 && (
-            <span className="flex items-center gap-1">
-              <span className="material-symbols-outlined text-sm">chat_bubble</span>
-              {note.comments_count}
-            </span>
-          )}
-        </div>
-      ) : null}
+      <div className="flex items-center gap-4 pt-0.5 border-t border-outline-variant/10 text-xs font-bold text-on-surface-variant/50">
+        <button
+          onClick={() => onLike(note.id, note.liked_by_me)}
+          className="flex items-center gap-1 hover:text-error/80 transition-colors"
+        >
+          <span
+            className="material-symbols-outlined text-sm"
+            style={{
+              color: note.liked_by_me ? '#e53935' : undefined,
+              fontVariationSettings: note.liked_by_me ? "'FILL' 1" : "'FILL' 0",
+            }}
+          >favorite</span>
+          {note.likes_count || 0}
+        </button>
+        {note.comments_count > 0 && (
+          <span className="flex items-center gap-1">
+            <span className="material-symbols-outlined text-sm">chat_bubble</span>
+            {note.comments_count}
+          </span>
+        )}
+      </div>
     </article>
   )
 }
@@ -217,6 +222,7 @@ export default function UserProfilePage() {
   const [followLoading, setFollowLoading] = useState(false)
   const [showAllBooks, setShowAllBooks] = useState(false)
   const [previewBook, setPreviewBook] = useState(null)
+  const likingInFlight = useRef(new Set())
 
   const isOwnProfile = me?.id?.toString() === userId?.toString()
 
@@ -255,6 +261,24 @@ export default function UserProfilePage() {
     } catch (e) {
       toast(e.message || 'Failed to delete', 'error')
     }
+  }
+
+  const handleLike = async (noteId, isLiked) => {
+    if (likingInFlight.current.has(noteId)) return
+    likingInFlight.current.add(noteId)
+    setNotes(prev => prev.map(n => n.id === noteId
+      ? { ...n, liked_by_me: !isLiked, likes_count: isLiked ? Math.max(0, (n.likes_count || 1) - 1) : (n.likes_count || 0) + 1 }
+      : n
+    ))
+    try {
+      if (isLiked) await unlikeNote(noteId)
+      else await likeNote(noteId)
+    } catch {
+      setNotes(prev => prev.map(n => n.id === noteId
+        ? { ...n, liked_by_me: isLiked, likes_count: isLiked ? (n.likes_count || 0) + 1 : Math.max(0, (n.likes_count || 1) - 1) }
+        : n
+      ))
+    } finally { likingInFlight.current.delete(noteId) }
   }
 
   const toggleFollow = async () => {
@@ -379,20 +403,25 @@ export default function UserProfilePage() {
           </div>
 
           {/* Follow button */}
-          <button
-            onClick={toggleFollow}
-            disabled={followLoading}
-            className={`shrink-0 flex items-center gap-2 px-6 py-3 rounded-2xl text-sm font-bold transition-all ${
-              isFollowing
-                ? 'bg-surface-container border border-outline-variant text-on-surface hover:bg-error-container/20 hover:text-error hover:border-error/30'
-                : 'btn-primary'
-            }`}
-          >
-            <span className="material-symbols-outlined text-base">
-              {isFollowing ? 'person_check' : 'person_add'}
-            </span>
-            {followLoading ? '...' : isFollowing ? 'Following' : 'Follow'}
-          </button>
+          <div className="shrink-0 flex flex-col items-end gap-1.5">
+            {profile.follows_you && !isFollowing && (
+              <span className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant/50">Follows you</span>
+            )}
+            <button
+              onClick={toggleFollow}
+              disabled={followLoading}
+              className={`flex items-center gap-2 px-6 py-3 rounded-2xl text-sm font-bold transition-all ${
+                isFollowing
+                  ? 'bg-surface-container border border-outline-variant text-on-surface hover:bg-error-container/20 hover:text-error hover:border-error/30'
+                  : 'btn-primary'
+              }`}
+            >
+              <span className="material-symbols-outlined text-base">
+                {isFollowing ? 'person_check' : 'person_add'}
+              </span>
+              {followLoading ? '...' : isFollowing ? 'Following' : profile.follows_you ? 'Follow Back' : 'Follow'}
+            </button>
+          </div>
         </div>
       </section>
 
@@ -429,6 +458,22 @@ export default function UserProfilePage() {
               ))}
             </div>
 
+            {/* Yearly goal progress */}
+            {profile.yearly_goal > 0 && (
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-on-surface-variant/60 font-medium">{currentYear} Goal</span>
+                  <span className="font-bold text-secondary">{finishedCount} / {profile.yearly_goal} books</span>
+                </div>
+                <div className="h-2 bg-surface-container rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-secondary rounded-full transition-all"
+                    style={{ width: `${Math.min(100, Math.round((finishedCount / profile.yearly_goal) * 100))}%` }}
+                  />
+                </div>
+              </div>
+            )}
+
             {/* Pages */}
             {totalPages > 0 && (
               <div className="flex items-center gap-2 text-sm text-on-surface-variant">
@@ -455,6 +500,41 @@ export default function UserProfilePage() {
           <VelocityChart activity30={activity30} activity90={activity90} />
         </div>
       </div>
+
+      {/* ── Currently Reading ───────────────────────────────────── */}
+      {books.filter(b => b.status === 'reading').length > 0 && (
+        <div className="bg-surface-container-lowest rounded-3xl p-6 space-y-4">
+          <h2 className="font-serif text-xl font-bold text-on-surface">Currently Reading</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {books.filter(b => b.status === 'reading').slice(0, 3).map(ub => {
+              const total = ub.book?.total_pages || 0
+              const progress = total > 0 ? Math.min(100, Math.round(((ub.current_page || 0) / total) * 100)) : 0
+              return (
+                <button key={ub.id} className="flex items-center gap-3 text-left group" onClick={() => ub.book && setPreviewBook(ub.book)}>
+                  <div className="w-12 h-[72px] rounded-lg overflow-hidden bg-surface-container-high shrink-0 flex items-center justify-center">
+                    {ub.book?.cover_url
+                      ? <img src={ub.book.cover_url} alt={ub.book.title} className="w-full h-full object-cover" />
+                      : <span className="material-symbols-outlined text-lg text-outline/30">menu_book</span>
+                    }
+                  </div>
+                  <div className="flex-1 min-w-0 space-y-1">
+                    <p className="text-sm font-bold text-on-surface truncate group-hover:text-primary transition-colors">{ub.book?.title}</p>
+                    <p className="text-xs text-on-surface-variant/60 truncate">{ub.book?.author}</p>
+                    {total > 0 && (
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1 h-1.5 bg-surface-container rounded-full overflow-hidden">
+                          <div className="h-full bg-primary rounded-full" style={{ width: `${progress}%` }} />
+                        </div>
+                        <span className="text-[10px] font-bold text-primary">{progress}%</span>
+                      </div>
+                    )}
+                  </div>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
 
       {/* ── Library + Notes ─────────────────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
@@ -508,7 +588,7 @@ export default function UserProfilePage() {
           ) : (
             <div className="space-y-4">
               {notes.map(note => (
-                <PublicNoteCard key={note.id} note={note} profileUrl={`${window.location.origin}/profile/${userId}`} isAdmin={me?.is_admin} onDelete={handleAdminDeleteNote} />
+                <PublicNoteCard key={note.id} note={note} profileUrl={`${window.location.origin}/profile/${userId}`} isAdmin={me?.is_admin} onDelete={handleAdminDeleteNote} onLike={handleLike} />
               ))}
             </div>
           )}

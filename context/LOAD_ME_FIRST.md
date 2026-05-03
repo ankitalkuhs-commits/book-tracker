@@ -105,6 +105,16 @@ The correct key names (backend + frontend must match):
 
 ---
 
+## Recently Shipped (May 4, 2026)
+
+### User Profile Parity (Web + Mobile)
+- **Backend `GET /profile/{id}`** — now returns `follows_you` (for Follow Back label) and `yearly_goal`
+- **Web UserProfilePage** — added: Follow Back button label, "Follows you" hint, yearly goal progress bar, Currently Reading section with progress bars, interactive like/unlike on note cards
+- **Mobile UserProfileScreen** — fixed broken profile load (`profileAPI.getPublicProfile` not `userAPI`), fixed `is_private` field name, added: admin delete note, functional Share button, "Follows you" label + Follow Back text
+- **Version bump** — `2.0.3` → `2.1.0`, versionCode `53` → `54`
+
+---
+
 ## Recently Shipped (May 3, 2026)
 
 ### Parity Fixes — Web & Mobile

@@ -85,6 +85,7 @@ export const notesAPI = {
   updateNote: async (noteId, noteData) => (await api.put(`/notes/${noteId}`, noteData)).data,
   deleteNote: async (noteId) => (await api.delete(`/notes/${noteId}`)).data,
   adminDeleteComment: async (commentId) => (await api.delete(`/admin/content/comment/${commentId}`)).data,
+  adminDeleteNote: async (noteId) => (await api.delete(`/admin/content/note/${noteId}`)).data,
   uploadImage: async (uri) => {
     const formData = new FormData();
     formData.append('file', { uri, type: 'image/jpeg', name: 'photo.jpg' });

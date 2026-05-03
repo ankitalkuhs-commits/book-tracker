@@ -1,11 +1,12 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useContext } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  ActivityIndicator, Alert, RefreshControl, Image, Dimensions, Modal,
+  ActivityIndicator, Alert, RefreshControl, Image, Dimensions, Modal, Share,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { userAPI, userbooksAPI, activityAPI, notesAPI, booksAPI, profileAPI } from '../services/api';
+import { PreloadContext } from '../../App';
 import { colors, radius, shadow, type } from '../theme';
 
 const SCREEN_W   = Dimensions.get('window').width;
@@ -79,6 +80,8 @@ function VelocityChart({ data, period, onPeriodChange }) {
 export default function UserProfileScreen({ route, navigation }) {
   const { userId } = route.params;
   const insets = useSafeAreaInsets();
+  const preloaded = useContext(PreloadContext);
+  const currentUser = preloaded?.profile || null;
   const [user,         setUser]         = useState(null);
   const [stats,        setStats]        = useState(null);
   const [books,        setBooks]        = useState([]);
@@ -166,6 +169,29 @@ export default function UserProfileScreen({ route, navigation }) {
         : n
       ));
     } finally { likingInFlight.current.delete(noteId); }
+  };
+
+  const handleAdminDeleteNote = (noteId) => {
+    Alert.alert('Delete Note', 'Permanently delete this note?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete', style: 'destructive',
+        onPress: async () => {
+          try {
+            await notesAPI.adminDeleteNote(noteId);
+            setNotes(prev => prev.filter(n => n.id !== noteId));
+          } catch { Alert.alert('Error', 'Could not delete note'); }
+        },
+      },
+    ]);
+  };
+
+  const handleShare = async (note) => {
+    const text = note.quote ? `"${note.quote}"` : note.text || '';
+    const bookLabel = note.book ? ` — ${note.book.title}` : '';
+    try {
+      await Share.share({ message: `${text}${bookLabel}\nhttps://www.trackmyread.com/profile/${userId}` });
+    } catch { /* user cancelled */ }
   };
 
   if (loading) return <View style={styles.center}><ActivityIndicator size="large" color={colors.primary} /></View>;
@@ -295,6 +321,9 @@ export default function UserProfileScreen({ route, navigation }) {
           </View>
 
           {/* Follow button */}
+          {user?.follows_you && !following && (
+            <Text style={styles.followsYouLabel}>Follows you</Text>
+          )}
           <TouchableOpacity
             style={[styles.followBtn, following && styles.followBtnActive]}
             onPress={toggleFollow}
@@ -471,9 +500,16 @@ export default function UserProfileScreen({ route, navigation }) {
                         {note.book?.title && (
                           <Text style={styles.noteBookTag} numberOfLines={1}>{note.book.title}</Text>
                         )}
-                        <TouchableOpacity style={styles.shareBtn}>
-                          <Ionicons name="share-outline" size={16} color={colors.outline} />
-                        </TouchableOpacity>
+                        <View style={{ flexDirection: 'row', gap: 8 }}>
+                          {currentUser?.is_admin && (
+                            <TouchableOpacity onPress={() => handleAdminDeleteNote(note.id)}>
+                              <Ionicons name="trash-outline" size={15} color="#e53935" />
+                            </TouchableOpacity>
+                          )}
+                          <TouchableOpacity style={styles.shareBtn} onPress={() => handleShare(note)}>
+                            <Ionicons name="share-outline" size={16} color={colors.outline} />
+                          </TouchableOpacity>
+                        </View>
                       </View>
                       {note.quote && (
                         <View style={styles.quoteBlock}>
@@ -542,6 +578,7 @@ const styles = StyleSheet.create({
   statPillLabel:   { ...type.eyebrow, color: colors.onSurfaceVariant, marginTop: 2 },
   statPillDivider: { width: 1, height: 28, backgroundColor: colors.outlineVariant + '60' },
 
+  followsYouLabel:     { fontSize: 10, fontWeight: '700', letterSpacing: 0.8, color: colors.onSurfaceVariant, textTransform: 'uppercase', marginBottom: 4 },
   followBtn:           { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.primary, borderRadius: radius.full, paddingHorizontal: 28, paddingVertical: 10, minWidth: 120, justifyContent: 'center' },
   followBtnActive:     { backgroundColor: colors.surface, borderWidth: 1.5, borderColor: colors.primary },
   followBtnText:       { ...type.body, fontFamily: 'Manrope_700Bold', fontWeight: '700', color: colors.onPrimary },

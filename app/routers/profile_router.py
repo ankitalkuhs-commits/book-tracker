@@ -221,6 +221,11 @@ def get_public_profile(user_id: int, db: Session = Depends(get_db), current_user
         select(Follow).where(Follow.follower_id == current_user.id, Follow.followed_id == user.id)
     ).first())
 
+    # Check if the target user follows the requesting user (for "Follow Back" label)
+    follows_you = bool(db.exec(
+        select(Follow).where(Follow.follower_id == user.id, Follow.followed_id == current_user.id)
+    ).first())
+
     is_private = getattr(user, "is_private_profile", False)
 
     followers = db.exec(select(Follow).where(Follow.followed_id == user.id)).all()
@@ -232,11 +237,13 @@ def get_public_profile(user_id: int, db: Session = Depends(get_db), current_user
         "username": user.username,
         "bio": user.bio,
         "profile_picture": user.profile_picture,
+        "yearly_goal": getattr(user, "yearly_goal", None),
         "created_at": user.created_at,
         "followers_count": len(followers),
         "following_count": len(following),
         "is_private": is_private,
         "is_following": is_following,
+        "follows_you": follows_you,
     }
 
     # Private profile — only followers (and self) see stats + content
