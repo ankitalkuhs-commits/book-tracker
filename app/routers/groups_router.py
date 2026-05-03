@@ -94,6 +94,8 @@ class UpdateGroupBody(BaseModel):
 class CreatePostBody(BaseModel):
     text: str
     quote: Optional[str] = None
+    emotion: Optional[str] = None
+    image_url: Optional[str] = None
     userbook_id: Optional[int] = None
 
 class SetBookBody(BaseModel):
@@ -791,6 +793,8 @@ def get_group_posts(
             "id": p.id,
             "text": p.text,
             "quote": p.quote,
+            "emotion": p.emotion,
+            "image_url": p.image_url,
             "created_at": p.created_at.isoformat(),
             "user": {"id": user.id, "name": user.name,
                      "profile_picture": getattr(user, "profile_picture", None)} if user else None,
@@ -811,7 +815,9 @@ def create_group_post(
         raise HTTPException(status_code=403, detail="Members only")
     p = models.GroupPost(
         group_id=group_id, user_id=me.id,
-        text=body.text, quote=body.quote, userbook_id=body.userbook_id,
+        text=body.text, quote=body.quote,
+        emotion=body.emotion, image_url=body.image_url,
+        userbook_id=body.userbook_id,
     )
     db.add(p)
     db.commit()
@@ -819,6 +825,7 @@ def create_group_post(
     user = db.get(models.User, me.id)
     return {
         "id": p.id, "text": p.text, "quote": p.quote,
+        "emotion": p.emotion, "image_url": p.image_url,
         "created_at": p.created_at.isoformat(),
         "user": {"id": user.id, "name": user.name,
                  "profile_picture": getattr(user, "profile_picture", None)},

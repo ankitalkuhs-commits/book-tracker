@@ -302,8 +302,8 @@ function NewPostModal({ onClose, onPost }) {
   const handleImageSelect = (e) => {
     const file = e.target.files?.[0]
     if (!file) return
+    setImagePreview(prev => { if (prev) URL.revokeObjectURL(prev); return URL.createObjectURL(file) })
     setImageFile(file)
-    setImagePreview(URL.createObjectURL(file))
   }
 
   const handlePost = async () => {
@@ -322,6 +322,7 @@ function NewPostModal({ onClose, onPost }) {
         image_url,
         userbook_id: selectedBook?.id || null,
       })
+      setImagePreview(prev => { if (prev) URL.revokeObjectURL(prev); return null })
       onClose()
     } catch (e) {
       toast(e.message || 'Failed to post', 'error')

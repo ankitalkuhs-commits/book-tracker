@@ -269,7 +269,7 @@ export default function GroupDetailScreen({ route, navigation }) {
   const [refreshing,  setRefreshing]  = useState(false);
   const [showComposer,     setShowComposer]     = useState(false);
   const [showSetBookModal, setShowSetBookModal] = useState(false);
-  const [postText,    setPostText]    = useState(false);
+  const [postText,    setPostText]    = useState('');
   const [posting,     setPosting]     = useState(false);
   const [postInput,    setPostInput]    = useState('');
   const [postQuote,    setPostQuote]    = useState('');
@@ -837,7 +837,7 @@ export default function GroupDetailScreen({ route, navigation }) {
           <View style={styles.composerRoot}>
             {/* Header */}
             <View style={[styles.composerHeader, { paddingTop: insets.top + 20 }]}>
-              <TouchableOpacity onPress={() => { setShowComposer(false); setPostInput(''); setPostQuote(''); setPostEmotion(''); setPostBook(null); }}>
+              <TouchableOpacity onPress={() => { setShowComposer(false); setPostInput(''); setPostQuote(''); setPostEmotion(''); setPostBook(null); setPostImageUri(null); }}>
                 <Text style={styles.composerCancel}>Cancel</Text>
               </TouchableOpacity>
               <Text style={styles.composerTitle}>Share with Circle</Text>

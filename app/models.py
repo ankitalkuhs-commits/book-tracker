@@ -241,6 +241,8 @@ class GroupPost(SQLModel, table=True):
     user_id: int = Field(foreign_key="user.id", index=True)
     text: str
     quote: Optional[str] = None
+    emotion: Optional[str] = None
+    image_url: Optional[str] = None
     userbook_id: Optional[int] = Field(default=None, foreign_key="userbook.id")
     created_at: datetime = Field(default_factory=datetime.utcnow)
 

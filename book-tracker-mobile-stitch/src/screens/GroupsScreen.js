@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
-import { groupsAPI } from '../services/api';
+import { groupsAPI, userAPI } from '../services/api';
 import { PreloadContext } from '../../App';
 import { colors, radius, shadow, type } from '../theme';
 import AppHeader from '../components/AppHeader';
@@ -266,7 +266,13 @@ function JoinModal({ visible, onClose, onJoined }) {
 
 export default function GroupsScreen({ navigation }) {
   const preloaded = useContext(PreloadContext);
-  const currentUser = preloaded?.profile || null;
+  const [currentUser, setCurrentUser] = useState(preloaded?.profile || null);
+
+  useEffect(() => {
+    if (!currentUser) {
+      userAPI.getProfile().then(setCurrentUser).catch(() => {});
+    }
+  }, []);
   const [myGroups, setMyGroups] = useState([]);
   const [pendingGroups, setPendingGroups] = useState([]);
   const [discover, setDiscover] = useState([]);

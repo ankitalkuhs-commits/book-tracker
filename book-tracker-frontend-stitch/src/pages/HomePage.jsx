@@ -355,13 +355,13 @@ function PostComposer({ user, onPost }) {
   const handleImageSelect = (e) => {
     const file = e.target.files?.[0]
     if (!file) return
+    setImagePreview(prev => { if (prev) URL.revokeObjectURL(prev); return URL.createObjectURL(file) })
     setImageFile(file)
-    setImagePreview(URL.createObjectURL(file))
   }
 
   const handleRemoveImage = () => {
+    setImagePreview(prev => { if (prev) URL.revokeObjectURL(prev); return null })
     setImageFile(null)
-    setImagePreview(null)
   }
 
   const handleSubmit = async () => {
@@ -389,7 +389,7 @@ function PostComposer({ user, onPost }) {
       setEmotion('')
       setSelectedBook(null)
       setImageFile(null)
-      setImagePreview(null)
+      setImagePreview(prev => { if (prev) URL.revokeObjectURL(prev); return null })
       toast('Reflection posted!', 'success')
     } catch (e) {
       setUploadingImage(false)

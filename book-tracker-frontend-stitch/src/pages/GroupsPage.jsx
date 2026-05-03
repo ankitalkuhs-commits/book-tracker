@@ -173,6 +173,7 @@ export default function GroupsPage() {
       } else {
         toast('Join request sent — waiting for curator approval', 'info')
         setDiscover(prev => prev.filter(g => g.id !== group.id))
+        setPendingGroups(prev => [...prev, group])
       }
     } catch (e) {
       toast(e.message || 'Failed to join', 'error')

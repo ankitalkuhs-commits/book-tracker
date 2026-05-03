@@ -142,5 +142,9 @@ CREATE TABLE IF NOT EXISTS group_activity (
 CREATE INDEX IF NOT EXISTS idx_group_activity_group ON group_activity(group_id);
 SELECT setval('group_activity_id_seq',  COALESCE((SELECT MAX(id) FROM group_activity), 1));
 
+-- ── group_post new columns (May 2026) ────────────────────
+ALTER TABLE group_post ADD COLUMN IF NOT EXISTS emotion TEXT;
+ALTER TABLE group_post ADD COLUMN IF NOT EXISTS image_url TEXT;
+
 -- ── Done ──────────────────────────────────────────────────
 SELECT 'Migration complete' AS status;

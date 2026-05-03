@@ -198,8 +198,27 @@ const FeedScreen = ({ navigation }) => {
     try {
       let imageUrl = null;
       if (selectedImage) {
-        if (selectedImage.startsWith('http')) imageUrl = selectedImage;
-        else { const up = await notesAPI.uploadImage(selectedImage); imageUrl = up.image_url; }
+        if (selectedImage.startsWith('http')) {
+          imageUrl = selectedImage;
+        } else {
+          try {
+            const up = await notesAPI.uploadImage(selectedImage);
+            imageUrl = up.image_url;
+          } catch {
+            Alert.alert('Upload failed', 'Could not upload image. Post without it?', [
+              { text: 'Cancel', style: 'cancel', onPress: () => setPosting(false) },
+              { text: 'Post without image', onPress: async () => {
+                try {
+                  await notesAPI.createNote({ text: postText.trim(), quote: postQuote.trim() || null, emotion: emotion.trim() || null, is_public: true, image_url: null, userbook_id: selectedUserBook?.id || null });
+                  setPostText(''); setPostQuote(''); setEmotion(''); setSelectedUserBook(null); setSelectedImage(null);
+                  loadFeed();
+                } catch { Alert.alert('Error', 'Failed to post'); }
+                finally { setPosting(false); }
+              }},
+            ]);
+            return;
+          }
+        }
       }
       await notesAPI.createNote({
         text: postText.trim(),
