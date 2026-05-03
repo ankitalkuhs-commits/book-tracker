@@ -154,6 +154,18 @@ export const getFriendsFeed = () => apiFetch('/notes/friends-feed');
 export const getMyNotes = () => apiFetch('/notes/me');
 export const getNotesForBook = (userbookId) => apiFetch(`/notes/userbook/${userbookId}`);
 export const getUserNotes = (userId) => apiFetch(`/notes/user/${userId}`);
+export const uploadNoteImage = async (file) => {
+  const token = getToken();
+  const form = new FormData();
+  form.append('file', file);
+  const res = await fetch(`${API_BASE}/notes/upload-image`, {
+    method: 'POST',
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: form,
+  });
+  if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.detail || 'Upload failed'); }
+  return res.json();
+};
 export const createNote = (data) =>
   apiFetch('/notes/', { method: 'POST', body: JSON.stringify(data) })
     .then(r => { invalidateFeed(); return r; });
@@ -250,6 +262,7 @@ export const setGroupBook = (id, book) => apiFetch(`/groups/${id}/book`, {
 });
 export const clearGroupBook = (id) => apiFetch(`/groups/${id}/book`, { method: 'DELETE' });
 export const getMyGroupInvites = () => apiFetch('/groups/invites/pending');
+export const getMyPendingGroups = () => apiFetch('/groups/my/pending');
 export const searchUsersForInvite = (q) => apiFetch(`/users/search?q=${encodeURIComponent(q)}`);
 
 // Account

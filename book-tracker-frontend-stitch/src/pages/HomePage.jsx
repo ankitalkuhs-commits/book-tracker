@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext'
 import { useToast } from '../components/Toast'
 import BookPreviewModal from '../components/BookPreviewModal'
 import {
-  getCommunityFeed, getFriendsFeed, createNote,
+  getCommunityFeed, getFriendsFeed, createNote, uploadNoteImage,
   likeNote, unlikeNote, getComments, addComment,
   getFriendReading, getFollowing, searchUsers, getMyBooks,
   getRecommendations, addToLibrary, updateNote, deleteNote,
@@ -318,6 +318,23 @@ function PostCard({ post, currentUserId, isAdmin, onLikeToggle, onDelete, onEdit
 
 // ─── Post Composer ────────────────────────────────────────────────────────────
 
+const EMOTION_OPTIONS = [
+  { label: 'Joyful', emoji: '😄' },
+  { label: 'Moved', emoji: '🥹' },
+  { label: 'Surprised', emoji: '😲' },
+  { label: 'Mind-blown', emoji: '🤯' },
+  { label: 'Peaceful', emoji: '😌' },
+  { label: 'Thoughtful', emoji: '🤔' },
+  { label: 'Tense', emoji: '😬' },
+  { label: 'Amused', emoji: '😂' },
+  { label: 'Emotional', emoji: '😢' },
+  { label: 'Frustrated', emoji: '😤' },
+  { label: 'Shocked', emoji: '😱' },
+  { label: 'Inspired', emoji: '✨' },
+  { label: 'Melancholic', emoji: '😔' },
+  { label: 'In love with it', emoji: '🥰' },
+]
+
 function PostComposer({ user, onPost }) {
   const toast = useToast()
   const [text, setText] = useState('')
@@ -327,19 +344,42 @@ function PostComposer({ user, onPost }) {
   const [myBooks, setMyBooks] = useState([])
   const [selectedBook, setSelectedBook] = useState(null)
   const [showBookPicker, setShowBookPicker] = useState(false)
+  const [imageFile, setImageFile] = useState(null)
+  const [imagePreview, setImagePreview] = useState(null)
+  const [uploadingImage, setUploadingImage] = useState(false)
 
   useEffect(() => {
     getMyBooks().then(data => setMyBooks(data || [])).catch(() => {})
   }, [])
 
+  const handleImageSelect = (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setImageFile(file)
+    setImagePreview(URL.createObjectURL(file))
+  }
+
+  const handleRemoveImage = () => {
+    setImageFile(null)
+    setImagePreview(null)
+  }
+
   const handleSubmit = async () => {
     if (!text.trim()) return
     setSubmitting(true)
     try {
+      let image_url = null
+      if (imageFile) {
+        setUploadingImage(true)
+        const result = await uploadNoteImage(imageFile)
+        image_url = result.image_url
+        setUploadingImage(false)
+      }
       const note = await createNote({
         text,
         quote: quote || null,
         emotion: emotion || null,
+        image_url,
         is_public: true,
         userbook_id: selectedBook?.id || null,
       })
@@ -348,8 +388,11 @@ function PostComposer({ user, onPost }) {
       setQuote('')
       setEmotion('')
       setSelectedBook(null)
+      setImageFile(null)
+      setImagePreview(null)
       toast('Reflection posted!', 'success')
     } catch (e) {
+      setUploadingImage(false)
       toast(e.message || 'Failed to post', 'error')
     }
     setSubmitting(false)
@@ -366,6 +409,19 @@ function PostComposer({ user, onPost }) {
             className="w-full bg-surface-container-low rounded-xl p-4 text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:ring-2 focus:ring-primary/20 min-h-[100px] resize-none text-base font-sans border-none"
             placeholder="What are your thoughts on your current read?"
           />
+
+          {/* Image preview */}
+          {imagePreview && (
+            <div className="relative w-32 h-32 rounded-xl overflow-hidden">
+              <img src={imagePreview} alt="Selected" className="w-full h-full object-cover" />
+              <button
+                onClick={handleRemoveImage}
+                className="absolute top-1 right-1 bg-black/60 rounded-full p-0.5"
+              >
+                <span className="material-symbols-outlined text-white text-sm">close</span>
+              </button>
+            </div>
+          )}
 
           {/* Book picker */}
           {myBooks.length > 0 && (
@@ -405,33 +461,55 @@ function PostComposer({ user, onPost }) {
             </div>
           )}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div className="relative">
-              <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline/60 text-base">format_quote</span>
-              <input
-                value={quote}
-                onChange={e => setQuote(e.target.value)}
-                className="w-full bg-surface-container-low rounded-xl pl-9 pr-4 py-2.5 text-sm border-none focus:outline-none focus:ring-2 focus:ring-primary/20"
-                placeholder="Add a striking quote..."
-              />
+          {/* Quote input */}
+          <div className="relative">
+            <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline/60 text-base">format_quote</span>
+            <input
+              value={quote}
+              onChange={e => setQuote(e.target.value)}
+              className="w-full bg-surface-container-low rounded-xl pl-9 pr-4 py-2.5 text-sm border-none focus:outline-none focus:ring-2 focus:ring-primary/20"
+              placeholder="Add a striking quote..."
+            />
+          </div>
+
+          {/* Emotion chips */}
+          <div>
+            <div className="flex items-center gap-1.5 mb-2">
+              <span className="material-symbols-outlined text-outline/60 text-base">mood</span>
+              <span className="text-xs text-on-surface-variant">Current mood</span>
             </div>
-            <div className="relative">
-              <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline/60 text-base">mood</span>
-              <input
-                value={emotion}
-                onChange={e => setEmotion(e.target.value)}
-                className="w-full bg-surface-container-low rounded-xl pl-9 pr-4 py-2.5 text-sm border-none focus:outline-none focus:ring-2 focus:ring-primary/20"
-                placeholder="Current mood or emotion..."
-              />
+            <div className="flex flex-wrap gap-2">
+              {EMOTION_OPTIONS.map(opt => (
+                <button
+                  key={opt.label}
+                  type="button"
+                  onClick={() => setEmotion(emotion === opt.label ? '' : opt.label)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                    emotion === opt.label
+                      ? 'bg-primary text-on-primary'
+                      : 'bg-surface-container-low text-on-surface-variant hover:bg-surface-container'
+                  }`}
+                >
+                  <span>{opt.emoji}</span>
+                  <span>{opt.label}</span>
+                </button>
+              ))}
             </div>
           </div>
-          <div className="flex justify-end pt-1">
+
+          {/* Actions row */}
+          <div className="flex items-center justify-between pt-1">
+            <label className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-surface-container-low text-on-surface-variant hover:bg-surface-container cursor-pointer text-sm transition-colors">
+              <span className="material-symbols-outlined text-base">image</span>
+              <span>Photo</span>
+              <input type="file" accept="image/*" className="hidden" onChange={handleImageSelect} />
+            </label>
             <button
               onClick={handleSubmit}
               disabled={submitting || !text.trim()}
               className="btn-primary px-7 py-2.5 text-sm font-bold rounded-xl disabled:opacity-50"
             >
-              {submitting ? 'Posting...' : 'Post Reflection'}
+              {uploadingImage ? 'Uploading...' : submitting ? 'Posting...' : 'Post Reflection'}
             </button>
           </div>
         </div>

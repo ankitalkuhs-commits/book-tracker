@@ -84,6 +84,7 @@ export const notesAPI = {
   createNote: async (noteData) => (await api.post('/notes/', noteData)).data,
   updateNote: async (noteId, noteData) => (await api.put(`/notes/${noteId}`, noteData)).data,
   deleteNote: async (noteId) => (await api.delete(`/notes/${noteId}`)).data,
+  adminDeleteComment: async (commentId) => (await api.delete(`/admin/content/comment/${commentId}`)).data,
   uploadImage: async (uri) => {
     const formData = new FormData();
     formData.append('file', { uri, type: 'image/jpeg', name: 'photo.jpg' });
@@ -144,6 +145,11 @@ export const groupsAPI = {
   )).data,
   clearGroupBook: async (id) => (await api.delete(`/groups/${id}/book`)).data,
   deleteGroupPost: async (groupId, postId) => (await api.delete(`/groups/${groupId}/posts/${postId}`)).data,
+  uploadGroupPostImage: async (uri) => {
+    const formData = new FormData();
+    formData.append('file', { uri, type: 'image/jpeg', name: 'photo.jpg' });
+    return (await api.post('/notes/upload-image', formData, { headers: { 'Content-Type': 'multipart/form-data' } })).data;
+  },
 };
 
 // Profile / Settings API

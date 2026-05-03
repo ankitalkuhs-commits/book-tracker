@@ -9,7 +9,7 @@ import {
   getPendingMembers, approveGroupMember, rejectGroupMember, removeGroupMember,
   inviteToGroup, leaveGroup, deleteGroup, updateGroup,
   setGroupBook, clearGroupBook, searchUsersForInvite, searchGoogleBooks,
-  joinByInviteCode, apiFetch, getMyBooks,
+  joinByInviteCode, apiFetch, getMyBooks, uploadNoteImage,
 } from '../services/api'
 import { GroupCover } from './GroupsPage'
 
@@ -265,6 +265,23 @@ function EditGroupModal({ group, onClose, onSave }) {
 
 // ─── New Post Modal ───────────────────────────────────────────────────────────
 
+const EMOTION_OPTIONS = [
+  { label: 'Joyful', emoji: '😄' },
+  { label: 'Moved', emoji: '🥹' },
+  { label: 'Surprised', emoji: '😲' },
+  { label: 'Mind-blown', emoji: '🤯' },
+  { label: 'Peaceful', emoji: '😌' },
+  { label: 'Thoughtful', emoji: '🤔' },
+  { label: 'Tense', emoji: '😬' },
+  { label: 'Amused', emoji: '😂' },
+  { label: 'Emotional', emoji: '😢' },
+  { label: 'Frustrated', emoji: '😤' },
+  { label: 'Shocked', emoji: '😱' },
+  { label: 'Inspired', emoji: '✨' },
+  { label: 'Melancholic', emoji: '😔' },
+  { label: 'In love with it', emoji: '🥰' },
+]
+
 function NewPostModal({ onClose, onPost }) {
   const { user } = useAuth()
   const toast = useToast()
@@ -275,18 +292,34 @@ function NewPostModal({ onClose, onPost }) {
   const [showBookPicker, setShowBookPicker] = useState(false)
   const [myBooks,        setMyBooks]        = useState([])
   const [posting,        setPosting]        = useState(false)
+  const [imageFile,      setImageFile]      = useState(null)
+  const [imagePreview,   setImagePreview]   = useState(null)
 
   useEffect(() => {
     getMyBooks().then(data => setMyBooks(data || [])).catch(() => {})
   }, [])
 
+  const handleImageSelect = (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setImageFile(file)
+    setImagePreview(URL.createObjectURL(file))
+  }
+
   const handlePost = async () => {
     if (!text.trim()) { toast('Write something!', 'error'); return }
     setPosting(true)
     try {
+      let image_url = null
+      if (imageFile) {
+        const result = await uploadNoteImage(imageFile)
+        image_url = result.image_url
+      }
       await onPost({
         text: text.trim(),
         quote: quote.trim() || null,
+        emotion: emotion || null,
+        image_url,
         userbook_id: selectedBook?.id || null,
       })
       onClose()
@@ -301,7 +334,7 @@ function NewPostModal({ onClose, onPost }) {
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm" onClick={onClose}>
       <div
-        className="bg-surface-container-lowest rounded-t-3xl sm:rounded-3xl p-6 w-full sm:max-w-lg shadow-float space-y-4"
+        className="bg-surface-container-lowest rounded-t-3xl sm:rounded-3xl p-6 w-full sm:max-w-lg shadow-float space-y-4 max-h-[90vh] overflow-y-auto"
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
@@ -332,6 +365,19 @@ function NewPostModal({ onClose, onPost }) {
               placeholder="What's on your mind?"
               className="w-full bg-surface-container-low rounded-xl px-4 py-2.5 text-sm border-none focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none"
             />
+
+            {/* Image preview */}
+            {imagePreview && (
+              <div className="relative w-28 h-28 rounded-xl overflow-hidden">
+                <img src={imagePreview} alt="Selected" className="w-full h-full object-cover" />
+                <button
+                  onClick={() => { setImageFile(null); setImagePreview(null) }}
+                  className="absolute top-1 right-1 bg-black/60 rounded-full p-0.5"
+                >
+                  <span className="material-symbols-outlined text-white text-sm">close</span>
+                </button>
+              </div>
+            )}
 
             {/* Book picker */}
             {myBooks.length > 0 && (
@@ -369,38 +415,59 @@ function NewPostModal({ onClose, onPost }) {
               </div>
             )}
 
-            {/* Quote + Emotion row */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="relative">
-                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline/60 text-base">format_quote</span>
-                <input
-                  value={quote}
-                  onChange={e => setQuote(e.target.value)}
-                  placeholder="Add a quote..."
-                  className="w-full bg-surface-container-low rounded-xl pl-9 pr-4 py-2.5 text-sm border-none focus:outline-none focus:ring-2 focus:ring-primary/20"
-                />
+            {/* Quote input */}
+            <div className="relative">
+              <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline/60 text-base">format_quote</span>
+              <input
+                value={quote}
+                onChange={e => setQuote(e.target.value)}
+                placeholder="Add a quote..."
+                className="w-full bg-surface-container-low rounded-xl pl-9 pr-4 py-2.5 text-sm border-none focus:outline-none focus:ring-2 focus:ring-primary/20"
+              />
+            </div>
+
+            {/* Emotion chips */}
+            <div>
+              <div className="flex items-center gap-1.5 mb-2">
+                <span className="material-symbols-outlined text-outline/60 text-base">mood</span>
+                <span className="text-xs text-on-surface-variant">Current mood</span>
               </div>
-              <div className="relative">
-                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline/60 text-base">mood</span>
-                <input
-                  value={emotion}
-                  onChange={e => setEmotion(e.target.value)}
-                  placeholder="Current mood..."
-                  className="w-full bg-surface-container-low rounded-xl pl-9 pr-4 py-2.5 text-sm border-none focus:outline-none focus:ring-2 focus:ring-primary/20"
-                />
+              <div className="flex flex-wrap gap-2">
+                {EMOTION_OPTIONS.map(opt => (
+                  <button
+                    key={opt.label}
+                    type="button"
+                    onClick={() => setEmotion(emotion === opt.label ? '' : opt.label)}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                      emotion === opt.label
+                        ? 'bg-primary text-on-primary'
+                        : 'bg-surface-container-low text-on-surface-variant hover:bg-surface-container'
+                    }`}
+                  >
+                    <span>{opt.emoji}</span>
+                    <span>{opt.label}</span>
+                  </button>
+                ))}
               </div>
             </div>
           </div>
         </div>
 
         {/* Actions */}
-        <div className="flex justify-end gap-3 pt-1">
-          <button onClick={onClose} className="px-5 py-2.5 text-sm font-bold text-on-surface-variant border border-outline-variant rounded-xl hover:bg-surface-container transition-colors">
-            Cancel
-          </button>
-          <button onClick={handlePost} disabled={posting || !text.trim()} className="btn-primary px-7 py-2.5 text-sm font-bold rounded-xl disabled:opacity-50">
-            {posting ? 'Posting...' : 'Post Reflection'}
-          </button>
+        <div className="flex items-center justify-between pt-1">
+          <label className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-surface-container-low text-on-surface-variant hover:bg-surface-container cursor-pointer text-sm transition-colors">
+            <span className="material-symbols-outlined text-base">image</span>
+            <span>Photo</span>
+            <input type="file" accept="image/*" className="hidden" onChange={handleImageSelect} />
+          </label>
+          <div className="flex gap-3">
+            <button onClick={onClose} className="px-5 py-2.5 text-sm font-bold text-on-surface-variant border border-outline-variant rounded-xl hover:bg-surface-container transition-colors">
+              Cancel
+            </button>
+            <button onClick={handlePost} disabled={posting || !text.trim()} className="btn-primary px-7 py-2.5 text-sm font-bold rounded-xl disabled:opacity-50">
+              {posting ? 'Posting...' : 'Post Reflection'}
+            </button>
+          </div>
         </div>
       </div>
     </div>

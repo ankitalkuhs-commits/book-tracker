@@ -4,12 +4,30 @@ import {
   ActivityIndicator, RefreshControl, Alert, StatusBar, Modal,
   KeyboardAvoidingView, Platform, Image, FlatList, Clipboard,
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { groupsAPI, booksAPI, usersAPI, userAPI, userbooksAPI } from '../services/api';
 import { colors, radius, shadow, type } from '../theme';
 
 const WEB_APP_URL = 'https://www.trackmyread.com';
+
+const EMOTION_OPTIONS = [
+  { emoji: '😊', label: 'Joyful' },
+  { emoji: '😢', label: 'Moved' },
+  { emoji: '😮', label: 'Surprised' },
+  { emoji: '🤯', label: 'Mind-blown' },
+  { emoji: '😌', label: 'Peaceful' },
+  { emoji: '🤔', label: 'Thoughtful' },
+  { emoji: '😰', label: 'Tense' },
+  { emoji: '😂', label: 'Amused' },
+  { emoji: '🥺', label: 'Emotional' },
+  { emoji: '😤', label: 'Frustrated' },
+  { emoji: '😱', label: 'Shocked' },
+  { emoji: '🤩', label: 'Inspired' },
+  { emoji: '😔', label: 'Melancholic' },
+  { emoji: '❤️', label: 'In love with it' },
+];
 
 function timeAgo(dateStr) {
   if (!dateStr) return '';
@@ -253,10 +271,11 @@ export default function GroupDetailScreen({ route, navigation }) {
   const [showSetBookModal, setShowSetBookModal] = useState(false);
   const [postText,    setPostText]    = useState(false);
   const [posting,     setPosting]     = useState(false);
-  const [postInput,   setPostInput]   = useState('');
-  const [postQuote,   setPostQuote]   = useState('');
-  const [postEmotion, setPostEmotion] = useState('');
-  const [postBook,    setPostBook]    = useState(null);
+  const [postInput,    setPostInput]    = useState('');
+  const [postQuote,    setPostQuote]    = useState('');
+  const [postEmotion,  setPostEmotion]  = useState('');
+  const [postBook,     setPostBook]     = useState(null);
+  const [postImageUri, setPostImageUri] = useState(null);
   const [showBookPicker, setShowBookPicker] = useState(false);
   const [myBooks,     setMyBooks]     = useState([]);
   const [currentUser, setCurrentUser] = useState(null);
@@ -350,13 +369,27 @@ export default function GroupDetailScreen({ route, navigation }) {
     setInviting(null);
   };
 
+  const pickComposerImage = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') { Alert.alert('Permission needed', 'Allow photo library access to add images.'); return; }
+    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, allowsEditing: true, aspect: [4, 3], quality: 0.8 });
+    if (!result.canceled && result.assets?.[0]?.uri) setPostImageUri(result.assets[0].uri);
+  };
+
   const handleCreatePost = async () => {
     if (!postInput.trim()) return;
     setPosting(true);
     try {
+      let image_url = null;
+      if (postImageUri) {
+        const uploaded = await groupsAPI.uploadGroupPostImage(postImageUri);
+        image_url = uploaded?.image_url || null;
+      }
       const post = await groupsAPI.createGroupPost(groupId, {
         text: postInput.trim(),
         quote: postQuote.trim() || null,
+        emotion: postEmotion || null,
+        image_url,
         userbook_id: postBook?.id || null,
       });
       setPosts(prev => [post, ...prev]);
@@ -364,6 +397,7 @@ export default function GroupDetailScreen({ route, navigation }) {
       setPostQuote('');
       setPostEmotion('');
       setPostBook(null);
+      setPostImageUri(null);
       setShowComposer(false);
     } catch (e) { Alert.alert('Error', e?.response?.data?.detail || 'Could not post'); }
     setPosting(false);
@@ -798,11 +832,11 @@ export default function GroupDetailScreen({ route, navigation }) {
       </ScrollView>
 
       {/* Post composer modal */}
-      <Modal visible={showComposer} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => { setShowComposer(false); setPostInput(''); setPostQuote(''); setPostEmotion(''); setPostBook(null); }}>
+      <Modal visible={showComposer} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => { setShowComposer(false); setPostInput(''); setPostQuote(''); setPostEmotion(''); setPostBook(null); setPostImageUri(null); }}>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
           <View style={styles.composerRoot}>
             {/* Header */}
-            <View style={styles.composerHeader}>
+            <View style={[styles.composerHeader, { paddingTop: insets.top + 20 }]}>
               <TouchableOpacity onPress={() => { setShowComposer(false); setPostInput(''); setPostQuote(''); setPostEmotion(''); setPostBook(null); }}>
                 <Text style={styles.composerCancel}>Cancel</Text>
               </TouchableOpacity>
@@ -886,18 +920,43 @@ export default function GroupDetailScreen({ route, navigation }) {
                 </View>
               </View>
 
-              {/* Emotion field */}
+              {/* Emotion chips */}
               <View style={styles.composerSection}>
-                <View style={styles.composerFieldRow}>
-                  <Ionicons name="happy-outline" size={16} color={colors.outline} style={{ marginTop: 10 }} />
-                  <TextInput
-                    style={styles.composerField}
-                    value={postEmotion}
-                    onChangeText={setPostEmotion}
-                    placeholder="Current mood or emotion…"
-                    placeholderTextColor={colors.outline}
-                  />
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                  <Ionicons name="happy-outline" size={14} color={colors.outline} />
+                  <Text style={{ fontSize: 12, color: colors.onSurfaceVariant }}>Current mood</Text>
                 </View>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingRight: 16 }}>
+                  {EMOTION_OPTIONS.map(opt => (
+                    <TouchableOpacity
+                      key={opt.label}
+                      onPress={() => setPostEmotion(postEmotion === opt.label ? '' : opt.label)}
+                      style={[styles.emotionChip, postEmotion === opt.label && styles.emotionChipActive]}
+                    >
+                      <Text style={styles.emotionChipEmoji}>{opt.emoji}</Text>
+                      <Text style={[styles.emotionChipLabel, postEmotion === opt.label && styles.emotionChipLabelActive]}>{opt.label}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+
+              {/* Image picker */}
+              <View style={[styles.composerSection, { flexDirection: 'row', alignItems: 'center', gap: 12 }]}>
+                <TouchableOpacity onPress={pickComposerImage} style={styles.composerImageBtn}>
+                  <Ionicons name="image-outline" size={18} color={colors.onSurfaceVariant} />
+                  <Text style={styles.composerImageBtnText}>Photo</Text>
+                </TouchableOpacity>
+                {postImageUri && (
+                  <View style={{ position: 'relative' }}>
+                    <Image source={{ uri: postImageUri }} style={{ width: 60, height: 60, borderRadius: 8 }} />
+                    <TouchableOpacity
+                      onPress={() => setPostImageUri(null)}
+                      style={{ position: 'absolute', top: -6, right: -6, backgroundColor: colors.error, borderRadius: 10, width: 20, height: 20, alignItems: 'center', justifyContent: 'center' }}
+                    >
+                      <Ionicons name="close" size={12} color="#fff" />
+                    </TouchableOpacity>
+                  </View>
+                )}
               </View>
             </ScrollView>
           </View>
@@ -1046,6 +1105,13 @@ const styles = StyleSheet.create({
   bookPickerTitle:{ flex: 1, fontSize: 13, fontFamily: 'Manrope_600SemiBold', fontWeight: '600', color: colors.onSurface },
   composerFieldRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, backgroundColor: colors.surfaceContainerLow, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 4 },
   composerField:    { flex: 1, fontSize: 14, color: colors.onSurface, paddingVertical: 10, textAlignVertical: 'top' },
+  emotionChip:      { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20, backgroundColor: colors.surfaceContainerLow },
+  emotionChipActive:{ backgroundColor: colors.primary },
+  emotionChipEmoji: { fontSize: 14 },
+  emotionChipLabel: { fontSize: 12, fontWeight: '600', color: colors.onSurfaceVariant },
+  emotionChipLabelActive: { color: colors.onPrimary },
+  composerImageBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12, backgroundColor: colors.surfaceContainerLow },
+  composerImageBtnText: { fontSize: 13, fontWeight: '600', color: colors.onSurfaceVariant },
 
   modalRoot:    { flex: 1, backgroundColor: colors.surface },
   modalHeader:  { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 18, paddingBottom: 14, borderBottomWidth: 1, borderBottomColor: colors.outlineVariant + '60' },

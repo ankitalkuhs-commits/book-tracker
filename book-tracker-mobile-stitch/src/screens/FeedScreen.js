@@ -225,6 +225,24 @@ const FeedScreen = ({ navigation }) => {
     ]);
   };
 
+  const handleDeleteComment = (postId, commentId) => {
+    Alert.alert('Delete Comment', 'Are you sure?', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Delete', style: 'destructive', onPress: async () => {
+        try {
+          await notesAPI.adminDeleteComment(commentId);
+          setExpandedComments(prev => ({
+            ...prev,
+            [postId]: {
+              ...prev[postId],
+              comments: prev[postId].comments.filter(c => c.id !== commentId),
+            },
+          }));
+        } catch { Alert.alert('Error', 'Failed to delete comment'); }
+      }},
+    ]);
+  };
+
   const handleLike = async (postId, isLiked) => {
     if (likingInFlight.current.has(postId)) return;
     likingInFlight.current.add(postId);
@@ -658,10 +676,15 @@ const FeedScreen = ({ navigation }) => {
                   <View style={styles.commentAvatar}>
                     <Text style={styles.commentAvatarText}>{(c.user?.name?.[0] || c.user?.email?.[0] || 'U').toUpperCase()}</Text>
                   </View>
-                  <View style={styles.commentBubble}>
+                  <View style={[styles.commentBubble, { flex: 1 }]}>
                     <Text style={styles.commentName}>{c.user?.name || c.user?.username || 'Reader'}</Text>
                     <Text style={styles.commentText}>{c.text}</Text>
                   </View>
+                  {isAdmin && c.id && (
+                    <TouchableOpacity onPress={() => handleDeleteComment(post.id, c.id)} style={{ padding: 6, marginLeft: 4 }}>
+                      <Ionicons name="trash-outline" size={14} color={colors.error} />
+                    </TouchableOpacity>
+                  )}
                 </View>
               ))
             )}

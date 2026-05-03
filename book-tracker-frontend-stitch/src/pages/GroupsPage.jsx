@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useToast } from '../components/Toast'
-import { getMyGroups, discoverGroups, joinGroup, getMyGroupInvites, acceptGroupInvite, declineGroupInvite } from '../services/api'
+import { getMyGroups, discoverGroups, joinGroup, getMyGroupInvites, acceptGroupInvite, declineGroupInvite, getMyPendingGroups } from '../services/api'
 
 // ─── Cover presets ────────────────────────────────────────────────────────────
 
@@ -141,20 +141,23 @@ export default function GroupsPage() {
   const [myGroups, setMyGroups] = useState([])
   const [discover, setDiscover] = useState([])
   const [invites, setInvites] = useState([])
+  const [pendingGroups, setPendingGroups] = useState([])
   const [loading, setLoading] = useState(true)
   const [searchQ, setSearchQ] = useState('')
   const [joining, setJoining] = useState(null)
 
   const load = async () => {
     setLoading(true)
-    const [my, disc, inv] = await Promise.all([
+    const [my, disc, inv, pending] = await Promise.all([
       getMyGroups().catch(() => []),
       discoverGroups().catch(() => []),
       getMyGroupInvites().catch(() => []),
+      getMyPendingGroups().catch(() => []),
     ])
     setMyGroups(my || [])
     setDiscover(disc || [])
     setInvites(inv || [])
+    setPendingGroups(pending || [])
     setLoading(false)
   }
 
@@ -236,6 +239,36 @@ export default function GroupsPage() {
           <div className="space-y-3">
             {invites.map(inv => (
               <InviteCard key={inv.id} invite={inv} onAccept={handleAccept} onDecline={handleDecline} />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* ── Pending join requests ──────────────────────── */}
+      {pendingGroups.length > 0 && (
+        <section className="space-y-3">
+          <h2 className="font-serif text-xl font-bold text-on-surface flex items-center gap-2">
+            <span className="w-2 h-2 bg-tertiary rounded-full inline-block"></span>
+            Pending Requests
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {pendingGroups.map(g => (
+              <div
+                key={g.id}
+                className="bg-surface-container-lowest border border-dashed border-outline-variant/50 rounded-2xl overflow-hidden flex gap-4 items-stretch"
+              >
+                <GroupCover preset={g.cover_preset} className="w-24 shrink-0" />
+                <div className="flex-1 min-w-0 py-4 pr-4 space-y-1">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-tertiary bg-tertiary/10 px-2 py-0.5 rounded-full">
+                    Request Pending
+                  </span>
+                  <p className="font-serif font-bold text-on-surface text-base leading-snug mt-1">{g.name}</p>
+                  {g.description && (
+                    <p className="text-xs text-on-surface-variant line-clamp-1">{g.description}</p>
+                  )}
+                  <p className="text-[11px] text-on-surface-variant/60 pt-0.5">Waiting for curator approval</p>
+                </div>
+              </div>
             ))}
           </div>
         </section>
