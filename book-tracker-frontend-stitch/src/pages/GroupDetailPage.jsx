@@ -598,7 +598,7 @@ export default function GroupDetailPage() {
   }
 
   const copyInviteLink = () => {
-    const link = `${window.location.origin}/join/${group.invite_code}`
+    const link = `https://www.trackmyread.com/join/${group.invite_code}`
     navigator.clipboard.writeText(link).then(() => {
       setLinkCopied(true)
       setTimeout(() => setLinkCopied(false), 2000)
