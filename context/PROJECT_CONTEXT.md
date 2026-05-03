@@ -1,302 +1,171 @@
-# Book Tracker - Project Context
+# TrackMyRead — Project Context
 
-**Last Updated:** May 2, 2026  
-**Project Version:** 1.5.0 (master)
-
----
-
-## Project Purpose
-
-A social book tracking platform where users can:
-- Track their reading progress
-- Share reading updates with friends
-- Discover what others are reading
-- Take notes and highlights
-- Analyze reading statistics
-- Access admin dashboard for platform management
+**Last Updated:** May 3, 2026
+**Version:** 1.1.0
 
 ---
 
-## High-Level Architecture
+## What It Is
 
-### Backend Stack
-- **Framework:** FastAPI (Python)
-- **Database:** PostgreSQL (production on Render), SQLite (local development)
-- **Auth:** JWT tokens with Google OAuth 2.0
-- **Password Security:** Bcrypt hashing (for OAuth fallback)
-- **File Uploads:** Profile pictures, note attachments
-- **Deployment:** Render (auto-deploy from GitHub)
+A social book tracking platform: track reading progress, share reflections, discover what friends are reading, join literary circles (groups), and analyse reading habits.
 
-### Frontend Stack (Web — Stitch)
-- **Framework:** React 18
-- **Build Tool:** Vite
-- **Styling:** TailwindCSS (custom design tokens — teal primary #00464a)
-- **State Management:** React useState/useEffect + AuthContext
-- **Routing:** React Router v6
-- **API Client:** Custom fetch wrapper (`book-tracker-frontend-stitch/src/services/api.js`)
-- **Deployment:** Render (auto-deploy from `stitch-experiment` branch)
+---
 
-### Mobile Stack
-- **Framework:** React Native (Expo SDK)
-- **Build System:** EAS (NOT Expo Go — uses native modules)
-- **Styling:** `src/theme.js` design tokens matching Stitch palette
-- **Navigation:** React Navigation (bottom tabs + stacks)
-- **API Client:** `book-tracker-mobile-stitch/src/services/api.js` → `https://book-tracker-stitch.onrender.com` (axios, 30s timeout)
-- **Push:** Expo FCM (Android) + VAPID (web)
-- **Branch:** Everything on `master` — `stitch-experiment` was deleted and merged
+## Architecture
 
-### Data Flow
-```
-User Browser
-    ↓
-React Frontend (Port 5173)
-    ↓ HTTP/REST
-FastAPI Backend (Port 8000)
-    ↓
-SQLite Database (book_tracker.db)
-```
+### Stack
+
+| Layer | Tech |
+|---|---|
+| Backend | FastAPI (Python), SQLModel ORM |
+| Database | PostgreSQL on Supabase (prod) / SQLite (local dev) |
+| Web frontend | React 18 + Vite + TailwindCSS (custom design tokens) |
+| Mobile | React Native, Expo SDK, EAS builds (NOT Expo Go) |
+| Auth | Google OAuth 2.0 → JWT tokens |
+| File uploads | Cloudinary (profile pictures + note images) |
+| Push | Expo FCM (Android mobile) + VAPID via pywebpush (web PWA) |
+| Hosting | Render (backend auto-deploys from `master`), Vercel (web frontend) |
+
+### Deployments
+
+| Service | URL | Branch |
+|---|---|---|
+| Backend (Render) | `https://book-tracker-stitch.onrender.com` | `master` |
+| Web (Vercel) | `https://www.trackmyread.com` | `master` |
+| Android (Play Store) | TrackMyRead | EAS build from `master` |
 
 ---
 
 ## Core Design Principles
 
-### 1. **Feature-Based Organization**
-- Backend routers are feature-specific (`auth_router.py`, `books_router.py`, etc.)
-- Frontend components organized by feature (`library/`, `home/`, `bookpulse/`)
-- Database tables aligned with features
+### 1. Feature-Based Organization
+- Backend: one router per feature (`auth_router.py`, `books_router.py`, etc.)
+- Frontend: one page per route, one screen per screen
+- No shared "utils" sprawl — logic lives close to where it's used
 
-### 2. **Authentication First**
-- Google OAuth 2.0 for sign-in (email/password removed)
-- JWT tokens required for most endpoints
-- Single "Sign In" page (merged login/signup)
-- Admin access controlled by is_admin flag
-- Last active tracking for user engagement
+### 2. Event-Driven Notifications
+Always use `fire_event()` from `app/notifications/dispatcher.py`. It routes to the correct channel (Expo FCM for mobile tokens, pywebpush for web subscriptions) and writes to `NotificationLog`. Never call `send_push_notification_to_user` directly.
 
-### 3. **Social by Design**
-- Follow system to connect users
-- Public/private reading activities
-- Comments and likes on reading updates
-- Community feed of friend activities
+### 3. Optimistic UI
+Status changes, progress updates, and likes update instantly in state. API error reverts the change. This compensates for Render free tier cold-start (~30s wake time).
 
-### 4. **External Integration**
-- Google Books API for book search
-- Import book metadata automatically
-- Avoid manual data entry
+### 4. Migration Safety
+Production is PostgreSQL, dev is SQLite. Always use `information_schema` for schema introspection. Every `models.py` change needs a corresponding `ALTER TABLE IF NOT EXISTS` in `context/supabase_migration.sql`, run in Supabase SQL Editor before pushing.
 
-### 5. **Local-First Development**
-- SQLite for simple setup
-- No external services required for dev
-- Easy migration path to PostgreSQL for production
+### 5. Social by Design
+Follow system (one-way), public/private posts, likes/comments, group feeds, leaderboards, recommendations from friends' activity.
 
 ---
 
-## Key Architectural Decisions
+## Component Hierarchy (Web)
 
-### Why FastAPI?
-- Fast, modern Python framework
-- Automatic API documentation (Swagger)
-- Built-in validation with Pydantic
-- Async support for scalability
-- Type hints improve code quality
-
-### Why SQLite for Development?
-- Zero configuration
-- No separate database server
-- Portable (single file)
-- Easy backup and migration
-- Production can use PostgreSQL (SQLModel compatible)
-
-### Why JWT Tokens?
-- Stateless authentication
-- No server-side session storage
-- Works well with REST APIs
-- Easy to scale horizontally
-- Frontend can store in localStorage
-
-### Why Feature-Based Folders?
-- Clear ownership boundaries
-- Easier to find related code
-- Reduces merge conflicts
-- Scales better than monolithic files
-- Each feature can evolve independently
-
----
-
-## Database Design Philosophy
-
-### Normalized Structure
-- Users, books, and reading records are separate
-- `userbooks` links users to books with status
-- Avoids data duplication
-
-### Soft Deletes
-- No hard deletes on user content
-- Maintains referential integrity
-- Allows "undo" functionality
-
-### Timestamps & Tracking
-- `created_at`, `updated_at` on all tables
-- `last_active` on users table (updated daily on login)
-- Enables audit trails and engagement analytics
-- Supports chronological queries
-
----
-
-## Frontend Architecture
-
-### Component Hierarchy (Stitch — book-tracker-frontend-stitch/)
 ```
 App.jsx
-├── Nav.jsx (top nav: Home, Library, Groups, Insights, Notifications — Search removed)
-├── AppTour.jsx (in-app spotlight coach marks — 8 steps: 4 nav + avatar + goal + book + done)
-└── Pages
-    ├── LoginPage         (/login)
-    ├── OnboardingPage    (/onboarding — ONBOARDING_KEY gated)
-    ├── HomePage          (/home — community + friends feed)
-    ├── LibraryPage       (/library — book grid, Add Book modal)
-    ├── BookDetailPage    (/library/book/:userbookId — dedicated book detail page)
-    ├── SearchPage        (/search — genre + format filter chips, Google Books + community)
-    ├── GroupsPage        (/groups)
-    ├── GroupDetailPage   (/groups/:groupId)
-    ├── CreateGroupPage   (/groups/new)
-    ├── JoinGroupPage     (/join/:inviteCode)
-    ├── InsightsPage      (/insights)
-    ├── NotificationsPage (/notifications — push permission banner, deep-link routing)
-    ├── ProfilePage       (/profile)
-    ├── UserProfilePage   (/profile/:userId)
-    ├── SettingsPage      (/settings — notif prefs incl. group_invite/group_join_request, Goodreads import)
-    └── AdminPage         (/admin — is_admin gated)
+├── Nav.jsx              (Home · Library · Circles · Insights · Notifications · Profile)
+├── AppTour.jsx          (8-step coach marks for new users)
+└── Pages (React Router)
+    ├── /login           LoginPage
+    ├── /onboarding      OnboardingPage      (ONBOARDING_KEY gated, 5 steps)
+    ├── /home            HomePage            (feed + PostComposer with emotion chips + image)
+    ├── /library         LibraryPage
+    ├── /library/book/:id BookDetailPage     (survives refresh via list fetch)
+    ├── /groups          GroupsPage          (My/Pending/Invites/Discover)
+    ├── /groups/:id      GroupDetailPage     (NewPostModal with emotion chips + image)
+    ├── /groups/new      CreateGroupPage
+    ├── /join/:code      JoinGroupPage
+    ├── /insights        InsightsPage
+    ├── /notifications   NotificationsPage   (deep-link routing)
+    ├── /profile         ProfilePage
+    ├── /profile/:id     UserProfilePage     (getUserStats() fetched separately)
+    ├── /settings        SettingsPage        (notif prefs + Goodreads import)
+    ├── /search          SearchPage          (route exists, not in Nav)
+    └── /admin           AdminPage           (is_admin gated)
 ```
 
-### Key Web Routing Notes
-- **BookDetailPage** — pass userbook via router state: `navigate('/library/book/:id', { state: { userbook } })`. On refresh (no state), fetches `GET /userbooks/` list + finds by ID. Route: `/library/book/:userbookId`.
-- **Search** — `/search` route exists but not in Nav; LibraryPage Add Book modal handles quick adds
-- **Onboarding** — `ONBOARDING_KEY` in `OnboardingPage.jsx`; bump value to reset tour for all users
-- **UserProfilePage** — fetches profile + stats + books + notes + activity separately; `getUserStats(userId)` is required for real stats (profile endpoint does not embed stats)
-
-### State Management Strategy
-- Auth context for user session
-- Local state for component UI
-- API calls via centralized `services/api.js`
-- No Redux (keep it simple)
-
-### Styling Approach
-- TailwindCSS utility classes
-- Consistent color scheme across app
-- Responsive by default
-- Dark mode ready (future)
-
 ---
 
-## Security Considerations
+## Mobile Navigation
 
-### Backend
-- All passwords hashed with bcrypt
-- JWT secrets stored in environment variables
-- CORS configured for specific origins
-- SQL injection prevented by SQLModel/SQLAlchemy
-- File upload validation
-
-### Frontend
-- Tokens stored in localStorage (not cookies to avoid CSRF)
-- API calls include Authorization header
-- Input validation on forms
-- XSS prevention via React's escaping
-
----
-
-## Development Workflow
-
-### Starting Backend
-```bash
-cd book-tracker
-.\venv\Scripts\Activate.ps1
-uvicorn app.main:app --reload
+```
+AppNavigator (React Navigation)
+├── LoginScreen          (root, shown when not authed)
+├── OnboardingScreen     (root, shown when is_new = true)
+└── MainTabs (Bottom Tab Navigator)
+    ├── HomeStack        FeedScreen → BookPreviewScreen → UserProfileScreen
+    ├── LibraryStack     LibraryScreen → BookDetailScreen
+    ├── CirclesStack     GroupsScreen → GroupDetailScreen → UserProfileScreen
+    └── InsightsStack    InsightsScreen
+    (Accessed via AppHeader, not tabs:)
+    ├── ProfileScreen    → SettingsScreen
+    ├── NotificationsScreen
+    └── UserProfileScreen (also in root stack for notification deep-links)
 ```
 
-### Starting Frontend
-```bash
-cd book-tracker-frontend
-npm run dev
-```
+---
 
-### Database Migrations
-- Manual SQL scripts in `migrations/`
-- Run via Python scripts (e.g., `migrate_db.py`)
-- No ORM migrations framework (keep it simple)
+## State Management
+
+- **Auth**: `AuthContext` (web), `authTokenRef` + `setIsLoggedIn` (mobile App.js)
+- **Preloaded data**: `PreloadContext` in App.js — profile, library, feed preloaded after login
+- **Unread count**: `NotificationContext` — consumed by AppHeader without prop drilling
+- **Local state**: `useState`/`useEffect` per component — no Redux
+- **API caching**: 60s TTL in-memory cache in web `services/api.js` (`_cache` Map)
 
 ---
 
-## Future Considerations
+## Security Model
 
-### Scalability
-- Move to PostgreSQL for production
-- Add Redis for caching
-- Consider API rate limiting
-- Implement CDN for static files
-
-### Features
-- Email notifications
-- Reading challenges
-- EAS production build + Play Store release
-- Export data (CSV, JSON)
-
-### Technical Debt
-- Add comprehensive test coverage
-- Implement logging system
-- Add error tracking (Sentry)
-- Create automated backup system
-- Document all API endpoints
+- JWT Bearer tokens required for all authenticated endpoints
+- `get_current_user` dep: validates token, returns User or raises 401
+- `get_admin_user` dep: calls `get_current_user` then checks `is_admin`, raises 403 if not
+- Frontend admin checks (e.g. showing delete buttons) are UI-only; backend always enforces
+- CORS configured for `www.trackmyread.com` and `trackmyread.com`
+- File uploads go to Cloudinary — no local filesystem storage, Cloudinary validates image format
+- Private profiles (`is_private_profile`) enforced on `GET /profile/{id}` — returns locked view to non-followers
 
 ---
 
-## Environment Variables
+## Data Model Key Decisions
 
-### Backend
-- `SECRET_KEY` - JWT signing key
-- `BOOK_TRACKER_DB` - Database file path
-- `CORS_ORIGINS` - Allowed frontend URLs
-- `GOOGLE_BOOKS_API_KEY` - Google Books API access
+### `userbook` — the link table
+`User` ↔ `Book` is many-to-many via `UserBook`. Status (`reading`/`to-read`/`finished`) lives on `UserBook`, not `Book`. Allows same book to have different statuses for different users.
 
-### Frontend
-- `VITE_API_BASE_URL` - Backend API URL
+### `note` vs `group_post`
+- `note` — general reflection, can be public or private, appears in community/friends feed
+- `group_post` — scoped to a group, only visible to group members
+- Both now have `emotion` and `image_url` fields
 
----
+### Soft approach to deletions
+When deleting a `note`, first delete its `Like` and `Comment` rows (PostgreSQL FK constraint). No soft-delete pattern — hard deletes only.
 
-## File Organization Standards
-
-### Python Files
-- One router per feature
-- Models in `app/models.py`
-- Schemas in `app/schemas.py`
-- Database setup in `app/database.py`
-- Auth utilities in `app/auth.py`
-
-### React Files
-- Components in feature folders
-- Shared components in `shared/`
-- Services in `services/`
-- Pages in `pages/`
-
-### Naming Conventions
-- Python: `snake_case` for files and functions
-- React: `PascalCase` for components
-- Database: `snake_case` for tables and columns
+### `reading_activity` — daily log
+Stores pages read per day per userbook. Powers InsightsScreen charts, velocity calculations, and group leaderboards.
 
 ---
 
-## When This Should Be Updated
+## Notification Event Types
 
-Update this file when:
-- Switching frameworks or major libraries
-- Changing database structure significantly
-- Adding new major features (not just endpoints)
-- Modifying authentication approach
-- Changing deployment architecture
-- Updating core design principles
+| Event | Triggered by | Extra payload |
+|---|---|---|
+| `new_follower` | follow_router.py | `actor_id` |
+| `post_liked` | likes_comments.py | `note_id` |
+| `post_commented` | likes_comments.py | `note_id` |
+| `book_added` | books_router.py | `book_title` |
+| `book_completed` | userbooks_router.py | `book_title` |
+| `reading_streak_reminder` | scheduler | — |
+| `group_invite` | groups_router.py | `group_id`, `group_name` |
+| `group_join_request` | groups_router.py | `group_id` |
 
-**Don't update for:**
-- Adding individual endpoints
-- UI tweaks
-- Bug fixes
-- Minor refactoring
+---
+
+## Known Gotchas
+
+| Gotcha | Detail |
+|---|---|
+| Render cold start | Free tier sleeps after 15min inactivity, ~30s wake. Mobile timeout is 30s. |
+| `adjustsFontSizeToFit` | Kills text visibility on Android — never use it |
+| `type.label` spread | Spreading `...type.label` (custom font family) can make text invisible before font load — use explicit `fontSize`/`fontWeight` for critical UI |
+| `react-native-svg` | Must be `15.15.4` — `15.8.0` breaks New Architecture build |
+| Modal safe area | Modals with `presentationStyle="pageSheet"` need `insets.top + N` on their header, not just `paddingTop: N` |
+| `is_new` flag | `auth_router.py` returns `is_new: true` only on the very first Google login for an account |
+| `ONBOARDING_KEY` | Change `'bt_onboarding_v1'` → `'bt_onboarding_v2'` to reset onboarding for all web users |

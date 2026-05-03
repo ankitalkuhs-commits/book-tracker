@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { userAPI, userbooksAPI, activityAPI, notesAPI, booksAPI } from '../services/api';
+import { userAPI, userbooksAPI, activityAPI, notesAPI, booksAPI, profileAPI } from '../services/api';
 import { colors, radius, shadow, type } from '../theme';
 
 const SCREEN_W   = Dimensions.get('window').width;
@@ -98,7 +98,7 @@ export default function UserProfileScreen({ route, navigation }) {
     if (isRefresh) setRefreshing(true);
     try {
       const [u, s, b, n, act] = await Promise.allSettled([
-        userAPI.getPublicProfile(userId),   // has name, followers_count, following_count, is_following
+        profileAPI.getPublicProfile(userId),   // has name, followers_count, following_count, is_following
         userAPI.getUserStats(userId),
         userbooksAPI.getUserBooks(userId),
         userAPI.getUserNotes(userId),
@@ -171,7 +171,7 @@ export default function UserProfileScreen({ route, navigation }) {
   if (loading) return <View style={styles.center}><ActivityIndicator size="large" color={colors.primary} /></View>;
 
   const name             = user?.name || user?.email?.split('@')[0] || 'Reader';
-  const isPrivate        = user?.is_private_profile && !following;
+  const isPrivate        = user?.is_private && !following;
   const currentlyReading = books.filter(b => b.status === 'reading');
   const finished         = books.filter(b => b.status === 'finished');
   const displayedBooks   = showAllBooks ? books : books.slice(0, 6);

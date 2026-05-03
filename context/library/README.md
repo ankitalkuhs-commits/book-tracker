@@ -1,338 +1,164 @@
-# Library Management Context
+# Library Feature
 
-**Feature Owner:** Library & Books  
-**Last Updated:** March 14, 2026
+**Last Updated:** May 3, 2026
 
 ---
 
 ## Overview
-Manages book catalog, user reading lists, book search, and reading status tracking.
+
+Manages the user's personal book library: searching Google Books, adding books, tracking reading status and progress, format/ownership metadata, and reading activity logging.
 
 ---
 
-## Files in This Feature
+## Key Files
 
 ### Backend
-- `app/routers/books_router.py` - Book catalog CRUD operations
-- `app/routers/userbooks_router.py` - User's reading list and status
-- `app/routers/googlebooks_router.py` - External book search integration
-- `app/models.py` - Book and UserBook models
+| File | Purpose |
+|---|---|
+| `app/routers/books_router.py` | Book search, add-to-library, recommendations |
+| `app/routers/userbooks_router.py` | User library CRUD, progress updates, status changes |
+| `app/routers/googlebooks_router.py` | Google Books API proxy, `normalize_google_cover_url()` |
+| `app/routers/import_router.py` | Goodreads CSV import (`POST /import/goodreads`) |
 
-### Frontend - Web
-- `book-tracker-frontend/src/pages/LibraryPage.jsx` - Main library view
-- `book-tracker-frontend/src/components/library/BookCard.jsx` - Book display card
-- `book-tracker-frontend/src/components/library/AddBookModal.jsx` - Add book UI
-- `book-tracker-frontend/src/components/library/BookDetailModal.jsx` - Book details
-- `book-tracker-frontend/src/components/AddBook.jsx` - Legacy add book form
-- `book-tracker-frontend/src/components/BookList.jsx` - Legacy book list
+### Web
+| File | Purpose |
+|---|---|
+| `src/pages/LibraryPage.jsx` | Book grid, status filter tabs, Add Book modal (inline with header tab row) |
+| `src/pages/BookDetailPage.jsx` | `/library/book/:userbookId` — survives refresh, optimistic progress bar |
 
-### Frontend - Mobile
-- `book-tracker-mobile/src/screens/LibraryScreen.js` - Library with status tabs and search
-- `book-tracker-mobile/src/screens/BookDetailScreen.js` - Book detail, note entry, progress
-
-### Mobile LibraryScreen Notes (March 2026)
-- Status tabs now show live book counts: `All (N)`, `Reading (N)`, `Want to Read (N)`, `Finished (N)`
-- Search input has a `✕` clear button for Android (no built-in clear button on Android)
-- `searchContainer` is `flexDirection: row` with `searchInput` flex:1 + clear button alongside
-
-### Database Tables
-- `books` - Master book catalog
-- `userbooks` - User reading status and progress
-- `book_ownership` - Tracking physical/ebook ownership
-
----
-
-## Key Design Decisions
-
-### 1. Separate Book Catalog from User Books
-**Decision:** Split `books` and `userbooks` tables  
-**Why:**
-- One book can be read by many users
-- Avoids duplicating book metadata
-- Easier to share books between users
-- Cleaner data model
-
-**Implementation:**
-- `books` table: title, author, ISBN, cover, description (shared)
-- `userbooks` table: user_id, book_id, status, progress (personal)
-
-### 2. Reading Status Options
-**Decision:** Fixed set of statuses  
-**Options:**
-- `to-read` - Wishlist/planned *(mobile uses `to-read` not `want_to_read`)*
-- `reading` - Currently reading
-- `finished` - Finished *(mobile uses `finished` not `completed`)*
-
-**CRITICAL:** Backend and mobile use `to-read` / `reading` / `finished`. Only 3 values.
-Web may reference `want_to_read` / `completed` in some legacy code — use the 3 above.
-
-### 3. Google Books Integration
-**Decision:** Use Google Books API for search  
-**Why:**
-- Comprehensive book database
-- Free tier available
-- Rich metadata (covers, descriptions, ISBNs)
-- Reduces manual data entry
-
-**Implementation:**
-- Search endpoint proxies to Google Books
-- Parse and normalize response
-- Store selected books in local database
-
-### 4. Book Format Tracking
-**Decision:** Track physical, ebook, audiobook separately  
-**Why:**
-- Users often own multiple formats
-- Affects reading experience
-- Useful for collection statistics
-
-**Fields:**
-- `format` - physical/ebook/audiobook
-- `owns_physical`, `owns_ebook`, `owns_audiobook` booleans
-
-### 5. Progress Tracking
-**Decision:** Store page number and percentage  
-**Why:**
-- Page numbers for physical books
-- Percentage for ebooks/audiobooks
-- Both provide different insights
-
-**Fields:**
-- `current_page` - For physical books
-- `total_pages` - Total book length
-- Auto-calculate percentage when updated
+### Mobile
+| File | Purpose |
+|---|---|
+| `src/screens/LibraryScreen.js` | Book grid, status filter tabs, Add Book button in header tab row |
+| `src/screens/BookDetailScreen.js` | Optimistic status updates, unknown-pages TextInput modal, progress |
+| `src/screens/BookPreviewScreen.js` | Search result preview — "Add to Library" or "View in My Library" |
 
 ---
 
 ## API Endpoints
 
-### Books Catalog
-
-#### GET `/books/`
-List all books in catalog (paginated)
-
-#### GET `/books/{book_id}`
-Get specific book details
-
-#### POST `/books/`
-Add book to catalog (authenticated)
-```json
-{
-  "title": "string",
-  "author": "string",
-  "isbn": "string",
-  "cover_image": "url",
-  "description": "text"
-}
+### Books
+```
+POST /books/add-to-library    Add a Google Books result; dedupes by ISBN; fires book_added notification
+GET  /books/search            Search local catalog by title/author
+GET  /books/recommendations   Personalised recs (friends reading, friends loved, author affinity)
+GET  /books/{id}              Single book
 ```
 
-### User Books
-
-#### GET `/userbooks/`
-Get current user's reading list with status filter
+### User Library
 ```
-Query params: ?status=reading
-```
-
-#### POST `/userbooks/`
-Add book to user's library
-```json
-{
-  "book_id": 1,
-  "status": "want_to_read",
-  "format": "physical"
-}
+GET    /userbooks/                   All userbooks for current user (with embedded book data)
+POST   /userbooks/                   Add existing book_id to library
+GET    /userbooks/{id}               Single userbook
+PATCH  /userbooks/{id}               Update status/page/rating/format/ownership; accepts total_pages → updates Book
+DELETE /userbooks/{id}               Remove from library
+PUT    /userbooks/{id}/progress      Update current_page; auto-sets status; logs ReadingActivity
+POST   /userbooks/{id}/finish        Mark finished; fires book_completed notification
+GET    /userbooks/user/{userId}      Another user's library (respects is_private_profile)
+GET    /userbooks/friends/currently-reading  Books friends are reading (mutual follow highlighted)
 ```
 
-#### PUT `/userbooks/{userbook_id}`
-Update reading status or progress
-```json
-{
-  "status": "reading",
-  "current_page": 150,
-  "total_pages": 400
-}
+### Goodreads Import
 ```
-
-#### DELETE `/userbooks/{userbook_id}`
-Remove book from user's library
-
-### Google Books Search
-
-#### GET `/googlebooks/search?q={query}`
-Search Google Books API
-Returns: Array of book objects with metadata
-
----
-
-## Database Schema
-
-### books table
-```sql
-CREATE TABLE books (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    title TEXT NOT NULL,
-    author TEXT,
-    isbn TEXT UNIQUE,
-    cover_image TEXT,
-    description TEXT,
-    published_date TEXT,
-    page_count INTEGER,
-    google_books_id TEXT,
-    created_at TIMESTAMP,
-    updated_at TIMESTAMP
-);
-```
-
-### userbooks table
-```sql
-CREATE TABLE userbooks (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER NOT NULL,
-    book_id INTEGER NOT NULL,
-    status TEXT NOT NULL,
-    format TEXT,
-    current_page INTEGER,
-    total_pages INTEGER,
-    rating INTEGER,
-    started_at TIMESTAMP,
-    completed_at TIMESTAMP,
-    created_at TIMESTAMP,
-    updated_at TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id),
-    FOREIGN KEY (book_id) REFERENCES books(id),
-    UNIQUE(user_id, book_id)
-);
+POST /import/goodreads    Multipart CSV upload; maps Goodreads statuses to reading/to-read/finished
 ```
 
 ---
 
-## Common Workflows
+## Status Values
 
-### Adding a Book to Library
-1. User searches via Google Books
-2. Frontend displays results
-3. User selects book
-4. Check if book exists in local catalog (by ISBN)
-5. If not, create book entry
-6. Create userbook entry linking user to book
-7. Set initial status (e.g., want_to_read)
+Three values only — backend, mobile, and web must all use exactly these strings:
 
-### Updating Reading Progress
-1. User opens book detail
-2. Updates current page / percentage
-3. PUT to `/userbooks/{id}`
-4. Backend updates progress
-5. Auto-update status if reaching 100%
+| Value | Meaning |
+|---|---|
+| `to-read` | Want to read / Wishlist |
+| `reading` | Currently reading |
+| `finished` | Completed |
 
-### Filtering Library
-1. Frontend requests `/userbooks/?status=reading`
-2. Backend filters by status
-3. Joins with books table for metadata
-4. Returns enriched list
+Status auto-updates when progress is logged:
+- `current_page == 0` → `to-read`
+- `0 < current_page < total_pages` → `reading`
+- `current_page >= total_pages` → `finished` (fires `book_completed` notification)
 
 ---
 
-## Frontend State Management
+## Book Format Options
 
-### Library Page State
-```javascript
-const [books, setBooks] = useState([]);
-const [filter, setFilter] = useState('all');
-const [loading, setLoading] = useState(true);
+`format` field on `UserBook`:  
+`hardcover` · `paperback` · `ebook` · `kindle` · `pdf` · `audiobook`
+
+## Ownership Status Options
+
+`ownership_status` field on `UserBook`:  
+`owned` · `borrowed` · `loaned`
+
+When `borrowed`: `borrowed_from` (text, person's name) is set.  
+When `loaned`: `loaned_to` (text, person's name) is set.
+
+---
+
+## Progress & Reading Activity
+
+Every call to `PUT /userbooks/{id}/progress` with `new_page > old_page`:
+- Calculates `pages_read = new_page - old_page`
+- Upserts a `ReadingActivity` row for today (one row per userbook per day)
+- Auto-updates status
+- Fires `book_completed` + `book_finished` group activity if newly finished
+- Fires `milestone_reached` group activity at 25%, 50%, 75%
+
+---
+
+## Recommendations Logic (`GET /books/recommendations`)
+
+Three signals, in priority order:
+1. **Friends reading** (score 3) — books with `status=reading` from followed users; returns `friend_name`
+2. **Friends loved** (score 4) — books finished with `rating >= 4` from followed users; returns `friend_name`
+3. **Author affinity** (score 2) — other books by authors the user has read (up to 5 authors)
+
+Response includes `reason` (`friends_reading` | `friends_loved` | `author_affinity`) and `friend_name` (first name, or null).
+
+---
+
+## Web: BookDetailPage
+
+- Route: `/library/book/:userbookId`
+- Survives hard refresh: fetches full `GET /userbooks/` list and finds the matching entry by ID (no direct `GET /userbooks/{id}` needed on load)
+- Optimistic progress bar: updates UI immediately, reverts on API error
+
+## Mobile: BookDetailScreen
+
+- Optimistic status changes (immediate UI update, revert on error)
+- "Unknown pages" modal: uses `TextInput` inside a modal (NOT `Alert.prompt` — broken on Android)
+- Max-page validation: warns if `current_page > total_pages` before submitting
+- Absolute timestamps on notes (not relative)
+
+---
+
+## Add Book Flow
+
+Both platforms search Google Books via the app backend proxy:
+
+```
+GET /googlebooks/search?q={query}
+→ User taps result → BookPreviewScreen (mobile) / inline modal (web)
+→ POST /books/add-to-library  (dedupes by ISBN, creates Book if new, creates UserBook)
+→ Fires book_added notification to followers
 ```
 
-### Book Card Actions
-- View details → Open modal
-- Update status → Dropdown menu
-- Update progress → Progress bar click
-- Delete → Confirmation then API call
+Error on duplicate: `"This book is already in your library in the '{tab}' tab."`
 
 ---
 
-## Statistics & Analytics
+## Private Profile Enforcement
 
-### Reading Stats Calculated
-- Total books read
-- Currently reading count
-- Books by status
-- Average pages per book
-- Reading completion rate
-- Books read per month
-
-**Related:** See [../reading-stats/README.md](../reading-stats/README.md)
+`GET /userbooks/user/{userId}` enforces `is_private_profile`:
+- If target user is private and requester does not follow them → 403
 
 ---
 
-## Google Books API Integration
+## Amazon Affiliate Links
 
-### API Key Setup
-```bash
-# Environment variable
-GOOGLE_BOOKS_API_KEY=your_api_key_here
-```
-
-### Search Query Format
-```
-GET https://www.googleapis.com/books/v1/volumes?q={query}&key={api_key}
-```
-
-### Response Parsing
-Extract:
-- `volumeInfo.title`
-- `volumeInfo.authors[0]`
-- `volumeInfo.imageLinks.thumbnail`
-- `volumeInfo.description`
-- `volumeInfo.industryIdentifiers` (ISBN)
-
-### Rate Limits
-- Free tier: 1000 requests/day
-- Implement caching to reduce calls
-- Store frequently searched books locally
-
----
-
-## Future Enhancements
-
-### Short Term
-- [ ] Book series tracking
-- [ ] Reading goals (books per year)
-- [ ] Book recommendations based on library
-- [ ] Import from Goodreads CSV
-- [ ] Bulk status updates
-
-### Long Term
-- [ ] AI-powered book suggestions
-- [ ] Library sharing with friends
-- [ ] Reading challenges
-- [ ] Book club features
-- [ ] ISBN barcode scanner
-
----
-
-## Troubleshooting
-
-### Book duplicates in catalog
-- Check ISBN matching logic
-- Ensure unique constraint on ISBN
-- Normalize ISBN-10 vs ISBN-13
-
-### Google Books search not working
-- Verify API key is valid
-- Check rate limits
-- Ensure CORS proxy working
-- Test direct API call
-
-### Progress not updating
-- Verify userbook_id in request
-- Check user owns this book
-- Ensure total_pages is set
-- Validate current_page <= total_pages
-
----
-
-## Related Context
-
-- See [../PROJECT_CONTEXT.md](../PROJECT_CONTEXT.md) for database design
-- See [../reading-stats/README.md](../reading-stats/README.md) for analytics
-- See [../community/README.md](../community/README.md) for sharing books
+Shown on BookDetail for purchasing:
+- India (`.in` timezone): `amazon.in` with tag `trackmyread-21`
+- Global: `amazon.com` with tag `trackmyread-20`
+- Timezone detected via `Intl.DateTimeFormat().resolvedOptions().timeZone`
