@@ -48,12 +48,12 @@ function Avatar({ name, size = 40 }) {
 }
 
 const ACTIVITY_ICON = {
-  member_joined:      { name: 'person-add-outline',      color: colors.primary },
-  book_started:       { name: 'book-outline',            color: colors.tertiary },
-  book_finished:      { name: 'checkmark-circle-outline',color: colors.primary },
-  milestone_reached:  { name: 'flag-outline',            color: colors.secondary },
-  note_posted:        { name: 'pencil-outline',          color: colors.primary },
-  group_book_changed: { name: 'library-outline',         color: colors.primary },
+  member_joined:      { name: 'person-add-outline',      color: colors.primaryContainer,    bg: colors.primaryContainer + '22' },
+  book_started:       { name: 'book-outline',            color: colors.tertiary,            bg: colors.tertiaryContainer + '30' },
+  book_finished:      { name: 'checkmark-circle-outline',color: colors.onSecondaryContainer,bg: colors.secondaryContainer },
+  milestone_reached:  { name: 'flag-outline',            color: colors.onSecondaryContainer,bg: colors.secondaryContainer },
+  note_posted:        { name: 'pencil-outline',          color: colors.primary,             bg: colors.primary + '15' },
+  group_book_changed: { name: 'library-outline',         color: colors.primaryContainer,    bg: colors.primaryContainer + '22' },
 };
 
 function activityText(ev) {
@@ -503,8 +503,8 @@ export default function GroupDetailScreen({ route, navigation }) {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor={colors.primary} />
-      <View style={{ height: insets.top, backgroundColor: colors.primary }} />
+      <StatusBar barStyle="light-content" backgroundColor={colors.primaryContainer} />
+      <View style={{ height: insets.top, backgroundColor: colors.primaryContainer }} />
 
       <ScrollView
         ref={scrollRef}
@@ -650,9 +650,9 @@ export default function GroupDetailScreen({ route, navigation }) {
           ) : (
             activity.slice(0, 10).map(ev => (
               <View key={ev.id} style={styles.activityRow}>
-                {(() => { const cfg = ACTIVITY_ICON[ev.event_type] || { name: 'ellipse-outline', color: colors.outline };
+                {(() => { const cfg = ACTIVITY_ICON[ev.event_type] || { name: 'ellipse-outline', color: colors.outline, bg: colors.surfaceContainerHigh };
                   return (
-                    <View style={[styles.activityIcon, { backgroundColor: cfg.color + '18' }]}>
+                    <View style={[styles.activityIcon, { backgroundColor: cfg.bg || cfg.color + '18' }]}>
                       <Ionicons name={cfg.name} size={16} color={cfg.color} />
                     </View>
                   );
@@ -985,7 +985,7 @@ const styles = StyleSheet.create({
   leaveBtnText: { ...type.label, fontWeight: '600', color: colors.onPrimary },
 
   // Hero card
-  hero:          { backgroundColor: colors.primary, borderRadius: radius.lg, padding: 20, marginBottom: 14, ...shadow.card },
+  hero:          { backgroundColor: colors.primaryContainer, borderRadius: radius.lg, padding: 20, marginBottom: 14, ...shadow.card },
   heroEyebrow:   { ...type.eyebrow, color: 'rgba(255,255,255,0.65)', marginBottom: 6 },
   heroTitle:     { fontFamily: 'NotoSerif_700Bold', fontSize: 30, fontWeight: '700', color: colors.onPrimary, lineHeight: 36, marginBottom: 6 },
   heroDesc:      { ...type.body, color: 'rgba(255,255,255,0.75)', marginBottom: 12 },
@@ -1015,11 +1015,11 @@ const styles = StyleSheet.create({
   removeLink:        { fontSize: 12, color: colors.error, fontWeight: '600' },
 
   // Reading Goal
-  goalPages:    { fontFamily: 'NotoSerif_700Bold', fontSize: 36, fontWeight: '700', color: colors.primary, lineHeight: 42 },
+  goalPages:    { fontFamily: 'NotoSerif_700Bold', fontSize: 36, fontWeight: '700', color: colors.secondary, lineHeight: 42 },
   goalOf:       { ...type.bodySm, color: colors.onSurfaceVariant, marginBottom: 10 },
   goalTrack:    { height: 8, backgroundColor: colors.surfaceContainerHigh, borderRadius: 99, overflow: 'hidden', marginBottom: 6 },
-  goalFill:     { height: '100%', backgroundColor: colors.primary, borderRadius: 99 },
-  goalPct:      { fontSize: 12, color: colors.onSurfaceVariant, fontWeight: '600' },
+  goalFill:     { height: '100%', backgroundColor: colors.secondaryContainer, borderRadius: 99 },
+  goalPct:      { fontSize: 12, color: colors.secondary, fontWeight: '700' },
 
   // Invite
   inviteLinkRow:  { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surfaceContainerLow, borderRadius: radius.md, paddingHorizontal: 12, paddingVertical: 10, marginBottom: 10, gap: 10 },
@@ -1079,8 +1079,8 @@ const styles = StyleSheet.create({
   memberNameRow:  { flexDirection: 'row', alignItems: 'center', gap: 6 },
   memberName:     { ...type.body, fontFamily: 'Manrope_600SemiBold', fontWeight: '600', color: colors.onSurface },
   memberUsername: { ...type.caption, color: colors.onSurfaceVariant, marginTop: 1 },
-  curatorBadge:   { backgroundColor: colors.primary + '18', paddingHorizontal: 10, paddingVertical: 3, borderRadius: 999 },
-  curatorBadgeText: { ...type.caption, fontFamily: 'Manrope_700Bold', fontWeight: '700', color: colors.primary },
+  curatorBadge:   { backgroundColor: colors.tertiaryContainer, paddingHorizontal: 10, paddingVertical: 3, borderRadius: 999 },
+  curatorBadgeText: { ...type.caption, fontFamily: 'Manrope_700Bold', fontWeight: '700', color: colors.onTertiary },
   removeBtn:      { padding: 4 },
 
   avatar:     { backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
