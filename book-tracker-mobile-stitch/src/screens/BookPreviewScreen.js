@@ -69,7 +69,8 @@ export default function BookPreviewScreen({ route, navigation }) {
         total_pages: book.total_pages || null,
         status: selectedStatus,
       });
-      setMyUserbook(result);
+      // Normalize to same shape as getMyBooks() items: { id, book, status, ... }
+      setMyUserbook({ ...result.userbook, book: result.book });
       Alert.alert('Added!', selectedStatus === 'reading' ? 'Happy reading! 📖' : 'Added to your library.');
     } catch (e) {
       Alert.alert('Error', e?.response?.data?.detail || 'Could not add book');
