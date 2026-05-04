@@ -13,6 +13,9 @@ router = APIRouter(prefix="/follow", tags=["follow"])
 def follow_user(followed_id: int, db: Session = Depends(get_session), user = Depends(get_current_user)):
     if followed_id == user.id:
         raise HTTPException(status_code=400, detail="Cannot follow yourself")
+    target = db.exec(select(models.User).where(models.User.id == followed_id)).first()
+    if not target:
+        raise HTTPException(status_code=404, detail="User not found")
     existing = db.exec(
         select(models.Follow).where(
             models.Follow.follower_id == user.id,

@@ -17,7 +17,6 @@ class UserSearchResult(BaseModel):
     id: int
     name: Optional[str]
     username: Optional[str]
-    email: str
     bio: Optional[str]
     is_following: bool
     follows_you: bool
@@ -29,7 +28,6 @@ class FollowingUser(BaseModel):
     id: int
     name: Optional[str]
     username: Optional[str]
-    email: str
     bio: Optional[str]
     is_following: bool = True  # Always true in following list
     is_mutual: bool
@@ -101,7 +99,6 @@ def search_users(
             id=user.id,
             name=user.name,
             username=user.username,
-            email=user.email,
             bio=user.bio,
             is_following=is_following,
             follows_you=follows_you,
@@ -157,7 +154,6 @@ def get_following_list(
             id=user.id,
             name=user.name,
             username=user.username,
-            email=user.email,
             bio=user.bio,
             is_following=True,  # Always true in following list
             is_mutual=user.id in mutual_set,
@@ -195,7 +191,18 @@ def get_user_stats(
     user = db.get(models.User, user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    
+
+    # Enforce private profile — same guard as /profile/{user_id}
+    if getattr(user, "is_private_profile", False) and current_user.id != user_id:
+        is_following = bool(db.exec(
+            select(models.Follow).where(
+                models.Follow.follower_id == current_user.id,
+                models.Follow.followed_id == user_id
+            )
+        ).first())
+        if not is_following:
+            raise HTTPException(status_code=403, detail="This profile is private")
+
     # Get all user's books
     all_books = db.exec(
         select(models.UserBook)

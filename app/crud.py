@@ -132,8 +132,17 @@ def create_note(db: Session, *, user_id: int, text: Optional[str] = None,
 
 
 def get_notes_feed(db: Session, limit: int = 50) -> List[models.Note]:
-    # Return public notes most recent first
-    q = select(models.Note).where(models.Note.is_public == True).order_by(models.Note.created_at.desc()).limit(limit)
+    # Return public notes from non-private profiles, most recent first
+    q = (
+        select(models.Note)
+        .join(models.User, models.User.id == models.Note.user_id)
+        .where(
+            models.Note.is_public == True,
+            models.User.is_private_profile == False,
+        )
+        .order_by(models.Note.created_at.desc())
+        .limit(limit)
+    )
     return db.exec(q).all()
 
 

@@ -78,6 +78,10 @@ def unlike_note(
 class CommentCreate(BaseModel):
     text: str
 
+    def validate_text(self):
+        if not self.text or not self.text.strip():
+            raise ValueError("Comment text cannot be empty")
+
 
 @router.post("/{note_id}/comments", status_code=status.HTTP_201_CREATED)
 def create_comment(
@@ -87,6 +91,9 @@ def create_comment(
     current_user: models.User = Depends(get_current_user)
 ):
     """Add a comment to a note"""
+    if not payload.text or not payload.text.strip():
+        raise HTTPException(status_code=400, detail="Comment text cannot be empty")
+
     # Check if note exists
     note = db.get(models.Note, note_id)
     if not note:

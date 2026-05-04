@@ -310,6 +310,9 @@ def get_follow_relationships(
     return result
 
 
+_ALLOWED_ADMIN_EMAILS = {"ankitalkuhs@gmail.com"}
+
+
 @router.post("/set-admin/{user_id}")
 def set_admin_status(
     user_id: int,
@@ -319,17 +322,20 @@ def set_admin_status(
 ):
     """
     Set admin status for a user.
-    Requires admin access.
-    WARNING: Use with extreme caution!
+    Only allowed for pre-approved email addresses.
+    Requires existing admin access.
     """
     user = db.exec(select(models.User).where(models.User.id == user_id)).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    
+
+    if is_admin and user.email not in _ALLOWED_ADMIN_EMAILS:
+        raise HTTPException(status_code=403, detail="This account is not permitted to hold admin access")
+
     user.is_admin = is_admin
     db.add(user)
     db.commit()
-    
+
     return {
         "message": f"Admin status {'granted' if is_admin else 'revoked'} for user {user.email}",
         "user_id": user_id,

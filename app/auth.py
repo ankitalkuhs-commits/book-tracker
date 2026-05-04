@@ -1,5 +1,6 @@
 # app/auth.py
 import hashlib
+import os
 from passlib.context import CryptContext
 from jose import JWTError, jwt
 from datetime import datetime, timedelta
@@ -7,12 +8,13 @@ from typing import Optional
 
 
 # -----------------------
-#  Configuration - change for production
+#  Configuration
 # -----------------------
-# For now keep a simple secret. In real projects read from environment variables.
-SECRET_KEY = "change-this-secret-to-a-long-random-string"
+SECRET_KEY = os.getenv("SECRET_KEY")
+if not SECRET_KEY:
+    raise RuntimeError("SECRET_KEY environment variable must be set")
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7  # 7 days
+ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 30  # 30 days
 
 
 # -----------------------

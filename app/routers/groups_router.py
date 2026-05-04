@@ -813,6 +813,14 @@ def create_group_post(
 ):
     if not _is_member(db, group_id, me.id):
         raise HTTPException(status_code=403, detail="Members only")
+
+    # Verify userbook belongs to the requesting user (if provided)
+    if body.userbook_id is not None:
+        from ..models import UserBook
+        ub = db.get(UserBook, body.userbook_id)
+        if not ub or ub.user_id != me.id:
+            raise HTTPException(status_code=403, detail="Invalid userbook_id")
+
     p = models.GroupPost(
         group_id=group_id, user_id=me.id,
         text=body.text, quote=body.quote,
