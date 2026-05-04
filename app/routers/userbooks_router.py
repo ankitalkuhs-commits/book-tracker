@@ -131,7 +131,13 @@ def update_progress(userbook_id: int, data: UserBookProgress, db: Session = Depe
                 )
                 break  # only fire the highest crossed milestone
 
-    return userbook
+    return {
+        "id": userbook.id,
+        "status": userbook.status,
+        "current_page": userbook.current_page,
+        "rating": userbook.rating,
+        "updated_at": userbook.updated_at,
+    }
 
 @router.post("/{userbook_id}/finish", status_code=200)
 def mark_userbook_finished(userbook_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):

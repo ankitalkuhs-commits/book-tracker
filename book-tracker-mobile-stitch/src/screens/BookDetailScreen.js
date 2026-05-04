@@ -149,14 +149,15 @@ export default function BookDetailScreen({ route, navigation }) {
     setSavingProgress(true);
     try {
       const updated = await userbooksAPI.updateProgress(ub.id, { current_page: page });
-      setUb(prev => ({ ...prev, ...updated, current_page: page }));
+      // Only merge the fields the progress endpoint actually updates
+      setUb(prev => ({ ...prev, status: updated.status, current_page: updated.current_page ?? page }));
     } catch (e) { Alert.alert('Error', e?.response?.data?.detail || 'Could not save progress'); }
     setSavingProgress(false);
   };
 
   const handleRating = async (stars) => {
     setRating(stars);
-    try { await userbooksAPI.updateProgress(ub.id, { rating: stars }); }
+    try { await userbooksAPI.patchUserbook(ub.id, { rating: stars }); }
     catch { setRating(rating); }
   };
 
