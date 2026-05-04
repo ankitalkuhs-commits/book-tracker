@@ -17,6 +17,7 @@ class AddBookFromGooglePayload(BaseModel):
     title: str
     author: Optional[str] = None
     isbn: Optional[str] = None
+    google_books_id: Optional[str] = None
     cover_url: Optional[str] = None
     description: Optional[str] = None
     total_pages: Optional[int] = None
@@ -44,17 +45,20 @@ def add_book_to_library(
     - Returns error if book already in user's library
     """
     book = None
-    
-    # Step 1: Check if book already exists in Book table by ISBN
-    if payload.isbn:
+
+    # Step 1: Check if book already exists by google_books_id, then isbn
+    if payload.google_books_id:
+        book = db.exec(select(Book).where(Book.google_books_id == payload.google_books_id)).first()
+    if not book and payload.isbn:
         book = db.exec(select(Book).where(Book.isbn == payload.isbn)).first()
-    
+
     # Step 2: If book doesn't exist, create it
     if not book:
         book = Book(
             title=payload.title,
             author=payload.author or "Unknown Author",
             isbn=payload.isbn,
+            google_books_id=payload.google_books_id,
             cover_url=payload.cover_url,
             description=payload.description,
             total_pages=payload.total_pages,
@@ -117,20 +121,27 @@ def add_book_to_library(
         extra={"book_title": book.title},
     )
 
+    # Return the same flat shape as GET /userbooks/ items so clients need no normalization
     return {
-        "message": "Book added to your library successfully",
+        "id": userbook.id,
+        "user_id": userbook.user_id,
+        "book_id": userbook.book_id,
+        "status": userbook.status,
+        "current_page": userbook.current_page,
+        "rating": userbook.rating,
+        "format": userbook.format,
+        "ownership_status": userbook.ownership_status,
+        "created_at": userbook.created_at,
+        "updated_at": userbook.updated_at,
         "book": {
             "id": book.id,
             "title": book.title,
             "author": book.author,
-            "cover_url": book.cover_url,
+            "description": book.description,
             "total_pages": book.total_pages,
+            "cover_url": book.cover_url,
+            "google_books_id": book.google_books_id,
         },
-        "userbook": {
-            "id": userbook.id,
-            "status": userbook.status,
-            "current_page": userbook.current_page,
-        }
     }
 
 
