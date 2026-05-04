@@ -14,7 +14,7 @@
 | **Backend** | FastAPI (Python) → `https://book-tracker-stitch.onrender.com` |
 | **Database** | PostgreSQL on Supabase (prod) / SQLite (local dev) |
 | **Branch** | Everything on `master` — `stitch-experiment` was deleted |
-| **Version** | 1.1.0 (versionCode 44, AAB submitted to Play Store) |
+| **Version** | 2.1.1 (versionCode 55) |
 
 ---
 
@@ -107,6 +107,30 @@ The correct key names (backend + frontend must match):
 
 ## Recently Shipped (May 4, 2026)
 
+### API Response Shape Audit + Bug Fixes
+
+**Critical bugs fixed:**
+
+1. **Rating corrupted book status** — `handleRating` was calling `PUT /userbooks/{id}/progress` with `{ rating }`. `UserBookProgress` only accepts `current_page`, so the backend received `current_page=0`, set `status="to-read"`, and reset the page counter. Every rating on a finished book silently corrupted it in the DB. Fixed: `handleRating` now uses `PATCH /userbooks/{id}`.
+
+2. **`POST /books/add-to-library` response shape mismatch** — Returned `{ message, book, userbook }` but `BookPreviewScreen` stored the whole object as `myUserbook`. Navigating to `BookDetailScreen` gave `ub.id = undefined` → `PATCH /userbooks/undefined 422`. Fixed: endpoint now returns the same flat `{ id, status, book: {...}, ... }` shape as `GET /userbooks/`.
+
+3. **`google_books_id` missing from all userbook responses** — `GET /userbooks/`, `GET /userbooks/{id}`, `GET /userbooks/user/{id}` all omitted `google_books_id` from the nested `book` object, so `BookPreviewScreen`'s duplicate detection via `google_books_id` never fired. Fixed.
+
+4. **`PATCH /userbooks/{id}` returned raw SQLModel** — Returned `{ status: "ok", userbook: <raw_model> }` requiring fragile `result?.userbook || result` fallback on client. Fixed: now returns flat `{ id, status, current_page, rating, updated_at, book_total_pages }`.
+
+**GOTCHA — API response shape consistency:**
+- All userbook-returning endpoints must include `google_books_id` in the nested `book` object
+- `POST /books/add-to-library` must match the shape of `GET /userbooks/` items
+- `PUT /progress` and `PATCH /{id}` return minimal dicts — never raw SQLModel objects
+- `handleRating` uses `patchUserbook` (PATCH), `handleSaveProgress` uses `updateProgress` (PUT)
+
+### Test Suite + Security Fixes (also May 4)
+
+- **115 API tests** — all passing (conftest.py, test_auth, test_books, test_notes, test_follow_profile, test_groups, test_admin, test_reading_activity, test_import)
+- **Security fixes**: JWT secret from env var; private profile enforcement on stats/feed endpoints; admin email allowlist; `getMyBooks()` feed filters private profiles; group posts validate `userbook_id` ownership; follow 404 on unknown user; empty comment → 400
+- **BookPreviewScreen crash** — root cause traced from Render logs (`PATCH /userbooks/undefined`); fixed by standardizing `add-to-library` response shape
+
 ### User Profile Parity (Web + Mobile)
 - **Backend `GET /profile/{id}`** — now returns `follows_you` (for Follow Back label) and `yearly_goal`
 - **Web UserProfilePage** — added: Follow Back button label, "Follows you" hint, yearly goal progress bar, Currently Reading section with progress bars, interactive like/unlike on note cards
@@ -176,9 +200,10 @@ The correct key names (backend + frontend must match):
 **MEDIUM:**
 2. Web `/search` route still exists but removed from Nav — decide: keep or delete route
 3. Onboarding "Add a Book" step (mobile) — verify book search + add flow end-to-end after tour changes
+4. Users who rated books before May 4, 2026 may have had their book status reset to "to-read" — consider a DB repair script to restore finished status for affected userbooks
 
 **LOW:**
-4. `broadcast_push_notification` in admin_router.py uses old `send_push_to_many` — breaks for web push users on admin broadcasts
+5. `broadcast_push_notification` in admin_router.py uses old `send_push_to_many` — breaks for web push users on admin broadcasts
 
 ---
 
