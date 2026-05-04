@@ -303,7 +303,8 @@ def list_userbooks(
                 "description": book.description,
                 "total_pages": book.total_pages,
                 "cover_url": normalize_google_cover_url(book.cover_url),
-                "pages_source": getattr(book, "pages_source", None)
+                "pages_source": getattr(book, "pages_source", None),
+                "google_books_id": book.google_books_id,
             } if book else None
         })
     return results
@@ -341,6 +342,7 @@ def get_userbook(
             "total_pages": book.total_pages,
             "cover_url": normalize_google_cover_url(book.cover_url),
             "pages_source": getattr(book, "pages_source", None),
+            "google_books_id": book.google_books_id,
         } if book else None,
     }
 
@@ -397,7 +399,14 @@ def patch_userbook(userbook_id: int, payload: dict, db: Session = Depends(get_db
             {"book_title": book_title, "book_id": ub.book_id},
         )
 
-    return {"status": "ok", "userbook": ub, "book_total_pages": book.total_pages if book else None}
+    return {
+        "id": ub.id,
+        "status": ub.status,
+        "current_page": ub.current_page,
+        "rating": ub.rating,
+        "updated_at": ub.updated_at,
+        "book_total_pages": book.total_pages if book else None,
+    }
 
 
 @router.delete("/{userbook_id}", status_code=status.HTTP_200_OK)
@@ -469,6 +478,7 @@ def get_user_books(
                 "total_pages": book.total_pages,
                 "cover_url": normalize_google_cover_url(book.cover_url),
                 "page_count": getattr(book, "page_count", None),
+                "google_books_id": book.google_books_id,
             } if book else None
         })
     return results

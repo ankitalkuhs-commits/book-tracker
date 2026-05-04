@@ -97,11 +97,13 @@ export default function BookDetailScreen({ route, navigation }) {
       const payload = { status: newStatus, current_page: newPage };
       if (newTotalPages) payload.total_pages = newTotalPages;
       const result = await userbooksAPI.patchUserbook(ub.id, payload);
-      const serverUb = result?.userbook || result;
-      const serverTotal = result?.book_total_pages;
       setUb(prev => ({
-        ...prev, ...serverUb, status: newStatus, current_page: newPage,
-        book: { ...prev.book, ...(serverTotal ? { total_pages: serverTotal } : {}) },
+        ...prev,
+        status: result.status ?? newStatus,
+        current_page: result.current_page ?? newPage,
+        book: result.book_total_pages
+          ? { ...prev.book, total_pages: result.book_total_pages }
+          : prev.book,
       }));
     } catch (e) {
       setUb(prev => ({ ...prev, status: prevStatus, current_page: prevPage }));
