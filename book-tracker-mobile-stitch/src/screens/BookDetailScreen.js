@@ -44,7 +44,7 @@ function StarRating({ value = 0, onChange }) {
           <Ionicons
             name={star <= value ? 'star' : 'star-outline'}
             size={24}
-            color={star <= value ? colors.secondary : colors.outlineVariant}
+            color={star <= value ? colors.secondaryContainer : colors.outlineVariant}
           />
         </TouchableOpacity>
       ))}

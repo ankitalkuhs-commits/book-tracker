@@ -32,14 +32,14 @@ export default function AppHeader({ user, onBellPress, onAvatarPress }) {
 
   return (
     <>
-      <StatusBar barStyle="dark-content" backgroundColor={colors.surfaceContainerLowest} />
+      <StatusBar barStyle="light-content" backgroundColor={colors.primaryContainer} />
       <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
         <Text style={styles.logo}>TrackMyRead</Text>
 
         <View style={styles.actions}>
           {/* Bell */}
           <TouchableOpacity onPress={onBellPress} activeOpacity={0.7} style={styles.iconBtn}>
-            <Ionicons name="notifications-outline" size={24} color={colors.onSurface} />
+            <Ionicons name="notifications-outline" size={24} color={badgeCount ? '#ffffff' : colors.onPrimaryContainer} />
             {badgeCount && (
               <View style={styles.badge}>
                 <Text style={styles.badgeText}>{badgeCount}</Text>
@@ -70,20 +70,19 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingBottom: 12,
-    backgroundColor: colors.surfaceContainerLowest,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.outlineVariant + '40',
+    backgroundColor: colors.primaryContainer,
+    borderBottomWidth: 0,
     // stronger shadow for the scroll-behind fade effect
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
+    shadowOpacity: 0.18,
     shadowRadius: 6,
     elevation: 4,
     zIndex: 10,
   },
   logo: {
     ...type.titleLg,
-    color: colors.primary,
+    color: '#ffffff',
     letterSpacing: -0.3,
   },
   actions: {
@@ -122,6 +121,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: colors.onPrimaryContainer + '55',
   },
   avatarImg: {
     width: 36,

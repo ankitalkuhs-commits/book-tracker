@@ -121,15 +121,15 @@ function BarChart({ data, height = 100, barColor = colors.primary, highlightColo
 }
 
 // ── Stat card ─────────────────────────────────────────────────────────────────
-function StatCard({ label, value, sub, icon, accent, wide }) {
+function StatCard({ label, value, sub, icon, accent, secondAccent, wide }) {
   return (
-    <View style={[styles.statCard, accent && styles.statCardAccent, wide && styles.statCardWide]}>
+    <View style={[styles.statCard, accent && styles.statCardAccent, secondAccent && styles.statCardSecondAccent, wide && styles.statCardWide]}>
       <View style={styles.statCardTop}>
-        <Text style={[styles.statLabel, accent && styles.statLabelAccent]}>{label.toUpperCase()}</Text>
-        <Ionicons name={icon} size={16} color={accent ? colors.onPrimary + 'aa' : colors.onSurfaceVariant} />
+        <Text style={[styles.statLabel, accent && styles.statLabelAccent, secondAccent && styles.statLabelSecondAccent]}>{label.toUpperCase()}</Text>
+        <Ionicons name={icon} size={16} color={accent ? colors.onPrimary + 'aa' : secondAccent ? colors.onSecondaryContainer + 'aa' : colors.onSurfaceVariant} />
       </View>
-      <Text style={[styles.statValue, accent && styles.statValueAccent]}>{value ?? '—'}</Text>
-      {sub ? <Text style={[styles.statSub, accent && styles.statSubAccent]}>{sub}</Text> : null}
+      <Text style={[styles.statValue, accent && styles.statValueAccent, secondAccent && styles.statValueSecondAccent]}>{value ?? '—'}</Text>
+      {sub ? <Text style={[styles.statSub, accent && styles.statSubAccent, secondAccent && styles.statSubSecondAccent]}>{sub}</Text> : null}
     </View>
   );
 }
@@ -233,6 +233,7 @@ export default function InsightsScreen({ navigation }) {
             value={avgRating ? avgRating.toFixed(1) : '—'}
             sub={!avgRating ? 'rate your finished books' : undefined}
             icon="star-outline"
+            secondAccent
           />
         </View>
 
@@ -290,7 +291,7 @@ export default function InsightsScreen({ navigation }) {
               </View>
             </View>
             <View style={styles.goalBody}>
-              <GoalRing pct={goalPct} size={90} stroke={10} color={onTrack ? colors.primary : colors.secondary}>
+              <GoalRing pct={goalPct} size={90} stroke={10} color={onTrack ? colors.primary : colors.secondaryContainer}>
                 <Text style={{ fontSize: 15, fontWeight: '800', color: colors.onSurface }}>{goalPct}%</Text>
               </GoalRing>
               <View style={styles.goalText}>
@@ -400,15 +401,19 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surfaceContainerLowest,
     borderRadius: radius.lg, padding: 14, ...shadow.card,
   },
-  statCardAccent: { backgroundColor: colors.primary },
-  statCardWide:   { flex: undefined },
+  statCardAccent:       { backgroundColor: colors.primary },
+  statCardSecondAccent: { backgroundColor: colors.secondaryContainer },
+  statCardWide:         { flex: undefined },
   statCardTop:    { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
   statValue:      { fontFamily: 'NotoSerif_700Bold', fontSize: 24, fontWeight: '700', color: colors.onSurface, lineHeight: 28 },
-  statValueAccent:{ color: colors.onPrimary },
-  statLabel:      { ...type.eyebrow, color: colors.onSurfaceVariant },
-  statLabelAccent:{ color: colors.onPrimary + 'cc' },
-  statSub:        { ...type.caption, color: colors.onSurfaceVariant, marginTop: 3 },
-  statSubAccent:  { color: colors.onPrimary + 'aa' },
+  statValueAccent:       { color: colors.onPrimary },
+  statValueSecondAccent: { color: colors.onSecondaryContainer },
+  statLabel:             { ...type.eyebrow, color: colors.onSurfaceVariant },
+  statLabelAccent:       { color: colors.onPrimary + 'cc' },
+  statLabelSecondAccent: { color: colors.onSecondaryContainer + 'cc' },
+  statSub:               { ...type.caption, color: colors.onSurfaceVariant, marginTop: 3 },
+  statSubAccent:         { color: colors.onPrimary + 'aa' },
+  statSubSecondAccent:   { color: colors.onSecondaryContainer + 'aa' },
 
   card:         { backgroundColor: colors.surfaceContainerLowest, borderRadius: radius.lg, padding: 16, ...shadow.card },
   cardEyebrow:  { ...type.eyebrow, color: colors.secondary, marginBottom: 10 },

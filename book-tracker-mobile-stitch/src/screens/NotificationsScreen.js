@@ -19,26 +19,26 @@ function timeAgo(dateStr) {
 }
 
 const EVENT_CONFIG = {
-  new_follower:            { icon: 'person-add',       color: colors.primary,          navTarget: 'user' },
-  follow:                  { icon: 'person-add',       color: colors.primary,          navTarget: 'user' },
-  post_liked:              { icon: 'heart',            color: '#e53935',               navTarget: 'feed' },
-  like:                    { icon: 'heart',            color: '#e53935',               navTarget: 'feed' },
-  post_commented:          { icon: 'chatbubble',       color: colors.secondary,        navTarget: 'feed' },
-  comment:                 { icon: 'chatbubble',       color: colors.secondary,        navTarget: 'feed' },
-  book_added:              { icon: 'book',             color: colors.tertiary,         navTarget: 'feed' },
-  book_completed:          { icon: 'checkmark-circle', color: colors.primary,          navTarget: 'feed' },
-  book_finished:           { icon: 'checkmark-circle', color: colors.primary,          navTarget: 'feed' },
-  reading_streak_reminder: { icon: 'flame',            color: '#f57c00',               navTarget: 'insights' },
-  group_invite:            { icon: 'people',           color: colors.secondary,        navTarget: 'group' },
-  group_join_request:      { icon: 'person-add',       color: colors.secondary,        navTarget: 'group' },
-  milestone:               { icon: 'flag',             color: colors.secondary,        navTarget: null },
-  default:                 { icon: 'notifications',    color: colors.onSurfaceVariant, navTarget: null },
+  new_follower:            { icon: 'person-add',       color: colors.primaryContainer,  bgColor: colors.primaryContainer + '22', navTarget: 'user' },
+  follow:                  { icon: 'person-add',       color: colors.primaryContainer,  bgColor: colors.primaryContainer + '22', navTarget: 'user' },
+  post_liked:              { icon: 'heart',            color: colors.error,             bgColor: colors.errorContainer,          navTarget: 'feed' },
+  like:                    { icon: 'heart',            color: colors.error,             bgColor: colors.errorContainer,          navTarget: 'feed' },
+  post_commented:          { icon: 'chatbubble',       color: colors.error,             bgColor: colors.errorContainer,          navTarget: 'feed' },
+  comment:                 { icon: 'chatbubble',       color: colors.error,             bgColor: colors.errorContainer,          navTarget: 'feed' },
+  book_added:              { icon: 'book',             color: colors.tertiary,          bgColor: colors.tertiaryContainer + '44', navTarget: 'feed' },
+  book_completed:          { icon: 'checkmark-circle', color: colors.onSecondaryContainer, bgColor: colors.secondaryContainer,   navTarget: 'feed' },
+  book_finished:           { icon: 'checkmark-circle', color: colors.onSecondaryContainer, bgColor: colors.secondaryContainer,   navTarget: 'feed' },
+  reading_streak_reminder: { icon: 'flame',            color: colors.onSecondaryContainer, bgColor: colors.secondaryContainer,   navTarget: 'insights' },
+  group_invite:            { icon: 'people',           color: colors.primaryContainer,  bgColor: colors.primaryContainer + '22', navTarget: 'group' },
+  group_join_request:      { icon: 'person-add',       color: colors.primaryContainer,  bgColor: colors.primaryContainer + '22', navTarget: 'group' },
+  milestone:               { icon: 'flag',             color: colors.onSecondaryContainer, bgColor: colors.secondaryContainer,   navTarget: null },
+  default:                 { icon: 'notifications',    color: colors.onSurfaceVariant,  bgColor: colors.surfaceContainerHigh,    navTarget: null },
 };
 
 function NotifIcon({ eventType }) {
   const cfg = EVENT_CONFIG[eventType] || EVENT_CONFIG.default;
   return (
-    <View style={[styles.iconWrap, { backgroundColor: cfg.color + '18' }]}>
+    <View style={[styles.iconWrap, { backgroundColor: cfg.bgColor }]}>
       <Ionicons name={cfg.icon} size={20} color={cfg.color} />
     </View>
   );
