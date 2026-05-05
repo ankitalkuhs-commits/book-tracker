@@ -600,6 +600,12 @@ export default function SettingsScreen({ navigation, onLogout }) {
             </Text>
             <Text style={styles.buildText}>Build #{BUILD_NUMBER} · {BUILD_DATE}</Text>
           </View>
+          <View style={styles.rowSep} />
+          <Row icon="information-circle-outline" label="About TrackMyRead" onPress={() => Linking.openURL('https://www.trackmyread.com/about')} />
+          <View style={styles.rowSep} />
+          <Row icon="shield-checkmark-outline" label="Privacy Policy" onPress={() => Linking.openURL('https://www.trackmyread.com/privacy')} />
+          <View style={styles.rowSep} />
+          <Row icon="document-text-outline" label="Terms of Service" onPress={() => Linking.openURL('https://www.trackmyread.com/terms')} />
         </View>
 
         <View style={{ height: 40 }} />

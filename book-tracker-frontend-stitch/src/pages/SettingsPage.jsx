@@ -821,6 +821,11 @@ export default function SettingsPage() {
         <p className="text-sm text-on-surface-variant leading-relaxed">
           TrackMyRead — your social reading companion. Log progress, share highlights, and discover your next favorite read.
         </p>
+        <div className="flex flex-wrap gap-4 pt-1">
+          <a href="/about" className="text-sm font-semibold text-primary hover:underline">About →</a>
+          <a href="/privacy" className="text-sm font-semibold text-primary hover:underline">Privacy Policy →</a>
+          <a href="/terms" className="text-sm font-semibold text-primary hover:underline">Terms of Service →</a>
+        </div>
       </section>
     </main>
   )
