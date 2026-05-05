@@ -71,8 +71,8 @@ export default function PrivacyPage() {
           <p className="text-sm text-on-surface-variant leading-relaxed">
             For privacy questions or data requests, contact us at:
           </p>
-          <a href="mailto:hello@trackmyread.com" className="text-sm font-semibold text-primary hover:underline">
-            hello@trackmyread.com
+          <a href="mailto:trackmyread.dev@gmail.com" className="text-sm font-semibold text-primary hover:underline">
+            trackmyread.dev@gmail.com
           </a>
         </section>
       </div>

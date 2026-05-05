@@ -74,8 +74,8 @@ export default function TermsPage() {
 
         <section className="bg-surface-container-lowest rounded-3xl p-6 space-y-3">
           <h2 className="font-sans text-base font-bold text-on-surface uppercase tracking-wider">Contact</h2>
-          <a href="mailto:hello@trackmyread.com" className="text-sm font-semibold text-primary hover:underline">
-            hello@trackmyread.com
+          <a href="mailto:trackmyread.dev@gmail.com" className="text-sm font-semibold text-primary hover:underline">
+            trackmyread.dev@gmail.com
           </a>
         </section>
       </div>

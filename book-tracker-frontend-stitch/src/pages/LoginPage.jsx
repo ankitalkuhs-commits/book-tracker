@@ -144,9 +144,13 @@ export default function LoginPage() {
         <div className="flex flex-col md:flex-row justify-between items-center px-8 md:px-12 max-w-screen-2xl mx-auto gap-3 md:gap-0">
           <span className="font-serif italic text-primary">TrackMyRead</span>
           <nav className="flex gap-6">
-            {['About', 'Privacy', 'Terms'].map((link) => (
-              <a key={link} href="#" className="text-on-surface/40 hover:text-primary transition-colors">
-                {link}
+            {[
+              { label: 'About',   href: '/about'   },
+              { label: 'Privacy', href: '/privacy' },
+              { label: 'Terms',   href: '/terms'   },
+            ].map(({ label, href }) => (
+              <a key={label} href={href} className="text-on-surface/40 hover:text-primary transition-colors">
+                {label}
               </a>
             ))}
           </nav>

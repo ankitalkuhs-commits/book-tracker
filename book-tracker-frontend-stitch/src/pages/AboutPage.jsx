@@ -51,10 +51,10 @@ export default function AboutPage() {
             Have a question, found a bug, or want to suggest a feature?
           </p>
           <a
-            href="mailto:hello@trackmyread.com"
+            href="mailto:trackmyread.dev@gmail.com"
             className="inline-block text-sm font-semibold text-primary hover:underline"
           >
-            hello@trackmyread.com
+            trackmyread.dev@gmail.com
           </a>
         </section>
 
