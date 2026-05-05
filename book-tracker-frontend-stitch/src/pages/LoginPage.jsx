@@ -20,7 +20,7 @@ export default function LoginPage() {
       login(data.user)
       navigate('/home')   // tour auto-starts on /home if ONBOARDING_KEY absent
     } catch (err) {
-      console.error('Google login failed:', err)
+      if (import.meta.env.DEV) console.warn('Google login failed:', err?.message)
       alert('Sign in failed. Please try again.')
       setSigningIn(false)
     }

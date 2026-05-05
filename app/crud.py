@@ -151,6 +151,6 @@ def get_note_by_id(db: Session, note_id: int) -> Optional[models.Note]:
     return db.exec(select(models.Note).where(models.Note.id == note_id)).first()
 
 
-def get_notes_for_user(db: Session, user_id: int) -> List[models.Note]:
-    q = select(models.Note).where(models.Note.user_id == user_id).order_by(models.Note.created_at.desc())
+def get_notes_for_user(db: Session, user_id: int, limit: int = 50) -> List[models.Note]:
+    q = select(models.Note).where(models.Note.user_id == user_id).order_by(models.Note.created_at.desc()).limit(limit)
     return db.exec(q).all()

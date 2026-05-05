@@ -290,7 +290,7 @@ def discover_groups(
     me: models.User = Depends(get_current_user),
 ):
     """Public groups the user has not joined, optionally filtered by name."""
-    groups = db.exec(select(models.ReadingGroup).where(models.ReadingGroup.is_private == False)).all()
+    groups = db.exec(select(models.ReadingGroup).where(models.ReadingGroup.is_private == False).limit(200)).all()
     if not groups:
         return []
 
@@ -553,7 +553,9 @@ def get_members(
     db: Session = Depends(get_db),
     me: models.User = Depends(get_current_user),
 ):
-    _group_or_404(db, group_id)
+    g = _group_or_404(db, group_id)
+    if g.is_private and not _is_member(db, group_id, me.id):
+        raise HTTPException(status_code=403, detail="This is a private group")
     members = db.exec(
         select(models.GroupMember).where(
             models.GroupMember.group_id == group_id,
@@ -963,6 +965,8 @@ def get_goal_progress(
     me: models.User = Depends(get_current_user),
 ):
     g = _group_or_404(db, group_id)
+    if g.is_private and not _is_member(db, group_id, me.id):
+        raise HTTPException(status_code=403, detail="This is a private group")
     if not g.goal_pages:
         return {"goal_pages": None, "pages_read": 0, "pct": 0}
 

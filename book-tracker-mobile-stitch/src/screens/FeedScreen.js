@@ -103,7 +103,7 @@ const FeedScreen = ({ navigation }) => {
     try {
       const results = await userAPI.searchUsers(searchQuery);
       setSearchResults(results || []);
-    } catch (error) { console.error('Search error:', error); }
+    } catch { /* silent — search errors show in empty state */ }
     finally { setSearching(false); }
   };
 

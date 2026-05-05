@@ -80,7 +80,7 @@ function PushPermissionBanner() {
       await webSubscribe(subscription.toJSON(), navigator.userAgent.slice(0, 120))
       setStatus('granted')
     } catch (e) {
-      console.error('Push subscription failed:', e)
+      if (import.meta.env.DEV) console.warn('Push subscription failed:', e?.message)
       setStatus(Notification.permission)
     }
     setEnabling(false)

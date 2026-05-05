@@ -296,9 +296,9 @@ def get_feed(limit: int = 50, db: Session = Depends(get_db), current_user: Optio
 
 
 @router.get("/me", status_code=status.HTTP_200_OK, response_model=List[NoteOutSchema])
-def get_my_notes(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+def get_my_notes(limit: int = 50, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     from sqlmodel import select, func
-    notes = crud.get_notes_for_user(db, user_id=current_user.id)
+    notes = crud.get_notes_for_user(db, user_id=current_user.id, limit=limit)
     if not notes:
         return []
     note_ids = [n.id for n in notes]
@@ -418,6 +418,7 @@ def get_notes_for_userbook(
         select(models.Note)
         .where(models.Note.userbook_id == userbook_id)
         .order_by(models.Note.created_at.desc())
+        .limit(100)
     ).all()
     
     out = []

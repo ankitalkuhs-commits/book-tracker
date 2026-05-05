@@ -294,7 +294,7 @@ export default function GroupDetailScreen({ route, navigation }) {
     );
   };
 
-  const safe = (fn, label) => Promise.resolve(fn).catch(e => { console.warn(`[Group] ${label || '?'} failed:`, e?.response?.data || e?.message); return null; });
+  const safe = (fn, label) => Promise.resolve(fn).catch(e => { if (__DEV__) console.warn(`[Group] ${label || '?'} failed:`, e?.message); return null; });
 
   const load = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);

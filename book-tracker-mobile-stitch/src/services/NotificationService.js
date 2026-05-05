@@ -76,9 +76,9 @@ export async function registerExpoPushToken(authToken) {
     }
 
     lastRegisteredExpoToken = expoPushToken;
-    console.log('[Push] Token registered successfully');
+    if (__DEV__) console.log('[Push] Token registered successfully');
   } catch (err) {
-    console.warn('[Push] Error registering push token:', err);
+    if (__DEV__) console.warn('[Push] Error registering push token:', err?.message);
   } finally {
     registrationInProgress = false;
   }
@@ -97,6 +97,6 @@ export async function deregisterPushToken(authToken) {
 
     if (!response.ok) console.warn('[Push] Backend deregistration failed:', response.status);
   } catch (err) {
-    console.warn('[Push] Error deregistering push token:', err);
+    if (__DEV__) console.warn('[Push] Error deregistering push token:', err?.message);
   }
 }

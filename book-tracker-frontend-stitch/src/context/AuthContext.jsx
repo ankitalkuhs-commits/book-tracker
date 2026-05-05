@@ -27,7 +27,7 @@ async function registerWebPush() {
       await webSubscribe(sub.toJSON());
     }
   } catch (err) {
-    console.warn('Web push registration failed:', err);
+    if (import.meta.env.DEV) console.warn('Web push registration failed:', err?.message);
   }
 }
 
