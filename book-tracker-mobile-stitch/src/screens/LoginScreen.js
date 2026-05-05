@@ -18,9 +18,9 @@ const QUOTE_AUTH  = '— George R.R. Martin';
 const WEB_CLIENT_ID = '580873034102-ukh12uuph4c17eqvvbjl1a48alrfepok.apps.googleusercontent.com';
 
 const TRUST_AVATARS = [
-  { initials: 'A', bg: colors.surfaceContainerHighest },
-  { initials: 'B', bg: colors.surfaceContainerHighest },
-  { initials: 'C', bg: colors.surfaceContainerHighest },
+  { uri: 'https://i.pravatar.cc/56?img=47' },
+  { uri: 'https://i.pravatar.cc/56?img=12' },
+  { uri: 'https://i.pravatar.cc/56?img=32' },
 ];
 
 const FEATURE_CARDS = [
@@ -121,9 +121,11 @@ export default function LoginScreen({ onLoginSuccess }) {
         <View style={styles.trustRow}>
           <View style={styles.avatarStack}>
             {TRUST_AVATARS.map((a, i) => (
-              <View key={i} style={[styles.trustAvatar, { backgroundColor: a.bg, marginLeft: i === 0 ? 0 : -10, zIndex: 3 - i }]}>
-                <Text style={styles.trustAvatarText}>{a.initials}</Text>
-              </View>
+              <Image
+                key={i}
+                source={{ uri: a.uri }}
+                style={[styles.trustAvatar, { marginLeft: i === 0 ? 0 : -10, zIndex: 3 - i }]}
+              />
             ))}
           </View>
           <Text style={styles.trustText}>Joined by 12,000+ readers</Text>
@@ -188,7 +190,6 @@ const styles = StyleSheet.create({
   // Trust badge
   trustRow:       { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },
   avatarStack:    { flexDirection: 'row', alignItems: 'center' },
-  trustAvatar:    { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: colors.surface },
-  trustAvatarText:{ ...type.eyebrow, color: colors.onSurface },
+  trustAvatar:    { width: 28, height: 28, borderRadius: 14, borderWidth: 2, borderColor: colors.surface },
   trustText:      { ...type.bodySm, color: colors.onSurfaceVariant },
 });
