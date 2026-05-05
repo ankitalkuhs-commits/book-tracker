@@ -2,7 +2,7 @@
   "expo": {
     "name": "TrackMyRead",
     "slug": "book-tracker-mobile",
-    "version": "2.1.1",
+    "version": "2.1.2",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -32,7 +32,7 @@
     "android": {
       "package": "com.bookpulse.mobile",
       "googleServicesFile": "./google-services.json",
-      "versionCode": 55,
+      "versionCode": 56,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#fbf9f4"
