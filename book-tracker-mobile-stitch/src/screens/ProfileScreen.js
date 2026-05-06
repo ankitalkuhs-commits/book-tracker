@@ -296,11 +296,12 @@ export default function ProfileScreen({ navigation, onLogout }) {
   const preloaded = useContext(PreloadContext);
   const [profile,  setProfile]   = useState(preloaded?.profile || null);
   const [books,    setBooks]     = useState(preloaded?.library || []);
-  const [notes,    setNotes]     = useState([]);
+  const [notes,    setNotes]     = useState(preloaded?.notes || []);
   const likingInFlight = useRef(new Set());
-  const [activity, setActivity]  = useState([]);
-  const [insights, setInsights]  = useState(null);
-  const [loading,  setLoading]   = useState(!preloaded?.profile);
+  const [activity, setActivity]  = useState(preloaded?.activity || []);
+  const [insights, setInsights]  = useState(preloaded?.insights || null);
+  const hasPreloaded = !!(preloaded?.profile);
+  const [loading,  setLoading]   = useState(!hasPreloaded);
   const [refreshing, setRefreshing] = useState(false);
   const [showNoteModal, setShowNoteModal] = useState(false);
   const [editNote, setEditNote]  = useState(null);
@@ -325,11 +326,8 @@ export default function ProfileScreen({ navigation, onLogout }) {
     finally { setLoading(false); setRefreshing(false); }
   }, []);
 
-  useEffect(() => {
-    if (!preloaded?.profile) load();
-    else { load(); } // still refresh in background
-  }, []);
-
+  useEffect(() => { load(); }, []);
+  // On subsequent focus: silent background refresh — no spinner since data already exists
   useFocusEffect(useCallback(() => { load(); }, [load]));
 
   const handlePhotoUpload = async () => {

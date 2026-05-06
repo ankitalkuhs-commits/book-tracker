@@ -1,6 +1,6 @@
 # TrackMyRead — Project Context
 
-**Last Updated:** May 4, 2026
+**Last Updated:** May 6, 2026
 **Version:** 1.1.0
 
 ---
@@ -48,6 +48,11 @@ Always use `fire_event()` from `app/notifications/dispatcher.py`. It routes to t
 
 ### 3. Optimistic UI
 Status changes, progress updates, and likes update instantly in state. API error reverts the change. This compensates for Render free tier cold-start (~30s wake time).
+
+### 3b. Stale-While-Revalidate (Mobile)
+`preloadData()` in `App.js` fires 9 parallel requests during the login loading screen and stores results in `PreloadContext`. All tab screens (Feed, Library, Insights, Circles, Profile) seed their initial state from this context so the first render is instant — no spinner. Each screen still does a silent background refresh via `useFocusEffect` to keep data fresh. Pull-to-refresh triggers a full reload. **Never show a spinner if preloaded data already exists.**
+
+PreloadContext keys: `profile`, `library`, `feed`, `insights`, `activity`, `notes`, `groups`, `pendingGroups`.
 
 ### 4. Migration Safety
 Production is PostgreSQL, dev is SQLite. Always use `information_schema` for schema introspection. Every `models.py` change needs a corresponding `ALTER TABLE IF NOT EXISTS` in `context/supabase_migration.sql`, run in Supabase SQL Editor before pushing.
@@ -122,6 +127,9 @@ AppNavigator (React Navigation)
 - CORS configured for `www.trackmyread.com` and `trackmyread.com`
 - File uploads go to Cloudinary — no local filesystem storage, Cloudinary validates image format
 - Private profiles (`is_private_profile`) enforced on `GET /profile/{id}` — returns locked view to non-followers
+- Private groups (`is_private`) — member list and goal endpoints return 403 to non-members
+- API pagination: all list endpoints have limits (notes: 50 default, group discover: 200, userbook notes: 100)
+- No production console logging — all `console.error`/`console.warn` wrapped in `__DEV__` (mobile) or `import.meta.env.DEV` (web) guards, log only `err?.message`
 
 ---
 

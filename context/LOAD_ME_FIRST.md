@@ -14,7 +14,7 @@
 | **Backend** | FastAPI (Python) → `https://book-tracker-stitch.onrender.com` |
 | **Database** | PostgreSQL on Supabase (prod) / SQLite (local dev) |
 | **Branch** | Everything on `master` — `stitch-experiment` was deleted |
-| **Version** | 2.1.1 (versionCode 55) |
+| **Version** | 2.1.3 (versionCode 57) |
 
 ---
 
@@ -102,6 +102,55 @@ The correct key names (backend + frontend must match):
 - India (`.in` TZ): tag = `trackmyread-21` → `amazon.in`
 - Global: tag = `trackmyread-20` → `amazon.com`
 - Detect via: `Intl.DateTimeFormat().resolvedOptions().timeZone`
+
+---
+
+## Recently Shipped (May 6, 2026)
+
+### Mobile Prefetch — Instant Tab Navigation
+
+**What changed:** Expanded `preloadData()` in `App.js` to fire 9 parallel requests (up from 4) during the login loading screen. All tab data is ready before the user lands on Feed.
+
+**Added to parallel preload:**
+- `activityAPI.getInsights()` → seeds InsightsScreen
+- `activityAPI.getMyActivity(30)` → seeds InsightsScreen + ProfileScreen
+- `notesAPI.getMyNotes()` → seeds ProfileScreen
+- `groupsAPI.getMyGroups()` → seeds GroupsScreen (no spinner on Circles tab)
+- `groupsAPI.getMyPendingGroups()` → seeds GroupsScreen pending section
+
+**PreloadContext keys now available:** `profile`, `library`, `feed`, `insights`, `activity`, `notes`, `groups`, `pendingGroups`
+
+**Screen changes (stale-while-revalidate pattern):**
+- `InsightsScreen.js` — now imports PreloadContext; seeds all 4 state values from preload; `loading=false` if preloaded; `useFocusEffect` does silent background refresh
+- `ProfileScreen.js` — seeds `notes`, `activity`, `insights` from preload (previously always started empty); cleaned up redundant double `load()` call
+- `GroupsScreen.js` — seeds `myGroups`, `pendingGroups` from preload; `loading=false` if data exists
+
+**User experience:** Tapping any tab (Circles, Insights, Profile) shows content instantly — no spinner. Data refreshes silently in the background on each focus. Pull-to-refresh still works as before.
+
+**Pattern used:** Stale-while-revalidate — show preloaded data immediately, fetch fresh data in background, swap in when ready.
+
+---
+
+## Recently Shipped (May 5, 2026)
+
+### Security Audit — 3 Issue Types Fixed
+
+**1. Authorization gaps (backend)**
+- `GET /groups/{id}/members` — now returns 403 if group is private and caller is not a member
+- `GET /groups/{id}/goal` — same private group membership check added
+- Previously any authenticated user could read private group membership lists and goal progress
+
+**2. Unbounded API queries (backend)**
+- `GET /notes/me` — added `limit` param (default 50), passed to `crud.get_notes_for_user`
+- `GET /notes/userbook/{id}` — capped at 100 results
+- `GET /groups/discover` — capped at 200 public groups
+
+**3. Console logging in production (web + mobile)**
+- All `console.error`/`console.warn`/`console.log` calls now wrapped in `__DEV__` (mobile) or `import.meta.env.DEV` (web) guards
+- Changed to log only `err?.message` — never full error objects with potential stack traces or tokens
+- Fixed files: `FeedScreen.js`, `GroupDetailScreen.js`, `NotificationService.js` (mobile); `AuthContext.jsx`, `LoginPage.jsx`, `NotificationsPage.jsx` (web)
+
+**Version bumped:** 2.1.2 → 2.1.3 / versionCode 56 → 57
 
 ---
 

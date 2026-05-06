@@ -1,6 +1,6 @@
 # TrackMyRead — Platform Feature Map
 
-> Last updated: April 19, 2026  
+> Last updated: May 6, 2026  
 > Use this as the single source of truth for what the platform does.  
 > Mermaid diagrams render in GitHub, Notion, and most markdown viewers.
 
@@ -270,25 +270,64 @@ flowchart LR
 
     subgraph Data
         DB[(Supabase\nPostgreSQL)]
-        UPL[File Uploads\n/uploads static]
+        CDN[Cloudinary\nProfile pics + note images]
     end
 
     subgraph External
         GAUTH[Google OAuth 2.0]
         GBOOKS[Google Books API]
-        EXPO[Expo Push API\nFCM]
-        VAPID[VAPID\nWeb Push]
+        EXPO[Expo Push API\nFCM Android]
+        VAPID[VAPID pywebpush\nWeb Push]
         NYT[NYT Books API\nEditorial Bot]
     end
 
     WEB --> API
     MOB --> API
     API --> DB
-    API --> UPL
+    API --> CDN
     API --> GAUTH
     API --> GBOOKS
     API --> EXPO
     API --> VAPID
     SCHED --> NYT
     SCHED --> API
+```
+
+---
+
+## 6. Mobile Data Loading — Stale-While-Revalidate
+
+```mermaid
+flowchart TD
+    A([User opens app]) --> B[Login / Auth check]
+    B --> C[preloadData — App.js]
+
+    subgraph PRELOAD [Parallel preload — 9 requests fired simultaneously]
+        P1[getProfile]
+        P2[getMyBooks]
+        P3[getCommunityFeed]
+        P4[getUnreadCount]
+        P5[getInsights]
+        P6[getMyActivity 30d]
+        P7[getMyNotes]
+        P8[getMyGroups]
+        P9[getMyPendingGroups]
+    end
+
+    C --> PRELOAD
+    PRELOAD --> CTX[PreloadContext populated\nprofile · library · feed · insights\nactivity · notes · groups · pendingGroups]
+
+    CTX --> FEED[FeedScreen\ninstant — no spinner]
+    CTX --> LIB[LibraryScreen\ninstant — no spinner]
+    CTX --> CIRC[GroupsScreen\ninstant — no spinner]
+    CTX --> INS[InsightsScreen\ninstant — no spinner]
+    CTX --> PROF[ProfileScreen\ninstant — no spinner]
+
+    FEED -->|useFocusEffect| RF[Silent background refresh]
+    LIB -->|useFocusEffect| RF
+    CIRC -->|useFocusEffect| RF
+    INS -->|useFocusEffect| RF
+    PROF -->|useFocusEffect| RF
+
+    RF -->|new data arrives| SWAP[State updated — UI reflects fresh data]
 ```

@@ -273,11 +273,12 @@ export default function GroupsScreen({ navigation }) {
       userAPI.getProfile().then(setCurrentUser).catch(() => {});
     }
   }, []);
-  const [myGroups, setMyGroups] = useState([]);
-  const [pendingGroups, setPendingGroups] = useState([]);
+  const hasPreloaded = Array.isArray(preloaded?.groups) && preloaded.groups.length >= 0;
+  const [myGroups, setMyGroups] = useState(preloaded?.groups || []);
+  const [pendingGroups, setPendingGroups] = useState(preloaded?.pendingGroups || []);
   const [discover, setDiscover] = useState([]);
   const [discoverQ, setDiscoverQ] = useState('');
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!hasPreloaded);
   const [refreshing, setRefreshing] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
   const [showJoin, setShowJoin] = useState(false);

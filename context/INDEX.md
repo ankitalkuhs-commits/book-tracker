@@ -1,6 +1,6 @@
 # TrackMyRead — Context Index
 
-**Last Updated:** May 3, 2026
+**Last Updated:** May 6, 2026
 
 > Start every session by reading `LOAD_ME_FIRST.md`. This file is for navigation.
 

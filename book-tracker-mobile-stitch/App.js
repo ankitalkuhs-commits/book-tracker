@@ -7,7 +7,7 @@ import * as Font from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { authAPI, userAPI, userbooksAPI, notesAPI, notificationsAPI, importAPI } from './src/services/api';
+import { authAPI, userAPI, userbooksAPI, notesAPI, notificationsAPI, importAPI, activityAPI, groupsAPI } from './src/services/api';
 import { registerExpoPushToken } from './src/services/NotificationService';
 import AppNavigator from './src/navigation/AppNavigator';
 import LoginScreen from './src/screens/LoginScreen';
@@ -87,16 +87,26 @@ export default function App() {
   // ── Preload common data to avoid waterfall loading in tabs ───────────────
   const preloadData = async () => {
     try {
-      const [profile, library, feed, count] = await Promise.allSettled([
+      const [profile, library, feed, count, insights, activity, notes, groups, pendingGroups] = await Promise.allSettled([
         userAPI.getProfile(),
         userbooksAPI.getMyBooks(),
         notesAPI.getCommunityFeed(50),
         notificationsAPI.getUnreadCount(),
+        activityAPI.getInsights(),
+        activityAPI.getMyActivity(30),
+        notesAPI.getMyNotes(),
+        groupsAPI.getMyGroups(),
+        groupsAPI.getMyPendingGroups(),
       ]);
       setPreloaded({
-        profile: profile.status === 'fulfilled' ? profile.value : null,
-        library: library.status === 'fulfilled' ? library.value : [],
-        feed:    feed.status    === 'fulfilled' ? feed.value    : [],
+        profile:       profile.status       === 'fulfilled' ? profile.value       : null,
+        library:       library.status       === 'fulfilled' ? library.value       : [],
+        feed:          feed.status          === 'fulfilled' ? feed.value          : [],
+        insights:      insights.status      === 'fulfilled' ? insights.value      : null,
+        activity:      activity.status      === 'fulfilled' ? activity.value      : [],
+        notes:         notes.status         === 'fulfilled' ? notes.value         : [],
+        groups:        groups.status        === 'fulfilled' ? groups.value        : [],
+        pendingGroups: pendingGroups.status === 'fulfilled' ? pendingGroups.value : [],
       });
       if (count.status === 'fulfilled') setUnreadCount(count.value?.unread ?? 0);
     } catch { /* non-critical — screens will load their own data */ }

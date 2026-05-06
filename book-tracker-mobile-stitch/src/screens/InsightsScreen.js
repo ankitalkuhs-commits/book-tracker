@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useContext } from 'react';
 import {
   View, Text, ScrollView, StyleSheet, RefreshControl,
   ActivityIndicator, TouchableOpacity, Image, Dimensions,
@@ -6,6 +6,7 @@ import {
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { activityAPI, userbooksAPI, profileAPI } from '../services/api';
+import { PreloadContext } from '../../App';
 import { colors, radius, shadow, type } from '../theme';
 import AppHeader from '../components/AppHeader';
 
@@ -136,11 +137,13 @@ function StatCard({ label, value, sub, icon, accent, secondAccent, wide }) {
 
 // ── Insights Screen ────────────────────────────────────────────────────────────
 export default function InsightsScreen({ navigation }) {
-  const [insights, setInsights]   = useState(null);
-  const [activity, setActivity]   = useState([]);
-  const [books, setBooks]         = useState([]);
-  const [user, setUser]           = useState(null);
-  const [loading, setLoading]     = useState(true);
+  const preloaded = useContext(PreloadContext);
+  const [insights, setInsights]   = useState(preloaded?.insights || null);
+  const [activity, setActivity]   = useState(preloaded?.activity || []);
+  const [books, setBooks]         = useState(preloaded?.library || []);
+  const [user, setUser]           = useState(preloaded?.profile || null);
+  const hasPreloaded = !!(preloaded?.insights);
+  const [loading, setLoading]     = useState(!hasPreloaded);
   const [refreshing, setRefreshing] = useState(false);
 
   const load = useCallback(async (isRefresh = false) => {
@@ -161,6 +164,7 @@ export default function InsightsScreen({ navigation }) {
   }, []);
 
   useEffect(() => { load(); }, []);
+  // On subsequent focus: silent background refresh — no spinner since data already exists
   useFocusEffect(useCallback(() => { load(); }, [load]));
 
   if (loading) {
