@@ -1,0 +1,100 @@
+export default {
+  slug: 'best-reading-challenge-apps',
+  title: 'Best Apps for Reading Challenges in 2026',
+  excerpt: 'Reading challenges keep you accountable, help you discover new books, and make reading social. Here are the best apps to run your challenge in 2026.',
+  description: 'The best apps for reading challenges in 2026 — yearly goals, group buddy reads, genre bingo, and more. Find the right reading challenge app for you.',
+  publishedAt: '2026-05-18',
+  updatedAt: '2026-05-18',
+  readingMinutes: 5,
+  tag: 'App Review',
+  ogImage: 'https://www.trackmyread.com/og-image.png',
+  canonical: 'https://www.trackmyread.com/blog/best-reading-challenge-apps',
+  sections: [
+    {
+      id: 'what-is',
+      heading: 'What Is a Reading Challenge?',
+      type: 'text',
+      body: [
+        'A reading challenge is any structured goal that pushes you to read with more intention. The most common version is a yearly book count ("read 52 books in 2026"), but challenges come in many forms: genre bingo (read one book per genre), diversity challenges (read authors from 12 different countries), buddy reads (read the same book as a friend simultaneously), or group challenges (a reading circle with a monthly pick).',
+        'The key ingredient is an external commitment device — a goal you have declared publicly or shared with friends. Challenges work because they give you a reason to pick up a book beyond pure desire, and accountability from others makes you far less likely to abandon them.',
+      ],
+    },
+    {
+      id: 'benefits',
+      heading: 'Why Reading Challenges Work',
+      type: 'list',
+      items: [
+        '<strong>Forcing function for discovery</strong> — genre or theme constraints push you to read books you would never choose on your own',
+        '<strong>External commitment</strong> — declaring a goal publicly makes you significantly more likely to achieve it',
+        '<strong>Community and conversation</strong> — group challenges create shared experiences and real book discussions',
+        '<strong>Progress visibility</strong> — a challenge tracker makes your reading feel like it is building towards something',
+        '<strong>Healthy streak motivation</strong> — the desire not to fall behind your reading group is a powerful daily motivator',
+      ],
+    },
+    {
+      id: 'trackmyread-challenges',
+      heading: 'Reading Challenges on TrackMyRead',
+      type: 'text',
+      body: [
+        'TrackMyRead is built for exactly this use case. The <strong>Insights page</strong> lets you set a yearly reading goal and tracks your progress with a visual counter — books finished versus goal, projected finish date, and whether you are ahead or behind pace.',
+        '<strong>Reading circles</strong> are the most powerful challenge feature: create a group, invite friends, set a monthly book or a shared goal, and read together. Every member\'s progress is visible in the circle feed. Chapter-by-chapter discussion happens in the group. You can see who is ahead, who is behind, and cheer each other on.',
+        'Because TrackMyRead tracks reading speed automatically, it can tell you if you are on pace to hit your yearly goal based on your actual reading speed — not just a guess. Over 12,000 readers use it for exactly this kind of structured challenge.',
+      ],
+      cta: { text: 'Start a reading challenge on TrackMyRead', href: '/' },
+    },
+    {
+      id: 'goodreads-challenge',
+      heading: 'The Goodreads Reading Challenge',
+      type: 'text',
+      body: [
+        'The Goodreads Reading Challenge is the original — tens of millions of readers set a book count goal each January, and the social proof of seeing your friends\' progress is genuinely motivating.',
+        'The limitations are significant, though: it is just a number. There is no group challenge feature, no page-level tracking to see if you are on pace, no reading speed, and no buddy-read functionality. It counts books, not reading. If you want a richer challenge experience, you will quickly outgrow it.',
+      ],
+    },
+    {
+      id: 'storygraph-challenge',
+      heading: 'StoryGraph Reading Challenges',
+      type: 'text',
+      body: [
+        'StoryGraph has invested heavily in challenge features — mood prompts, pace goals, and diversity bingo cards are well-implemented. The prompts system (read a book with a one-word title, read a debut novel, read a book recommended by a friend) is the best in the category for readers who want structured discovery.',
+        'What is missing: live group reads where you can see friends\' page-by-page progress, and a social feed of real-time updates. StoryGraph challenges are mostly solo experiences with a community leaderboard, not shared reading journeys.',
+      ],
+    },
+    {
+      id: 'setting-up',
+      heading: 'How to Set Up Your Reading Challenge on TrackMyRead',
+      type: 'list',
+      items: [
+        'Sign in at <a href="/" class="text-primary hover:underline">trackmyread.com</a> — it takes 30 seconds with Google',
+        'Go to <strong>Insights</strong> → set your yearly book goal',
+        'Go to <strong>Reading Circles</strong> → create a new circle or join an existing one',
+        'Invite friends via the share link — they get a direct link to join your circle',
+        'Set a group challenge: monthly book pick, genre goal, or page count target',
+        'Track progress together — every member\'s updates appear in the circle feed',
+      ],
+    },
+    {
+      id: 'tips',
+      heading: 'Tips for Completing a Reading Challenge',
+      type: 'list',
+      items: [
+        '<strong>Set an achievable number</strong> — if you read 8 books last year, a goal of 12 is motivating; 52 is demoralising',
+        '<strong>Mix short and long books</strong> — a 150-page novella mid-year gives you momentum when you are behind',
+        '<strong>Use DNF (Did Not Finish) generously</strong> — abandoning a book that is not working keeps your reading speed up and your enjoyment high',
+        '<strong>Count audiobooks</strong> — there is no rule against it, and commute listening adds up fast',
+        '<strong>Check your pace monthly</strong> — TrackMyRead\'s Insights page shows if you are on track; adjust your daily reading minimum if needed',
+      ],
+    },
+    {
+      id: 'cta',
+      heading: 'Start Your 2026 Reading Challenge',
+      type: 'text',
+      body: [
+        'The best reading challenge is one you will actually finish — which means one with the right goal, the right accountability, and the right app.',
+        'For more on building the daily reading habit that makes challenges possible: <a href="/blog/how-to-build-reading-habit" class="text-primary hover:underline">How to Build a Reading Habit That Lasts</a>. For a full comparison of tracking apps: <a href="/blog/best-book-tracker-apps" class="text-primary hover:underline">Best Book Tracker Apps in 2026</a>.',
+      ],
+      cta: { text: 'Join a reading challenge on TrackMyRead — free', href: '/' },
+    },
+  ],
+  relatedSlugs: ['how-to-build-reading-habit', 'best-book-tracker-apps'],
+}

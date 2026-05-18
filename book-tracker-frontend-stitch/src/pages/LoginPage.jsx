@@ -243,6 +243,7 @@ export default function LoginPage() {
           <span className="font-serif italic text-primary">TrackMyRead</span>
           <nav className="flex gap-6">
             {[
+              { label: 'Blog',    href: '/blog'    },
               { label: 'About',   href: '/about'   },
               { label: 'Privacy', href: '/privacy' },
               { label: 'Terms',   href: '/terms'   },

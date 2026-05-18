@@ -1,0 +1,101 @@
+export default {
+  slug: 'best-book-tracker-apps',
+  title: 'Best Book Tracker Apps in 2026',
+  excerpt: 'From social reading to mood-based recommendations — the best apps for tracking your books, compared side by side.',
+  description: 'The best book tracker apps in 2026 reviewed: TrackMyRead, StoryGraph, Literal, Oku, and more. Find the right reading tracker for your habits.',
+  publishedAt: '2026-05-18',
+  updatedAt: '2026-05-18',
+  readingMinutes: 7,
+  tag: 'App Review',
+  ogImage: 'https://www.trackmyread.com/og-image.png',
+  canonical: 'https://www.trackmyread.com/blog/best-book-tracker-apps',
+  sections: [
+    {
+      id: 'why-track',
+      heading: 'Why Use a Book Tracker App?',
+      type: 'text',
+      body: [
+        'A good book tracker does more than log titles. It motivates you to read consistently, helps you remember what you read, and shows you patterns in your reading life — which genres you gravitate to, how your reading speed changes, and whether you are actually hitting your goals.',
+        'Studies on habit formation consistently show that tracking a behaviour makes you more likely to repeat it. Readers who log their progress read more books per year than those who do not. The app is the accountability partner that never judges you for taking two weeks on a single chapter.',
+      ],
+    },
+    {
+      id: 'what-makes-great',
+      heading: 'What Makes a Great Book Tracker App',
+      type: 'list',
+      items: [
+        '<strong>Progress granularity</strong> — page-by-page tracking beats "currently reading" every time',
+        '<strong>Reading statistics</strong> — speed, pages per day, books per month, yearly totals',
+        '<strong>Social features</strong> — seeing what friends read is the best book discovery engine',
+        '<strong>Import and export</strong> — Goodreads CSV import means you do not start from zero',
+        '<strong>Mobile-first design</strong> — most reading happens on phones or e-readers',
+        '<strong>Free tier</strong> — the best apps do not lock basic features behind a paywall',
+        '<strong>Library search</strong> — fast access to a large book database (Google Books, Open Library)',
+      ],
+    },
+    {
+      id: 'trackmyread',
+      heading: 'TrackMyRead — Best for Social Readers',
+      type: 'text',
+      body: [
+        '<strong>Platforms:</strong> Web, Android &nbsp;|&nbsp; <strong>Price:</strong> Free',
+        'TrackMyRead is built around the idea that reading is better when it is shared. Log progress page by page, and the app calculates your reading speed and estimated finish date automatically. Your activity appears in a social feed that your friends can follow — highlights, progress updates, and book finishes.',
+        'Reading circles (groups) are the standout feature: create a group, set a shared reading goal, and discuss books chapter by chapter with people who are at the same point in the book. Import your Goodreads library in one click. Over 12,000 readers use it daily.',
+        '<strong>Best for:</strong> Readers who want progress tracking + a reading community in one app.',
+      ],
+      cta: { text: 'Try TrackMyRead free', href: '/' },
+    },
+    {
+      id: 'storygraph',
+      heading: 'The StoryGraph — Best for Recommendation-Driven Readers',
+      type: 'text',
+      body: [
+        '<strong>Platforms:</strong> Web, iOS, Android &nbsp;|&nbsp; <strong>Price:</strong> Free (Plus tier available)',
+        'StoryGraph built its reputation on one feature: mood and pace-based book recommendations. Instead of "readers who liked X also liked Y", it asks how you feel and how much time you have, then suggests books accordingly. The diversity tracking (own-voices, rep tags) is the best in the category.',
+        'The social features are sparse — there is no friend activity feed in the way TrackMyRead or Goodreads has one. Progress tracking exists but feels secondary to the recommendation engine. Still, if finding your next book is your biggest challenge, StoryGraph is excellent.',
+      ],
+    },
+    {
+      id: 'literal',
+      heading: 'Literal — Best for Minimalists',
+      type: 'text',
+      body: [
+        '<strong>Platforms:</strong> Web, iOS, Android &nbsp;|&nbsp; <strong>Price:</strong> Free',
+        'Literal has the cleanest interface of any book tracker. No clutter, no feature creep — just a beautiful place to log your books and write short notes. It has a small but devoted community and clean shelf management.',
+        'The tradeoff: reading statistics are minimal, there is no page-by-page progress tracking, and the social feed is quiet. If you read for the aesthetic and want a digital equivalent of a reading journal, Literal is lovely. If you want data about your reading, look elsewhere.',
+      ],
+    },
+    {
+      id: 'physical-vs-app',
+      heading: 'Paper Reading Journal vs App: Which Is Better?',
+      type: 'text',
+      body: [
+        'A paper reading journal has its appeal — the tactile feel, the permanence, the ritual of writing by hand. But apps win on almost every practical dimension: searchable history, reading speed calculations, automatic date-logging, social sharing, book database access, and yearly statistics.',
+        'The biggest advantage of an app: when you finish a book at 11pm and want to log it, you tap your phone. You will not get up to find your journal. Friction is the enemy of consistency, and apps have far less friction than paper.',
+        'Our recommendation: use an app for daily tracking, and write in a paper journal when a book genuinely moves you. They complement each other.',
+      ],
+    },
+    {
+      id: 'verdict',
+      heading: 'Which Book Tracker App Should You Choose?',
+      type: 'list',
+      items: [
+        '<strong>For social reading + progress tracking:</strong> <a href="/" class="text-primary hover:underline">TrackMyRead</a> — the best combination of stats, social, and simplicity',
+        '<strong>For mood-based recommendations:</strong> The StoryGraph — unmatched if discovery is your priority',
+        '<strong>For minimalist logging:</strong> Literal — beautiful but limited on data',
+        '<strong>For web-only reading lists:</strong> Oku — best collection organisation, no mobile app',
+        '<strong>Migrating from Goodreads:</strong> TrackMyRead has the easiest one-click import',
+      ],
+    },
+    {
+      id: 'further-reading',
+      heading: 'Further Reading',
+      type: 'text',
+      body: [
+        'If you are coming from Goodreads, read our detailed guide: <a href="/blog/goodreads-alternative" class="text-primary hover:underline">Goodreads Alternative in 2026: Why Readers Are Switching</a>.',
+        'Once you have chosen an app, learn how to get the most out of it: <a href="/blog/how-to-track-reading-progress" class="text-primary hover:underline">How to Track Your Reading Progress (And Actually Stick to It)</a>.',
+      ],
+    },
+  ],
+  relatedSlugs: ['goodreads-alternative', 'how-to-track-reading-progress'],
+}

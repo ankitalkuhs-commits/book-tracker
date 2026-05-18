@@ -13,6 +13,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { POSTS } from '../src/data/blog/index.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const distDir = path.resolve(__dirname, '../dist')
@@ -24,7 +25,7 @@ if (!fs.existsSync(distDir)) {
 
 const BASE_HTML = fs.readFileSync(path.join(distDir, 'index.html'), 'utf-8')
 
-function injectHead(html, { title, description, canonical, ogTitle, ogDescription }) {
+function injectHead(html, { title, description, canonical, ogTitle, ogDescription, ogType }) {
   // Replace static <title>
   let out = html.replace(/<title>[^<]*<\/title>/, `<title>${title}</title>`)
   // Inject meta tags before </head>
@@ -35,7 +36,7 @@ function injectHead(html, { title, description, canonical, ogTitle, ogDescriptio
     `<meta property="og:description" content="${ogDescription}">`,
     `<meta property="og:image" content="https://www.trackmyread.com/og-image.png">`,
     `<meta property="og:url" content="${canonical}">`,
-    `<meta property="og:type" content="website">`,
+    `<meta property="og:type" content="${ogType ?? 'website'}">`,
     `<meta property="og:site_name" content="TrackMyRead">`,
     `<meta name="twitter:card" content="summary_large_image">`,
     `<meta name="twitter:title" content="${ogTitle}">`,
@@ -47,6 +48,17 @@ function injectHead(html, { title, description, canonical, ogTitle, ogDescriptio
 
 function injectBody(html, staticContent) {
   return html.replace('<div id="root"></div>', `<div id="root">${staticContent}</div>`)
+}
+
+/** Serialize a post's sections array into static HTML for non-JS crawlers */
+function sectionsToHtml(sections) {
+  return sections.map((s) => {
+    const contentHtml = s.type === 'list'
+      ? `<ul>${(s.items ?? []).map((i) => `<li>${i}</li>`).join('')}</ul>`
+      : (s.body ?? []).map((p) => `<p>${p}</p>`).join('')
+    const ctaHtml = s.cta ? `<p><a href="${s.cta.href}">${s.cta.text}</a></p>` : ''
+    return `<section><h2>${s.heading}</h2>${contentHtml}${ctaHtml}</section>`
+  }).join('\n')
 }
 
 const ROUTES = [
@@ -120,6 +132,37 @@ const ROUTES = [
       <p>Terms of service for TrackMyRead — the social book tracking app.</p>
     </div>`,
   },
+  // Blog list page
+  {
+    outputPath: 'blog',
+    title: 'TrackMyRead Blog — Reading Tips, App Guides & Book Tracking Advice',
+    description: 'Reading tips, app comparisons, and book tracking guides from the TrackMyRead team. Learn how to read more, track better, and build a lasting reading habit.',
+    canonical: 'https://www.trackmyread.com/blog',
+    ogTitle: 'TrackMyRead Blog — Reading Tips & Book Tracker Guides',
+    ogDescription: 'Guides on tracking reading habits, app comparisons, and tips to read more books.',
+    body: `<div style="font-family:sans-serif;max-width:800px;margin:0 auto;padding:2rem">
+      <h1>TrackMyRead Blog</h1>
+      <p>Reading tips, app comparisons, and book tracking guides.</p>
+      <ul>
+        ${POSTS.map((p) => `<li><a href="/blog/${p.slug}">${p.title}</a> — ${p.excerpt}</li>`).join('\n        ')}
+      </ul>
+    </div>`,
+  },
+  // One entry per blog post — generated dynamically from POSTS data
+  ...POSTS.map((post) => ({
+    outputPath: `blog/${post.slug}`,
+    title: `${post.title} — TrackMyRead`,
+    description: post.description,
+    canonical: post.canonical,
+    ogTitle: post.title,
+    ogDescription: post.description,
+    ogType: 'article',
+    body: `<div style="font-family:sans-serif;max-width:800px;margin:0 auto;padding:2rem">
+      <h1>${post.title}</h1>
+      <p><time datetime="${post.publishedAt}">${post.publishedAt}</time> · ${post.readingMinutes} min read</p>
+      ${sectionsToHtml(post.sections)}
+    </div>`,
+  })),
 ]
 
 for (const route of ROUTES) {

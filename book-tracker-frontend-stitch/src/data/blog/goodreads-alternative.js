@@ -1,0 +1,83 @@
+export default {
+  slug: 'goodreads-alternative',
+  title: 'Goodreads Alternative in 2026: Why Readers Are Switching',
+  excerpt: 'Goodreads has not meaningfully changed in over a decade. Here is what readers are switching to — and why TrackMyRead tops the list.',
+  description: 'Looking for a Goodreads alternative in 2026? Readers are switching to apps with better UI, page-level progress tracking, and real social features. Full breakdown inside.',
+  publishedAt: '2026-05-18',
+  updatedAt: '2026-05-18',
+  readingMinutes: 6,
+  tag: 'App Comparison',
+  ogImage: 'https://www.trackmyread.com/og-image.png',
+  canonical: 'https://www.trackmyread.com/blog/goodreads-alternative',
+  sections: [
+    {
+      id: 'why-readers-leave',
+      heading: 'Why Readers Are Leaving Goodreads',
+      type: 'text',
+      body: [
+        'Goodreads was acquired by Amazon in 2013, and since then the app has barely changed. The interface still looks like it was designed in 2009. The mobile app crashes. Reviews get spammed by bots. Progress tracking only tells you "currently reading" — not how many pages you finished today, how fast you read, or when you will finish.',
+        'The result? Millions of readers have the app on their phone but rarely open it. It became a place to log books you finished, not a tool that actually helps you read more. If you have ever wanted a Goodreads alternative that feels modern, social, and actually useful — you are not alone.',
+      ],
+    },
+    {
+      id: 'what-to-look-for',
+      heading: 'What to Look for in a Goodreads Alternative',
+      type: 'list',
+      items: [
+        '<strong>Page-by-page progress tracking</strong> — not just "currently reading", but exactly where you are and how fast you are going',
+        '<strong>Reading speed and ETA</strong> — calculated automatically so you know when you will finish',
+        '<strong>Yearly reading stats</strong> — pages read, books finished, reading streaks, fastest reads',
+        '<strong>Real social features</strong> — a feed of what friends are reading, highlights you can share, and reading groups',
+        '<strong>Clean, modern UI</strong> — one that works on mobile without crashing',
+        '<strong>Goodreads import</strong> — so you do not lose your reading history when you switch',
+        '<strong>Free tier</strong> — most readers should not have to pay for basic tracking',
+      ],
+    },
+    {
+      id: 'top-alternatives',
+      heading: 'Top Goodreads Alternatives in 2026',
+      type: 'text',
+      body: [
+        '<strong>The StoryGraph</strong> — The most popular Goodreads alternative. Great for mood-based and pace-based book recommendations. Has strong diversity tracking. Weak on social features (no friend activity feed) and the UI can be overwhelming for new users. No Android-first experience.',
+        '<strong>Literal.club</strong> — Beautifully minimal design. Good for readers who just want to log books without distractions. Very limited social and no reading stats worth mentioning. Best for list-keepers, not progress trackers.',
+        '<strong>Oku</strong> — Web-only, excellent for discovery. Great collection organisation. No mobile app. If you read on your phone or commute, this is a dealbreaker.',
+        '<strong>TrackMyRead</strong> — Built specifically for readers who want both progress tracking and a social reading life. See below.',
+      ],
+    },
+    {
+      id: 'trackmyread-deep-dive',
+      heading: 'Why TrackMyRead Is the Best Free Option',
+      type: 'text',
+      body: [
+        'TrackMyRead was built to solve the exact things Goodreads gets wrong. When you log a reading session, you enter your current page — the app calculates your reading speed and estimates when you will finish the book. No other free app does this as cleanly.',
+        'The social layer is genuine. You follow friends and see a real-time feed of what they are reading, what pages they are on, and what highlights they have shared. Reading circles (groups) let you set shared goals and discuss books chapter by chapter.',
+        'It is completely free, works on web and Android, and imports your Goodreads library via CSV in under a minute. Over 12,000 readers have already switched.',
+      ],
+      cta: { text: 'Try TrackMyRead free', href: '/' },
+    },
+    {
+      id: 'how-to-switch',
+      heading: 'How to Switch from Goodreads in Under 5 Minutes',
+      type: 'list',
+      items: [
+        'Go to Goodreads → My Books → Export Library → download the CSV file',
+        'Sign in to <a href="/" class="text-primary hover:underline">TrackMyRead</a> with your Google account',
+        'Go to Settings → Import → upload the Goodreads CSV',
+        'Your entire library — shelves, ratings, and read dates — migrates automatically',
+        'Start logging your current reading session and watch your reading speed appear',
+      ],
+    },
+    {
+      id: 'conclusion',
+      heading: 'The Bottom Line',
+      type: 'text',
+      body: [
+        'Goodreads is not going anywhere, but it stopped improving years ago. If you want an app that makes you want to read more — by showing your progress, connecting you to reading friends, and celebrating your reading streaks — it is time to switch.',
+        'TrackMyRead is the best free Goodreads alternative in 2026 for readers who want a social, progress-first experience. The StoryGraph is a strong choice if mood-based recommendations matter most to you.',
+        'Want to compare more options? Read our full breakdown of the <a href="/blog/best-book-tracker-apps" class="text-primary hover:underline">best book tracker apps in 2026</a> or learn <a href="/blog/how-to-track-reading-progress" class="text-primary hover:underline">how to track your reading progress effectively</a>.',
+      ],
+      cta: { text: 'Switch to TrackMyRead — it\'s free', href: '/' },
+    },
+  ],
+  relatedSlugs: ['best-book-tracker-apps', 'how-to-track-reading-progress'],
+}

@@ -23,6 +23,8 @@ import BookDetailPage from './pages/BookDetailPage'
 import AboutPage from './pages/AboutPage'
 import PrivacyPage from './pages/PrivacyPage'
 import TermsPage from './pages/TermsPage'
+import BlogListPage from './pages/BlogListPage'
+import BlogPostPage from './pages/BlogPostPage'
 
 // Wraps all logged-in pages with the Nav bar + in-app tour for new users
 function AppLayout({ children }) {
@@ -96,6 +98,8 @@ export default function App() {
       <Route path="/about" element={<AboutPage />} />
       <Route path="/privacy" element={<PrivacyPage />} />
       <Route path="/terms" element={<TermsPage />} />
+      <Route path="/blog" element={<BlogListPage />} />
+      <Route path="/blog/:slug" element={<BlogPostPage />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )
