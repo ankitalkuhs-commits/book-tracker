@@ -1,0 +1,16 @@
+User-agent: *
+Allow: /
+Allow: /about
+Allow: /privacy
+Allow: /terms
+Disallow: /home
+Disallow: /library
+Disallow: /search
+Disallow: /profile
+Disallow: /settings
+Disallow: /notifications
+Disallow: /groups
+Disallow: /insights
+Disallow: /admin
+Disallow: /onboarding
+Sitemap: https://www.trackmyread.com/sitemap.xml

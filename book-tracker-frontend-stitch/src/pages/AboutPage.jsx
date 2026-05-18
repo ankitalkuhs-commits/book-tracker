@@ -1,9 +1,16 @@
 import { useNavigate } from 'react-router-dom'
+import { Helmet } from 'react-helmet-async'
 
 export default function AboutPage() {
   const navigate = useNavigate()
 
   return (
+    <>
+    <Helmet>
+      <title>About TrackMyRead — Social Reading App for Book Lovers</title>
+      <meta name="description" content="TrackMyRead is a free social book tracking app. Track reading progress page by page, share highlights, join reading circles. Available free on web and Android." />
+      <link rel="canonical" href="https://www.trackmyread.com/about" />
+    </Helmet>
     <main className="min-h-screen bg-surface px-4 py-8 max-w-2xl mx-auto">
       <button
         onClick={() => navigate(-1)}
@@ -75,5 +82,6 @@ export default function AboutPage() {
         </p>
       </div>
     </main>
+    </>
   )
 }

@@ -1,0 +1,32 @@
+# TrackMyRead
+
+> Track your reading progress, share highlights, and discover books with friends. Free book tracker app for web and Android.
+
+TrackMyRead is a free social book tracking platform for readers. Users track reading progress page by page, write highlights and notes, follow friends, and join reading circles (groups). It is a modern, social alternative to Goodreads.
+
+## Key Features
+
+- Page-by-page reading progress tracking with automatic reading speed calculation
+- Reading log and history with dates, star ratings, highlights, and personal notes
+- Social reading feed — follow friends, see what they are reading, share highlights
+- Reading circles (groups) — shared reading goals, chapter discussions, monthly challenges
+- Yearly reading insights — pages read, books finished, reading streaks
+- Import Goodreads library in one click
+- Available free on web and Android
+
+## Platform
+
+- Web app: https://www.trackmyread.com
+- Android app: available on Google Play Store
+- 12,000+ active readers
+
+## Public Pages
+
+- Homepage / landing: https://www.trackmyread.com/
+- About: https://www.trackmyread.com/about
+- Privacy policy: https://www.trackmyread.com/privacy
+- Terms of service: https://www.trackmyread.com/terms
+
+## Contact
+
+- Email: trackmyread.dev@gmail.com

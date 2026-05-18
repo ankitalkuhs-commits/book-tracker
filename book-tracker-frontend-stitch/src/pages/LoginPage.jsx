@@ -1,9 +1,31 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { Helmet } from 'react-helmet-async'
 import { useAuth } from '../context/AuthContext'
 import { googleLogin, setToken } from '../services/api'
 import { GoogleLogin } from '@react-oauth/google'
 import { ONBOARDING_KEY } from './OnboardingPage'
+
+const SOFTWARE_LD = {
+  '@context': 'https://schema.org',
+  '@type': 'SoftwareApplication',
+  name: 'TrackMyRead',
+  applicationCategory: 'LifestyleApplication',
+  operatingSystem: 'Web, Android',
+  url: 'https://www.trackmyread.com',
+  description: 'Social book tracking app. Track reading progress page by page, share highlights with friends, join reading circles. Free on web and Android.',
+  offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+}
+
+const ORGANIZATION_LD = {
+  '@context': 'https://schema.org',
+  '@type': 'Organization',
+  '@id': 'https://www.trackmyread.com/#organization',
+  name: 'TrackMyRead',
+  url: 'https://www.trackmyread.com',
+  email: 'trackmyread.dev@gmail.com',
+  description: 'Social reading app for book lovers — track progress, share highlights, discover books with friends.',
+}
 
 const HERO_IMAGE = 'https://images.unsplash.com/photo-1507842217343-583bb7270b66?w=800&q=80'
 
@@ -37,8 +59,27 @@ export default function LoginPage() {
   )
 
   return (
+    <>
+      <Helmet>
+        <title>TrackMyRead — Social Book Tracker &amp; Reading Progress App</title>
+        <meta name="description" content="Track your reading progress, share highlights, and discover books with friends. Free book tracker app for book lovers — web and Android. A better Goodreads alternative." />
+        <meta name="keywords" content="book tracker app, reading tracker, reading progress app, goodreads alternative, social reading app, track books, reading log" />
+        <link rel="canonical" href="https://www.trackmyread.com/" />
+        <meta property="og:title" content="TrackMyRead — Social Book Tracker" />
+        <meta property="og:description" content="Log books, track reading progress page by page, share highlights with friends. Free reading tracker for book lovers." />
+        <meta property="og:image" content="https://www.trackmyread.com/og-image.png" />
+        <meta property="og:url" content="https://www.trackmyread.com" />
+        <meta property="og:type" content="website" />
+        <meta property="og:site_name" content="TrackMyRead" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="TrackMyRead — Social Book Tracker" />
+        <meta name="twitter:description" content="Log books, track reading progress, share highlights with friends. Free." />
+        <meta name="twitter:image" content="https://www.trackmyread.com/og-image.png" />
+      </Helmet>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(SOFTWARE_LD) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(ORGANIZATION_LD) }} />
     <div
-      className="font-sans text-on-surface h-screen flex flex-col overflow-hidden selection:bg-secondary-container selection:text-on-secondary-container"
+      className="font-sans text-on-surface min-h-screen flex flex-col selection:bg-secondary-container selection:text-on-secondary-container"
       style={{
         backgroundColor: '#fbf9f4',
         backgroundImage: 'radial-gradient(#dbdad5 0.5px, transparent 0.5px)',
@@ -46,7 +87,7 @@ export default function LoginPage() {
       }}
     >
       {/* Header */}
-      <header className="shrink-0 glass shadow-zen z-50">
+      <header className="shrink-0 sticky top-0 glass shadow-zen z-50">
         <div className="flex justify-between items-center h-16 px-8 md:px-12 max-w-screen-2xl mx-auto">
           <div className="text-xl font-bold font-serif text-primary tracking-tight">
             TrackMyRead
@@ -54,8 +95,8 @@ export default function LoginPage() {
         </div>
       </header>
 
-      {/* Main — fills remaining height */}
-      <main className="flex-1 flex items-center justify-center px-6 py-4 overflow-hidden">
+      {/* Main — fills viewport above fold */}
+      <main className="flex items-center justify-center px-6 py-8 min-h-[calc(100svh-4rem)]">
         <div className="max-w-6xl w-full grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
 
           {/* Left: Text & CTA */}
@@ -138,6 +179,63 @@ export default function LoginPage() {
         </div>
       </main>
 
+      {/* ── Features Section ── */}
+      <section className="py-16 px-6 bg-surface-container-low" aria-label="Features">
+        <div className="max-w-4xl mx-auto">
+          <h2 className="font-serif text-2xl md:text-3xl font-bold text-on-surface text-center mb-2">
+            Track every book you read
+          </h2>
+          <p className="text-center text-on-surface-variant text-sm md:text-base mb-10 max-w-lg mx-auto">
+            Your personal reading tracker and log — built for readers who care about every page.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+            {[
+              { icon: 'menu_book', title: 'Page-by-page progress', body: 'Log exactly where you are. Reading speed and estimated finish date calculated automatically.' },
+              { icon: 'auto_stories', title: 'Reading log & history', body: "Every book you've finished — with dates, star ratings, highlights, and personal notes." },
+              { icon: 'bar_chart', title: 'Yearly reading insights', body: 'Pages read, books finished, reading streaks. Understand your reading habits at a glance.' },
+            ].map(({ icon, title, body }) => (
+              <div key={title} className="bg-surface rounded-3xl p-6 space-y-2 shadow-sm">
+                <span className="material-symbols-outlined text-primary text-3xl">{icon}</span>
+                <h3 className="font-sans font-bold text-on-surface text-base">{title}</h3>
+                <p className="text-sm text-on-surface-variant leading-relaxed">{body}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Social Section ── */}
+      <section
+        className="py-16 px-6"
+        aria-label="Social features"
+        style={{ backgroundColor: '#fbf9f4' }}
+      >
+        <div className="max-w-4xl mx-auto">
+          <h2 className="font-serif text-2xl md:text-3xl font-bold text-on-surface text-center mb-2">
+            Your reading life, shared
+          </h2>
+          <p className="text-center text-on-surface-variant text-sm md:text-base mb-10 max-w-lg mx-auto">
+            The social reading app for book lovers. A free, modern alternative to Goodreads — built for community.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 mb-10">
+            {[
+              { icon: 'group', title: 'Follow friends', body: 'See what your friends are reading right now. Discover your next book through people you trust.' },
+              { icon: 'format_quote', title: 'Share highlights', body: 'Post your favourite passages. Your reading feed becomes a stream of the best lines in books.' },
+              { icon: 'diversity_3', title: 'Reading circles', body: 'Join groups with shared reading goals, chapter discussions, and monthly reading challenges.' },
+            ].map(({ icon, title, body }) => (
+              <div key={title} className="bg-surface-container-low rounded-3xl p-6 space-y-2 shadow-sm">
+                <span className="material-symbols-outlined text-secondary text-3xl">{icon}</span>
+                <h3 className="font-sans font-bold text-on-surface text-base">{title}</h3>
+                <p className="text-sm text-on-surface-variant leading-relaxed">{body}</p>
+              </div>
+            ))}
+          </div>
+          <p className="text-center text-xs text-on-surface-variant">
+            Joined by 12,000+ readers · Free on web and Android
+          </p>
+        </div>
+      </section>
+
       {/* Footer */}
       <footer className="shrink-0 py-5 bg-surface-container-low font-sans text-xs tracking-wide"
         style={{ borderTop: '1px solid rgba(190,200,201,0.15)' }}>
@@ -157,5 +255,6 @@ export default function LoginPage() {
         </div>
       </footer>
     </div>
+    </>
   )
 }
