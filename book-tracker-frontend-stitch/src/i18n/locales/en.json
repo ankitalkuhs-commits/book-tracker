@@ -359,7 +359,8 @@
     "readingVelocity": "Reading Velocity",
     "activityTracked": "Activity tracked over the last {{period}} days",
     "publicNotes": "Public Notes",
-    "noReadingActivity": "No reading activity yet"
+    "noReadingActivity": "No reading activity yet",
+    "yearReadingGoal": "{{year}} Reading Goal"
   },
   "settings": {
     "title": "Settings",
@@ -430,7 +431,13 @@
     "aboutDescription": "TrackMyRead — your social reading companion...",
     "buildInfo": "Build #{{number}} · {{date}}",
     "language": "Language",
-    "languageDesc": "Choose your preferred language"
+    "languageDesc": "Choose your preferred language",
+    "nameRequired": "Name required",
+    "importFailed": "Import failed",
+    "couldNotSetAvatar": "Could not set avatar",
+    "couldNotUploadPhoto": "Could not upload photo",
+    "couldNotSaveProfile": "Could not save profile",
+    "allowPhotoAccess": "Please allow photo library access."
   },
   "notifications": {
     "eyebrow": "YOUR LATEST UPDATES",

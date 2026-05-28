@@ -333,7 +333,8 @@
     "readingVelocity": "Vitesse de lecture",
     "activityTracked": "Activité des {{period}} derniers jours",
     "publicNotes": "Notes publiques",
-    "noReadingActivity": "Pas encore d'activité de lecture"
+    "noReadingActivity": "Pas encore d'activité de lecture",
+    "yearReadingGoal": "Objectif {{year}}"
   },
   "settings": {
     "title": "Paramètres",
@@ -404,7 +405,13 @@
     "aboutDescription": "TrackMyRead — votre compagnon social de lecture...",
     "buildInfo": "Build #{{number}} · {{date}}",
     "language": "Langue",
-    "languageDesc": "Choisissez votre langue préférée"
+    "languageDesc": "Choisissez votre langue préférée",
+    "nameRequired": "Nom requis",
+    "importFailed": "Échec de l'importation",
+    "couldNotSetAvatar": "Impossible de définir l'avatar",
+    "couldNotUploadPhoto": "Impossible de télécharger la photo",
+    "couldNotSaveProfile": "Impossible d'enregistrer le profil",
+    "allowPhotoAccess": "Veuillez autoriser l'accès à la photothèque."
   },
   "notifications": {
     "eyebrow": "VOS DERNIÈRES MISES À JOUR",

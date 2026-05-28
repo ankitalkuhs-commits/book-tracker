@@ -337,7 +337,8 @@
     "readingVelocity": "Скорость чтения",
     "activityTracked": "Активность за последние {{period}} дней",
     "publicNotes": "Публичные заметки",
-    "noReadingActivity": "Пока нет активности чтения"
+    "noReadingActivity": "Пока нет активности чтения",
+    "yearReadingGoal": "Цель на {{year}} год"
   },
   "settings": {
     "title": "Настройки",
@@ -410,7 +411,13 @@
     "aboutDescription": "TrackMyRead — ваш социальный помощник для чтения...",
     "buildInfo": "Сборка #{{number}} · {{date}}",
     "language": "Язык",
-    "languageDesc": "Выберите предпочитаемый язык"
+    "languageDesc": "Выберите предпочитаемый язык",
+    "nameRequired": "Имя обязательно",
+    "importFailed": "Ошибка импорта",
+    "couldNotSetAvatar": "Не удалось установить аватар",
+    "couldNotUploadPhoto": "Не удалось загрузить фото",
+    "couldNotSaveProfile": "Не удалось сохранить профиль",
+    "allowPhotoAccess": "Пожалуйста, разрешите доступ к фотогалерее."
   },
   "notifications": {
     "eyebrow": "ПОСЛЕДНИЕ ОБНОВЛЕНИЯ",
