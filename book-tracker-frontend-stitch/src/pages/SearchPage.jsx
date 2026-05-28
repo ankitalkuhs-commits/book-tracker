@@ -1,32 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 import { searchGoogleBooks, searchLocalBooks, addToLibrary } from '../services/api'
 import { useToast } from '../components/Toast'
-
-const GENRES = [
-  { key: 'all',       label: 'All' },
-  { key: 'fiction',   label: 'Fiction' },
-  { key: 'fantasy',   label: 'Fantasy' },
-  { key: 'mystery',   label: 'Mystery' },
-  { key: 'thriller',  label: 'Thriller' },
-  { key: 'sci-fi',    label: 'Sci-Fi' },
-  { key: 'romance',   label: 'Romance' },
-  { key: 'historical',label: 'Historical' },
-  { key: 'literary',  label: 'Literary' },
-]
-
-const STATUS_OPTIONS = [
-  { value: 'to-read',  label: 'Want to Read' },
-  { value: 'reading',  label: 'Reading Now' },
-  { value: 'finished', label: 'Already Read' },
-]
-
-const FORMAT_OPTIONS = [
-  { key: 'all',       label: 'All formats' },
-  { key: 'paperback', label: 'Paperback' },
-  { key: 'hardcover', label: 'Hardcover' },
-  { key: 'ebook',     label: 'eBook' },
-  { key: 'audiobook', label: 'Audiobook' },
-]
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 function extractYear(d) {
@@ -67,6 +42,7 @@ function StarRow({ rating, count }) {
 }
 
 function BookResult({ book }) {
+  const { t } = useTranslation()
   const [status, setStatus] = useState('to-read')
   const [adding, setAdding] = useState(false)
   const [added, setAdded] = useState(false)
@@ -75,6 +51,12 @@ function BookResult({ book }) {
 
   const genre = primaryCategory(book.categories)
   const year  = extractYear(book.published_date)
+
+  const STATUS_OPTIONS = [
+    { value: 'to-read',  label: t('status.wantToRead') },
+    { value: 'reading',  label: t('status.reading') },
+    { value: 'finished', label: t('status.finished') },
+  ]
 
   const handleAdd = async () => {
     setAdding(true)
@@ -130,7 +112,7 @@ function BookResult({ book }) {
         {added ? (
           <div className="flex items-center gap-2 pt-1">
             <span className="material-symbols-outlined text-secondary text-lg" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
-            <span className="text-sm font-medium text-secondary">Added to library</span>
+            <span className="text-sm font-medium text-secondary">{t('search.addBookSuccess')}</span>
           </div>
         ) : (
           <div className="flex flex-wrap items-center gap-2 pt-1">
@@ -142,7 +124,7 @@ function BookResult({ book }) {
               {STATUS_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
             <button onClick={handleAdd} disabled={adding} className="btn-primary px-4 py-2 text-sm rounded-xl">
-              {adding ? 'Adding…' : 'Add to Library'}
+              {adding ? t('common.loading') : t('search.addBook')}
             </button>
             {error && <span className="text-xs text-error">{error}</span>}
           </div>
@@ -170,6 +152,28 @@ function SkeletonList() {
 }
 
 export default function SearchPage() {
+  const { t } = useTranslation()
+
+  const GENRES = [
+    { key: 'all',        label: t('search.genreAll') },
+    { key: 'fiction',    label: t('search.genreFiction') },
+    { key: 'fantasy',    label: t('search.genreFantasy') },
+    { key: 'mystery',    label: t('search.genreMystery') },
+    { key: 'thriller',   label: t('search.genreThriller') },
+    { key: 'sci-fi',     label: t('search.genreSciFi') },
+    { key: 'romance',    label: t('search.genreRomance') },
+    { key: 'historical', label: t('search.genreHistorical') },
+    { key: 'literary',   label: t('search.genreLiterary') },
+  ]
+
+  const FORMAT_OPTIONS = [
+    { key: 'all',       label: t('search.allFormats') },
+    { key: 'paperback', label: t('format.paperback') },
+    { key: 'hardcover', label: t('format.hardcover') },
+    { key: 'ebook',     label: t('format.ebook') },
+    { key: 'audiobook', label: t('format.audiobook') },
+  ]
+
   const [query,         setQuery]         = useState('')
   const [tab,           setTab]           = useState('google')    // 'google' | 'community'
   const [activeGenre,   setActiveGenre]   = useState('all')
@@ -183,8 +187,6 @@ export default function SearchPage() {
   const [startIndex,    setStartIndex]    = useState(0)
   const [hasMore,       setHasMore]       = useState(false)
   const debounceRef = useRef()
-
-  const PAGE_SIZE = 10
 
   const doSearch = async (q = query, genre = activeGenre, sort = activeSort, append = false) => {
     if (!q.trim()) return
@@ -222,7 +224,6 @@ export default function SearchPage() {
     setLoadingMore(false)
   }
 
-  // Re-run search when genre or sort changes (Google tab only)
   const handleGenreChange = (g) => {
     setActiveGenre(g)
     if (tab === 'google' && searched && query.trim()) doSearch(query, g, activeSort)
@@ -232,7 +233,6 @@ export default function SearchPage() {
     if (tab === 'google' && searched && query.trim()) doSearch(query, activeGenre, s)
   }
 
-  // Debounce community search as user types
   useEffect(() => {
     if (tab !== 'community' || !query.trim()) return
     clearTimeout(debounceRef.current)
@@ -258,7 +258,7 @@ export default function SearchPage() {
       const binding = (b.binding || b.format || '').toLowerCase()
       if (activeFormat === 'ebook')     return binding.includes('ebook') || binding.includes('kindle') || binding.includes('digital')
       if (activeFormat === 'audiobook') return binding.includes('audio')
-      if (activeFormat === 'paperback') return binding.includes('paper') || (!binding && true) // default
+      if (activeFormat === 'paperback') return binding.includes('paper') || (!binding && true)
       if (activeFormat === 'hardcover') return binding.includes('hard')
       return true
     })
@@ -270,8 +270,8 @@ export default function SearchPage() {
     <main className="pb-12 max-w-screen-lg mx-auto px-4 md:px-8 pt-8 space-y-6">
       {/* Header */}
       <div>
-        <h1 className="font-serif text-3xl font-bold text-primary">Find Books</h1>
-        <p className="text-on-surface-variant text-sm mt-1">Search Google Books or see what the community is reading.</p>
+        <h1 className="font-serif text-3xl font-bold text-primary">{t('search.findYourNextRead')}</h1>
+        <p className="text-on-surface-variant text-sm mt-1">{t('search.searchHint')}</p>
       </div>
 
       {/* Search bar */}
@@ -282,13 +282,13 @@ export default function SearchPage() {
             value={query}
             onChange={e => setQuery(e.target.value)}
             onKeyDown={handleKey}
-            placeholder="Title, author, or ISBN…"
+            placeholder={t('search.searchByTitleAuthorISBN').split('\n')[0]}
             className="w-full bg-surface-container-low rounded-2xl pl-12 pr-5 py-3.5 text-base border-none focus:outline-none focus:ring-2 focus:ring-primary/20"
             autoFocus
           />
         </div>
         <button onClick={() => doSearch()} disabled={loading} className="btn-primary px-7 py-3.5 text-base rounded-2xl shrink-0">
-          {loading ? 'Searching…' : 'Search'}
+          {loading ? t('search.searchingBooks') : t('common.search')}
         </button>
       </div>
 
@@ -344,7 +344,7 @@ export default function SearchPage() {
             onClick={() => resetTab('community')}
             className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${tab === 'community' ? 'bg-primary text-on-primary font-bold' : 'bg-surface-container text-on-surface-variant hover:bg-surface-container-high'}`}
           >
-            Community Library
+            {t('search.communityLibrary')}
             {searched && tab === 'community' && localResults.length > 0 && (
               <span className="ml-1.5 text-[10px] bg-on-primary/20 rounded-full px-1.5 py-0.5">{localResults.length}</span>
             )}
@@ -354,8 +354,8 @@ export default function SearchPage() {
         {/* Sort (Google only, after search) */}
         {tab === 'google' && searched && (
           <div className="flex items-center gap-2 ml-auto">
-            <span className="text-xs text-outline">Sort:</span>
-            {[['relevance','Relevance'],['newest','Newest']].map(([k,l]) => (
+            <span className="text-xs text-outline">{t('search.sortBy')}</span>
+            {[['relevance', t('search.sortRelevance')],['newest', t('search.sortNewest')]].map(([k,l]) => (
               <button
                 key={k}
                 onClick={() => handleSortChange(k)}
@@ -382,12 +382,10 @@ export default function SearchPage() {
             {tab === 'community' ? 'library_books' : 'search_off'}
           </span>
           <p className="font-serif text-xl text-on-surface">
-            {tab === 'community' ? 'Not in the community catalog yet' : 'No books found'}
+            {t('search.noBooksFound')}
           </p>
           <p className="text-sm text-on-surface-variant mt-1">
-            {tab === 'community'
-              ? 'Be the first to add this book via Google Books.'
-              : 'Try a different genre filter or search term.'}
+            {t('search.noBooksFoundHint').split('\n')[0]}
           </p>
         </div>
       )}
@@ -396,9 +394,9 @@ export default function SearchPage() {
       {!loading && !searched && (
         <div className="text-center py-20">
           <span className="material-symbols-outlined text-6xl text-outline/30 block mb-4">auto_stories</span>
-          <p className="font-serif text-xl text-on-surface/60">Search for any book</p>
+          <p className="font-serif text-xl text-on-surface/60">{t('search.findYourNextRead')}</p>
           <p className="text-sm text-on-surface-variant/60 mt-1">
-            {tab === 'community' ? 'Find books already in the TrackMyRead community' : 'Powered by Google Books — results filtered for novel readers'}
+            {t('search.enterSearchTerm')}
           </p>
         </div>
       )}
@@ -407,9 +405,9 @@ export default function SearchPage() {
       {!loading && activeResults.length > 0 && (
         <div className="space-y-4">
           <p className="text-sm text-on-surface-variant">
-            {activeResults.length} result{activeResults.length !== 1 ? 's' : ''} for &ldquo;{query}&rdquo;
+            {t('search.resultsCount', { count: activeResults.length })} &ldquo;{query}&rdquo;
             {tab === 'community' && (
-              <span className="ml-2 text-xs bg-secondary/10 text-secondary px-2 py-0.5 rounded-full">Community catalog</span>
+              <span className="ml-2 text-xs bg-secondary/10 text-secondary px-2 py-0.5 rounded-full">{t('search.communityLibrary')}</span>
             )}
           </p>
           {activeResults.map((book, i) => (
@@ -424,7 +422,7 @@ export default function SearchPage() {
                 disabled={loadingMore}
                 className="btn-secondary px-8 py-3 rounded-2xl text-sm font-medium"
               >
-                {loadingMore ? 'Loading…' : 'Load more books'}
+                {loadingMore ? t('search.loadingMore') : t('search.loadMoreBooks')}
               </button>
             </div>
           )}

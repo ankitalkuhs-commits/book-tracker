@@ -20,6 +20,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useTranslation } from 'react-i18next';
 import { colors, radius, shadow } from '../theme';
 import { userAPI, profileAPI, booksAPI } from '../services/api';
 
@@ -71,57 +72,57 @@ function avatarSpot(insets) {
 // ── Step definitions ──────────────────────────────────────────────────────────
 // type: 'spotlight' | 'avatar' | 'goal' | 'done'
 
-function buildSteps(insets) {
+function buildSteps(insets, t) {
   return [
     {
       type: 'spotlight',
       spot: tabSpot(insets, 0),
-      title: 'Your Reading Feed',
-      body:  "See what friends are reading, their highlights and milestones — all in one place.",
+      title: t('onboarding.feedTabTitle'),
+      body:  t('onboarding.feedTabDesc'),
       placement: 'above',
     },
     {
       type: 'spotlight',
       spot: tabSpot(insets, 1),
-      title: 'Your Shelf',
-      body:  "Track every book — reading, want to read, finished. Log page progress anytime.",
+      title: t('onboarding.libraryTabTitle'),
+      body:  t('onboarding.libraryTabDesc'),
       placement: 'above',
     },
     {
       type: 'spotlight',
       spot: tabSpot(insets, 2),
-      title: 'Reading Circles',
-      body:  "Join circles, compete on leaderboards, and discuss books with friends.",
+      title: t('onboarding.circlesTabTitle'),
+      body:  t('onboarding.circlesTabDesc'),
       placement: 'above',
     },
     {
       type: 'spotlight',
       spot: tabSpot(insets, 3),
-      title: 'Track Your Progress',
-      body:  "See your reading streaks, pages per day, and yearly goal — all visualised.",
+      title: t('onboarding.insightsTabTitle'),
+      body:  t('onboarding.insightsTabDesc'),
       placement: 'above',
     },
     {
       type: 'avatar',
       spot: avatarSpot(insets),
-      title: 'Add Your Avatar',
-      body:  "Pick a character or upload a photo. Let friends recognise you in the feed.",
+      title: t('onboarding.addBookTitle'),
+      body:  t('onboarding.addBookDesc'),
       placement: 'below',
     },
     {
       type: 'goal',
-      title: 'Set a Reading Goal',
-      body:  "How many books do you want to read this year? You can always change this in Settings.",
+      title: t('onboarding.setGoalTitle'),
+      body:  t('onboarding.setGoalDesc'),
     },
     {
       type: 'book',
-      title: 'Add Your First Book',
-      body:  "Search for a book you're reading now, or want to read next.",
+      title: t('onboarding.addBookTitle'),
+      body:  t('onboarding.addBookDesc'),
     },
     {
       type: 'done',
-      title: "You're all set!",
-      body:  "Explore the app, add books, and connect with fellow readers.",
+      title: t('onboarding.doneTitle'),
+      body:  t('onboarding.doneDesc'),
     },
   ];
 }
@@ -129,8 +130,9 @@ function buildSteps(insets) {
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function AppTour({ onDone }) {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
-  const steps  = buildSteps(insets);
+  const steps  = buildSteps(insets, t);
 
   const [step,       setStep]       = useState(0);
   const fadeAnim                    = useRef(new Animated.Value(0)).current;
@@ -292,7 +294,7 @@ export default function AppTour({ onDone }) {
           onPress={finish}
           activeOpacity={0.7}
         >
-          <Text style={styles.skipText}>Skip</Text>
+          <Text style={styles.skipText}>{t('onboarding.skip')}</Text>
         </TouchableOpacity>
 
         {/* ── Tooltip card ──────────────────────────────────────────────── */}
@@ -392,11 +394,11 @@ export default function AppTour({ onDone }) {
                       <Text style={styles.bookAddedSub}>{addedBook.authors?.[0] || addedBook.author}</Text>
                       <View style={styles.bookAddedBadge}>
                         <Ionicons name="checkmark-circle" size={13} color={colors.primary} />
-                        <Text style={styles.bookAddedBadgeText}>Added to your shelf</Text>
+                        <Text style={styles.bookAddedBadgeText}>{t('book.addedToYourLibrary')}</Text>
                       </View>
                     </View>
                     <TouchableOpacity onPress={() => { setAddedBook(null); setBookQuery(''); setBookResults([]); }} activeOpacity={0.7}>
-                      <Text style={styles.bookChangeText}>Change</Text>
+                      <Text style={styles.bookChangeText}>{t('groups.changeBook')}</Text>
                     </TouchableOpacity>
                   </View>
                 ) : (
@@ -407,7 +409,7 @@ export default function AppTour({ onDone }) {
                         style={styles.bookSearchInput}
                         value={bookQuery}
                         onChangeText={handleBookSearch}
-                        placeholder="Search by title or author…"
+                        placeholder={t('onboarding.searchPlaceholder')}
                         placeholderTextColor={colors.outline}
                         returnKeyType="search"
                         autoCorrect={false}
@@ -445,7 +447,7 @@ export default function AppTour({ onDone }) {
                       </ScrollView>
                     )}
                     {!bookQuery && (
-                      <Text style={styles.bookSkipHint}>You can also skip and add books from your shelf later.</Text>
+                      <Text style={styles.bookSkipHint}>{t('onboarding.skipForNow')}</Text>
                     )}
                   </>
                 )}
@@ -483,7 +485,7 @@ export default function AppTour({ onDone }) {
               >
                 {isBusy
                   ? <ActivityIndicator size="small" color={colors.onPrimary} />
-                  : <Text style={styles.nextBtnText}>{isLast ? 'Start Reading' : 'Next →'}</Text>
+                  : <Text style={styles.nextBtnText}>{isLast ? t('onboarding.startReading') : t('common.continue') + ' →'}</Text>
                 }
               </TouchableOpacity>
             </View>

@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 import { userAPI, userbooksAPI, activityAPI, notesAPI, booksAPI, profileAPI } from '../services/api';
 import { PreloadContext } from '../../App';
 import { colors, radius, shadow, type } from '../theme';
@@ -31,6 +32,7 @@ function formatDate(ts) {
 
 // ── Velocity / activity chart ─────────────────────────────────────────────────
 function VelocityChart({ data, period, onPeriodChange }) {
+  const { t } = useTranslation();
   if (!data || data.length === 0) return null;
   const max  = Math.max(...data.map(d => d.pages_read || 0), 1);
   const barW = Math.max(3, Math.floor((SCREEN_W - 80) / data.length) - 1);
@@ -38,8 +40,8 @@ function VelocityChart({ data, period, onPeriodChange }) {
     <View style={styles.velocityCard}>
       <View style={styles.velocityHeader}>
         <View>
-          <Text style={styles.velocityTitle}>Reading Velocity</Text>
-          <Text style={styles.velocitySub}>Activity tracked over the last {period} days</Text>
+          <Text style={styles.velocityTitle}>{t('profile.readingVelocity')}</Text>
+          <Text style={styles.velocitySub}>{t('profile.activityTracked', { period })}</Text>
         </View>
         <View style={styles.periodToggle}>
           {['30', '90'].map(p => (
@@ -78,6 +80,7 @@ function VelocityChart({ data, period, onPeriodChange }) {
 
 // ── Main screen ───────────────────────────────────────────────────────────────
 export default function UserProfileScreen({ route, navigation }) {
+  const { t } = useTranslation();
   const { userId } = route.params;
   const insets = useSafeAreaInsets();
   const preloaded = useContext(PreloadContext);
@@ -129,7 +132,7 @@ export default function UserProfileScreen({ route, navigation }) {
     try {
       if (following) { await userAPI.unfollowUser(userId); setFollowing(false); }
       else           { await userAPI.followUser(userId);   setFollowing(true);  }
-    } catch (e) { Alert.alert('Error', e?.response?.data?.detail || 'Could not update follow'); }
+    } catch (e) { Alert.alert(t('common.error'), e?.response?.data?.detail || 'Could not update follow'); }
     setFollowLoading(false);
   };
 
@@ -147,9 +150,9 @@ export default function UserProfileScreen({ route, navigation }) {
         status,
       });
       setShelfModal(null);
-      Alert.alert('Added!', status === 'reading' ? 'Happy reading!' : 'Added to your Want to Read list.');
+      Alert.alert(status === 'reading' ? t('feed.happyReading') : t('feed.addedToWantToRead'), '');
     } catch (e) {
-      Alert.alert('Error', e?.response?.data?.detail || 'Could not add book');
+      Alert.alert(t('common.error'), e?.response?.data?.detail || 'Could not add book');
     } finally { setShelving(false); }
   };
 
@@ -172,15 +175,15 @@ export default function UserProfileScreen({ route, navigation }) {
   };
 
   const handleAdminDeleteNote = (noteId) => {
-    Alert.alert('Delete Note', 'Permanently delete this note?', [
-      { text: 'Cancel', style: 'cancel' },
+    Alert.alert(t('profile.deleteNote'), t('common.cannotBeUndone'), [
+      { text: t('common.cancel'), style: 'cancel' },
       {
-        text: 'Delete', style: 'destructive',
+        text: t('common.delete'), style: 'destructive',
         onPress: async () => {
           try {
             await notesAPI.adminDeleteNote(noteId);
             setNotes(prev => prev.filter(n => n.id !== noteId));
-          } catch { Alert.alert('Error', 'Could not delete note'); }
+          } catch { Alert.alert(t('common.error'), 'Could not delete note'); }
         },
       },
     ]);
@@ -246,21 +249,21 @@ export default function UserProfileScreen({ route, navigation }) {
               <Text style={styles.shelfAuthor} numberOfLines={1}>{book?.author || ''}</Text>
             </View>
           </View>
-          <Text style={styles.shelfPrompt}>Where would you like to shelve this?</Text>
+          <Text style={styles.shelfPrompt}>{t('book.pickStatus')}</Text>
           <TouchableOpacity style={styles.shelfBtnPrimary} onPress={() => handleShelfBook('to-read')} disabled={shelving}>
             {shelving ? <ActivityIndicator size="small" color={colors.onPrimary} /> : (
               <>
                 <Ionicons name="bookmark-outline" size={18} color={colors.onPrimary} style={{ marginRight: 8 }} />
-                <Text style={styles.shelfBtnPrimaryText}>Want to Read</Text>
+                <Text style={styles.shelfBtnPrimaryText}>{t('status.wantToRead')}</Text>
               </>
             )}
           </TouchableOpacity>
           <TouchableOpacity style={styles.shelfBtnSecondary} onPress={() => handleShelfBook('reading')} disabled={shelving}>
             <Ionicons name="book-outline" size={18} color={colors.primary} style={{ marginRight: 8 }} />
-            <Text style={styles.shelfBtnSecondaryText}>Start Reading Now</Text>
+            <Text style={styles.shelfBtnSecondaryText}>{t('status.reading')}</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.shelfCancelBtn} onPress={() => setShelfModal(null)}>
-            <Text style={styles.shelfCancelText}>Cancel</Text>
+            <Text style={styles.shelfCancelText}>{t('common.cancel')}</Text>
           </TouchableOpacity>
         </View>
       </Modal>
@@ -298,7 +301,7 @@ export default function UserProfileScreen({ route, navigation }) {
           {joinedDate && (
             <View style={styles.joinedRow}>
               <Ionicons name="calendar-outline" size={13} color={colors.onSurfaceVariant} />
-              <Text style={styles.joinedText}>Member since {joinedDate}</Text>
+              <Text style={styles.joinedText}>{t('profile.memberSince', { date: joinedDate })}</Text>
             </View>
           )}
 
@@ -306,23 +309,23 @@ export default function UserProfileScreen({ route, navigation }) {
           <View style={styles.statsPills}>
             <TouchableOpacity style={styles.statPill}>
               <Text style={styles.statPillValue}>{fmt(user?.followers_count ?? 0)}</Text>
-              <Text style={styles.statPillLabel}>FOLLOWERS</Text>
+              <Text style={styles.statPillLabel}>{t('profile.followersLabel')}</Text>
             </TouchableOpacity>
             <View style={styles.statPillDivider} />
             <TouchableOpacity style={styles.statPill}>
               <Text style={styles.statPillValue}>{fmt(user?.following_count ?? 0)}</Text>
-              <Text style={styles.statPillLabel}>FOLLOWING</Text>
+              <Text style={styles.statPillLabel}>{t('profile.followingLabel')}</Text>
             </TouchableOpacity>
             <View style={styles.statPillDivider} />
             <TouchableOpacity style={styles.statPill}>
               <Text style={styles.statPillValue}>{fmt(books.length)}</Text>
-              <Text style={styles.statPillLabel}>BOOKS</Text>
+              <Text style={styles.statPillLabel}>{t('profile.booksLabel')}</Text>
             </TouchableOpacity>
           </View>
 
           {/* Follow button */}
           {user?.follows_you && !following && (
-            <Text style={styles.followsYouLabel}>Follows you</Text>
+            <Text style={styles.followsYouLabel}>{t('profile.followsYou')}</Text>
           )}
           <TouchableOpacity
             style={[styles.followBtn, following && styles.followBtnActive]}
@@ -334,7 +337,7 @@ export default function UserProfileScreen({ route, navigation }) {
               : <>
                   {following && <Ionicons name="checkmark" size={14} color={colors.primary} style={{ marginRight: 4 }} />}
                   <Text style={[styles.followBtnText, following && styles.followBtnTextActive]}>
-                    {following ? 'Following' : user?.follows_you ? 'Follow Back' : 'Follow'}
+                    {following ? t('profile.following_btn') : user?.follows_you ? t('profile.followBack') : t('profile.follow')}
                   </Text>
                 </>
             }
@@ -345,10 +348,10 @@ export default function UserProfileScreen({ route, navigation }) {
         {isPrivate ? (
           <View style={styles.lockedCard}>
             <Ionicons name="lock-closed" size={40} color={colors.outlineVariant} />
-            <Text style={styles.lockedTitle}>This profile is private</Text>
-            <Text style={styles.lockedSub}>Follow {name} to see their library and notes.</Text>
+            <Text style={styles.lockedTitle}>{t('profile.privateProfile')}</Text>
+            <Text style={styles.lockedSub}>{t('profile.followToSee', { name })}</Text>
             <TouchableOpacity style={styles.followBtn} onPress={toggleFollow} disabled={followLoading}>
-              <Text style={styles.followBtnText}>Follow to unlock</Text>
+              <Text style={styles.followBtnText}>{t('profile.followToUnlock')}</Text>
             </TouchableOpacity>
           </View>
         ) : (
@@ -396,10 +399,10 @@ export default function UserProfileScreen({ route, navigation }) {
             {books.length > 0 && (
               <View style={styles.section}>
                 <View style={styles.sectionHeaderRow}>
-                  <Text style={styles.sectionTitle}>Curated Library</Text>
+                  <Text style={styles.sectionTitle}>{t('profile.curatedLibrary')}</Text>
                   <TouchableOpacity onPress={() => setShowAllBooks(p => !p)}>
                     <Text style={styles.viewAllLink}>
-                      {showAllBooks ? 'Show less' : `View All ${books.length} Books →`}
+                      {showAllBooks ? t('profile.showLess') : t('profile.viewAllBooks', { count: books.length })}
                     </Text>
                   </TouchableOpacity>
                 </View>
@@ -428,33 +431,33 @@ export default function UserProfileScreen({ route, navigation }) {
 
             {/* ── By The Numbers ── */}
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>By The Numbers</Text>
+              <Text style={styles.sectionTitle}>{t('profile.byTheNumbers')}</Text>
               <View style={styles.numbersGrid}>
                 <View style={styles.numberCard}>
                   <Text style={styles.numberValue}>{books.length}</Text>
-                  <Text style={styles.numberLabel}>In Library</Text>
+                  <Text style={styles.numberLabel}>{t('profile.inLibrary')}</Text>
                 </View>
                 <View style={styles.numberCard}>
                   <Text style={styles.numberValue}>{finishedCount}</Text>
-                  <Text style={styles.numberLabel}>Finished</Text>
+                  <Text style={styles.numberLabel}>{t('insights.finished')}</Text>
                 </View>
                 <View style={styles.numberCard}>
                   <Text style={styles.numberValue}>{readingCount}</Text>
-                  <Text style={styles.numberLabel}>Reading</Text>
+                  <Text style={styles.numberLabel}>{t('status.reading')}</Text>
                 </View>
               </View>
               {avgPpd != null && avgPpd > 0 && (
                 <View style={styles.speedCard}>
                   <Ionicons name="speedometer-outline" size={18} color={colors.primary} />
                   <Text style={styles.speedValue}>{avgPpd}</Text>
-                  <Text style={styles.speedLabel}>avg pages / day (last 30 days)</Text>
+                  <Text style={styles.speedLabel}>{t('profile.avgPagesPerDay')}</Text>
                 </View>
               )}
 
               {/* Currently Reading */}
               {currentlyReading.length > 0 && (
                 <View style={styles.currentlyReadingBlock}>
-                  <Text style={styles.currentlyReadingLabel}>CURRENTLY READING</Text>
+                  <Text style={styles.currentlyReadingLabel}>{t('profile.currentlyReading').toUpperCase()}</Text>
                   {currentlyReading.slice(0, 3).map(ub => {
                     const total = ub.book?.total_pages || 0;
                     const pct   = total > 0 ? Math.min(100, Math.round(((ub.current_page || 0) / total) * 100)) : 0;
@@ -492,7 +495,7 @@ export default function UserProfileScreen({ route, navigation }) {
             {/* ── Public Notes ── */}
             {notes.length > 0 && (
               <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Public Notes</Text>
+                <Text style={styles.sectionTitle}>{t('profile.publicNotes')}</Text>
                 <View style={{ gap: 10 }}>
                   {notes.map(note => (
                     <View key={note.id} style={styles.noteCard}>
@@ -541,7 +544,7 @@ export default function UserProfileScreen({ route, navigation }) {
             {books.length === 0 && notes.length === 0 && (
               <View style={styles.empty}>
                 <Ionicons name="book-outline" size={48} color={colors.outlineVariant} />
-                <Text style={styles.emptyText}>No reading activity yet</Text>
+                <Text style={styles.emptyText}>{t('profile.noReadingActivity')}</Text>
               </View>
             )}
           </>

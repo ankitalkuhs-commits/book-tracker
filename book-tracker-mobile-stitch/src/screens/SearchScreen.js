@@ -6,39 +6,18 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 import { booksAPI } from '../services/api';
 import { colors, radius, shadow, type } from '../theme';
 
 // ── Genre chips ───────────────────────────────────────────────────────────────
-const GENRES = [
-  { key: 'all',       label: 'All' },
-  { key: 'fiction',   label: 'Fiction' },
-  { key: 'fantasy',   label: 'Fantasy' },
-  { key: 'mystery',   label: 'Mystery' },
-  { key: 'thriller',  label: 'Thriller' },
-  { key: 'sci-fi',    label: 'Sci-Fi' },
-  { key: 'romance',   label: 'Romance' },
-  { key: 'historical',label: 'Historical' },
-  { key: 'literary',  label: 'Literary' },
-];
+const GENRE_KEYS = ['all', 'fiction', 'fantasy', 'mystery', 'thriller', 'sci-fi', 'romance', 'historical', 'literary'];
 
-const SORT_OPTIONS = [
-  { key: 'relevance', label: 'Relevance' },
-  { key: 'newest',    label: 'Newest' },
-];
+const SORT_KEYS = ['relevance', 'newest'];
 
-const STATUS_OPTIONS = [
-  { value: 'to-read',  label: 'Want to Read' },
-  { value: 'reading',  label: 'Reading' },
-  { value: 'finished', label: 'Finished' },
-];
+const STATUS_KEYS = ['to-read', 'reading', 'finished'];
 
-const FORMAT_OPTIONS = [
-  { value: 'hardcover',  label: 'Hardcover' },
-  { value: 'paperback',  label: 'Paperback' },
-  { value: 'ebook',      label: 'eBook' },
-  { value: 'audiobook',  label: 'Audiobook' },
-];
+const FORMAT_KEYS = ['hardcover', 'paperback', 'ebook', 'audiobook'];
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function extractYear(published_date) {
@@ -70,6 +49,7 @@ function StarRow({ rating, count }) {
 
 // ── Book card ─────────────────────────────────────────────────────────────────
 function BookCard({ item, onAddPress }) {
+  const { t } = useTranslation();
   const [imgError, setImgError] = useState(false);
   const year = extractYear(item.published_date);
   const genre = primaryCategory(item.categories);
@@ -120,7 +100,7 @@ function BookCard({ item, onAddPress }) {
           onPress={() => onAddPress(item)}
         >
           <Ionicons name="add" size={14} color={colors.onPrimary} />
-          <Text style={styles.addButtonText}>Add to Library</Text>
+          <Text style={styles.addButtonText}>{t('library.addToLibrary')}</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -148,8 +128,24 @@ function OptionPills({ options, value, onChange }) {
 
 // ── Main Screen ───────────────────────────────────────────────────────────────
 export default function SearchScreen({ navigation }) {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const inputRef = useRef(null);
+
+  const genreKeyMap = { all: 'genreAll', fiction: 'genreFiction', fantasy: 'genreFantasy', mystery: 'genreMystery', thriller: 'genreThriller', 'sci-fi': 'genreSciFi', romance: 'genreRomance', historical: 'genreHistorical', literary: 'genreLiterary' };
+  const GENRES = GENRE_KEYS.map(key => ({ key, label: t(`search.${genreKeyMap[key]}`) }));
+  const SORT_OPTIONS = SORT_KEYS.map(key => ({ key, label: key === 'relevance' ? t('search.sortRelevance') : t('search.sortNewest') }));
+  const STATUS_OPTIONS = [
+    { value: 'to-read',  label: t('status.wantToRead') },
+    { value: 'reading',  label: t('status.reading') },
+    { value: 'finished', label: t('status.finished') },
+  ];
+  const FORMAT_OPTIONS = [
+    { value: 'hardcover', label: t('format.hardcover') },
+    { value: 'paperback', label: t('format.paperback') },
+    { value: 'ebook',     label: t('format.ebook') },
+    { value: 'audiobook', label: t('format.audiobook') },
+  ];
 
   const [searchQuery,    setSearchQuery]    = useState('');
   const [searchResults,  setSearchResults]  = useState([]);
@@ -172,7 +168,7 @@ export default function SearchScreen({ navigation }) {
 
   const searchBooks = async (overrideGenre, overrideSort, append = false) => {
     if (!searchQuery.trim()) {
-      Alert.alert('Enter a search term', 'Type a title, author name, or ISBN.');
+      Alert.alert(t('search.enterSearchTerm'), t('search.searchHint'));
       return;
     }
     Keyboard.dismiss();
@@ -201,7 +197,7 @@ export default function SearchScreen({ navigation }) {
       setHasMore(data.has_more ?? false);
       setNextStartIndex(data.next_start_index ?? 0);
     } catch {
-      Alert.alert('Search failed', 'Could not reach the book catalog. Try again.');
+      Alert.alert(t('common.error'), t('common.tryAgain'));
     } finally {
       setSearching(false);
       setLoadingMore(false);
@@ -245,12 +241,12 @@ export default function SearchScreen({ navigation }) {
       });
       setShowAddModal(false);
       setSelectedBook(null);
-      Alert.alert('Added!', `"${selectedBook.title}" is now in your library.`, [
-        { text: 'Keep Searching', style: 'cancel' },
-        { text: 'Go to Library', onPress: () => navigation.navigate('Library') },
+      Alert.alert(t('search.addBookSuccess'), t('search.addBookSuccessDesc', { title: selectedBook.title }), [
+        { text: t('search.keepSearching'), style: 'cancel' },
+        { text: t('search.goToLibrary'), onPress: () => navigation.navigate('Library') },
       ]);
     } catch (e) {
-      Alert.alert('Error', e.response?.data?.detail || 'Failed to add book. It may already be in your library.');
+      Alert.alert(t('common.error'), e.response?.data?.detail || t('library.couldNotAddBook'));
     } finally {
       setAddingBook(false);
     }
@@ -259,7 +255,7 @@ export default function SearchScreen({ navigation }) {
   // ── Placeholder hint ───────────────────────────────────────────────────────
   const isISBNLike = /^\d[\d\-]{8,}$/.test(searchQuery.replace(/\s/g, ''));
   const placeholder = isISBNLike
-    ? 'ISBN detected — tap Search'
+    ? t('search.isbnDetected')
     : 'Title, author, or ISBN…';
 
   return (
@@ -296,7 +292,7 @@ export default function SearchScreen({ navigation }) {
         >
           {searching
             ? <ActivityIndicator size="small" color={colors.onPrimary} />
-            : <Text style={styles.searchBtnText}>Search</Text>
+            : <Text style={styles.searchBtnText}>{t('common.search')}</Text>
           }
         </TouchableOpacity>
       </View>
@@ -324,7 +320,7 @@ export default function SearchScreen({ navigation }) {
       {/* ── Sort toggle — always rendered to prevent layout shift ── */}
       <View style={[styles.sortRow, { opacity: (hasSearched && searchResults.length > 0) ? 1 : 0 }]}
             pointerEvents={hasSearched && searchResults.length > 0 ? 'auto' : 'none'}>
-        <Text style={styles.sortLabel}>Sort:</Text>
+        <Text style={styles.sortLabel}>{t('search.sortBy')}</Text>
         {SORT_OPTIONS.map(s => (
           <TouchableOpacity
             key={s.key}
@@ -336,30 +332,26 @@ export default function SearchScreen({ navigation }) {
             </Text>
           </TouchableOpacity>
         ))}
-        <Text style={styles.resultCount}>{searchResults.length} results</Text>
+        <Text style={styles.resultCount}>{t('search.resultsCount', { count: searchResults.length })}</Text>
       </View>
 
       {/* ── Results / states ── */}
       {searching ? (
         <View style={styles.centered}>
           <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.loadingText}>Searching books…</Text>
+          <Text style={styles.loadingText}>{t('search.searchingBooks')}</Text>
         </View>
       ) : hasSearched && searchResults.length === 0 ? (
         <View style={styles.centered}>
           <Ionicons name="search-outline" size={52} color={colors.outlineVariant} />
-          <Text style={styles.emptyTitle}>No books found</Text>
-          <Text style={styles.emptySubtext}>
-            Try a different title or author,{'\n'}or change the genre filter.
-          </Text>
+          <Text style={styles.emptyTitle}>{t('search.noBooksFound')}</Text>
+          <Text style={styles.emptySubtext}>{t('search.noBooksFoundHint')}</Text>
         </View>
       ) : !hasSearched ? (
         <View style={styles.centered}>
           <Ionicons name="library-outline" size={56} color={colors.outlineVariant} />
-          <Text style={styles.emptyTitle}>Find your next read</Text>
-          <Text style={styles.emptySubtext}>
-            Search by title, author, or ISBN.{'\n'}Use the genre chips to narrow results.
-          </Text>
+          <Text style={styles.emptyTitle}>{t('search.findYourNextRead')}</Text>
+          <Text style={styles.emptySubtext}>{t('search.searchByTitleAuthorISBN')}</Text>
         </View>
       ) : (
         <FlatList
@@ -374,7 +366,7 @@ export default function SearchScreen({ navigation }) {
           ListFooterComponent={loadingMore ? (
             <View style={styles.loadMoreFooter}>
               <ActivityIndicator size="small" color={colors.primary} />
-              <Text style={styles.loadMoreText}>Loading more books…</Text>
+              <Text style={styles.loadMoreText}>{t('search.loadingMore')}</Text>
             </View>
           ) : null}
         />
@@ -412,10 +404,10 @@ export default function SearchScreen({ navigation }) {
             )}
 
             <ScrollView showsVerticalScrollIndicator={false}>
-              <Text style={styles.fieldLabel}>ADD TO</Text>
+              <Text style={styles.fieldLabel}>{t('search.addTo')}</Text>
               <OptionPills value={bookStatus} onChange={setBookStatus} options={STATUS_OPTIONS} />
 
-              <Text style={styles.fieldLabel}>FORMAT</Text>
+              <Text style={styles.fieldLabel}>{t('search.formatLabel')}</Text>
               <OptionPills value={bookFormat} onChange={setBookFormat} options={FORMAT_OPTIONS} />
 
               <View style={styles.modalBtns}>
@@ -423,7 +415,7 @@ export default function SearchScreen({ navigation }) {
                   style={styles.cancelBtn}
                   onPress={() => setShowAddModal(false)}
                 >
-                  <Text style={styles.cancelBtnText}>Cancel</Text>
+                  <Text style={styles.cancelBtnText}>{t('common.cancel')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[styles.confirmBtn, addingBook && { opacity: 0.6 }]}
@@ -432,7 +424,7 @@ export default function SearchScreen({ navigation }) {
                 >
                   {addingBook
                     ? <ActivityIndicator size="small" color={colors.onPrimary} />
-                    : <Text style={styles.confirmBtnText}>Add Book</Text>
+                    : <Text style={styles.confirmBtnText}>{t('search.addBook')}</Text>
                   }
                 </TouchableOpacity>
               </View>

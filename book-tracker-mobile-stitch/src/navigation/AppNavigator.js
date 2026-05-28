@@ -2,6 +2,7 @@ import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { colors } from '../theme';
 
 // Screens
@@ -82,6 +83,7 @@ function ProfileStack({ onLogout }) {
 // ── 4-tab navigator ───────────────────────────────────────────────────────────
 
 function TabsNavigator() {
+  const { t } = useTranslation();
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
@@ -107,10 +109,10 @@ function TabsNavigator() {
         },
       })}
     >
-      <Tab.Screen name="HomeTab" options={{ title: 'Home' }}     component={FeedStack} />
-      <Tab.Screen name="LibTab"  options={{ title: 'Library' }}  component={LibraryStack} />
-      <Tab.Screen name="CircTab" options={{ title: 'Circles' }}  component={GroupsStack} />
-      <Tab.Screen name="InsTab"  options={{ title: 'Insights' }} component={InsightsStack} />
+      <Tab.Screen name="HomeTab" options={{ title: t('tabs.feed') }}     component={FeedStack} />
+      <Tab.Screen name="LibTab"  options={{ title: t('tabs.library') }}  component={LibraryStack} />
+      <Tab.Screen name="CircTab" options={{ title: t('tabs.circles') }}  component={GroupsStack} />
+      <Tab.Screen name="InsTab"  options={{ title: t('tabs.insights') }} component={InsightsStack} />
     </Tab.Navigator>
   );
 }

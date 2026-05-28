@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../components/Toast'
 import {
@@ -42,9 +43,10 @@ function pct(current, total) {
 // ─── Activity Chart ───────────────────────────────────────────────────────────
 
 function ActivityChart({ data, insights }) {
+  const { t } = useTranslation()
   if (!data || data.length === 0) return (
     <div className="h-32 flex items-center justify-center text-sm text-on-surface-variant/50">
-      No reading activity yet
+      {t('profile.noReadingActivity')}
     </div>
   )
   const bars = data.slice(-30)
@@ -58,8 +60,8 @@ function ActivityChart({ data, insights }) {
       {/* Header row */}
       <div className="flex items-start justify-between flex-wrap gap-2">
         <div>
-          <h3 className="font-serif text-lg font-bold text-on-surface">30-Day Activity</h3>
-          <p className="text-xs text-on-surface-variant mt-0.5">Consistent daily habits tracked in pages</p>
+          <h3 className="font-serif text-lg font-bold text-on-surface">{t('profile.thirtyDayActivity')}</h3>
+          <p className="text-xs text-on-surface-variant mt-0.5">{t('profile.dailyPagesRead')}</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           {currentStreak > 0 && (
@@ -102,8 +104,8 @@ function ActivityChart({ data, insights }) {
 
       {/* Axis labels */}
       <div className="flex justify-between text-[10px] font-bold uppercase tracking-wider text-on-surface-variant/50">
-        <span>30 Days Ago</span>
-        <span>Today</span>
+        <span>{t('profile.thirtyDaysAgo')}</span>
+        <span>{t('common.today')}</span>
       </div>
     </div>
   )
@@ -126,6 +128,7 @@ function BookThumb({ book }) {
 // ─── New Note Modal ───────────────────────────────────────────────────────────
 
 function NewNoteModal({ onClose, onPosted }) {
+  const { t } = useTranslation()
   const toast = useToast()
   const [books, setBooks] = useState([])
   const [text, setText] = useState('')
@@ -155,7 +158,7 @@ function NewNoteModal({ onClose, onPosted }) {
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-on-surface/20 backdrop-blur-sm">
       <div className="bg-surface-container-lowest rounded-3xl shadow-float w-full max-w-lg">
         <div className="flex items-center justify-between px-6 py-5 border-b border-outline-variant/15">
-          <h2 className="font-serif text-xl font-bold text-primary">New Note</h2>
+          <h2 className="font-serif text-xl font-bold text-primary">{t('profile.newNote')}</h2>
           <button onClick={onClose} className="text-on-surface-variant hover:text-on-surface">
             <span className="material-symbols-outlined">close</span>
           </button>
@@ -163,13 +166,13 @@ function NewNoteModal({ onClose, onPosted }) {
         <div className="p-6 space-y-4">
           {books.length > 0 && (
             <div className="space-y-1.5">
-              <label className="text-xs font-bold uppercase tracking-wider text-on-surface-variant">Book (optional)</label>
+              <label className="text-xs font-bold uppercase tracking-wider text-on-surface-variant">{t('profile.bookOptional')}</label>
               <select
                 value={userbookId}
                 onChange={e => setUserbookId(e.target.value)}
                 className="w-full bg-surface-container-low rounded-xl px-4 py-2.5 text-sm border-none focus:outline-none focus:ring-2 focus:ring-primary/20"
               >
-                <option value="">— No book —</option>
+                <option value="">{t('profile.noBook')}</option>
                 {books.map(ub => (
                   <option key={ub.id} value={ub.id}>{ub.book?.title}</option>
                 ))}
@@ -177,35 +180,35 @@ function NewNoteModal({ onClose, onPosted }) {
             </div>
           )}
           <div className="space-y-1.5">
-            <label className="text-xs font-bold uppercase tracking-wider text-on-surface-variant">Reflection</label>
+            <label className="text-xs font-bold uppercase tracking-wider text-on-surface-variant">{t('profile.reflection')}</label>
             <textarea
               value={text}
               onChange={e => setText(e.target.value)}
-              placeholder="Share a reading reflection..."
+              placeholder={t('profile.reflectionPlaceholder')}
               rows={4}
               autoFocus
               className="w-full bg-surface-container-low rounded-xl px-4 py-3 text-sm border-none focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none"
             />
           </div>
           <div className="space-y-1.5">
-            <label className="text-xs font-bold uppercase tracking-wider text-on-surface-variant">Quote (optional)</label>
+            <label className="text-xs font-bold uppercase tracking-wider text-on-surface-variant">{t('profile.quoteOptional')}</label>
             <input
               value={quote}
               onChange={e => setQuote(e.target.value)}
-              placeholder="A memorable line from the book..."
+              placeholder={t('profile.quoteFromBook')}
               className="w-full bg-surface-container-low rounded-xl px-4 py-2.5 text-sm border-none focus:outline-none focus:ring-2 focus:ring-primary/20"
             />
           </div>
           <div className="flex justify-end gap-3 pt-1">
             <button onClick={onClose} className="px-5 py-2.5 text-sm text-on-surface-variant hover:text-on-surface transition-colors">
-              Cancel
+              {t('common.cancel')}
             </button>
             <button
               onClick={handlePost}
               disabled={posting || !text.trim()}
               className="btn-primary px-6 py-2.5 text-sm rounded-xl disabled:opacity-50"
             >
-              {posting ? 'Posting...' : 'Post Note'}
+              {posting ? t('common.loading') : t('common.post')}
             </button>
           </div>
         </div>
@@ -217,6 +220,7 @@ function NewNoteModal({ onClose, onPosted }) {
 // ─── Edit Bio Modal ───────────────────────────────────────────────────────────
 
 function EditBioModal({ profile, onClose, onSaved }) {
+  const { t } = useTranslation()
   const { user, login } = useAuth()
   const toast = useToast()
   const [bio, setBio] = useState(profile?.bio || '')
@@ -249,7 +253,7 @@ function EditBioModal({ profile, onClose, onSaved }) {
         </div>
         <div className="p-6 space-y-4">
           <div className="space-y-1.5">
-            <label className="text-xs font-bold uppercase tracking-wider text-on-surface-variant">Display Name</label>
+            <label className="text-xs font-bold uppercase tracking-wider text-on-surface-variant">{t('settings.displayName')}</label>
             <input
               value={name}
               onChange={e => setName(e.target.value)}
@@ -258,25 +262,25 @@ function EditBioModal({ profile, onClose, onSaved }) {
             />
           </div>
           <div className="space-y-1.5">
-            <label className="text-xs font-bold uppercase tracking-wider text-on-surface-variant">Bio</label>
+            <label className="text-xs font-bold uppercase tracking-wider text-on-surface-variant">{t('settings.bio')}</label>
             <textarea
               value={bio}
               onChange={e => setBio(e.target.value)}
-              placeholder="Tell your reading story..."
+              placeholder={t('settings.bioPlaceholder')}
               rows={3}
               className="w-full bg-surface-container-low rounded-xl px-4 py-3 text-sm border-none focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none"
             />
           </div>
           <div className="flex justify-end gap-3 pt-1">
             <button onClick={onClose} className="px-5 py-2.5 text-sm text-on-surface-variant hover:text-on-surface transition-colors">
-              Cancel
+              {t('common.cancel')}
             </button>
             <button
               onClick={handleSave}
               disabled={saving || !name.trim()}
               className="btn-primary px-6 py-2.5 text-sm rounded-xl disabled:opacity-50"
             >
-              {saving ? 'Saving...' : 'Save'}
+              {saving ? t('common.saving') : t('common.save')}
             </button>
           </div>
         </div>
@@ -300,6 +304,7 @@ function NoteCoverThumb({ book }) {
 }
 
 function NoteCard({ note, onDelete, onEdit }) {
+  const { t } = useTranslation()
   const toast = useToast()
   const [menuOpen, setMenuOpen] = useState(false)
   const [editing, setEditing] = useState(false)
@@ -356,14 +361,14 @@ function NoteCard({ note, onDelete, onEdit }) {
                 className="w-full text-left px-4 py-2 text-sm text-on-surface hover:bg-surface-container transition-colors flex items-center gap-2"
               >
                 <span className="material-symbols-outlined text-sm">edit</span>
-                Edit
+                {t('common.edit')}
               </button>
               <button
                 onClick={() => { setMenuOpen(false); onDelete(note.id) }}
                 className="w-full text-left px-4 py-2 text-sm text-error hover:bg-error-container/20 transition-colors flex items-center gap-2"
               >
                 <span className="material-symbols-outlined text-sm">delete</span>
-                Delete
+                {t('common.delete')}
               </button>
             </div>
           )}
@@ -377,7 +382,7 @@ function NoteCard({ note, onDelete, onEdit }) {
             <input
               value={editQuote}
               onChange={e => setEditQuote(e.target.value)}
-              placeholder="Quote (optional)..."
+              placeholder={t('profile.quoteOptional')}
               className="w-full bg-surface-container-low rounded-xl pl-8 pr-3 py-2 text-sm border-none focus:outline-none focus:ring-2 focus:ring-primary/20"
             />
           </div>
@@ -385,18 +390,18 @@ function NoteCard({ note, onDelete, onEdit }) {
             value={editText}
             onChange={e => setEditText(e.target.value)}
             rows={3}
-            placeholder="Your reflection..."
+            placeholder={t('profile.reflectionPlaceholder')}
             className="w-full bg-surface-container-low rounded-xl p-3 text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none border-none"
           />
           <div className="flex gap-2">
             <button onClick={handleSave} disabled={saving} className="btn-primary px-4 py-1.5 text-xs rounded-lg">
-              {saving ? 'Saving…' : 'Save'}
+              {saving ? t('common.saving') : t('common.save')}
             </button>
             <button
               onClick={() => { setEditing(false); setEditText(note.text || ''); setEditQuote(note.quote || '') }}
               className="px-4 py-1.5 text-xs rounded-lg border border-outline-variant/30 text-on-surface-variant hover:bg-surface-container transition-colors"
             >
-              Cancel
+              {t('common.cancel')}
             </button>
           </div>
         </div>
@@ -430,6 +435,7 @@ function NoteCard({ note, onDelete, onEdit }) {
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 export default function ProfilePage() {
+  const { t } = useTranslation()
   const { user, login, logout } = useAuth()
   const navigate = useNavigate()
   const toast = useToast()
@@ -558,7 +564,7 @@ export default function ProfilePage() {
                 className="flex items-center gap-1 text-xs font-bold text-secondary hover:text-secondary/80 transition-colors uppercase tracking-wider"
               >
                 <span className="material-symbols-outlined text-sm">edit</span>
-                Edit Bio
+                {t('common.edit')} {t('settings.bio')}
               </button>
             </div>
             {user?.username && (
@@ -574,16 +580,16 @@ export default function ProfilePage() {
                 onClick={() => setShowEditBio(true)}
                 className="text-sm text-on-surface-variant/50 italic hover:text-on-surface-variant transition-colors"
               >
-                Add a bio...
+                {t('profile.addBioPrompt')}
               </button>
             )}
 
             {/* Stats pills */}
             <div className="flex items-center gap-6 pt-2">
               {[
-                { value: profile?.followers_count ?? 0, label: 'Followers' },
-                { value: profile?.following_count ?? 0, label: 'Following' },
-                { value: stats?.total_books ?? books.length, label: 'Books' },
+                { value: profile?.followers_count ?? 0, label: t('profile.followers') },
+                { value: profile?.following_count ?? 0, label: t('profile.following') },
+                { value: stats?.total_books ?? books.length, label: t('profile.books') },
               ].map(({ value, label }) => (
                 <div key={label} className="text-center">
                   <p className="font-serif text-2xl font-bold text-on-surface leading-none">{value?.toLocaleString()}</p>
@@ -603,12 +609,12 @@ export default function ProfilePage() {
 
           {/* Reading Analytics */}
           <section className="bg-surface-container-low rounded-3xl p-6 space-y-4">
-            <h2 className="font-serif text-base font-bold text-primary">Reading Analytics</h2>
+            <h2 className="font-serif text-base font-bold text-primary">{t('profile.readingAnalytics')}</h2>
 
             <div className="space-y-3">
               <div className="bg-surface-container-lowest rounded-2xl p-4 flex items-center justify-between">
                 <div>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/60">Total Books</p>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/60">{t('profile.totalBooks')}</p>
                   <p className="font-serif text-3xl font-bold text-on-surface mt-0.5">{stats?.total_books ?? books.length}</p>
                 </div>
                 <span className="material-symbols-outlined text-3xl text-on-surface-variant/20">auto_stories</span>
@@ -616,7 +622,7 @@ export default function ProfilePage() {
 
               <div className="bg-surface-container-lowest rounded-2xl p-4 flex items-center justify-between">
                 <div>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/60">Pages Read</p>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/60">{t('profile.pagesRead')}</p>
                   <p className="font-serif text-3xl font-bold text-on-surface mt-0.5">
                     {(stats?.total_pages_read || 0).toLocaleString()}
                   </p>
@@ -629,7 +635,7 @@ export default function ProfilePage() {
             {insights?.current_streak > 0 && (
               <div className="bg-surface-container-lowest rounded-2xl p-4 flex items-center justify-between">
                 <div>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/60">Current Streak</p>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/60">{t('profile.dayStreak')}</p>
                   <div className="flex items-center gap-1 mt-0.5">
                     <span className="material-symbols-outlined text-secondary" style={{ fontVariationSettings: "'FILL' 1", fontSize: '20px' }}>local_fire_department</span>
                     <p className="font-serif text-3xl font-bold text-on-surface">{insights.current_streak}</p>
@@ -669,9 +675,9 @@ export default function ProfilePage() {
                   </div>
                   <div>
                     <p className="font-bold text-on-surface">{insights.yearly_goal.completed} / {insights.yearly_goal.goal}</p>
-                    <p className="text-xs text-on-surface-variant/60">books this year</p>
+                    <p className="text-xs text-on-surface-variant/60">{t('insights.booksFinishedInYear', { year: new Date().getFullYear() })}</p>
                     <p className={`text-[10px] font-bold mt-1 ${insights.yearly_goal.on_track ? 'text-primary' : 'text-secondary'}`}>
-                      {insights.yearly_goal.on_track ? 'On track' : 'Behind pace'}
+                      {insights.yearly_goal.on_track ? t('insights.onTrack') : t('insights.behindPace')}
                     </p>
                   </div>
                 </div>
@@ -686,7 +692,7 @@ export default function ProfilePage() {
               >
                 <span className="flex items-center gap-2.5">
                   <span className="material-symbols-outlined text-base text-on-surface-variant">settings</span>
-                  Account Settings
+                  {t('profile.accountSettings')}
                 </span>
                 <span className="material-symbols-outlined text-base text-on-surface-variant/40">chevron_right</span>
               </button>
@@ -695,7 +701,7 @@ export default function ProfilePage() {
                 className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl hover:bg-error-container/20 transition-colors text-sm text-error"
               >
                 <span className="material-symbols-outlined text-base">logout</span>
-                Sign Out
+                {t('profile.signOut')}
               </button>
             </div>
           </section>
@@ -703,7 +709,7 @@ export default function ProfilePage() {
           {/* Currently Reading */}
           {currentlyReading.length > 0 && (
             <section className="bg-surface-container-low rounded-3xl p-6 space-y-4">
-              <h2 className="font-serif text-base font-bold text-primary">Currently Reading</h2>
+              <h2 className="font-serif text-base font-bold text-primary">{t('profile.currentlyReading')}</h2>
               <div className="space-y-4">
                 {currentlyReading.map(ub => {
                   const progress = pct(ub.current_page, ub.book?.total_pages)
@@ -744,26 +750,26 @@ export default function ProfilePage() {
           {/* My Notes */}
           <section className="space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="font-serif text-2xl font-bold text-on-surface">My Notes</h2>
+              <h2 className="font-serif text-2xl font-bold text-on-surface">{t('profile.myNotes')}</h2>
               <button
                 onClick={() => setShowNewNote(true)}
                 className="btn-primary flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-bold"
               >
                 <span className="material-symbols-outlined text-base">add</span>
-                New Entry
+                {t('profile.newEntry')}
               </button>
             </div>
 
             {notes.length === 0 ? (
               <div className="bg-surface-container-lowest rounded-2xl p-12 text-center border border-outline-variant/10">
                 <span className="material-symbols-outlined text-5xl text-outline/30 block mb-3">edit_note</span>
-                <p className="font-serif text-lg text-on-surface">No notes yet</p>
-                <p className="text-sm text-on-surface-variant mt-1">Share your reading reflections with the world.</p>
+                <p className="font-serif text-lg text-on-surface">{t('profile.noNotes')}</p>
+                <p className="text-sm text-on-surface-variant mt-1">{t('profile.noActivityData')}</p>
                 <button
                   onClick={() => setShowNewNote(true)}
                   className="btn-primary mt-5 px-6 py-2.5 text-sm rounded-xl"
                 >
-                  Write your first note
+                  {t('profile.writeFirstNote')}
                 </button>
               </div>
             ) : (

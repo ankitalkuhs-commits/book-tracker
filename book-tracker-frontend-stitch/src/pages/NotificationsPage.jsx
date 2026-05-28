@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { getNotifications, markAllNotificationsRead, getVapidPublicKey, webSubscribe } from '../services/api'
 
 function timeAgo(dateStr) {
@@ -54,6 +55,7 @@ function urlBase64ToUint8Array(base64String) {
 }
 
 function PushPermissionBanner() {
+  const { t } = useTranslation()
   const [status, setStatus] = useState(() => {
     if (!('Notification' in window) || !('serviceWorker' in navigator)) return 'unsupported'
     return Notification.permission // 'default' | 'granted' | 'denied'
@@ -92,9 +94,9 @@ function PushPermissionBanner() {
         <span className="material-symbols-outlined text-xl">notifications_active</span>
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-bold text-on-surface">Don't miss a thing</p>
+        <p className="text-sm font-bold text-on-surface">{t('notifications.dontMissAThing')}</p>
         <p className="text-sm text-on-surface-variant mt-0.5">
-          Your friends are reading, finishing books, and sharing notes right now. Enable notifications so you're never the last to know.
+          {t('notifications.enablePushDesc')}
         </p>
       </div>
       <button
@@ -102,13 +104,14 @@ function PushPermissionBanner() {
         disabled={enabling}
         className="btn-primary px-4 py-2 text-sm rounded-xl shrink-0 disabled:opacity-60"
       >
-        {enabling ? 'Enabling…' : 'Enable'}
+        {enabling ? t('common.loading') : t('notifications.enable')}
       </button>
     </div>
   )
 }
 
 export default function NotificationsPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [notifications, setNotifications] = useState([])
   const [loading, setLoading] = useState(true)
@@ -142,9 +145,9 @@ export default function NotificationsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="font-serif text-3xl font-bold text-primary">Notifications</h1>
+          <h1 className="font-serif text-3xl font-bold text-primary">{t('notifications.title')}</h1>
           {unreadCount > 0 && (
-            <p className="text-sm text-on-surface-variant mt-0.5">{unreadCount} unread</p>
+            <p className="text-sm text-on-surface-variant mt-0.5">{t('notifications.unreadCount', { count: unreadCount })}</p>
           )}
         </div>
         {unreadCount > 0 && (
@@ -152,7 +155,7 @@ export default function NotificationsPage() {
             onClick={handleMarkAll}
             className="text-sm text-primary font-medium hover:underline transition-colors"
           >
-            Mark all as read
+            {t('notifications.markAllRead')}
           </button>
         )}
       </div>
@@ -170,8 +173,8 @@ export default function NotificationsPage() {
       {!loading && notifications.length === 0 && (
         <div className="text-center py-20">
           <span className="material-symbols-outlined text-6xl text-outline/40 block mb-4">notifications_off</span>
-          <p className="font-serif text-xl text-on-surface">All caught up!</p>
-          <p className="text-sm text-on-surface-variant mt-1">No notifications yet.</p>
+          <p className="font-serif text-xl text-on-surface">{t('notifications.allCaughtUp')}</p>
+          <p className="text-sm text-on-surface-variant mt-1">{t('notifications.newActivityWillShowUp')}</p>
         </div>
       )}
 

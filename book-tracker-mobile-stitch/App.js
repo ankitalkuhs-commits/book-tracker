@@ -7,6 +7,7 @@ import * as Font from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { initI18n } from './src/i18n';
 import { authAPI, userAPI, userbooksAPI, notesAPI, notificationsAPI, importAPI, activityAPI, groupsAPI } from './src/services/api';
 import { registerExpoPushToken } from './src/services/NotificationService';
 import AppNavigator from './src/navigation/AppNavigator';
@@ -52,9 +53,10 @@ export default function App() {
 
   // ── Load custom fonts ────────────────────────────────────────────────────
   useEffect(() => {
-    Font.loadAsync(fontMap)
-      .catch(() => {}) // non-fatal — fall back to system font
-      .finally(() => setFontsLoaded(true));
+    Promise.all([
+      Font.loadAsync(fontMap).catch(() => {}),
+      initI18n().catch(() => {}),
+    ]).finally(() => setFontsLoaded(true));
   }, []);
 
   // ── Slide carousel animation (runs while loading or transitioning) ────────

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useToast } from '../components/Toast'
 import { createGroup, searchUsersForInvite } from '../services/api'
 import { GroupCover } from './GroupsPage'
@@ -16,6 +17,7 @@ const COVER_PRESETS = [
 ]
 
 export default function CreateGroupPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const toast = useToast()
 
@@ -81,12 +83,12 @@ export default function CreateGroupPage() {
     <main className="max-w-screen-lg mx-auto px-4 md:px-8 pt-8 pb-16">
       {/* Header */}
       <div className="mb-8 space-y-1">
-        <p className="text-xs font-bold uppercase tracking-widest text-secondary">Groups</p>
+        <p className="text-xs font-bold uppercase tracking-widest text-secondary">{t('groups.groupsEyebrow')}</p>
         <h1 className="font-serif text-4xl md:text-5xl font-bold text-primary leading-tight">
-          Create a New Group
+          {t('groups.createGroupTitle')}
         </h1>
         <p className="text-on-surface-variant text-sm max-w-md mt-2">
-          Start a reading group, invite friends, and read together.
+          {t('groups.createGroupSubtitle')}
         </p>
       </div>
 
@@ -97,7 +99,7 @@ export default function CreateGroupPage() {
 
           {/* Cover preset picker */}
           <div className="bg-surface-container-lowest rounded-3xl p-6 space-y-4">
-            <h2 className="text-xs font-bold uppercase tracking-widest text-secondary">Cover</h2>
+            <h2 className="text-xs font-bold uppercase tracking-widest text-secondary">{t('groups.coverLabel')}</h2>
             <div className="grid grid-cols-4 gap-3">
               {COVER_PRESETS.map(p => (
                 <button
@@ -127,20 +129,20 @@ export default function CreateGroupPage() {
           {/* Name + Description */}
           <div className="bg-surface-container-lowest rounded-3xl p-6 space-y-5">
             <div className="space-y-2">
-              <label className="text-xs font-bold uppercase tracking-widest text-secondary">Group Name</label>
+              <label className="text-xs font-bold uppercase tracking-widest text-secondary">{t('groups.groupNameLabel')}</label>
               <input
                 value={name}
                 onChange={e => setName(e.target.value)}
-                placeholder="e.g. Classic Fiction Club"
+                placeholder={t('groups.groupNamePlaceholder')}
                 className="w-full bg-transparent border-none focus:outline-none font-serif text-2xl text-on-surface placeholder:text-on-surface-variant/40 italic"
               />
             </div>
             <div className="border-t border-outline-variant/15 pt-5 space-y-2">
-              <label className="text-xs font-bold uppercase tracking-widest text-secondary">Description</label>
+              <label className="text-xs font-bold uppercase tracking-widest text-secondary">{t('groups.descriptionLabel')}</label>
               <textarea
                 value={description}
                 onChange={e => setDescription(e.target.value)}
-                placeholder="What's this group about? What are you reading together?"
+                placeholder={t('groups.descriptionPlaceholder')}
                 rows={5}
                 className="w-full bg-surface-container-low rounded-xl px-4 py-3 text-sm border-none focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none text-on-surface"
               />
@@ -156,14 +158,14 @@ export default function CreateGroupPage() {
               }`}
             >
               <span className="material-symbols-outlined text-2xl text-primary mb-2 block">public</span>
-              <p className="font-bold text-on-surface">Public</p>
+              <p className="font-bold text-on-surface">{t('groups.privacyPublic')}</p>
               <p className="text-xs text-on-surface-variant mt-1 leading-relaxed">
-                Anyone can find and request to join this group.
+                {t('groups.privacyPublicDesc')}
               </p>
               <div className={`mt-4 py-2 text-center text-sm font-bold rounded-xl border ${
                 !isPrivate ? 'bg-primary text-on-primary border-primary' : 'border-outline-variant text-on-surface-variant'
               }`}>
-                {!isPrivate ? 'Selected Public' : 'Select Public'}
+                {t('groups.privacyPublic')}
               </div>
             </button>
 
@@ -174,32 +176,32 @@ export default function CreateGroupPage() {
               }`}
             >
               <span className="material-symbols-outlined text-2xl text-primary mb-2 block">lock</span>
-              <p className="font-bold text-on-surface">Private</p>
+              <p className="font-bold text-on-surface">{t('groups.privacyPrivate')}</p>
               <p className="text-xs text-on-surface-variant mt-1 leading-relaxed">
-                Hidden from search. Members join via invitation or invite link only.
+                {t('groups.privacyPrivateDesc')}
               </p>
               <div className={`mt-4 py-2 text-center text-sm font-bold rounded-xl border ${
                 isPrivate ? 'bg-primary text-on-primary border-primary' : 'border-outline-variant text-on-surface-variant'
               }`}>
-                {isPrivate ? 'Selected Private' : 'Select Private'}
+                {t('groups.privacyPrivate')}
               </div>
             </button>
           </div>
 
           {/* Reading Goal */}
           <div className="bg-surface-container-lowest rounded-3xl p-6 space-y-4">
-            <h2 className="text-xs font-bold uppercase tracking-widest text-secondary">Reading Goal <span className="text-on-surface-variant/50 normal-case text-xs font-normal">(optional)</span></h2>
+            <h2 className="text-xs font-bold uppercase tracking-widest text-secondary">{t('groups.readingGoalLabel')}</h2>
             <div className="flex gap-3 items-center">
               <div className="flex-1">
                 <input
                   type="number"
                   value={goalPages}
                   onChange={e => setGoalPages(e.target.value)}
-                  placeholder="e.g. 50000"
+                  placeholder={t('groups.goalPlaceholder')}
                   min="1"
                   className="w-full bg-surface-container-low rounded-xl px-4 py-2.5 text-sm border-none focus:outline-none focus:ring-2 focus:ring-primary/20"
                 />
-                <p className="text-xs text-on-surface-variant/60 mt-1 ml-1">pages to read together</p>
+                <p className="text-xs text-on-surface-variant/60 mt-1 ml-1">{t('groups.goalPlaceholder')}</p>
               </div>
               <div className="flex bg-surface-container rounded-xl p-1 shrink-0">
                 {['monthly', 'yearly'].map(p => (
@@ -212,7 +214,7 @@ export default function CreateGroupPage() {
                         : 'text-on-surface-variant hover:text-on-surface'
                     }`}
                   >
-                    {p}
+                    {t(`common.${p}`)}
                   </button>
                 ))}
               </div>
@@ -225,7 +227,7 @@ export default function CreateGroupPage() {
 
           {/* Invite panel */}
           <div className="bg-surface-container-lowest rounded-3xl p-6 space-y-4">
-            <h2 className="font-serif text-xl font-bold text-on-surface">Invite Members</h2>
+            <h2 className="font-serif text-xl font-bold text-on-surface">{t('groups.inviteFriends')}</h2>
 
             {/* Search */}
             <div className="relative">
@@ -233,7 +235,7 @@ export default function CreateGroupPage() {
               <input
                 value={inviteQuery}
                 onChange={e => searchUsers(e.target.value)}
-                placeholder="Search by username..."
+                placeholder={t('groups.searchByUsername')}
                 className="w-full bg-surface-container-low rounded-xl pl-9 pr-4 py-2.5 text-sm border-none focus:outline-none focus:ring-2 focus:ring-primary/20"
               />
               {inviteResults.length > 0 && (
@@ -271,23 +273,23 @@ export default function CreateGroupPage() {
               <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/50">Or Share Access Link</p>
               <div className="bg-surface-container rounded-xl px-4 py-3 flex items-center gap-3 text-sm text-on-surface-variant/60 italic">
                 <span className="material-symbols-outlined text-base">link</span>
-                Invite link generated after creation
+                {t('groups.joinByInviteCode')}
               </div>
             </div>
           </div>
 
           {/* CTA */}
           <div className="bg-primary rounded-3xl p-6 space-y-3">
-            <h3 className="font-serif text-xl font-bold text-on-primary">Ready to go?</h3>
+            <h3 className="font-serif text-xl font-bold text-on-primary">{t('groups.readyToGo')}</h3>
             <p className="text-sm text-on-primary/70 leading-relaxed">
-              You'll be the admin of this group.
+              {t('groups.youllBeAdmin')}
             </p>
             <button
               onClick={handleSubmit}
               disabled={submitting || !name.trim()}
               className="w-full bg-surface-container-lowest text-primary font-bold py-3.5 rounded-2xl text-sm hover:bg-surface-container transition-colors disabled:opacity-50 mt-2"
             >
-              {submitting ? 'Creating...' : 'Create Group'}
+              {submitting ? t('common.loading') : t('groups.createGroup')}
             </button>
           </div>
 
@@ -295,7 +297,7 @@ export default function CreateGroupPage() {
             onClick={() => navigate('/groups')}
             className="w-full text-center text-sm text-on-surface-variant hover:text-on-surface transition-colors py-2"
           >
-            Cancel
+            {t('common.cancel')}
           </button>
         </div>
       </div>

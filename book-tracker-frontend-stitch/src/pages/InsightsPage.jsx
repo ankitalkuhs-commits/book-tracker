@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
+import { useTranslation } from 'react-i18next'
 import { getReadingInsights } from '../services/api'
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -33,13 +34,14 @@ function StatCard({ label, value, sub, icon, accent = false }) {
 // ─── Monthly Bar Chart ────────────────────────────────────────────────────────
 
 function MonthlyChart({ data }) {
+  const { t } = useTranslation()
   if (!data?.length) return null
   const max = Math.max(...data.map(d => d.pages_read), 1)
   const currentMonth = new Date().toLocaleString('default', { month: 'short' })
 
   return (
     <div className="space-y-3">
-      <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/60">Monthly Pages Read</p>
+      <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/60">{t('insights.monthlyPagesRead')}</p>
       <div className="flex items-end gap-1 h-28">
         {data.map((d, i) => {
           const h = (d.pages_read / max) * 100
@@ -76,23 +78,26 @@ function MonthlyChart({ data }) {
 // ─── Streak Flame ────────────────────────────────────────────────────────────
 
 function StreakBadge({ current, longest }) {
+  const { t } = useTranslation()
+  const streakLabel = t('insights.currentStreakDays').split('\n')
+  const longestLabel = t('insights.longestEverDay').split('\n')
   return (
     <div className="bg-surface-container-low rounded-2xl p-5 space-y-4">
-      <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/60">Reading Streak</p>
+      <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/60">{t('insights.readingStreak')}</p>
       <div className="flex items-center gap-6">
         <div className="text-center">
           <div className="flex items-center gap-1 justify-center">
             <span className="material-symbols-outlined text-2xl text-secondary" style={{ fontVariationSettings: "'FILL' 1" }}>local_fire_department</span>
             <span className="text-4xl font-bold font-serif text-on-surface">{current}</span>
           </div>
-          <p className="text-xs text-on-surface-variant/60 mt-1">current streak</p>
-          <p className="text-[10px] text-on-surface-variant/40">days</p>
+          <p className="text-xs text-on-surface-variant/60 mt-1">{streakLabel[0]}</p>
+          <p className="text-[10px] text-on-surface-variant/40">{streakLabel[1]}</p>
         </div>
         <div className="w-px h-12 bg-outline-variant/20" />
         <div className="text-center">
           <span className="text-2xl font-bold font-serif text-on-surface">{longest}</span>
-          <p className="text-xs text-on-surface-variant/60 mt-1">longest ever</p>
-          <p className="text-[10px] text-on-surface-variant/40">days</p>
+          <p className="text-xs text-on-surface-variant/60 mt-1">{longestLabel[0]}</p>
+          <p className="text-[10px] text-on-surface-variant/40">{longestLabel[1]}</p>
         </div>
       </div>
       {current >= 7 && (
@@ -107,6 +112,7 @@ function StreakBadge({ current, longest }) {
 // ─── Yearly Goal Ring ─────────────────────────────────────────────────────────
 
 function YearlyGoalRing({ goal }) {
+  const { t } = useTranslation()
   if (!goal) return null
   const r = 42
   const circ = 2 * Math.PI * r
@@ -117,9 +123,9 @@ function YearlyGoalRing({ goal }) {
   return (
     <div className="bg-surface-container-low rounded-2xl p-5 space-y-3">
       <div className="flex items-center justify-between">
-        <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/60">Yearly Goal</p>
+        <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/60">{t('insights.yearlyGoal')}</p>
         <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${goal.on_track ? 'bg-primary/10 text-primary' : 'bg-secondary/10 text-secondary'}`}>
-          {goal.on_track ? 'On track' : 'Behind'}
+          {goal.on_track ? t('insights.onTrack') : t('insights.behindPace')}
         </span>
       </div>
       <div className="flex items-center gap-5">
@@ -141,8 +147,8 @@ function YearlyGoalRing({ goal }) {
         </div>
         <div className="space-y-1">
           <p className="text-2xl font-bold font-serif text-on-surface">{goal.completed}</p>
-          <p className="text-sm text-on-surface-variant">of {goal.goal} books</p>
-          <p className="text-xs text-on-surface-variant/50">{goal.goal - goal.completed} to go</p>
+          <p className="text-sm text-on-surface-variant">{t('insights.ofGoalBooks', { goal: goal.goal })}</p>
+          <p className="text-xs text-on-surface-variant/50">{t('insights.toGo', { remaining: goal.goal - goal.completed })}</p>
         </div>
       </div>
     </div>
@@ -152,10 +158,11 @@ function YearlyGoalRing({ goal }) {
 // ─── Projected Finishes ───────────────────────────────────────────────────────
 
 function ProjectedFinishes({ items }) {
+  const { t } = useTranslation()
   if (!items?.length) return null
   return (
     <div className="space-y-3">
-      <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/60">Projected Finish Dates</p>
+      <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/60">{t('insights.projectedFinishDates')}</p>
       <div className="space-y-3">
         {items.map(p => (
           <div key={p.userbook_id} className="flex items-center gap-4 bg-surface-container-low rounded-2xl p-4">
@@ -170,7 +177,7 @@ function ProjectedFinishes({ items }) {
               <p className="font-bold text-sm text-on-surface line-clamp-1">{p.title}</p>
               <div className="mt-1.5 space-y-1">
                 <div className="flex justify-between text-[10px] text-on-surface-variant/60">
-                  <span>{p.current_page} / {p.total_pages} pages</span>
+                  <span>{t('book.pagesProgress', { current: p.current_page, total: p.total_pages })}</span>
                   <span className="font-bold text-primary">{p.pct}%</span>
                 </div>
                 <div className="h-1.5 bg-surface-container-high rounded-full overflow-hidden">
@@ -182,7 +189,7 @@ function ProjectedFinishes({ items }) {
               <p className="text-xs font-bold text-secondary">
                 {new Date(p.projected_finish).toLocaleDateString('default', { month: 'short', day: 'numeric' })}
               </p>
-              <p className="text-[10px] text-on-surface-variant/50">{p.days_left}d left</p>
+              <p className="text-[10px] text-on-surface-variant/50">{t('insights.daysLeft', { count: p.days_left })}</p>
             </div>
           </div>
         ))}
@@ -194,6 +201,7 @@ function ProjectedFinishes({ items }) {
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 export default function InsightsPage() {
+  const { t } = useTranslation()
   const { user } = useAuth()
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -223,7 +231,7 @@ export default function InsightsPage() {
     return (
       <main className="max-w-screen-lg mx-auto px-4 md:px-8 pt-8 pb-16 text-center py-20">
         <span className="material-symbols-outlined text-5xl text-outline/30 block mb-3">analytics</span>
-        <p className="text-on-surface-variant">Start reading to see your insights.</p>
+        <p className="text-on-surface-variant">{t('insights.startReadingToSee')}</p>
       </main>
     )
   }
@@ -232,19 +240,19 @@ export default function InsightsPage() {
     <main className="max-w-screen-lg mx-auto px-4 md:px-8 pt-8 pb-16 space-y-8">
       {/* Header */}
       <div>
-        <h1 className="font-serif text-4xl md:text-5xl font-bold text-primary leading-tight">Reading Insights</h1>
-        <p className="text-on-surface-variant mt-2 text-sm">Your reading life, quantified.</p>
+        <h1 className="font-serif text-4xl md:text-5xl font-bold text-primary leading-tight">{t('insights.title')}</h1>
+        <p className="text-on-surface-variant mt-2 text-sm">{t('insights.subtitle')}</p>
       </div>
 
       {/* Top stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <StatCard label="Total Books" value={fmt(data.total_books)} icon="library_books" />
-        <StatCard label="Finished" value={fmt(data.total_finished)} icon="check_circle" accent />
-        <StatCard label="Pages Read" value={fmt(data.total_pages_read)} icon="menu_book" />
+        <StatCard label={t('insights.totalBooks')} value={fmt(data.total_books)} icon="library_books" />
+        <StatCard label={t('insights.finished')} value={fmt(data.total_finished)} icon="check_circle" accent />
+        <StatCard label={t('insights.pagesRead')} value={fmt(data.total_pages_read)} icon="menu_book" />
         <StatCard
-          label="Avg Rating"
+          label={t('insights.avgRating')}
           value={data.avg_rating ? `${data.avg_rating}★` : '—'}
-          sub={data.avg_rating ? 'across finished books' : 'rate your finished books'}
+          sub={data.avg_rating ? t('insights.acrossFinishedBooks') : t('insights.rateYourBooks')}
           icon="star"
         />
       </div>
@@ -252,21 +260,21 @@ export default function InsightsPage() {
       {/* Pace */}
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
         <StatCard
-          label="Avg Pages / Day"
+          label={t('insights.avgPagesPerDay')}
           value={fmt(data.avg_pages_per_day)}
-          sub="last 30 days"
+          sub={t('insights.last30Days')}
           icon="speed"
         />
         <StatCard
-          label="This Year"
+          label={t('insights.thisYear')}
           value={fmt(data.finished_this_year)}
-          sub={`books finished in ${new Date().getFullYear()}`}
+          sub={t('insights.booksFinishedInYear', { year: new Date().getFullYear() })}
           icon="event"
         />
         <StatCard
-          label="Currently Reading"
+          label={t('insights.currentlyReading')}
           value={fmt(data.total_reading)}
-          sub="books in progress"
+          sub={t('insights.booksInProgress')}
           icon="auto_stories"
         />
       </div>
@@ -279,8 +287,8 @@ export default function InsightsPage() {
         ) : (
           <div className="bg-surface-container-low rounded-2xl p-5 flex flex-col items-center justify-center gap-3 text-center">
             <span className="material-symbols-outlined text-3xl text-outline/30">flag</span>
-            <p className="text-sm font-bold text-on-surface">Set a yearly goal</p>
-            <p className="text-xs text-on-surface-variant/60">Go to Settings to set how many books you want to read this year.</p>
+            <p className="text-sm font-bold text-on-surface">{t('insights.setYearlyGoalPrompt')}</p>
+            <p className="text-xs text-on-surface-variant/60">{t('insights.setGoalInSettings')}</p>
           </div>
         )}
       </div>
@@ -301,8 +309,8 @@ export default function InsightsPage() {
       {data.total_books === 0 && (
         <div className="text-center py-12">
           <span className="material-symbols-outlined text-5xl text-outline/30 block mb-3">auto_stories</span>
-          <p className="font-serif text-xl text-on-surface mb-1">Your story starts here</p>
-          <p className="text-sm text-on-surface-variant">Add your first book to begin tracking your reading journey.</p>
+          <p className="font-serif text-xl text-on-surface mb-1">{t('insights.yourStoryStartsHere')}</p>
+          <p className="text-sm text-on-surface-variant">{t('insights.addFirstBookPrompt')}</p>
         </div>
       )}
     </main>

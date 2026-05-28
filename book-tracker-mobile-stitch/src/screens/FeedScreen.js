@@ -6,6 +6,7 @@ import {
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { notesAPI, userbooksAPI, userAPI, booksAPI } from '../services/api';
 import AppHeader from '../components/AppHeader';
 import { PreloadContext } from '../../App';
@@ -44,6 +45,7 @@ const PostImage = ({ uri, style }) => {
 };
 
 const FeedScreen = ({ navigation }) => {
+  const { t } = useTranslation();
   const preloaded = useContext(PreloadContext);
   const [posts, setPosts] = useState(preloaded?.feed || []);
   const [friendsReading, setFriendsReading] = useState([]);
@@ -112,7 +114,7 @@ const FeedScreen = ({ navigation }) => {
       setLoading(true);
       const data = await notesAPI.getCommunityFeed();
       setPosts(data || []);
-    } catch (error) { Alert.alert('Error', 'Failed to load feed'); }
+    } catch (error) { Alert.alert(t('common.error'), 'Failed to load feed'); }
     finally { setLoading(false); }
   };
 
@@ -187,13 +189,13 @@ const FeedScreen = ({ navigation }) => {
 
   const pickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') { Alert.alert('Permission needed', 'Please grant camera roll permissions'); return; }
+    if (status !== 'granted') { Alert.alert(t('common.permissionNeeded'), t('common.grantCameraRollPermissions')); return; }
     const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, allowsEditing: true, aspect: [2, 3], quality: 0.8 });
     if (!result.canceled) setSelectedImage(result.assets[0].uri);
   };
 
   const handleCreatePost = async () => {
-    if (!postText.trim()) { Alert.alert('Error', 'Please add some text'); return; }
+    if (!postText.trim()) { Alert.alert(t('common.error'), t('feed.pleaseAddSomeText')); return; }
     setPosting(true);
     try {
       let imageUrl = null;
@@ -205,14 +207,14 @@ const FeedScreen = ({ navigation }) => {
             const up = await notesAPI.uploadImage(selectedImage);
             imageUrl = up.image_url;
           } catch {
-            Alert.alert('Upload failed', 'Could not upload image. Post without it?', [
-              { text: 'Cancel', style: 'cancel', onPress: () => setPosting(false) },
-              { text: 'Post without image', onPress: async () => {
+            Alert.alert(t('feed.uploadFailed'), t('feed.couldNotUploadImage'), [
+              { text: t('common.cancel'), style: 'cancel', onPress: () => setPosting(false) },
+              { text: t('feed.postWithoutImage'), onPress: async () => {
                 try {
                   await notesAPI.createNote({ text: postText.trim(), quote: postQuote.trim() || null, emotion: emotion.trim() || null, is_public: true, image_url: null, userbook_id: selectedUserBook?.id || null });
                   setPostText(''); setPostQuote(''); setEmotion(''); setSelectedUserBook(null); setSelectedImage(null);
                   loadFeed();
-                } catch { Alert.alert('Error', 'Failed to post'); }
+                } catch { Alert.alert(t('common.error'), t('feed.failedToPostReflection')); }
                 finally { setPosting(false); }
               }},
             ]);
@@ -230,24 +232,24 @@ const FeedScreen = ({ navigation }) => {
       });
       setPostText(''); setPostQuote(''); setEmotion(''); setSelectedUserBook(null); setSelectedImage(null);
       loadFeed();
-    } catch { Alert.alert('Error', 'Failed to post reflection'); }
+    } catch { Alert.alert(t('common.error'), t('feed.failedToPostReflection')); }
     finally { setPosting(false); }
   };
 
   const handleDeletePost = (post) => {
     setMenuPostId(null);
-    Alert.alert('Delete Post', 'Are you sure?', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: async () => {
-        try { await notesAPI.deleteNote(post.id); loadFeed(); } catch { Alert.alert('Error', 'Failed to delete post'); }
+    Alert.alert(t('feed.deletePost'), t('common.areYouSure'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('common.delete'), style: 'destructive', onPress: async () => {
+        try { await notesAPI.deleteNote(post.id); loadFeed(); } catch { Alert.alert(t('common.error'), t('feed.failedToDeletePost')); }
       }},
     ]);
   };
 
   const handleDeleteComment = (postId, commentId) => {
-    Alert.alert('Delete Comment', 'Are you sure?', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: async () => {
+    Alert.alert(t('feed.deleteComment'), t('common.areYouSure'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('common.delete'), style: 'destructive', onPress: async () => {
         try {
           await notesAPI.adminDeleteComment(commentId);
           setExpandedComments(prev => ({
@@ -257,7 +259,7 @@ const FeedScreen = ({ navigation }) => {
               comments: prev[postId].comments.filter(c => c.id !== commentId),
             },
           }));
-        } catch { Alert.alert('Error', 'Failed to delete comment'); }
+        } catch { Alert.alert(t('common.error'), t('feed.failedToDeleteComment')); }
       }},
     ]);
   };
@@ -312,7 +314,7 @@ const FeedScreen = ({ navigation }) => {
       setPosts(prev => prev.map(p => p.id === postId ? { ...p, comments_count: (p.comments_count || 0) + 1 } : p));
     } catch {
       setExpandedComments(prev => ({ ...prev, [postId]: { ...prev[postId], submitting: false } }));
-      Alert.alert('Error', 'Could not post comment');
+      Alert.alert(t('common.error'), t('feed.couldNotPostComment'));
     }
   };
 
@@ -331,9 +333,9 @@ const FeedScreen = ({ navigation }) => {
       });
       setRecs(prev => prev.filter(r => r.id !== book.id));
       setShelfModal(null);
-      Alert.alert('Added!', status === 'reading' ? 'Happy reading!' : 'Added to your Want to Read list.');
+      Alert.alert(t('common.ok'), status === 'reading' ? t('feed.happyReading') : t('feed.addedToWantToRead'));
     } catch (e) {
-      Alert.alert('Error', e?.response?.data?.detail || 'Could not add book');
+      Alert.alert(t('common.error'), e?.response?.data?.detail || 'Could not add book');
     } finally { setShelving(false); }
   };
 
@@ -365,7 +367,7 @@ const FeedScreen = ({ navigation }) => {
           {/* Text area */}
           <TextInput
             style={styles.composerInput}
-            placeholder="What are your thoughts on your current read?"
+            placeholder={t('feed.thoughtsPlaceholder')}
             placeholderTextColor={colors.onSurfaceVariant + '80'}
             value={postText}
             onChangeText={setPostText}
@@ -379,7 +381,7 @@ const FeedScreen = ({ navigation }) => {
               <TouchableOpacity style={[styles.tagBookBtn, selectedUserBook && styles.tagBookBtnActive]} onPress={() => setShowBookPicker(v => !v)}>
                 <MaterialCommunityIcons name="book-open-variant" size={14} color={selectedUserBook ? colors.primary : colors.onSurfaceVariant} />
                 <Text style={[styles.tagBookText, selectedUserBook && styles.tagBookTextActive]} numberOfLines={1}>
-                  {selectedUserBook ? selectedUserBook.book?.title : 'Tag a book (optional)'}
+                  {selectedUserBook ? selectedUserBook.book?.title : t('feed.tagBookOptional')}
                 </Text>
                 {selectedUserBook && (
                   <TouchableOpacity onPress={() => setSelectedUserBook(null)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
@@ -418,7 +420,7 @@ const FeedScreen = ({ navigation }) => {
               <MaterialCommunityIcons name="format-quote-open" size={16} color={colors.outline} style={styles.fieldIcon} />
               <TextInput
                 style={styles.composerField}
-                placeholder="Add a striking quote..."
+                placeholder={t('feed.addQuote')}
                 placeholderTextColor={colors.outline + '99'}
                 value={postQuote}
                 onChangeText={setPostQuote}
@@ -430,7 +432,7 @@ const FeedScreen = ({ navigation }) => {
           <View style={styles.emotionSection}>
             <Text style={styles.emotionLabel}>
               <MaterialCommunityIcons name="emoticon-happy-outline" size={13} color={colors.onSurfaceVariant} />
-              {'  '}How are you feeling?
+              {'  '}{t('feed.howAreYouFeeling')}
             </Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.emotionChipsRow} keyboardShouldPersistTaps="handled">
               {EMOTION_OPTIONS.map(opt => {
@@ -472,7 +474,7 @@ const FeedScreen = ({ navigation }) => {
             >
               {posting
                 ? <ActivityIndicator size="small" color={colors.onPrimary} />
-                : <Text style={styles.postReflectionText}>Post Reflection</Text>
+                : <Text style={styles.postReflectionText}>{t('common.post')} Reflection</Text>
               }
             </TouchableOpacity>
           </View>
@@ -486,8 +488,8 @@ const FeedScreen = ({ navigation }) => {
     return (
       <View style={styles.recsSection}>
         <View style={styles.recsSectionHeader}>
-          <Text style={styles.recsSectionTitle}>For You</Text>
-          <Text style={styles.recsSectionSubtitle}>Based on your network</Text>
+          <Text style={styles.recsSectionTitle}>{t('feed.forYou')}</Text>
+          <Text style={styles.recsSectionSubtitle}>{t('feed.basedOnNetwork')}</Text>
         </View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.recsScroll}>
           {recs.map(book => (
@@ -525,7 +527,7 @@ const FeedScreen = ({ navigation }) => {
           }
           <View style={styles.friendReadingHeaderInfo}>
             <Text style={styles.friendReadingHeaderName}>{userName}</Text>
-            <Text style={styles.friendReadingStatus}>reading {bookCount} book{bookCount === 1 ? '' : 's'}</Text>
+            <Text style={styles.friendReadingStatus}>{t('feed.readingCount', { count: bookCount })}</Text>
           </View>
         </TouchableOpacity>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.booksScroll} contentContainerStyle={styles.booksScrollContent}>
@@ -564,7 +566,7 @@ const FeedScreen = ({ navigation }) => {
           <View style={styles.userNameRow}>
             <Text style={styles.userNameText}>{displayName}</Text>
             {user.is_mutual && <View style={styles.userBadge}><Text style={styles.userBadgeText}>Mutual</Text></View>}
-            {user.follows_you && !user.is_mutual && <View style={[styles.userBadge, styles.userBadgeSecondary]}><Text style={styles.userBadgeText}>Follows you</Text></View>}
+            {user.follows_you && !user.is_mutual && <View style={[styles.userBadge, styles.userBadgeSecondary]}><Text style={styles.userBadgeText}>{t('profile.followsYou')}</Text></View>}
           </View>
           <Text style={styles.userUsername}>@{username}</Text>
         </View>
@@ -576,7 +578,7 @@ const FeedScreen = ({ navigation }) => {
           {user._followLoading
             ? <ActivityIndicator size="small" color={user.is_following ? colors.onSurfaceVariant : colors.onPrimary} />
             : <Text style={[styles.followButtonText, user.is_following && styles.followButtonTextActive]}>
-                {user.is_following ? 'Following' : user.follows_you ? 'Follow Back' : 'Follow'}
+                {user.is_following ? t('profile.following_btn') : user.follows_you ? t('profile.followBack') : t('profile.follow')}
               </Text>
           }
         </TouchableOpacity>
@@ -587,7 +589,7 @@ const FeedScreen = ({ navigation }) => {
   const renderPost = (post) => {
     if (!post) return null;
     const userName = post.user?.name || post.user?.email || 'Unknown User';
-    const timeAgo = post.updated_at && post.updated_at !== post.created_at ? `Edited ${formatTimeAgo(post.updated_at)}` : formatTimeAgo(post.created_at);
+    const timeAgo = post.updated_at && post.updated_at !== post.created_at ? t('feed.editedTime', { time: formatTimeAgo(post.updated_at) }) : formatTimeAgo(post.created_at);
     const isOwnPost = currentUser && (post.user?.id === currentUser.id || post.user?.email === currentUser.email);
     const isAdmin = currentUser?.is_admin;
     const showMenu = menuPostId === post.id;
@@ -641,7 +643,7 @@ const FeedScreen = ({ navigation }) => {
                 <View style={styles.menuDropdown}>
                   <TouchableOpacity style={styles.menuItem} onPress={() => handleDeletePost(post)}>
                     <Ionicons name="trash-outline" size={14} color={colors.error} />
-                    <Text style={styles.menuItemTextDanger}>Delete</Text>
+                    <Text style={styles.menuItemTextDanger}>{t('common.delete')}</Text>
                   </TouchableOpacity>
                 </View>
               )}
@@ -710,7 +712,7 @@ const FeedScreen = ({ navigation }) => {
             <View style={styles.commentInputRow}>
               <TextInput
                 style={styles.commentInput}
-                placeholder="Add a comment..."
+                placeholder={t('feed.addComment')}
                 placeholderTextColor={colors.outline}
                 value={expandedComments[post.id]?.text || ''}
                 onChangeText={(t) => handleCommentTextChange(post.id, t)}
@@ -724,7 +726,7 @@ const FeedScreen = ({ navigation }) => {
               >
                 {expandedComments[post.id]?.submitting
                   ? <ActivityIndicator size="small" color={colors.onPrimary} />
-                  : <Text style={styles.commentPostBtnText}>Post</Text>
+                  : <Text style={styles.commentPostBtnText}>{t('common.post')}</Text>
                 }
               </TouchableOpacity>
             </View>
@@ -753,21 +755,21 @@ const FeedScreen = ({ navigation }) => {
               {reason ? <Text style={styles.shelfReason}>{reason}</Text> : null}
             </View>
           </View>
-          <Text style={styles.shelfPrompt}>Where would you like to shelve this?</Text>
+          <Text style={styles.shelfPrompt}>{t('book.pickStatus')}</Text>
           <TouchableOpacity style={styles.shelfBtnPrimary} onPress={() => handleShelfBook('to-read')} disabled={shelving}>
             {shelving ? <ActivityIndicator size="small" color={colors.onPrimary} /> : (
               <>
                 <Ionicons name="bookmark-outline" size={18} color={colors.onPrimary} style={{ marginRight: 8 }} />
-                <Text style={styles.shelfBtnPrimaryText}>Want to Read</Text>
+                <Text style={styles.shelfBtnPrimaryText}>{t('status.wantToRead')}</Text>
               </>
             )}
           </TouchableOpacity>
           <TouchableOpacity style={styles.shelfBtnSecondary} onPress={() => handleShelfBook('reading')} disabled={shelving}>
             <Ionicons name="book-outline" size={18} color={colors.primary} style={{ marginRight: 8 }} />
-            <Text style={styles.shelfBtnSecondaryText}>Start Reading Now</Text>
+            <Text style={styles.shelfBtnSecondaryText}>{t('status.reading')}</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.shelfCancelBtn} onPress={() => setShelfModal(null)}>
-            <Text style={styles.shelfCancelText}>Cancel</Text>
+            <Text style={styles.shelfCancelText}>{t('common.cancel')}</Text>
           </TouchableOpacity>
         </View>
       </Modal>
@@ -787,15 +789,15 @@ const FeedScreen = ({ navigation }) => {
       <View style={styles.tabBar}>
         <View style={styles.feedHeader}>
           <Text style={styles.feedEyebrow}>
-            {activeTab === 'community' ? 'YOUR READING COMMUNITY' : 'YOUR READING CIRCLE'}
+            {activeTab === 'community' ? t('feed.yourReadingCommunity') : t('feed.yourReadingCircle')}
           </Text>
         </View>
         <View style={styles.tabs}>
           <TouchableOpacity style={[styles.tab, activeTab === 'community' && styles.activeTab]} onPress={() => setActiveTab('community')}>
-            <Text style={[styles.tabText, activeTab === 'community' && styles.activeTabText]}>Community</Text>
+            <Text style={[styles.tabText, activeTab === 'community' && styles.activeTabText]}>{t('feed.community')}</Text>
           </TouchableOpacity>
           <TouchableOpacity style={[styles.tab, activeTab === 'friends' && styles.activeTab]} onPress={() => setActiveTab('friends')}>
-            <Text style={[styles.tabText, activeTab === 'friends' && styles.activeTabText]}>Friends</Text>
+            <Text style={[styles.tabText, activeTab === 'friends' && styles.activeTabText]}>{t('feed.friends')}</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -810,22 +812,22 @@ const FeedScreen = ({ navigation }) => {
             {renderComposer()}
             {renderRecommendations()}
             {posts.length === 0 ? (
-              <View style={styles.emptyState}><Text style={styles.emptyIcon}>📚</Text><Text style={styles.emptyText}>No posts yet.{'\n'}Be the first to share your reading journey!</Text></View>
+              <View style={styles.emptyState}><Text style={styles.emptyIcon}>📚</Text><Text style={styles.emptyText}>{t('feed.noPostsYet')}</Text></View>
             ) : posts.filter(p => p != null).map(post => renderPost(post))}
           </>
         ) : (
           <View style={styles.followingContainer}>
             <View style={styles.searchSection}>
-              <Text style={styles.sectionTitle}>Find Friends</Text>
-              <TextInput style={styles.searchInput} placeholder="Search users" value={searchQuery} onChangeText={setSearchQuery} autoCapitalize="none" placeholderTextColor="#999" />
+              <Text style={styles.sectionTitle}>{t('feed.findFriends')}</Text>
+              <TextInput style={styles.searchInput} placeholder={t('feed.searchUsers')} value={searchQuery} onChangeText={setSearchQuery} autoCapitalize="none" placeholderTextColor="#999" />
               {searching && <View style={styles.searchingIndicator}><ActivityIndicator size="small" color={colors.primary} /></View>}
               {searchQuery.trim() !== '' && searchResults.length > 0 && <View style={styles.searchResults}>{searchResults.map(renderUserCard)}</View>}
-              {searchQuery.trim() !== '' && !searching && searchResults.length === 0 && <View style={styles.emptySearchState}><Text style={styles.emptySearchText}>No users found</Text></View>}
+              {searchQuery.trim() !== '' && !searching && searchResults.length === 0 && <View style={styles.emptySearchState}><Text style={styles.emptySearchText}>{t('feed.noUsersFound')}</Text></View>}
             </View>
             <View style={styles.friendsReadingSection}>
-              <Text style={styles.sectionTitle}>What Friends Are Reading</Text>
+              <Text style={styles.sectionTitle}>{t('feed.whatFriendsAreReading')}</Text>
               {friendsReading.length === 0 ? (
-                <View style={styles.emptyState}><Text style={styles.emptyIcon}>👥</Text><Text style={styles.emptyText}>No friends yet!{'\n'}Search and follow readers to see what they're reading.</Text></View>
+                <View style={styles.emptyState}><Text style={styles.emptyIcon}>👥</Text><Text style={styles.emptyText}>{t('feed.noFriendsYet')}</Text></View>
               ) : friendsReading.map(renderFriendReading)}
             </View>
           </View>

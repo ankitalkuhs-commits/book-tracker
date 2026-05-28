@@ -1,17 +1,19 @@
 import { NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { getUnreadCount } from '../services/api'
 
 const NAV_ITEMS = [
-  { to: '/home',          label: 'Home',          tour: 'home' },
-  { to: '/library',       label: 'Library',        tour: 'library' },
-  { to: '/groups',        label: 'Groups',         tour: 'groups' },
-  { to: '/insights',      label: 'Insights',       tour: 'insights' },
-  { to: '/notifications', label: 'Notifications' },
+  { to: '/home',          labelKey: 'tabs.feed',          tour: 'home' },
+  { to: '/library',       labelKey: 'tabs.library',        tour: 'library' },
+  { to: '/groups',        labelKey: 'tabs.circles',        tour: 'groups' },
+  { to: '/insights',      labelKey: 'tabs.insights',       tour: 'insights' },
+  { to: '/notifications', labelKey: 'tabs.notifications' },
 ]
 
 export default function Nav() {
+  const { t } = useTranslation()
   const { user, logout } = useAuth()
   const navigate = useNavigate()
   const [unread, setUnread] = useState(0)
@@ -48,7 +50,7 @@ export default function Nav() {
 
         {/* Desktop nav links */}
         <div className="hidden md:flex items-center space-x-6 font-serif text-base tracking-tight">
-          {NAV_ITEMS.map(({ to, label, tour }) => (
+          {NAV_ITEMS.map(({ to, labelKey, tour }) => (
             <NavLink
               key={to}
               to={to}
@@ -59,14 +61,14 @@ export default function Nav() {
                   : 'text-on-surface/50 hover:text-primary transition-colors duration-200'
               }
             >
-              {label === 'Notifications' && unread > 0 ? (
+              {labelKey === 'tabs.notifications' && unread > 0 ? (
                 <span className="relative">
-                  Notifications
+                  {t(labelKey)}
                   <span className="absolute -top-2 -right-4 bg-error text-on-error text-[10px] font-bold font-sans rounded-full w-4 h-4 flex items-center justify-center">
                     {unread > 9 ? '9+' : unread}
                   </span>
                 </span>
-              ) : label}
+              ) : t(labelKey)}
             </NavLink>
           ))}
         </div>
@@ -117,7 +119,7 @@ export default function Nav() {
                   className="flex items-center gap-2 px-4 py-2.5 text-on-surface hover:bg-surface-container-low transition-colors"
                 >
                   <span className="material-symbols-outlined text-base">person</span>
-                  Profile
+                  {t('tabs.profile')}
                 </NavLink>
                 <NavLink
                   to="/settings"
@@ -125,7 +127,7 @@ export default function Nav() {
                   className="flex items-center gap-2 px-4 py-2.5 text-on-surface hover:bg-surface-container-low transition-colors"
                 >
                   <span className="material-symbols-outlined text-base">settings</span>
-                  Settings
+                  {t('settings.title')}
                 </NavLink>
                 <div className="border-t border-outline-variant/15 mt-1 pt-1">
                   <button
@@ -133,7 +135,7 @@ export default function Nav() {
                     className="w-full flex items-center gap-2 px-4 py-2.5 text-error hover:bg-error-container/30 transition-colors"
                   >
                     <span className="material-symbols-outlined text-base">logout</span>
-                    Sign out
+                    {t('profile.signOut')}
                   </button>
                 </div>
               </div>
@@ -153,7 +155,7 @@ export default function Nav() {
       {/* Mobile dropdown nav */}
       {menuOpen && (
         <div className="md:hidden bg-surface-container-lowest border-t border-outline-variant/15 px-6 py-4 space-y-1 font-sans">
-          {NAV_ITEMS.map(({ to, label }) => (
+          {NAV_ITEMS.map(({ to, labelKey }) => (
             <NavLink
               key={to}
               to={to}
@@ -166,8 +168,8 @@ export default function Nav() {
                 }`
               }
             >
-              <span>{label}</span>
-              {label === 'Notifications' && unread > 0 && (
+              <span>{t(labelKey)}</span>
+              {labelKey === 'tabs.notifications' && unread > 0 && (
                 <span className="bg-error text-on-error text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center">
                   {unread > 9 ? '9+' : unread}
                 </span>
@@ -185,13 +187,13 @@ export default function Nav() {
           )}
           <div className="border-t border-outline-variant/15 pt-2 mt-2">
             <NavLink to="/profile" onClick={() => setMenuOpen(false)} className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm text-on-surface/70 hover:bg-surface-container-low">
-              <span className="material-symbols-outlined text-base">person</span> Profile
+              <span className="material-symbols-outlined text-base">person</span> {t('tabs.profile')}
             </NavLink>
             <NavLink to="/settings" onClick={() => setMenuOpen(false)} className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm text-on-surface/70 hover:bg-surface-container-low">
-              <span className="material-symbols-outlined text-base">settings</span> Settings
+              <span className="material-symbols-outlined text-base">settings</span> {t('settings.title')}
             </NavLink>
             <button onClick={handleLogout} className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm text-error hover:bg-error-container/30">
-              <span className="material-symbols-outlined text-base">logout</span> Sign out
+              <span className="material-symbols-outlined text-base">logout</span> {t('profile.signOut')}
             </button>
           </div>
         </div>

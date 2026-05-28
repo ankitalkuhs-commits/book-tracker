@@ -7,6 +7,7 @@ import {
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 import { groupsAPI, booksAPI, usersAPI, userAPI, userbooksAPI } from '../services/api';
 import { colors, radius, shadow, type } from '../theme';
 
@@ -72,6 +73,7 @@ function activityText(ev) {
 
 // ── Set Group Book Modal ──────────────────────────────────────────────────────
 function SetGroupBookModal({ visible, onClose, onSet }) {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const [query,        setQuery]        = useState('');
   const [results,      setResults]      = useState([]);
@@ -133,9 +135,9 @@ function SetGroupBookModal({ visible, onClose, onSet }) {
         {/* Header */}
         <View style={[styles.modalHeader, { paddingTop: insets.top + 14 }]}>
           <TouchableOpacity onPress={handleClose}>
-            <Text style={styles.modalCancel}>Cancel</Text>
+            <Text style={styles.modalCancel}>{t('common.cancel')}</Text>
           </TouchableOpacity>
-          <Text style={styles.modalTitle}>Set Group Book</Text>
+          <Text style={styles.modalTitle}>{t('groups.setGroupBook')}</Text>
           <View style={{ width: 56 }} />
         </View>
 
@@ -146,7 +148,7 @@ function SetGroupBookModal({ visible, onClose, onSet }) {
               <View style={styles.searchRow}>
                 <TextInput
                   style={styles.searchInput}
-                  placeholder="Search by title or author…"
+                  placeholder={t('groups.searchByTitleOrAuthor')}
                   placeholderTextColor={colors.outline}
                   value={query}
                   onChangeText={setQuery}
@@ -165,7 +167,7 @@ function SetGroupBookModal({ visible, onClose, onSet }) {
               {results.length === 0 && !searching ? (
                 <View style={styles.searchEmpty}>
                   <Ionicons name="search-outline" size={48} color={colors.outlineVariant} />
-                  <Text style={styles.searchEmptyText}>Search for a book to set</Text>
+                  <Text style={styles.searchEmptyText}>{t('groups.searchForGroupBook')}</Text>
                 </View>
               ) : (
                 <FlatList
@@ -210,7 +212,7 @@ function SetGroupBookModal({ visible, onClose, onSet }) {
             <ScrollView contentContainerStyle={styles.optionsScroll}>
               <TouchableOpacity onPress={() => setSelectedBook(null)} style={styles.backBtn}>
                 <Ionicons name="chevron-back" size={18} color={colors.primary} />
-                <Text style={styles.backBtnText}>Back</Text>
+                <Text style={styles.backBtnText}>{t('common.back')}</Text>
               </TouchableOpacity>
 
               <View style={styles.selectedHero}>
@@ -243,7 +245,7 @@ function SetGroupBookModal({ visible, onClose, onSet }) {
               >
                 {setting
                   ? <ActivityIndicator size="small" color={colors.onPrimary} />
-                  : <Text style={styles.addBtnText}>Set as Group Book</Text>
+                  : <Text style={styles.addBtnText}>{t('groups.setAsGroupBook')}</Text>
                 }
               </TouchableOpacity>
             </ScrollView>
@@ -256,6 +258,7 @@ function SetGroupBookModal({ visible, onClose, onSet }) {
 
 // ── Main Screen ───────────────────────────────────────────────────────────────
 export default function GroupDetailScreen({ route, navigation }) {
+  const { t } = useTranslation();
   const { groupId } = route.params;
   const insets = useSafeAreaInsets();
   const [group,       setGroup]       = useState(null);
@@ -318,7 +321,7 @@ export default function GroupDetailScreen({ route, navigation }) {
       });
       setPending(Array.isArray(pend) ? pend : []);
     } catch {
-      Alert.alert('Error', 'Could not load group');
+      Alert.alert(t('common.error'), 'Could not load group');
       navigation.goBack();
     }
     setLoading(false);
@@ -362,7 +365,7 @@ export default function GroupDetailScreen({ route, navigation }) {
     setInviting(user.id);
     try {
       await groupsAPI.inviteToGroup(groupId, user.id);
-      Alert.alert('Invited!', `${user.name} has been invited.`);
+      Alert.alert(t('common.success'), `${user.name} has been invited.`);
       setInviteQuery('');
       setInviteResults([]);
     } catch (e) { Alert.alert('Error', e?.response?.data?.detail || 'Could not invite'); }
@@ -371,7 +374,7 @@ export default function GroupDetailScreen({ route, navigation }) {
 
   const pickComposerImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') { Alert.alert('Permission needed', 'Allow photo library access to add images.'); return; }
+    if (status !== 'granted') { Alert.alert(t('common.permissionNeeded'), 'Allow photo library access to add images.'); return; }
     const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, allowsEditing: true, aspect: [4, 3], quality: 0.8 });
     if (!result.canceled && result.assets?.[0]?.uri) setPostImageUri(result.assets[0].uri);
   };
@@ -403,11 +406,11 @@ export default function GroupDetailScreen({ route, navigation }) {
     setPosting(false);
   };
 
-  const handleDeletePost = (postId) => Alert.alert('Delete post', 'Are you sure?', [
-    { text: 'Cancel', style: 'cancel' },
-    { text: 'Delete', style: 'destructive', onPress: async () => {
+  const handleDeletePost = (postId) => Alert.alert(t('feed.deletePost'), t('common.areYouSure'), [
+    { text: t('common.cancel'), style: 'cancel' },
+    { text: t('common.delete'), style: 'destructive', onPress: async () => {
       try { await groupsAPI.deleteGroupPost(groupId, postId); setPosts(prev => prev.filter(p => p.id !== postId)); }
-      catch { Alert.alert('Error', 'Could not delete post'); }
+      catch { Alert.alert(t('common.error'), 'Could not delete post'); }
     }},
   ]);
 
@@ -446,7 +449,7 @@ export default function GroupDetailScreen({ route, navigation }) {
         member_count: res?.status !== 'pending' ? (prev.member_count || 0) + 1 : prev.member_count,
       }));
       if (res?.status === 'pending') {
-        Alert.alert('Request Sent', 'The curator will review your request to join.');
+        Alert.alert(t('common.ok'), t('groups.curatorWillReview'));
       } else {
         load(); // Reload to get full member data
       }
@@ -455,9 +458,9 @@ export default function GroupDetailScreen({ route, navigation }) {
     }
   };
 
-  const handleLeave = () => Alert.alert('Leave circle', `Leave ${group?.name}?`, [
-    { text: 'Cancel', style: 'cancel' },
-    { text: 'Leave', style: 'destructive', onPress: async () => {
+  const handleLeave = () => Alert.alert(t('groups.leaveCircle'), `Leave ${group?.name}?`, [
+    { text: t('common.cancel'), style: 'cancel' },
+    { text: t('groups.leaveCircle'), style: 'destructive', onPress: async () => {
       try { await groupsAPI.leaveGroup(groupId); navigation.goBack(); }
       catch (e) { Alert.alert('Error', e?.response?.data?.detail || 'Could not leave'); }
     }},
@@ -477,9 +480,9 @@ export default function GroupDetailScreen({ route, navigation }) {
     }},
   ]);
 
-  const handleDisband = () => Alert.alert('Disband Group', `Permanently delete "${group?.name}"? This cannot be undone.`, [
-    { text: 'Cancel', style: 'cancel' },
-    { text: 'Disband', style: 'destructive', onPress: async () => {
+  const handleDisband = () => Alert.alert(t('groups.disbandGroup'), t('groups.disbandConfirm', { name: group?.name }), [
+    { text: t('common.cancel'), style: 'cancel' },
+    { text: t('groups.disband'), style: 'destructive', onPress: async () => {
       try { await groupsAPI.deleteGroup(groupId); navigation.goBack(); }
       catch (e) { Alert.alert('Error', e?.response?.data?.detail || 'Could not disband group'); }
     }},
@@ -489,7 +492,7 @@ export default function GroupDetailScreen({ route, navigation }) {
     const link = group?.invite_code ? `/join/${group.invite_code}` : '';
     if (link) {
       Clipboard.setString(`${WEB_APP_URL}${link}`);
-      Alert.alert('Copied!', 'Invite link copied to clipboard');
+      Alert.alert(t('common.copied'), t('groups.inviteLinkCopied'));
     }
   };
 
@@ -517,7 +520,7 @@ export default function GroupDetailScreen({ route, navigation }) {
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
             <Ionicons name="arrow-back" size={20} color={colors.onPrimary} />
           </TouchableOpacity>
-          <Text style={styles.heroEyebrow}>{group?.is_private ? 'PRIVATE LITERARY CIRCLE' : 'PUBLIC LITERARY CIRCLE'}</Text>
+          <Text style={styles.heroEyebrow}>{group?.is_private ? t('groups.privateCircle') : t('groups.publicCircle')}</Text>
           <Text style={styles.heroTitle}>{group?.name}</Text>
           {group?.description ? <Text style={styles.heroDesc}>{group.description}</Text> : null}
           <View style={styles.heroPills}>
@@ -540,22 +543,22 @@ export default function GroupDetailScreen({ route, navigation }) {
           </View>
           {isMember && !isCurator && (
             <TouchableOpacity onPress={handleLeave} style={styles.leaveBtn}>
-              <Text style={styles.leaveBtnText}>Leave Circle</Text>
+              <Text style={styles.leaveBtnText}>{t('groups.leaveCircle')}</Text>
             </TouchableOpacity>
           )}
           {!isMember && !group?.is_private && (
             <TouchableOpacity onPress={handleJoin} style={[styles.leaveBtn, { backgroundColor: colors.secondary, borderColor: colors.secondary }]}>
-              <Text style={styles.leaveBtnText}>Join Circle</Text>
+              <Text style={styles.leaveBtnText}>{t('groups.joinCircleBtn')}</Text>
             </TouchableOpacity>
           )}
           {!isMember && group?.is_private && group?.membership_status !== 'pending' && (
             <TouchableOpacity onPress={handleJoin} style={[styles.leaveBtn, { borderColor: 'rgba(255,255,255,0.5)' }]}>
-              <Text style={styles.leaveBtnText}>Request to Join</Text>
+              <Text style={styles.leaveBtnText}>{t('groups.requestToJoin')}</Text>
             </TouchableOpacity>
           )}
           {group?.membership_status === 'pending' && (
             <View style={[styles.leaveBtn, { opacity: 0.6 }]}>
-              <Text style={styles.leaveBtnText}>Request Pending…</Text>
+              <Text style={styles.leaveBtnText}>{t('groups.requestPendingBtn')}</Text>
             </View>
           )}
         </View>
@@ -564,16 +567,16 @@ export default function GroupDetailScreen({ route, navigation }) {
         {isCurator && pending.length > 0 && (
           <View style={styles.section}>
             <Text style={styles.sectionLabel}>CURATOR</Text>
-            <Text style={styles.sectionTitle}>Pending Requests ({pending.length})</Text>
+            <Text style={styles.sectionTitle}>{t('groups.pendingRequestsCount', { count: pending.length })}</Text>
             {pending.map(m => (
               <View key={m.user_id} style={styles.pendingRow}>
                 <Avatar name={m.name} size={36} />
                 <Text style={styles.memberName} numberOfLines={1}>{m.name}</Text>
                 <TouchableOpacity style={styles.approveBtn} onPress={() => handleApprove(m.user_id)}>
-                  <Text style={styles.approveBtnText}>Approve</Text>
+                  <Text style={styles.approveBtnText}>{t('common.approve')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.rejectBtn} onPress={() => handleReject(m.user_id)}>
-                  <Text style={styles.rejectBtnText}>Reject</Text>
+                  <Text style={styles.rejectBtnText}>{t('common.reject')}</Text>
                 </TouchableOpacity>
               </View>
             ))}
@@ -588,11 +591,11 @@ export default function GroupDetailScreen({ route, navigation }) {
             <View style={styles.section}>
               <View style={styles.sectionHeaderRow}>
                 <View>
-                  <Text style={styles.sectionLabel}>RANKINGS</Text>
-                  <Text style={styles.sectionTitle}>Leaderboard</Text>
+                  <Text style={styles.sectionLabel}>{t('groups.rankings')}</Text>
+                  <Text style={styles.sectionTitle}>{t('groups.leaderboard')}</Text>
                 </View>
                 <View style={styles.periodToggle}>
-                  {[['monthly', 'This Month'], ['alltime', 'All Time']].map(([val, label]) => (
+                  {[['monthly', t('groups.thisMonth')], ['alltime', t('groups.allTime')]].map(([val, label]) => (
                     <TouchableOpacity
                       key={val}
                       style={[styles.periodBtn, lbPeriod === val && styles.periodBtnActive]}
@@ -606,7 +609,7 @@ export default function GroupDetailScreen({ route, navigation }) {
                 </View>
               </View>
               {entries.length === 0 ? (
-                <Text style={styles.emptyMsg}>No data yet — start reading together!</Text>
+                <Text style={styles.emptyMsg}>{t('groups.noLeaderboardData')}</Text>
               ) : (
                 <ScrollView
                   style={styles.lbScroll}
@@ -626,7 +629,7 @@ export default function GroupDetailScreen({ route, navigation }) {
                         <View style={styles.memberNameRow}>
                           <Text style={styles.leaderName} numberOfLines={1}>{entry.name}</Text>
                           {curatorIds.has(entry.user_id) && (
-                            <View style={styles.curatorBadge}><Text style={styles.curatorBadgeText}>CURATOR</Text></View>
+                            <View style={styles.curatorBadge}><Text style={styles.curatorBadgeText}>{t('groups.curatorBadge')}</Text></View>
                           )}
                         </View>
                         {entry.current_book && <Text style={styles.leaderReading} numberOfLines={1}>Reading: {entry.current_book}</Text>}
@@ -643,10 +646,10 @@ export default function GroupDetailScreen({ route, navigation }) {
 
         {/* ── Activity ── */}
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>WHAT'S HAPPENING</Text>
-          <Text style={styles.sectionTitle}>Member Activity</Text>
+          <Text style={styles.sectionLabel}>{t('groups.memberActivity')}</Text>
+          <Text style={styles.sectionTitle}>{t('groups.memberActivityTitle')}</Text>
           {activity.length === 0 ? (
-            <Text style={styles.emptyMsg}>No activity yet — start reading!</Text>
+            <Text style={styles.emptyMsg}>{t('groups.noActivityYet')}</Text>
           ) : (
             activity.slice(0, 10).map(ev => (
               <View key={ev.id} style={styles.activityRow}>
@@ -670,18 +673,18 @@ export default function GroupDetailScreen({ route, navigation }) {
         <View style={styles.section}>
           <View style={styles.sectionHeaderRow}>
             <View>
-              <Text style={styles.sectionLabel}>DISCUSSIONS</Text>
-              <Text style={styles.sectionTitle}>Group Posts</Text>
+              <Text style={styles.sectionLabel}>{t('groups.discussions')}</Text>
+              <Text style={styles.sectionTitle}>{t('groups.groupPosts')}</Text>
             </View>
             {isMember && (
               <TouchableOpacity style={styles.postBtn} onPress={() => setShowComposer(true)}>
                 <Ionicons name="add" size={18} color={colors.onPrimary} />
-                <Text style={styles.postBtnText}>Post</Text>
+                <Text style={styles.postBtnText}>{t('common.post')}</Text>
               </TouchableOpacity>
             )}
           </View>
           {posts.length === 0 ? (
-            <Text style={styles.emptyMsg}>No posts yet — be the first to share!</Text>
+            <Text style={styles.emptyMsg}>{t('groups.noPostsYet')}</Text>
           ) : (
             posts.slice(0, 20).map(post => (
               <View key={post.id} style={styles.postCard}>
@@ -715,12 +718,12 @@ export default function GroupDetailScreen({ route, navigation }) {
         <View style={styles.section}>
           <View style={styles.sectionHeaderRow}>
             <View>
-              <Text style={styles.sectionLabel}>CURRENTLY READING</Text>
-              <Text style={styles.sectionTitle}>Group Book</Text>
+              <Text style={styles.sectionLabel}>{t('groups.currentlyReading')}</Text>
+              <Text style={styles.sectionTitle}>{t('groups.groupBook')}</Text>
             </View>
             {isCurator && (
               <TouchableOpacity onPress={() => setShowSetBookModal(true)}>
-                <Text style={styles.textLink}>Change</Text>
+                <Text style={styles.textLink}>{t('groups.changeBook')}</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -734,12 +737,12 @@ export default function GroupDetailScreen({ route, navigation }) {
                 </View>
               )}
               <View style={{ flex: 1 }}>
-                <Text style={styles.groupBookLabel}>NOW READING</Text>
+                <Text style={styles.groupBookLabel}>{t('groups.nowReading')}</Text>
                 <Text style={styles.groupBookTitle}>{groupBook.title}</Text>
                 <Text style={styles.groupBookAuthor}>{groupBook.author}</Text>
                 {isCurator && (
                   <TouchableOpacity onPress={handleClearGroupBook}>
-                    <Text style={styles.removeLink}>Remove</Text>
+                    <Text style={styles.removeLink}>{t('common.remove')}</Text>
                   </TouchableOpacity>
                 )}
               </View>
@@ -747,10 +750,10 @@ export default function GroupDetailScreen({ route, navigation }) {
           ) : (
             <View style={styles.groupBookEmpty}>
               <Ionicons name="book-outline" size={32} color={colors.outlineVariant} />
-              <Text style={styles.groupBookEmptyText}>No group book selected</Text>
+              <Text style={styles.groupBookEmptyText}>{t('groups.noGroupBookSelected')}</Text>
               {isCurator && (
                 <TouchableOpacity onPress={() => setShowSetBookModal(true)}>
-                  <Text style={styles.textLink}>Set a book</Text>
+                  <Text style={styles.textLink}>{t('groups.setABook')}</Text>
                 </TouchableOpacity>
               )}
             </View>
@@ -760,27 +763,27 @@ export default function GroupDetailScreen({ route, navigation }) {
         {/* ── Reading Goal ── */}
         {group?.reading_goal > 0 && (
           <View style={styles.section}>
-            <Text style={styles.sectionLabel}>READING GOAL</Text>
-            <Text style={styles.sectionTitle}>Yearly Progress</Text>
+            <Text style={styles.sectionLabel}>{t('groups.readingGoal')}</Text>
+            <Text style={styles.sectionTitle}>{t('groups.yearlyProgress')}</Text>
             <Text style={styles.goalPages}>{group.pages_read_total ?? 0}</Text>
-            <Text style={styles.goalOf}>of {group.reading_goal.toLocaleString()} pages</Text>
+            <Text style={styles.goalOf}>{t('groups.ofGoalPages', { goal: group.reading_goal.toLocaleString() })}</Text>
             <View style={styles.goalTrack}>
               <View style={[styles.goalFill, { width: `${Math.min(100, Math.round(((group.pages_read_total ?? 0) / group.reading_goal) * 100))}%` }]} />
             </View>
-            <Text style={styles.goalPct}>{Math.min(100, Math.round(((group.pages_read_total ?? 0) / group.reading_goal) * 100))}% complete</Text>
+            <Text style={styles.goalPct}>{t('groups.percentComplete', { pct: Math.min(100, Math.round(((group.pages_read_total ?? 0) / group.reading_goal) * 100)) })}</Text>
           </View>
         )}
 
         {/* ── Invite Friends ── */}
         {isCurator && (
           <View ref={inviteSectionRef} style={styles.section}>
-            <Text style={styles.sectionLabel}>EXPAND THE CIRCLE</Text>
-            <Text style={styles.sectionTitle}>Invite Friends</Text>
+            <Text style={styles.sectionLabel}>{t('groups.expandTheCircle')}</Text>
+            <Text style={styles.sectionTitle}>{t('groups.inviteFriends')}</Text>
             {group?.invite_code ? (
               <View style={styles.inviteLinkRow}>
                 <Text style={styles.inviteLinkText} numberOfLines={1}>/join/{group.invite_code}</Text>
                 <TouchableOpacity style={styles.copyBtn} onPress={handleCopyInviteLink}>
-                  <Text style={styles.copyBtnText}>Copy</Text>
+                  <Text style={styles.copyBtnText}>{t('groups.copyInviteLink')}</Text>
                 </TouchableOpacity>
               </View>
             ) : null}
@@ -788,7 +791,7 @@ export default function GroupDetailScreen({ route, navigation }) {
               <Ionicons name="search-outline" size={15} color={colors.outline} />
               <TextInput
                 style={{ flex: 1, fontSize: 13, color: colors.onSurface }}
-                placeholder="Search by username..."
+                placeholder={t('groups.searchByUsername')}
                 placeholderTextColor={colors.outline}
                 value={inviteQuery}
                 onChangeText={handleInviteSearch}
@@ -812,7 +815,7 @@ export default function GroupDetailScreen({ route, navigation }) {
                       <Text style={styles.inviteUsername}>@{u.username}</Text>
                     </View>
                     <Text style={styles.inviteBtn}>
-                      {inviting === u.id ? '…' : 'Invite'}
+                      {inviting === u.id ? '…' : t('common.invite')}
                     </Text>
                   </TouchableOpacity>
                 ))}
@@ -824,7 +827,7 @@ export default function GroupDetailScreen({ route, navigation }) {
         {/* ── Disband (curator only) ── */}
         {isCurator && (
           <TouchableOpacity style={styles.disbandBtn} onPress={handleDisband}>
-            <Text style={styles.disbandText}>Disband Group</Text>
+            <Text style={styles.disbandText}>{t('groups.disbandGroup')}</Text>
           </TouchableOpacity>
         )}
 
@@ -838,13 +841,13 @@ export default function GroupDetailScreen({ route, navigation }) {
             {/* Header */}
             <View style={[styles.composerHeader, { paddingTop: insets.top + 20 }]}>
               <TouchableOpacity onPress={() => { setShowComposer(false); setPostInput(''); setPostQuote(''); setPostEmotion(''); setPostBook(null); setPostImageUri(null); }}>
-                <Text style={styles.composerCancel}>Cancel</Text>
+                <Text style={styles.composerCancel}>{t('common.cancel')}</Text>
               </TouchableOpacity>
-              <Text style={styles.composerTitle}>Share with Circle</Text>
+              <Text style={styles.composerTitle}>{t('groups.shareWithCircle')}</Text>
               <TouchableOpacity onPress={handleCreatePost} disabled={posting || !postInput.trim()}>
                 {posting
                   ? <ActivityIndicator size="small" color={colors.primary} />
-                  : <Text style={[styles.composerPost, !postInput.trim() && { opacity: 0.4 }]}>Post</Text>
+                  : <Text style={[styles.composerPost, !postInput.trim() && { opacity: 0.4 }]}>{t('common.post')}</Text>
                 }
               </TouchableOpacity>
             </View>
@@ -864,7 +867,7 @@ export default function GroupDetailScreen({ route, navigation }) {
                   style={styles.composerInput}
                   value={postInput}
                   onChangeText={setPostInput}
-                  placeholder="What's on your mind?"
+                  placeholder={t('groups.whatsOnYourMind')}
                   placeholderTextColor={colors.outline}
                   multiline
                   autoFocus
@@ -880,7 +883,7 @@ export default function GroupDetailScreen({ route, navigation }) {
                   >
                     <Ionicons name="book-outline" size={15} color={postBook ? colors.primary : colors.onSurfaceVariant} />
                     <Text style={[styles.composerChipText, postBook && styles.composerChipTextActive]} numberOfLines={1}>
-                      {postBook ? postBook.book?.title : 'Tag a book'}
+                      {postBook ? postBook.book?.title : t('feed.tagBookOptional')}
                     </Text>
                     {postBook && (
                       <TouchableOpacity onPress={() => setPostBook(null)}>
@@ -914,7 +917,7 @@ export default function GroupDetailScreen({ route, navigation }) {
                     style={styles.composerField}
                     value={postQuote}
                     onChangeText={setPostQuote}
-                    placeholder="Add a striking quote…"
+                    placeholder={t('feed.addQuote')}
                     placeholderTextColor={colors.outline}
                   />
                 </View>
@@ -924,7 +927,7 @@ export default function GroupDetailScreen({ route, navigation }) {
               <View style={styles.composerSection}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
                   <Ionicons name="happy-outline" size={14} color={colors.outline} />
-                  <Text style={{ fontSize: 12, color: colors.onSurfaceVariant }}>Current mood</Text>
+                  <Text style={{ fontSize: 12, color: colors.onSurfaceVariant }}>{t('groups.currentMood')}</Text>
                 </View>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingRight: 16 }}>
                   {EMOTION_OPTIONS.map(opt => (
@@ -944,7 +947,7 @@ export default function GroupDetailScreen({ route, navigation }) {
               <View style={[styles.composerSection, { flexDirection: 'row', alignItems: 'center', gap: 12 }]}>
                 <TouchableOpacity onPress={pickComposerImage} style={styles.composerImageBtn}>
                   <Ionicons name="image-outline" size={18} color={colors.onSurfaceVariant} />
-                  <Text style={styles.composerImageBtnText}>Photo</Text>
+                  <Text style={styles.composerImageBtnText}>{t('groups.photo')}</Text>
                 </TouchableOpacity>
                 {postImageUri && (
                   <View style={{ position: 'relative' }}>

@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 import { userbooksAPI, notesAPI, booksAPI } from '../services/api';
 import { colors, radius, shadow, type } from '../theme';
 
@@ -21,9 +22,9 @@ function getAmazonUrl(title, author) {
 }
 
 const STATUS_OPTIONS = [
-  { key: 'to-read',  label: 'Want to Read', icon: 'bookmark-outline' },
-  { key: 'reading',  label: 'Reading',       icon: 'book-outline' },
-  { key: 'finished', label: 'Finished',      icon: 'checkmark-circle-outline' },
+  { key: 'to-read',  labelKey: 'status.wantToRead', icon: 'bookmark-outline' },
+  { key: 'reading',  labelKey: 'status.reading',    icon: 'book-outline' },
+  { key: 'finished', labelKey: 'status.finished',   icon: 'checkmark-circle-outline' },
 ];
 
 function formatNoteDate(ts) {
@@ -53,6 +54,7 @@ function StarRating({ value = 0, onChange }) {
 }
 
 export default function BookDetailScreen({ route, navigation }) {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const { userbook: initialUb } = route.params;
   const [ub, setUb]               = useState(initialUb);
@@ -133,7 +135,7 @@ export default function BookDetailScreen({ route, navigation }) {
   const handleConfirmTotalPages = () => {
     const pages = parseInt(totalPagesInput, 10);
     if (isNaN(pages) || pages <= 0) {
-      Alert.alert('Invalid', 'Please enter a valid number of pages');
+      Alert.alert(t('common.error'), t('book.pageCountPlaceholder'));
       return;
     }
     setTotalPagesModal(false);
@@ -142,9 +144,9 @@ export default function BookDetailScreen({ route, navigation }) {
 
   const handleSaveProgress = async () => {
     const page = parseInt(pageInput, 10);
-    if (isNaN(page) || page < 0) { Alert.alert('Invalid page', 'Enter a valid page number'); return; }
+    if (isNaN(page) || page < 0) { Alert.alert(t('common.error'), 'Enter a valid page number'); return; }
     if (totalPages > 0 && page > totalPages) {
-      Alert.alert('Too many pages', `This book only has ${totalPages} pages`);
+      Alert.alert(t('common.error'), `This book only has ${totalPages} pages`);
       setPageInput(String(ub.current_page || 0));
       return;
     }
@@ -174,17 +176,17 @@ export default function BookDetailScreen({ route, navigation }) {
     setSavingNote(false);
   };
 
-  const handleDeleteNote = (noteId) => Alert.alert('Delete note', 'Are you sure?', [
-    { text: 'Cancel', style: 'cancel' },
-    { text: 'Delete', style: 'destructive', onPress: async () => {
+  const handleDeleteNote = (noteId) => Alert.alert(t('profile.deleteNote'), t('common.areYouSure'), [
+    { text: t('common.cancel'), style: 'cancel' },
+    { text: t('common.delete'), style: 'destructive', onPress: async () => {
       try { await notesAPI.deleteNote(noteId); setNotes(prev => prev.filter(n => n.id !== noteId)); }
       catch (e) { Alert.alert('Error', e?.response?.data?.detail || 'Could not delete note'); }
     }},
   ]);
 
-  const handleRemoveBook = () => Alert.alert('Remove book', 'Remove this book from your library?', [
-    { text: 'Cancel', style: 'cancel' },
-    { text: 'Remove', style: 'destructive', onPress: async () => {
+  const handleRemoveBook = () => Alert.alert(t('book.removeFromLibrary'), t('common.areYouSure'), [
+    { text: t('common.cancel'), style: 'cancel' },
+    { text: t('common.remove'), style: 'destructive', onPress: async () => {
       try { await userbooksAPI.deleteBook(ub.id); navigation.goBack(); }
       catch (e) { Alert.alert('Error', e?.response?.data?.detail || 'Could not remove book'); }
     }},
@@ -199,23 +201,23 @@ export default function BookDetailScreen({ route, navigation }) {
       <Modal visible={totalPagesModal} transparent animationType="fade" onRequestClose={() => setTotalPagesModal(false)}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalBox}>
-            <Text style={styles.modalTitle}>How many pages?</Text>
-            <Text style={styles.modalSubtitle}>We don't have the page count for this book. Enter it to track your progress accurately.</Text>
+            <Text style={styles.modalTitle}>{t('book.howManyPages')}</Text>
+            <Text style={styles.modalSubtitle}>{t('book.pageCountPrompt')}</Text>
             <TextInput
               style={styles.modalInput}
               value={totalPagesInput}
               onChangeText={setTotalPagesInput}
               keyboardType="numeric"
-              placeholder="e.g. 320"
+              placeholder={t('book.pageCountPlaceholder')}
               placeholderTextColor={colors.outline}
               autoFocus
             />
             <View style={styles.modalActions}>
               <TouchableOpacity style={styles.modalCancel} onPress={() => setTotalPagesModal(false)}>
-                <Text style={styles.modalCancelText}>Cancel</Text>
+                <Text style={styles.modalCancelText}>{t('common.cancel')}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.modalConfirm} onPress={handleConfirmTotalPages}>
-                <Text style={styles.modalConfirmText}>Confirm</Text>
+                <Text style={styles.modalConfirmText}>{t('common.confirm')}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -246,14 +248,14 @@ export default function BookDetailScreen({ route, navigation }) {
           </View>
           <Text style={styles.bookTitle}>{book.title || 'Unknown Title'}</Text>
           {book.author ? <Text style={styles.bookAuthor}>{book.author}</Text> : null}
-          {totalPages > 0 ? <Text style={styles.bookPages}>{totalPages} pages</Text> : null}
+          {totalPages > 0 ? <Text style={styles.bookPages}>{t('book.totalPages', { total: totalPages })}</Text> : null}
           {ub.status === 'finished' && (
             <StarRating value={rating} onChange={handleRating} />
           )}
           {book.description ? (
             <TouchableOpacity onPress={() => setDescExpanded(v => !v)} activeOpacity={0.8} style={styles.descToggle}>
               <Text style={styles.descText} numberOfLines={descExpanded ? undefined : 3}>{book.description}</Text>
-              <Text style={styles.descToggleText}>{descExpanded ? 'Show less' : 'Show more'}</Text>
+              <Text style={styles.descToggleText}>{descExpanded ? t('book.showLess') : t('book.showMore')}</Text>
             </TouchableOpacity>
           ) : null}
 
@@ -266,16 +268,16 @@ export default function BookDetailScreen({ route, navigation }) {
                 activeOpacity={0.8}
               >
                 <Ionicons name="cart-outline" size={16} color="#92400e" />
-                <Text style={styles.amazonBtnText}>Buy on Amazon</Text>
+                <Text style={styles.amazonBtnText}>{t('book.buyOnAmazon')}</Text>
               </TouchableOpacity>
-              <Text style={styles.amazonDisclaimer}>Affiliate link · helps support TrackMyRead</Text>
+              <Text style={styles.amazonDisclaimer}>{t('book.affiliateDisclaimer')}</Text>
             </>
           ) : null}
         </View>
 
         {/* ── Status ── */}
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>STATUS</Text>
+          <Text style={styles.sectionLabel}>{t('book.sectionStatus')}</Text>
           <View style={styles.statusRow}>
             {STATUS_OPTIONS.map(opt => (
               <TouchableOpacity
@@ -286,7 +288,7 @@ export default function BookDetailScreen({ route, navigation }) {
               >
                 <Ionicons name={opt.icon} size={13} color={ub.status === opt.key ? colors.onPrimary : colors.onSurfaceVariant} />
                 <Text style={[styles.statusPillText, ub.status === opt.key && styles.statusPillTextActive]}>
-                  {opt.label}
+                  {t(opt.labelKey)}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -297,11 +299,11 @@ export default function BookDetailScreen({ route, navigation }) {
         {/* ── Reading Progress (reading only) ── */}
         {ub.status === 'reading' && (
           <View style={styles.section}>
-            <Text style={styles.sectionLabel}>READING PROGRESS</Text>
+            <Text style={styles.sectionLabel}>{t('book.sectionProgress')}</Text>
             <View style={styles.progressCard}>
               <View style={styles.progressTopRow}>
                 <Text style={styles.progressPagesText}>
-                  {ub.current_page || 0} of {totalPages || '?'} pages
+                  {t('book.pagesProgress', { current: ub.current_page || 0, total: totalPages || '?' })}
                 </Text>
                 <Text style={styles.progressPct}>{progressPct}%</Text>
               </View>
@@ -314,13 +316,13 @@ export default function BookDetailScreen({ route, navigation }) {
                   value={pageInput}
                   onChangeText={setPageInput}
                   keyboardType="numeric"
-                  placeholder="Current page"
+                  placeholder={t('book.currentPagePlaceholder')}
                   placeholderTextColor={colors.outline}
                 />
                 <TouchableOpacity style={styles.updateBtn} onPress={handleSaveProgress} disabled={savingProgress}>
                   {savingProgress
                     ? <ActivityIndicator size="small" color={colors.onPrimary} />
-                    : <Text style={styles.updateBtnText}>Update</Text>
+                    : <Text style={styles.updateBtnText}>{t('book.updateProgress')}</Text>
                   }
                 </TouchableOpacity>
               </View>
@@ -348,7 +350,7 @@ export default function BookDetailScreen({ route, navigation }) {
 
         {/* ── Notes & Reflections ── */}
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>NOTES & REFLECTIONS</Text>
+          <Text style={styles.sectionLabel}>{t('book.sectionNotes')}</Text>
 
           {/* Composer — always visible */}
           <View style={styles.noteComposer}>
@@ -356,7 +358,7 @@ export default function BookDetailScreen({ route, navigation }) {
               style={styles.noteTextInput}
               value={noteText}
               onChangeText={setNoteText}
-              placeholder="Write a reflection about this book..."
+              placeholder={t('book.writeReflection')}
               placeholderTextColor={colors.outline}
               multiline
               numberOfLines={4}
@@ -368,7 +370,7 @@ export default function BookDetailScreen({ route, navigation }) {
                 style={styles.noteQuoteInput}
                 value={noteQuote}
                 onChangeText={setNoteQuote}
-                placeholder="Add a quote (optional)..."
+                placeholder={t('book.addQuoteOptional')}
                 placeholderTextColor={colors.outline}
               />
               <TouchableOpacity
@@ -378,7 +380,7 @@ export default function BookDetailScreen({ route, navigation }) {
               >
                 {savingNote
                   ? <ActivityIndicator size="small" color={colors.onPrimary} />
-                  : <Text style={styles.postBtnText}>Post</Text>
+                  : <Text style={styles.postBtnText}>{t('common.post')}</Text>
                 }
               </TouchableOpacity>
             </View>
@@ -386,9 +388,9 @@ export default function BookDetailScreen({ route, navigation }) {
 
           {/* Notes list */}
           {notesLoading ? (
-            <Text style={styles.notesLoadingText}>Loading notes...</Text>
+            <Text style={styles.notesLoadingText}>{t('book.loadingNotes')}</Text>
           ) : notes.length === 0 ? (
-            <Text style={styles.notesEmptyText}>No notes yet. Write your first reflection above.</Text>
+            <Text style={styles.notesEmptyText}>{t('book.noNotesYet')}</Text>
           ) : (
             notes.map(n => (
               <View key={n.id} style={styles.noteCard}>
@@ -412,7 +414,7 @@ export default function BookDetailScreen({ route, navigation }) {
         {/* ── Remove from library ── */}
         <TouchableOpacity style={styles.removeLink} onPress={handleRemoveBook}>
           <Ionicons name="trash-outline" size={15} color={colors.error} />
-          <Text style={styles.removeLinkText}>Remove from library</Text>
+          <Text style={styles.removeLinkText}>{t('book.removeFromLibrary')}</Text>
         </TouchableOpacity>
 
       </ScrollView>

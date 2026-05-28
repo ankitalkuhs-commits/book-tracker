@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext'
 import { googleLogin, setToken } from '../services/api'
 import { GoogleLogin } from '@react-oauth/google'
 import { ONBOARDING_KEY } from './OnboardingPage'
+import { useTranslation } from 'react-i18next'
 
 const SOFTWARE_LD = {
   '@context': 'https://schema.org',
@@ -32,6 +33,7 @@ const HERO_IMAGE = 'https://images.unsplash.com/photo-1507842217343-583bb7270b66
 export default function LoginPage() {
   const { login } = useAuth()
   const navigate = useNavigate()
+  const { t } = useTranslation()
   const [signingIn, setSigningIn] = useState(false)
 
   const handleGoogleCredential = async (credentialResponse) => {
@@ -52,8 +54,8 @@ export default function LoginPage() {
     <div className="min-h-screen bg-surface flex flex-col items-center justify-center gap-6">
       <div className="w-14 h-14 rounded-full border-4 border-primary/20 border-t-primary animate-spin" />
       <div className="text-center space-y-1">
-        <p className="font-serif text-xl font-bold text-primary">Signing you in…</p>
-        <p className="text-sm text-on-surface-variant">Setting up your reading space</p>
+        <p className="font-serif text-xl font-bold text-primary">{t('common.loading')}</p>
+        <p className="text-sm text-on-surface-variant">{t('auth.description')}</p>
       </div>
     </div>
   )
@@ -102,12 +104,11 @@ export default function LoginPage() {
           {/* Left: Text & CTA */}
           <div className="lg:col-span-5 order-2 lg:order-1 flex flex-col items-start">
             <h1 className="font-serif text-3xl md:text-4xl lg:text-5xl text-primary font-bold leading-[1.1] mb-3 tracking-tight">
-              Track your reading.{' '}
-              <span className="italic text-secondary font-normal">Share your journey.</span>
+              {t('auth.tagline').split('\n')[0]}{' '}
+              <span className="italic text-secondary font-normal">{t('auth.tagline').split('\n')[1]}</span>
             </h1>
             <p className="text-sm md:text-base text-on-surface-variant leading-relaxed mb-6 max-w-md">
-              The social home for book lovers. Log progress, share highlights, and discover
-              your next favorite read with friends.
+              {t('auth.description')}
             </p>
 
             <div className="flex flex-col gap-4 w-full sm:w-auto">
@@ -129,7 +130,7 @@ export default function LoginPage() {
                     <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
                     <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
                   </svg>
-                  Sign in with Google
+                  {t('auth.signInWithGoogle')}
                 </button>
               </div>
 
@@ -145,7 +146,7 @@ export default function LoginPage() {
                 ))}
               </div>
               <span className="text-sm text-on-surface-variant font-medium">
-                Joined by 12,000+ curators
+                {t('auth.socialProof')}
               </span>
             </div>
           </div>
@@ -164,10 +165,10 @@ export default function LoginPage() {
               <div className="absolute bottom-6 right-6 bg-surface/60 backdrop-blur-2xl p-5 rounded-2xl shadow-xl border border-white/20 max-w-[200px]">
                 <span className="material-symbols-outlined text-secondary text-2xl mb-2 block">format_quote</span>
                 <p className="font-serif text-primary text-sm leading-snug italic">
-                  A reader lives a thousand lives before he dies.
+                  {t('auth.quote')}
                 </p>
                 <p className="text-[10px] mt-2 text-on-surface-variant font-medium text-right">
-                  — George R.R. Martin
+                  — {t('auth.quoteAuthor')}
                 </p>
               </div>
             </div>
@@ -190,9 +191,9 @@ export default function LoginPage() {
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
             {[
-              { icon: 'menu_book', title: 'Page-by-page progress', body: 'Log exactly where you are. Reading speed and estimated finish date calculated automatically.' },
-              { icon: 'auto_stories', title: 'Reading log & history', body: "Every book you've finished — with dates, star ratings, highlights, and personal notes." },
-              { icon: 'bar_chart', title: 'Yearly reading insights', body: 'Pages read, books finished, reading streaks. Understand your reading habits at a glance.' },
+              { icon: 'menu_book', title: t('auth.featureTrackTitle'), body: t('auth.featureTrackDesc') },
+              { icon: 'auto_stories', title: t('auth.featureReflectTitle'), body: t('auth.featureReflectDesc') },
+              { icon: 'bar_chart', title: t('auth.featureDiscoverTitle'), body: t('auth.featureDiscoverDesc') },
             ].map(({ icon, title, body }) => (
               <div key={title} className="bg-surface rounded-3xl p-6 space-y-2 shadow-sm">
                 <span className="material-symbols-outlined text-primary text-3xl">{icon}</span>

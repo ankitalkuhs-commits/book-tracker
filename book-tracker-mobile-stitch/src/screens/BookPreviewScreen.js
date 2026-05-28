@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 import { booksAPI, userbooksAPI } from '../services/api';
 import { colors, radius, shadow, type } from '../theme';
 
@@ -22,14 +23,15 @@ function getAmazonUrl(title, author) {
 
 // ── Screen ────────────────────────────────────────────────────────────────────
 
-const STATUS_OPTIONS = [
-  { key: 'to-read',  label: 'Want to Read', icon: 'bookmark-outline' },
-  { key: 'reading',  label: 'Reading',       icon: 'book-outline' },
-  { key: 'finished', label: 'Finished',      icon: 'checkmark-circle-outline' },
-];
-
 export default function BookPreviewScreen({ route, navigation }) {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
+
+  const STATUS_OPTIONS = [
+    { key: 'to-read',  label: t('status.wantToRead'), icon: 'bookmark-outline' },
+    { key: 'reading',  label: t('status.reading'),    icon: 'book-outline' },
+    { key: 'finished', label: t('status.finished'),   icon: 'checkmark-circle-outline' },
+  ];
   // Normalize: accept either a flat book or a userbook with nested book
   const rawBook      = route.params?.book || {};
   const book         = rawBook.book || rawBook; // unwrap if it's a userbook
@@ -56,7 +58,7 @@ export default function BookPreviewScreen({ route, navigation }) {
 
   const handleAdd = async () => {
     if (!selectedStatus) {
-      Alert.alert('Pick a status', 'Choose how you want to track this book.');
+      Alert.alert(t('book.pickStatus'), t('book.chooseHowToTrack'));
       return;
     }
     setAdding(true);
@@ -70,9 +72,9 @@ export default function BookPreviewScreen({ route, navigation }) {
         status: selectedStatus,
       });
       setMyUserbook(result);
-      Alert.alert('Added!', selectedStatus === 'reading' ? 'Happy reading! 📖' : 'Added to your library.');
+      Alert.alert(selectedStatus === 'reading' ? t('book.happyReadingEmoji') : t('book.addedToYourLibrary'), '');
     } catch (e) {
-      Alert.alert('Error', e?.response?.data?.detail || 'Could not add book');
+      Alert.alert(t('common.error'), e?.response?.data?.detail || 'Could not add book');
     }
     setAdding(false);
   };
@@ -103,12 +105,12 @@ export default function BookPreviewScreen({ route, navigation }) {
           </View>
           <Text style={styles.bookTitle}>{book.title || 'Unknown Title'}</Text>
           {book.author     ? <Text style={styles.bookAuthor}>{book.author}</Text>   : null}
-          {book.total_pages ? <Text style={styles.bookPages}>{book.total_pages} pages</Text> : null}
+          {book.total_pages ? <Text style={styles.bookPages}>{t('book.totalPages', { total: book.total_pages })}</Text> : null}
 
           {book.description ? (
             <TouchableOpacity onPress={() => setDescExpanded(v => !v)} activeOpacity={0.8} style={styles.descToggle}>
               <Text style={styles.descText} numberOfLines={descExpanded ? undefined : 3}>{book.description}</Text>
-              <Text style={styles.descToggleText}>{descExpanded ? 'Show less' : 'Show more'}</Text>
+              <Text style={styles.descToggleText}>{descExpanded ? t('book.showLess') : t('book.showMore')}</Text>
             </TouchableOpacity>
           ) : null}
 
@@ -119,9 +121,9 @@ export default function BookPreviewScreen({ route, navigation }) {
             activeOpacity={0.8}
           >
             <Ionicons name="cart-outline" size={16} color="#92400e" />
-            <Text style={styles.amazonBtnText}>Buy on Amazon</Text>
+            <Text style={styles.amazonBtnText}>{t('book.buyOnAmazon')}</Text>
           </TouchableOpacity>
-          <Text style={styles.amazonDisclaimer}>Affiliate link · helps support TrackMyRead</Text>
+          <Text style={styles.amazonDisclaimer}>{t('book.affiliateDisclaimer')}</Text>
         </View>
 
         {/* ── Library actions ── */}
@@ -132,18 +134,18 @@ export default function BookPreviewScreen({ route, navigation }) {
             <>
               <View style={styles.inLibraryRow}>
                 <Ionicons name="checkmark-circle" size={18} color={colors.primary} />
-                <Text style={styles.inLibraryText}>Already in your library</Text>
+                <Text style={styles.inLibraryText}>{t('book.alreadyInLibrary')}</Text>
               </View>
               <TouchableOpacity
                 style={styles.viewBtn}
                 onPress={() => navigation.navigate('BookDetail', { userbook: myUserbook })}
               >
-                <Text style={styles.viewBtnText}>View in My Library</Text>
+                <Text style={styles.viewBtnText}>{t('book.viewInMyLibrary')}</Text>
               </TouchableOpacity>
             </>
           ) : (
             <>
-              <Text style={styles.sectionLabel}>ADD TO YOUR LIBRARY</Text>
+              <Text style={styles.sectionLabel}>{t('book.addToLibrarySection')}</Text>
               <View style={styles.statusRow}>
                 {STATUS_OPTIONS.map(opt => (
                   <TouchableOpacity
@@ -170,7 +172,7 @@ export default function BookPreviewScreen({ route, navigation }) {
               >
                 {adding
                   ? <ActivityIndicator size="small" color={colors.onPrimary} />
-                  : <Text style={styles.addBtnText}>Add to Library</Text>
+                  : <Text style={styles.addBtnText}>{t('library.addToLibrary')}</Text>
                 }
               </TouchableOpacity>
             </>

@@ -6,6 +6,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { colors, radius, shadow } from '../theme';
 import { userAPI, booksAPI, userbooksAPI } from '../services/api';
 
@@ -54,6 +55,7 @@ const GOAL_PRESETS = [6, 12, 24, 36, 52];
 const STEPS = ['welcome', 'tour', 'goal', 'book', 'done'];
 
 export default function OnboardingScreen({ onComplete }) {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const [step, setStep]             = useState(0);
   const [goal, setGoal]             = useState(12);
@@ -137,7 +139,7 @@ export default function OnboardingScreen({ onComplete }) {
       {/* Skip button (hidden on last step) */}
       {step < totalSteps - 1 && (
         <TouchableOpacity style={[styles.skipBtn, { top: insets.top + 12 }]} onPress={handleSkip}>
-          <Text style={styles.skipText}>Skip</Text>
+          <Text style={styles.skipText}>{t('onboarding.skip')}</Text>
         </TouchableOpacity>
       )}
 
@@ -172,12 +174,12 @@ export default function OnboardingScreen({ onComplete }) {
         >
           {saving
             ? <ActivityIndicator color={colors.onPrimary} />
-            : <Text style={styles.primaryBtnText}>{step === totalSteps - 1 ? 'Start Reading' : 'Continue'}</Text>
+            : <Text style={styles.primaryBtnText}>{step === totalSteps - 1 ? t('onboarding.startReading') : t('common.continue')}</Text>
           }
         </TouchableOpacity>
         {step >= 2 && step < totalSteps - 1 && (
           <TouchableOpacity onPress={handleSkip} style={styles.skipLinkBtn}>
-            <Text style={styles.skipLinkText}>Skip for now</Text>
+            <Text style={styles.skipLinkText}>{t('onboarding.skipForNow')}</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -187,15 +189,15 @@ export default function OnboardingScreen({ onComplete }) {
 
 // ── Step: Welcome ─────────────────────────────────────────────────────────────
 function WelcomeStep() {
+  const { t } = useTranslation();
+  const pills = [t('onboarding.pillTrack'), t('onboarding.pillReflect'), t('onboarding.pillConnect')];
   return (
     <View style={styles.stepCenter}>
       <Text style={styles.bigEmoji}>📖</Text>
-      <Text style={styles.stepTitle}>Welcome to{'\n'}TrackMyRead</Text>
-      <Text style={styles.stepDesc}>
-        Your social home for books. Track every read, share your journey, and discover what your friends are loving.
-      </Text>
+      <Text style={styles.stepTitle}>{t('onboarding.welcomeTitle')}</Text>
+      <Text style={styles.stepDesc}>{t('onboarding.welcomeDesc')}</Text>
       <View style={styles.pillRow}>
-        {['📚 Track', '✍️ Reflect', '👥 Connect'].map(p => (
+        {pills.map(p => (
           <View key={p} style={styles.pill}>
             <Text style={styles.pillText}>{p}</Text>
           </View>
@@ -207,12 +209,47 @@ function WelcomeStep() {
 
 // ── Step: App Tour ────────────────────────────────────────────────────────────
 function TourStep() {
+  const { t } = useTranslation();
+  const tourTabs = [
+    {
+      icon: 'newspaper-variant-outline',
+      label: t('onboarding.feedTabTitle'),
+      headline: 'Stay Connected',
+      desc: t('onboarding.feedTabDesc'),
+      color: '#00464a',
+      bg: '#e8f5f5',
+    },
+    {
+      icon: 'bookshelf',
+      label: t('onboarding.libraryTabTitle'),
+      headline: 'Your Shelf',
+      desc: t('onboarding.libraryTabDesc'),
+      color: '#735c00',
+      bg: '#fff8e1',
+    },
+    {
+      icon: 'account-group-outline',
+      label: t('onboarding.circlesTabTitle'),
+      headline: 'Read Together',
+      desc: t('onboarding.circlesTabDesc'),
+      color: '#62330f',
+      bg: '#fef3ec',
+    },
+    {
+      icon: 'chart-line',
+      label: t('onboarding.insightsTabTitle'),
+      headline: 'Know Yourself',
+      desc: t('onboarding.insightsTabDesc'),
+      color: '#2e4d7b',
+      bg: '#eef2fb',
+    },
+  ];
   return (
     <View style={styles.tourWrap}>
-      <Text style={styles.stepTitleSm}>What's inside</Text>
-      <Text style={styles.stepDescSm}>Four powerful tools, one beautiful app.</Text>
+      <Text style={styles.stepTitleSm}>{t('onboarding.whatsInsideTitle')}</Text>
+      <Text style={styles.stepDescSm}>{t('onboarding.whatsInsideDesc')}</Text>
       <View style={styles.tourGrid}>
-        {TABS.map(tab => (
+        {tourTabs.map(tab => (
           <View key={tab.label} style={[styles.tourCard, { backgroundColor: tab.bg }]}>
             <View style={[styles.tourIconBox, { backgroundColor: tab.color + '18' }]}>
               <MaterialCommunityIcons name={tab.icon} size={26} color={tab.color} />
@@ -229,11 +266,12 @@ function TourStep() {
 
 // ── Step: Reading Goal ────────────────────────────────────────────────────────
 function GoalStep({ goal, setGoal, customGoal, setCustomGoal, useCustom, setUseCustom }) {
+  const { t } = useTranslation();
   return (
     <View style={styles.stepCenter}>
       <Text style={styles.bigEmoji}>🎯</Text>
-      <Text style={styles.stepTitle}>Set a Reading Goal</Text>
-      <Text style={styles.stepDesc}>How many books do you want to finish this year? You can always change this later.</Text>
+      <Text style={styles.stepTitle}>{t('onboarding.setGoalTitle')}</Text>
+      <Text style={styles.stepDesc}>{t('onboarding.setGoalDesc')}</Text>
       <View style={styles.presetRow}>
         {GOAL_PRESETS.map(p => (
           <TouchableOpacity
@@ -253,7 +291,7 @@ function GoalStep({ goal, setGoal, customGoal, setCustomGoal, useCustom, setUseC
           onPress={() => setUseCustom(true)}
           activeOpacity={0.8}
         >
-          <Text style={[styles.customToggleText, useCustom && styles.customToggleTextActive]}>Custom</Text>
+          <Text style={[styles.customToggleText, useCustom && styles.customToggleTextActive]}>{t('onboarding.custom')}</Text>
         </TouchableOpacity>
         {useCustom && (
           <TextInput
@@ -270,7 +308,7 @@ function GoalStep({ goal, setGoal, customGoal, setCustomGoal, useCustom, setUseC
       </View>
       {!useCustom && (
         <Text style={styles.goalPreview}>
-          That's about <Text style={styles.goalHighlight}>{(goal / 12).toFixed(1)} books/month</Text>
+          <Text style={styles.goalHighlight}>{t('onboarding.booksPerMonth', { ratio: (goal / 12).toFixed(1) })}</Text>
         </Text>
       )}
     </View>
@@ -279,14 +317,14 @@ function GoalStep({ goal, setGoal, customGoal, setCustomGoal, useCustom, setUseC
 
 // ── Step: Add First Book ──────────────────────────────────────────────────────
 function BookStep({ query, setQuery, results, onSearch, onAdd, addedBook, searching, saving }) {
+  const { t } = useTranslation();
   if (addedBook) {
     return (
       <View style={styles.stepCenter}>
         <Text style={styles.bigEmoji}>🎉</Text>
-        <Text style={styles.stepTitle}>Book Added!</Text>
+        <Text style={styles.stepTitle}>{t('onboarding.addBookTitle')}</Text>
         <Text style={styles.stepDesc}>
           <Text style={{ fontWeight: '700', color: colors.primary }}>{addedBook.title}</Text>
-          {' '}is now in your library. You're off to a great start!
         </Text>
       </View>
     );
@@ -294,15 +332,15 @@ function BookStep({ query, setQuery, results, onSearch, onAdd, addedBook, search
 
   return (
     <View style={styles.bookWrap}>
-      <Text style={styles.stepTitleSm}>Add your first book</Text>
-      <Text style={styles.stepDescSm}>Search for something you're currently reading or want to start.</Text>
+      <Text style={styles.stepTitleSm}>{t('onboarding.addBookTitle')}</Text>
+      <Text style={styles.stepDescSm}>{t('onboarding.addBookDesc')}</Text>
       <View style={styles.searchRow}>
         <MaterialCommunityIcons name="magnify" size={20} color={colors.outline} style={styles.searchIcon} />
         <TextInput
           style={styles.searchInput}
           value={query}
-          onChangeText={(t) => { setQuery(t); onSearch(t); }}
-          placeholder="Search by title or author…"
+          onChangeText={(text) => { setQuery(text); onSearch(text); }}
+          placeholder={t('onboarding.searchPlaceholder')}
           placeholderTextColor={colors.outline}
           returnKeyType="search"
           onSubmitEditing={() => onSearch(query)}
@@ -346,7 +384,7 @@ function BookStep({ query, setQuery, results, onSearch, onAdd, addedBook, search
       {results.length === 0 && query.length < 2 && (
         <View style={styles.bookPrompt}>
           <MaterialCommunityIcons name="book-search-outline" size={48} color={colors.outlineVariant} />
-          <Text style={styles.bookPromptText}>Type a title or author name to search</Text>
+          <Text style={styles.bookPromptText}>{t('onboarding.typeToSearch')}</Text>
         </View>
       )}
     </View>
@@ -355,18 +393,17 @@ function BookStep({ query, setQuery, results, onSearch, onAdd, addedBook, search
 
 // ── Step: Done ────────────────────────────────────────────────────────────────
 function DoneStep() {
+  const { t } = useTranslation();
   return (
     <View style={styles.stepCenter}>
       <Text style={styles.bigEmoji}>🌟</Text>
-      <Text style={styles.stepTitle}>You're all set!</Text>
-      <Text style={styles.stepDesc}>
-        Your reading journey begins now. Explore the app, add books, follow friends, and start logging your reading.
-      </Text>
+      <Text style={styles.stepTitle}>{t('onboarding.doneTitle')}</Text>
+      <Text style={styles.stepDesc}>{t('onboarding.doneDesc')}</Text>
       <View style={styles.doneCards}>
         {[
-          { icon: 'bookshelf', text: 'Browse your Library' },
-          { icon: 'newspaper-variant-outline', text: 'Check the Feed' },
-          { icon: 'account-group-outline', text: 'Join a Circle' },
+          { icon: 'bookshelf', text: t('onboarding.browseLibrary') },
+          { icon: 'newspaper-variant-outline', text: t('onboarding.checkFeed') },
+          { icon: 'account-group-outline', text: t('onboarding.joinCircle') },
         ].map(item => (
           <View key={item.text} style={styles.doneCard}>
             <MaterialCommunityIcons name={item.icon} size={22} color={colors.primary} />

@@ -6,6 +6,7 @@ import {
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Svg, { Path } from 'react-native-svg';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
+import { useTranslation } from 'react-i18next';
 import { authAPI } from '../services/api';
 import { colors, radius, shadow, type } from '../theme';
 
@@ -13,8 +14,6 @@ import { colors, radius, shadow, type } from '../theme';
 const SCREEN_W = Dimensions.get('window').width;
 
 const HERO_IMAGE  = 'https://images.unsplash.com/photo-1507842217343-583bb7270b66?w=800&q=80';
-const QUOTE       = 'A reader lives a thousand lives before he dies.';
-const QUOTE_AUTH  = '— George R.R. Martin';
 const WEB_CLIENT_ID = '580873034102-ukh12uuph4c17eqvvbjl1a48alrfepok.apps.googleusercontent.com';
 
 const TRUST_AVATARS = [
@@ -23,14 +22,9 @@ const TRUST_AVATARS = [
   { uri: 'https://i.pravatar.cc/56?img=32' },
 ];
 
-const FEATURE_CARDS = [
-  { emoji: '📚', title: 'Track', desc: 'Log every book & page' },
-  { emoji: '✍️', title: 'Reflect', desc: 'Share quotes & moods' },
-  { emoji: '👥', title: 'Discover', desc: 'Read with friends' },
-];
-
 // ── Screen ────────────────────────────────────────────────────────────────────
 export default function LoginScreen({ onLoginSuccess }) {
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -49,13 +43,19 @@ export default function LoginScreen({ onLoginSuccess }) {
       onLoginSuccess?.();
     } catch (error) {
       if (error.code === 'SIGN_IN_CANCELLED') { /* user dismissed */ }
-      else if (error.code === 'IN_PROGRESS') Alert.alert('Please wait', 'Sign-in already in progress');
-      else if (error.code === 'PLAY_SERVICES_NOT_AVAILABLE') Alert.alert('Error', 'Google Play Services not available');
-      else Alert.alert('Sign In Failed', error.message || 'Could not sign in with Google');
+      else if (error.code === 'IN_PROGRESS') Alert.alert(t('auth.errorPleaseWait'), t('auth.errorAlreadyInProgress'));
+      else if (error.code === 'PLAY_SERVICES_NOT_AVAILABLE') Alert.alert(t('common.error'), t('auth.errorGooglePlayServices'));
+      else Alert.alert(t('auth.errorSignInFailed'), error.message || '');
     } finally {
       setLoading(false);
     }
   };
+
+  const featureCards = [
+    { emoji: '📚', title: t('auth.featureTrackTitle'), desc: t('auth.featureTrackDesc') },
+    { emoji: '✍️', title: t('auth.featureReflectTitle'), desc: t('auth.featureReflectDesc') },
+    { emoji: '👥', title: t('auth.featureDiscoverTitle'), desc: t('auth.featureDiscoverDesc') },
+  ];
 
   return (
     <View style={styles.container}>
@@ -65,7 +65,7 @@ export default function LoginScreen({ onLoginSuccess }) {
         {/* Logo */}
         <View style={styles.logoRow}>
           <MaterialCommunityIcons name="book-open-variant" size={26} color={colors.primary} />
-          <Text style={styles.logoText}>TrackMyRead</Text>
+          <Text style={styles.logoText}>{t('auth.appName')}</Text>
         </View>
 
         {/* Hero image card */}
@@ -73,25 +73,23 @@ export default function LoginScreen({ onLoginSuccess }) {
           <Image source={{ uri: HERO_IMAGE }} style={styles.heroImage} resizeMode="cover" />
           <View style={styles.quoteOverlay}>
             <Text style={styles.quoteDecor}>"</Text>
-            <Text style={styles.quoteText}>{QUOTE}</Text>
-            <Text style={styles.quoteAuthor}>{QUOTE_AUTH}</Text>
+            <Text style={styles.quoteText}>{t('auth.quote')}</Text>
+            <Text style={styles.quoteAuthor}>— {t('auth.quoteAuthor')}</Text>
           </View>
         </View>
 
         {/* Tagline */}
         <Text style={styles.tagline}>
-          <Text style={styles.taglineDark}>Track your reading.{'\n'}</Text>
-          <Text style={styles.taglineItalic}>Share your journey.</Text>
+          <Text style={styles.taglineDark}>{t('auth.tagline').split('\n')[0]}{'\n'}</Text>
+          <Text style={styles.taglineItalic}>{t('auth.tagline').split('\n')[1]}</Text>
         </Text>
 
         {/* Subtitle */}
-        <Text style={styles.subtitle}>
-          The social home for book lovers. Log progress, share highlights, and discover your next favourite read with friends.
-        </Text>
+        <Text style={styles.subtitle}>{t('auth.description')}</Text>
 
-        {/* Feature cards — replaces the marquee */}
+        {/* Feature cards */}
         <View style={styles.featureRow}>
-          {FEATURE_CARDS.map(card => (
+          {featureCards.map(card => (
             <View key={card.title} style={styles.featureCard}>
               <Text style={styles.featureEmoji}>{card.emoji}</Text>
               <Text style={styles.featureTitle}>{card.title}</Text>
@@ -112,7 +110,7 @@ export default function LoginScreen({ onLoginSuccess }) {
                 <Path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
                 <Path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
               </Svg>
-              <Text style={styles.googleBtnText}>Sign in with Google</Text>
+              <Text style={styles.googleBtnText}>{t('auth.signInWithGoogle')}</Text>
             </>
           )}
         </TouchableOpacity>
@@ -128,7 +126,7 @@ export default function LoginScreen({ onLoginSuccess }) {
               />
             ))}
           </View>
-          <Text style={styles.trustText}>Joined by 12,000+ readers</Text>
+          <Text style={styles.trustText}>{t('auth.socialProof')}</Text>
         </View>
 
       </ScrollView>

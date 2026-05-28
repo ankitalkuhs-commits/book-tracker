@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../components/Toast'
 import BookPreviewModal from '../components/BookPreviewModal'
@@ -139,6 +140,7 @@ function PostCard({ post, isCurator, isOwn, onDelete, onUserClick }) {
 // ─── Set Book Modal ───────────────────────────────────────────────────────────
 
 function SetBookModal({ onClose, onSet }) {
+  const { t } = useTranslation()
   const [q, setQ] = useState('')
   const [results, setResults] = useState([])
   const [searching, setSearching] = useState(false)
@@ -159,7 +161,7 @@ function SetBookModal({ onClose, onSet }) {
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
       <div className="bg-surface-container-lowest rounded-3xl p-6 w-full max-w-md shadow-float space-y-4">
         <div className="flex items-center justify-between">
-          <h3 className="font-serif text-lg font-bold text-on-surface">Set Group Book</h3>
+          <h3 className="font-serif text-lg font-bold text-on-surface">{t('groups.setGroupBook')}</h3>
           <button onClick={onClose} className="text-on-surface-variant hover:text-on-surface">
             <span className="material-symbols-outlined">close</span>
           </button>
@@ -169,11 +171,11 @@ function SetBookModal({ onClose, onSet }) {
           <input
             value={q}
             onChange={e => search(e.target.value)}
-            placeholder="Search for a book..."
+            placeholder={t('groups.searchByTitleOrAuthor')}
             className="w-full bg-surface-container-low rounded-xl pl-9 pr-4 py-2.5 text-sm border-none focus:outline-none focus:ring-2 focus:ring-primary/20"
           />
         </div>
-        {searching && <p className="text-xs text-on-surface-variant/60 text-center">Searching...</p>}
+        {searching && <p className="text-xs text-on-surface-variant/60 text-center">{t('common.loading')}</p>}
         {results.length > 0 && (
           <div className="space-y-2 max-h-72 overflow-y-auto">
             {results.slice(0, 8).map(b => (
@@ -205,6 +207,7 @@ function SetBookModal({ onClose, onSet }) {
 // ─── Edit Group Modal ─────────────────────────────────────────────────────────
 
 function EditGroupModal({ group, onClose, onSave }) {
+  const { t } = useTranslation()
   const [name, setName] = useState(group.name)
   const [description, setDescription] = useState(group.description || '')
   const [saving, setSaving] = useState(false)
@@ -226,14 +229,14 @@ function EditGroupModal({ group, onClose, onSave }) {
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
       <div className="bg-surface-container-lowest rounded-3xl p-6 w-full max-w-md shadow-float space-y-4">
         <div className="flex items-center justify-between">
-          <h3 className="font-serif text-lg font-bold text-on-surface">Edit Group</h3>
+          <h3 className="font-serif text-lg font-bold text-on-surface">{t('common.edit')} Group</h3>
           <button onClick={onClose} className="text-on-surface-variant hover:text-on-surface">
             <span className="material-symbols-outlined">close</span>
           </button>
         </div>
         <div className="space-y-3">
           <div>
-            <label className="text-xs font-bold uppercase tracking-wider text-on-surface-variant block mb-1">Name</label>
+            <label className="text-xs font-bold uppercase tracking-wider text-on-surface-variant block mb-1">{t('groups.groupNameLabel')}</label>
             <input
               value={name}
               onChange={e => setName(e.target.value)}
@@ -241,7 +244,7 @@ function EditGroupModal({ group, onClose, onSave }) {
             />
           </div>
           <div>
-            <label className="text-xs font-bold uppercase tracking-wider text-on-surface-variant block mb-1">Description</label>
+            <label className="text-xs font-bold uppercase tracking-wider text-on-surface-variant block mb-1">{t('groups.descriptionLabel')}</label>
             <textarea
               value={description}
               onChange={e => setDescription(e.target.value)}
@@ -252,10 +255,10 @@ function EditGroupModal({ group, onClose, onSave }) {
         </div>
         <div className="flex gap-3 pt-2">
           <button onClick={onClose} className="flex-1 py-2.5 text-sm font-bold text-on-surface-variant border border-outline-variant rounded-xl hover:bg-surface-container transition-colors">
-            Cancel
+            {t('common.cancel')}
           </button>
           <button onClick={handleSave} disabled={saving} className="flex-1 py-2.5 text-sm font-bold bg-primary text-on-primary rounded-xl hover:bg-primary/90 transition-colors disabled:opacity-50">
-            {saving ? 'Saving...' : 'Save'}
+            {saving ? t('common.saving') : t('common.save')}
           </button>
         </div>
       </div>
@@ -283,6 +286,7 @@ const EMOTION_OPTIONS = [
 ]
 
 function NewPostModal({ onClose, onPost }) {
+  const { t } = useTranslation()
   const { user } = useAuth()
   const toast = useToast()
   const [text,           setText]           = useState('')
@@ -340,7 +344,7 @@ function NewPostModal({ onClose, onPost }) {
       >
         {/* Header */}
         <div className="flex items-center justify-between">
-          <h3 className="font-serif text-lg font-bold text-on-surface">Share with the Circle</h3>
+          <h3 className="font-serif text-lg font-bold text-on-surface">{t('groups.shareWithCircle')}</h3>
           <button onClick={onClose} className="text-on-surface-variant hover:text-on-surface">
             <span className="material-symbols-outlined">close</span>
           </button>
@@ -363,7 +367,7 @@ function NewPostModal({ onClose, onPost }) {
               onChange={e => setText(e.target.value)}
               rows={3}
               autoFocus
-              placeholder="What's on your mind?"
+              placeholder={t('groups.whatsOnYourMind')}
               className="w-full bg-surface-container-low rounded-xl px-4 py-2.5 text-sm border-none focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none"
             />
 
@@ -391,7 +395,7 @@ function NewPostModal({ onClose, onPost }) {
                   }`}
                 >
                   <span className="material-symbols-outlined text-base">menu_book</span>
-                  {selectedBook ? selectedBook.book?.title : 'Tag a book (optional)'}
+                  {selectedBook ? selectedBook.book?.title : t('feed.tagBookOptional')}
                   {selectedBook && (
                     <span
                       className="material-symbols-outlined text-sm ml-1 text-on-surface-variant hover:text-error"
@@ -422,7 +426,7 @@ function NewPostModal({ onClose, onPost }) {
               <input
                 value={quote}
                 onChange={e => setQuote(e.target.value)}
-                placeholder="Add a quote..."
+                placeholder={t('feed.addQuote')}
                 className="w-full bg-surface-container-low rounded-xl pl-9 pr-4 py-2.5 text-sm border-none focus:outline-none focus:ring-2 focus:ring-primary/20"
               />
             </div>
@@ -431,7 +435,7 @@ function NewPostModal({ onClose, onPost }) {
             <div>
               <div className="flex items-center gap-1.5 mb-2">
                 <span className="material-symbols-outlined text-outline/60 text-base">mood</span>
-                <span className="text-xs text-on-surface-variant">Current mood</span>
+                <span className="text-xs text-on-surface-variant">{t('groups.currentMood')}</span>
               </div>
               <div className="flex flex-wrap gap-2">
                 {EMOTION_OPTIONS.map(opt => (
@@ -458,15 +462,15 @@ function NewPostModal({ onClose, onPost }) {
         <div className="flex items-center justify-between pt-1">
           <label className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-surface-container-low text-on-surface-variant hover:bg-surface-container cursor-pointer text-sm transition-colors">
             <span className="material-symbols-outlined text-base">image</span>
-            <span>Photo</span>
+            <span>{t('groups.photo')}</span>
             <input type="file" accept="image/*" className="hidden" onChange={handleImageSelect} />
           </label>
           <div className="flex gap-3">
             <button onClick={onClose} className="px-5 py-2.5 text-sm font-bold text-on-surface-variant border border-outline-variant rounded-xl hover:bg-surface-container transition-colors">
-              Cancel
+              {t('common.cancel')}
             </button>
             <button onClick={handlePost} disabled={posting || !text.trim()} className="btn-primary px-7 py-2.5 text-sm font-bold rounded-xl disabled:opacity-50">
-              {posting ? 'Posting...' : 'Post Reflection'}
+              {posting ? t('common.loading') : t('common.post')}
             </button>
           </div>
         </div>
@@ -478,6 +482,7 @@ function NewPostModal({ onClose, onPost }) {
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function GroupDetailPage() {
+  const { t } = useTranslation()
   const { groupId } = useParams()
   const navigate = useNavigate()
   const { user } = useAuth()
@@ -700,7 +705,7 @@ export default function GroupDetailPage() {
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
         <div className="absolute inset-0 flex flex-col justify-end p-6 md:p-8">
           <p className="text-[10px] font-bold uppercase tracking-widest text-white/60 mb-1">
-            {group.is_private ? 'Private Literary Circle' : 'Literary Circle'}
+            {group.is_private ? t('groups.privateCircle') : t('groups.publicCircle')}
           </p>
           <h1 className="font-serif text-3xl md:text-5xl font-bold text-white leading-tight">
             {group.name}
@@ -711,18 +716,18 @@ export default function GroupDetailPage() {
           <div className="flex items-center gap-4 mt-3 text-[11px] font-bold text-white/60 uppercase tracking-wider">
             <span className="flex items-center gap-1">
               <span className="material-symbols-outlined text-sm">group</span>
-              {group.member_count} Members
+              {t('groups.memberCount_one', { count: group.member_count })}
             </span>
             {group.is_private && (
               <span className="flex items-center gap-1">
                 <span className="material-symbols-outlined text-sm">lock</span>
-                Private
+                {t('common.private')}
               </span>
             )}
             {isCurator && (
               <span className="flex items-center gap-1 text-secondary">
                 <span className="material-symbols-outlined text-sm">star</span>
-                Curator
+                {t('groups.curator')}
               </span>
             )}
           </div>
@@ -736,7 +741,7 @@ export default function GroupDetailPage() {
               className="px-3 py-1.5 text-xs font-bold bg-white/20 backdrop-blur text-white rounded-xl hover:bg-white/30 transition-colors flex items-center gap-1"
             >
               <span className="material-symbols-outlined text-sm">edit</span>
-              Edit
+              {t('common.edit')}
             </button>
           )}
           <button
@@ -744,7 +749,7 @@ export default function GroupDetailPage() {
             className="px-3 py-1.5 text-xs font-bold bg-white/20 backdrop-blur text-white rounded-xl hover:bg-white/30 transition-colors flex items-center gap-1"
           >
             <span className="material-symbols-outlined text-sm">arrow_back</span>
-            Back
+            {t('common.back')}
           </button>
         </div>
       </div>
@@ -758,8 +763,8 @@ export default function GroupDetailPage() {
           <div className="bg-surface-container-lowest rounded-3xl p-6 space-y-5">
             <div className="flex items-center justify-between flex-wrap gap-3">
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-secondary">Rankings</p>
-                <h2 className="font-serif text-xl font-bold text-on-surface">Leaderboard</h2>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-secondary">{t('groups.rankings')}</p>
+                <h2 className="font-serif text-xl font-bold text-on-surface">{t('groups.leaderboard')}</h2>
               </div>
               <div className="flex bg-surface-container rounded-xl p-1">
                 {['monthly', 'alltime'].map(p => (
@@ -773,7 +778,7 @@ export default function GroupDetailPage() {
                         : 'text-on-surface-variant hover:text-on-surface'
                     }`}
                   >
-                    {p === 'monthly' ? 'This Month' : 'All Time'}
+                    {p === 'monthly' ? t('groups.thisMonth') : t('groups.allTime')}
                   </button>
                 ))}
               </div>
@@ -796,7 +801,7 @@ export default function GroupDetailPage() {
             ) : leaderboard.length === 0 ? (
               <div className="text-center py-8 text-on-surface-variant/50">
                 <span className="material-symbols-outlined text-4xl block mb-2">emoji_events</span>
-                <p className="text-sm">No activity yet — start reading!</p>
+                <p className="text-sm">{t('groups.noLeaderboardData')}</p>
               </div>
             ) : (
               <div className="space-y-3">
@@ -819,13 +824,13 @@ export default function GroupDetailPage() {
                       </div>
                       {row.current_book && (
                         <p className="text-xs text-on-surface-variant/60 truncate">
-                          Reading: <span className="italic">{row.current_book}</span>
+                          {t('library.statusReading')}: <span className="italic">{row.current_book}</span>
                         </p>
                       )}
                     </div>
                     <div className="text-right shrink-0 space-y-0.5">
-                      <p className="text-sm font-bold text-on-surface">{row.pages_read.toLocaleString()} <span className="text-xs font-normal text-on-surface-variant">pages</span></p>
-                      <p className="text-[11px] text-on-surface-variant/60">{row.books_finished} book{row.books_finished !== 1 ? 's' : ''} finished</p>
+                      <p className="text-sm font-bold text-on-surface">{row.pages_read.toLocaleString()} <span className="text-xs font-normal text-on-surface-variant">{t('book.pages')}</span></p>
+                      <p className="text-[11px] text-on-surface-variant/60">{t('groups.memberCount', { count: row.books_finished })} {t('status.finished').toLowerCase()}</p>
                     </div>
                   </button>
                 ))}
@@ -836,13 +841,13 @@ export default function GroupDetailPage() {
           {/* ── Member Activity Feed ── */}
           <div className="bg-surface-container-lowest rounded-3xl p-6 space-y-4">
             <div>
-              <p className="text-[10px] font-bold uppercase tracking-widest text-secondary">What's happening</p>
-              <h2 className="font-serif text-xl font-bold text-primary">Member Activity</h2>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-secondary">{t('groups.memberActivity')}</p>
+              <h2 className="font-serif text-xl font-bold text-primary">{t('groups.memberActivityTitle')}</h2>
             </div>
             {activity.length === 0 ? (
               <div className="text-center py-8 text-on-surface-variant/50">
                 <span className="material-symbols-outlined text-4xl block mb-2">timeline</span>
-                <p className="text-sm">No activity yet — start reading!</p>
+                <p className="text-sm">{t('groups.noActivityYet')}</p>
               </div>
             ) : (
               <div className="space-y-1">
@@ -865,8 +870,8 @@ export default function GroupDetailPage() {
           <div className="bg-surface-container-lowest rounded-3xl p-6 space-y-5">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-secondary">Discussions</p>
-                <h2 className="font-serif text-xl font-bold text-on-surface">Group Posts</h2>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-secondary">{t('groups.discussions')}</p>
+                <h2 className="font-serif text-xl font-bold text-on-surface">{t('groups.groupPosts')}</h2>
               </div>
               {isMember && (
                 <button
@@ -874,7 +879,7 @@ export default function GroupDetailPage() {
                   className="btn-primary flex items-center gap-1.5 px-4 py-2 text-sm rounded-xl font-bold"
                 >
                   <span className="material-symbols-outlined text-sm">add</span>
-                  Post
+                  {t('common.post')}
                 </button>
               )}
             </div>
@@ -882,8 +887,8 @@ export default function GroupDetailPage() {
             {posts.length === 0 ? (
               <div className="text-center py-10 text-on-surface-variant/50">
                 <span className="material-symbols-outlined text-4xl block mb-2">forum</span>
-                <p className="text-sm font-serif">The circle is quiet for now.</p>
-                {isMember && <p className="text-xs mt-1">Be the first to share a thought!</p>}
+                <p className="text-sm font-serif">{t('groups.noPostsYet')}</p>
+                {isMember && <p className="text-xs mt-1">{t('groups.shareWithCircle')}</p>}
               </div>
             ) : (
               <div className="space-y-4">
@@ -924,7 +929,7 @@ export default function GroupDetailPage() {
                     <div className="flex items-center gap-1.5">
                       <p className="text-sm font-bold text-on-surface truncate">{m.name}</p>
                       {m.role === 'curator' && (
-                        <span className="text-[9px] font-bold uppercase tracking-wider text-secondary bg-secondary/10 px-1.5 py-0.5 rounded-full shrink-0">Curator</span>
+                        <span className="text-[9px] font-bold uppercase tracking-wider text-secondary bg-secondary/10 px-1.5 py-0.5 rounded-full shrink-0">{t('groups.curatorBadge')}</span>
                       )}
                     </div>
                     <p className="text-xs text-on-surface-variant/60">@{m.username || m.name}</p>
@@ -955,15 +960,15 @@ export default function GroupDetailPage() {
           <div className="bg-surface-container-lowest rounded-3xl p-6 space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-secondary">Currently Reading</p>
-                <h3 className="font-serif text-base font-bold text-on-surface">Group Book</h3>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-secondary">{t('groups.currentlyReading')}</p>
+                <h3 className="font-serif text-base font-bold text-on-surface">{t('groups.groupBook')}</h3>
               </div>
               {isCurator && (
                 <button
                   onClick={() => setShowSetBook(true)}
                   className="text-xs font-bold text-primary hover:text-primary/70 transition-colors"
                 >
-                  {group.current_book ? 'Change' : 'Set Book'}
+                  {group.current_book ? t('groups.changeBook') : t('groups.setGroupBook')}
                 </button>
               )}
             </div>
@@ -996,7 +1001,7 @@ export default function GroupDetailPage() {
                       onClick={handleClearBook}
                       className="text-[11px] text-error/60 hover:text-error transition-colors"
                     >
-                      Remove
+                      {t('common.remove')}
                     </button>
                   )}
                 </div>
@@ -1004,7 +1009,7 @@ export default function GroupDetailPage() {
             ) : (
               <div className="text-center py-6 text-on-surface-variant/40">
                 <span className="material-symbols-outlined text-3xl block mb-1">auto_stories</span>
-                <p className="text-xs">No group book set yet</p>
+                <p className="text-xs">{t('groups.noGroupBookSelected')}</p>
               </div>
             )}
           </div>
@@ -1013,13 +1018,13 @@ export default function GroupDetailPage() {
           {goal?.goal_pages && (
             <div className="bg-surface-container-lowest rounded-3xl p-6 space-y-3">
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-secondary">Reading Goal</p>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-secondary">{t('groups.readingGoal')}</p>
                 <h3 className="font-serif text-base font-bold text-on-surface capitalize">{goal.goal_period || ''} Progress</h3>
               </div>
               <div>
                 <div className="flex items-baseline justify-between mb-2">
                   <span className="text-2xl font-bold font-serif text-on-surface">{goal.pages_read.toLocaleString()}</span>
-                  <span className="text-xs text-on-surface-variant">of {goal.goal_pages.toLocaleString()} pages</span>
+                  <span className="text-xs text-on-surface-variant">{t('groups.ofGoalPages', { goal: goal.goal_pages.toLocaleString() })}</span>
                 </div>
                 <div className="h-2.5 bg-surface-container rounded-full overflow-hidden">
                   <div
@@ -1030,7 +1035,7 @@ export default function GroupDetailPage() {
                     }}
                   />
                 </div>
-                <p className="text-xs text-on-surface-variant/60 mt-1.5 text-right">{goal.pct}% complete</p>
+                <p className="text-xs text-on-surface-variant/60 mt-1.5 text-right">{t('groups.percentComplete', { pct: goal.pct })}</p>
               </div>
             </div>
           )}
@@ -1039,7 +1044,7 @@ export default function GroupDetailPage() {
           {isCurator && pending.length > 0 && (
             <div className="bg-surface-container-lowest rounded-3xl p-6 space-y-3">
               <div className="flex items-center gap-2">
-                <h3 className="font-serif text-base font-bold text-on-surface">Pending Requests</h3>
+                <h3 className="font-serif text-base font-bold text-on-surface">{t('groups.pendingRequests')}</h3>
                 <span className="text-xs font-bold bg-secondary text-on-secondary rounded-full w-5 h-5 flex items-center justify-center">{pending.length}</span>
               </div>
               <div className="space-y-3">
@@ -1084,13 +1089,13 @@ export default function GroupDetailPage() {
           {isMember && (
             <div className="bg-surface-container-lowest rounded-3xl p-6 space-y-4">
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-secondary">Expand the Circle</p>
-                <h3 className="font-serif text-base font-bold text-on-surface">Invite Friends</h3>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-secondary">{t('groups.expandTheCircle')}</p>
+                <h3 className="font-serif text-base font-bold text-on-surface">{t('groups.inviteFriends')}</h3>
               </div>
 
               {/* Invite link */}
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/50 mb-1.5">Shareable Link</p>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/50 mb-1.5">{t('groups.inviteFriends')}</p>
                 <div className="flex items-center gap-2">
                   <div className="flex-1 bg-surface-container rounded-xl px-3 py-2 text-xs text-on-surface-variant/60 font-mono truncate">
                     {`/join/${group.invite_code}`}
@@ -1101,7 +1106,7 @@ export default function GroupDetailPage() {
                       linkCopied ? 'bg-primary text-on-primary' : 'bg-surface-container text-on-surface hover:bg-surface-container-high'
                     }`}
                   >
-                    {linkCopied ? 'Copied!' : 'Copy'}
+                    {linkCopied ? t('common.copied') : t('common.copy')}
                   </button>
                 </div>
               </div>
@@ -1115,7 +1120,7 @@ export default function GroupDetailPage() {
                     <input
                       value={inviteQuery}
                       onChange={e => handleInviteSearch(e.target.value)}
-                      placeholder="Search by username..."
+                      placeholder={t('groups.searchByUsername')}
                       className="w-full bg-surface-container-low rounded-xl pl-9 pr-4 py-2.5 text-sm border-none focus:outline-none focus:ring-2 focus:ring-primary/20"
                     />
                     {inviteResults.length > 0 && (
@@ -1130,7 +1135,7 @@ export default function GroupDetailPage() {
                             <span className="font-bold text-on-surface">{u.name}</span>
                             <span className="text-on-surface-variant/60 flex-1">@{u.username}</span>
                             <span className="text-[11px] font-bold text-primary shrink-0">
-                              {inviting === u.id ? '...' : 'Invite'}
+                              {inviting === u.id ? '...' : t('common.invite')}
                             </span>
                           </button>
                         ))}
@@ -1149,7 +1154,7 @@ export default function GroupDetailPage() {
                 onClick={handleLeave}
                 className="w-full py-2.5 text-sm font-bold text-error border border-error/20 rounded-2xl hover:bg-error/5 transition-colors"
               >
-                Leave Group
+                {t('groups.leaveCircle')}
               </button>
             )}
             {isCurator && (
@@ -1157,7 +1162,7 @@ export default function GroupDetailPage() {
                 onClick={() => setShowDeleteConfirm(true)}
                 className="w-full py-2.5 text-sm font-bold text-error border border-error/20 rounded-2xl hover:bg-error/5 transition-colors"
               >
-                Disband Group
+                {t('groups.disbandGroup')}
               </button>
             )}
           </div>
@@ -1178,22 +1183,22 @@ export default function GroupDetailPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
           <div className="bg-surface-container-lowest rounded-3xl p-6 w-full max-w-sm shadow-float space-y-4 text-center">
             <span className="material-symbols-outlined text-4xl text-error block">warning</span>
-            <h3 className="font-serif text-xl font-bold text-on-surface">Disband Group?</h3>
+            <h3 className="font-serif text-xl font-bold text-on-surface">{t('groups.disbandGroup')}?</h3>
             <p className="text-sm text-on-surface-variant">
-              This will permanently delete <strong>{group.name}</strong> and all its posts. This cannot be undone.
+              {t('groups.disbandConfirm', { name: group.name })}
             </p>
             <div className="flex gap-3 pt-2">
               <button
                 onClick={() => setShowDeleteConfirm(false)}
                 className="flex-1 py-2.5 text-sm font-bold border border-outline-variant rounded-xl hover:bg-surface-container transition-colors"
               >
-                Cancel
+                {t('common.cancel')}
               </button>
               <button
                 onClick={handleDeleteGroup}
                 className="flex-1 py-2.5 text-sm font-bold bg-error text-on-error rounded-xl hover:bg-error/90 transition-colors"
               >
-                Disband
+                {t('groups.disband')}
               </button>
             </div>
           </div>

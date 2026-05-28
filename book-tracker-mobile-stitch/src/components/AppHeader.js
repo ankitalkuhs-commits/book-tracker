@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { StatusBar } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { colors, type } from '../theme';
 import { NotificationContext } from '../context/NotificationContext';
 
@@ -15,6 +16,7 @@ import { NotificationContext } from '../context/NotificationContext';
  *  - onAvatarPress: () => void — navigate to Profile
  */
 export default function AppHeader({ user, onBellPress, onAvatarPress }) {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const { unreadCount } = useContext(NotificationContext);
 
@@ -34,7 +36,7 @@ export default function AppHeader({ user, onBellPress, onAvatarPress }) {
     <>
       <StatusBar barStyle="light-content" backgroundColor={colors.primaryContainer} />
       <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
-        <Text style={styles.logo}>TrackMyRead</Text>
+        <Text style={styles.logo}>{t('auth.appName')}</Text>
 
         <View style={styles.actions}>
           {/* Bell */}

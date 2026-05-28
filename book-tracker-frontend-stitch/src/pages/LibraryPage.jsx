@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useToast } from '../components/Toast'
+import { useTranslation } from 'react-i18next'
 import {
   getMyBooks, updateProgress, updateUserBook, markFinished, removeFromLibrary,
   getNotesForBook, createNote, deleteNote,
@@ -10,16 +11,16 @@ import {
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 const STATUS_TABS = [
-  { id: 'all',      label: 'All',             status: null },
-  { id: 'reading',  label: 'Reading',         status: 'reading' },
-  { id: 'to-read',  label: 'Want to Read',    status: 'to-read' },
-  { id: 'finished', label: 'Finished',        status: 'finished' },
+  { id: 'all',      labelKey: 'common.all',          status: null },
+  { id: 'reading',  labelKey: 'status.reading',      status: 'reading' },
+  { id: 'to-read',  labelKey: 'status.wantToRead',   status: 'to-read' },
+  { id: 'finished', labelKey: 'status.finished',     status: 'finished' },
 ]
 
 const STATUS_BADGE = {
-  'reading':  { label: 'Reading',        cls: 'bg-primary/10 text-primary' },
-  'to-read':  { label: 'Want to Read',   cls: 'bg-tertiary/10 text-tertiary' },
-  'finished': { label: 'Finished',       cls: 'bg-secondary/10 text-secondary' },
+  'reading':  { labelKey: 'status.reading',      cls: 'bg-primary/10 text-primary' },
+  'to-read':  { labelKey: 'status.wantToRead',   cls: 'bg-tertiary/10 text-tertiary' },
+  'finished': { labelKey: 'status.finished',     cls: 'bg-secondary/10 text-secondary' },
 }
 
 function pct(current, total) {
@@ -130,6 +131,7 @@ function WeeklyPulseChart({ data }) {
 
 function AddBookModal({ onClose, onAdded }) {
   const toast = useToast()
+  const { t } = useTranslation()
   const [query, setQuery] = useState('')
   const [results, setResults] = useState([])
   const [searching, setSearching] = useState(false)
@@ -211,7 +213,7 @@ function AddBookModal({ onClose, onAdded }) {
       <div className="bg-surface-container-lowest rounded-3xl shadow-float w-full max-w-2xl max-h-[85vh] flex flex-col overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-5 border-b border-outline-variant/15">
-          <h2 className="font-serif text-xl font-bold text-primary">Add a Book</h2>
+          <h2 className="font-serif text-xl font-bold text-primary">{t('library.addBook')}</h2>
           <button onClick={onClose} className="text-on-surface-variant hover:text-on-surface transition-colors">
             <span className="material-symbols-outlined">close</span>
           </button>
@@ -227,7 +229,7 @@ function AddBookModal({ onClose, onAdded }) {
                 value={query}
                 onChange={e => setQuery(e.target.value)}
                 onKeyDown={handleKey}
-                placeholder="Search by title, author, or ISBN..."
+                placeholder={t('library.searchByTitleOrAuthor')}
                 className="w-full bg-surface-container-low rounded-xl pl-9 pr-4 py-3 text-sm border-none focus:outline-none focus:ring-2 focus:ring-primary/20"
               />
             </div>
@@ -236,7 +238,7 @@ function AddBookModal({ onClose, onAdded }) {
               disabled={searching}
               className="btn-primary px-5 py-3 text-sm rounded-xl shrink-0"
             >
-              {searching ? 'Searching...' : 'Search'}
+              {searching ? t('common.loading') : t('common.search')}
             </button>
           </div>
         </div>
@@ -245,7 +247,7 @@ function AddBookModal({ onClose, onAdded }) {
         <div className="flex-1 overflow-y-auto px-6 pb-6 space-y-3">
           {results.length === 0 && !searching && (
             <p className="text-center text-sm text-on-surface-variant py-8">
-              Search Google Books to find a title.
+              {t('library.searchForBook')}
             </p>
           )}
           {results.map((book) => {
@@ -269,21 +271,21 @@ function AddBookModal({ onClose, onAdded }) {
                     disabled={isAdding}
                     className="btn-primary px-3 py-1.5 text-xs rounded-lg whitespace-nowrap"
                   >
-                    {isAdding ? '...' : 'Want to Read'}
+                    {isAdding ? '...' : t('status.wantToRead')}
                   </button>
                   <button
                     onClick={() => handleAdd(book, 'reading')}
                     disabled={isAdding}
                     className="border border-primary text-primary px-3 py-1.5 text-xs rounded-lg whitespace-nowrap hover:bg-primary/5 transition-colors"
                   >
-                    Reading Now
+                    {t('status.reading')}
                   </button>
                   <button
                     onClick={() => handleAdd(book, 'finished')}
                     disabled={isAdding}
                     className="border border-secondary text-secondary px-3 py-1.5 text-xs rounded-lg whitespace-nowrap hover:bg-secondary/5 transition-colors"
                   >
-                    Completed
+                    {t('status.finished')}
                   </button>
                 </div>
               </div>
@@ -291,7 +293,7 @@ function AddBookModal({ onClose, onAdded }) {
           })}
           {/* Infinite scroll sentinel */}
           {hasMore && <div ref={sentinelRef} className="py-2 text-center text-xs text-on-surface-variant/50">
-            {loadingMore ? 'Loading more…' : ''}
+            {loadingMore ? t('common.loading') : ''}
           </div>}
         </div>
       </div>
@@ -303,6 +305,7 @@ function AddBookModal({ onClose, onAdded }) {
 
 function BookDetailPanel({ userbook, onClose, onUpdate, onRemove }) {
   const toast = useToast()
+  const { t } = useTranslation()
   const book = userbook.book
   const [status, setStatus] = useState(userbook.status)
   const [page, setPage] = useState(userbook.current_page || '')
@@ -419,9 +422,9 @@ function BookDetailPanel({ userbook, onClose, onUpdate, onRemove }) {
   const progress = pct(userbook.current_page, book?.total_pages)
 
   const STATUS_SEGMENTS = [
-    { key: 'to-read',  label: 'Want to Read' },
-    { key: 'reading',  label: 'Reading' },
-    { key: 'finished', label: 'Finished' },
+    { key: 'to-read',  label: t('status.wantToRead') },
+    { key: 'reading',  label: t('status.reading') },
+    { key: 'finished', label: t('status.finished') },
   ]
 
   return (
@@ -453,7 +456,7 @@ function BookDetailPanel({ userbook, onClose, onUpdate, onRemove }) {
 
           {/* ── Unified status selector ── */}
           <section className="space-y-3">
-            <h3 className="text-sm font-bold text-on-surface uppercase tracking-wider">Status</h3>
+            <h3 className="text-sm font-bold text-on-surface uppercase tracking-wider">{t('book.sectionStatus')}</h3>
             <div className="flex rounded-2xl overflow-hidden border border-outline-variant/20 divide-x divide-outline-variant/20">
               {STATUS_SEGMENTS.map(seg => (
                 <button
@@ -479,11 +482,11 @@ function BookDetailPanel({ userbook, onClose, onUpdate, onRemove }) {
           {/* ── Reading progress (shown when Reading) ── */}
           {status === 'reading' && (
             <section className="space-y-3">
-              <h3 className="text-sm font-bold text-on-surface uppercase tracking-wider">Reading Progress</h3>
+              <h3 className="text-sm font-bold text-on-surface uppercase tracking-wider">{t('book.sectionProgress')}</h3>
               {book?.total_pages && (
                 <div className="space-y-1">
                   <div className="flex justify-between text-xs text-on-surface-variant">
-                    <span>{userbook.current_page || 0} of {book.total_pages} pages</span>
+                    <span>{t('book.pagesProgress', { current: userbook.current_page || 0, total: book.total_pages })}</span>
                     <span className="font-bold text-primary">{progress}%</span>
                   </div>
                   <div className="h-2 bg-surface-container-high rounded-full overflow-hidden">
@@ -506,7 +509,7 @@ function BookDetailPanel({ userbook, onClose, onUpdate, onRemove }) {
                   disabled={savingProgress}
                   className="btn-primary px-5 py-2 text-sm rounded-xl"
                 >
-                  {savingProgress ? 'Saving...' : 'Update'}
+                  {savingProgress ? t('common.saving') : t('book.updateProgress')}
                 </button>
               </div>
             </section>
@@ -529,14 +532,14 @@ function BookDetailPanel({ userbook, onClose, onUpdate, onRemove }) {
 
           {/* Notes */}
           <section className="space-y-4">
-            <h3 className="text-sm font-bold text-on-surface uppercase tracking-wider">Notes & Reflections</h3>
+            <h3 className="text-sm font-bold text-on-surface uppercase tracking-wider">{t('book.sectionNotes')}</h3>
 
             {/* Add note form */}
             <div className="bg-surface-container-low rounded-2xl p-4 space-y-3">
               <textarea
                 value={noteText}
                 onChange={e => setNoteText(e.target.value)}
-                placeholder="Write a reflection about this book..."
+                placeholder={t('book.writeReflection')}
                 className="w-full bg-surface-container-lowest rounded-xl p-3 text-sm text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:ring-2 focus:ring-primary/20 min-h-[80px] resize-none border-none"
               />
               <div className="flex gap-3 items-center">
@@ -545,7 +548,7 @@ function BookDetailPanel({ userbook, onClose, onUpdate, onRemove }) {
                   <input
                     value={noteQuote}
                     onChange={e => setNoteQuote(e.target.value)}
-                    placeholder="Add a quote (optional)..."
+                    placeholder={t('book.addQuoteOptional')}
                     className="w-full bg-surface-container-lowest rounded-xl pl-8 pr-3 py-2 text-sm border-none focus:outline-none focus:ring-2 focus:ring-primary/20"
                   />
                 </div>
@@ -554,15 +557,15 @@ function BookDetailPanel({ userbook, onClose, onUpdate, onRemove }) {
                   disabled={postingNote || !noteText.trim()}
                   className="btn-primary px-4 py-2 text-sm rounded-xl shrink-0 disabled:opacity-50"
                 >
-                  {postingNote ? '...' : 'Post'}
+                  {postingNote ? '...' : t('common.post')}
                 </button>
               </div>
             </div>
 
             {/* Note list */}
-            {loadingNotes && <p className="text-xs text-on-surface-variant">Loading notes...</p>}
+            {loadingNotes && <p className="text-xs text-on-surface-variant">{t('book.loadingNotes')}</p>}
             {!loadingNotes && notes.length === 0 && (
-              <p className="text-sm text-on-surface-variant/60 italic">No notes yet. Write your first reflection above.</p>
+              <p className="text-sm text-on-surface-variant/60 italic">{t('book.noNotesYet')}</p>
             )}
             {notes.map(note => (
               <div key={note.id} className="bg-surface-container-low rounded-2xl p-4 space-y-2">
@@ -576,7 +579,7 @@ function BookDetailPanel({ userbook, onClose, onUpdate, onRemove }) {
                     onClick={() => removeNote(note.id)}
                     className="text-xs text-error/60 hover:text-error transition-colors"
                   >
-                    Delete
+                    {t('common.delete')}
                   </button>
                 </div>
               </div>
@@ -591,7 +594,7 @@ function BookDetailPanel({ userbook, onClose, onUpdate, onRemove }) {
               className="text-sm text-error/70 hover:text-error transition-colors flex items-center gap-1 disabled:opacity-50"
             >
               <span className="material-symbols-outlined text-base">{removing ? 'progress_activity' : 'delete'}</span>
-              {removing ? 'Removing...' : 'Remove from library'}
+              {removing ? t('common.loading') : t('book.removeFromLibrary')}
             </button>
           </section>
         </div>
@@ -619,9 +622,10 @@ const STATUS_COLOR = {
 }
 
 function BookCard({ userbook, onClick }) {
+  const { t } = useTranslation()
   const book = userbook.book
   const progress = pct(userbook.current_page, book?.total_pages)
-  const statusLabel = STATUS_BADGE[userbook.status]?.label?.toUpperCase()
+  const statusLabel = STATUS_BADGE[userbook.status]?.labelKey ? t(STATUS_BADGE[userbook.status].labelKey).toUpperCase() : ''
   const statusColor = STATUS_COLOR[userbook.status] || 'text-on-surface-variant'
   const palette = TILE_PALETTES[(userbook.id || 0) % TILE_PALETTES.length]
   const [imgBroken, setImgBroken] = useState(false)
@@ -729,6 +733,7 @@ function BookCard({ userbook, onClick }) {
 // ─── Sidebar ──────────────────────────────────────────────────────────────────
 
 function LibrarySidebar({ library, onAddBook }) {
+  const { t } = useTranslation()
   const [activity, setActivity] = useState([])
 
   useEffect(() => {
@@ -741,7 +746,7 @@ function LibrarySidebar({ library, onAddBook }) {
   return (
     <aside className="hidden lg:block col-span-3">
       <div className="bg-surface-container-lowest rounded-3xl p-6 space-y-6 shadow-zen">
-        <h3 className="font-serif text-lg font-bold text-on-surface">Reading Stats</h3>
+        <h3 className="font-serif text-lg font-bold text-on-surface">{t('library.readingStats')}</h3>
 
         {/* Weekly pulse chart */}
         <WeeklyPulseChart data={activity} />
@@ -749,11 +754,11 @@ function LibrarySidebar({ library, onAddBook }) {
         {/* Stats grid */}
         <div className="grid grid-cols-2 gap-3">
           <div className="bg-surface-container-low rounded-2xl p-4 space-y-1">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/60">Total Books</p>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/60">{t('library.totalBooks')}</p>
             <p className="text-2xl font-bold font-serif text-on-surface">{total}</p>
           </div>
           <div className="bg-surface-container-low rounded-2xl p-4 space-y-1">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/60">Pages Read</p>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/60">{t('library.pagesRead')}</p>
             <p className="text-2xl font-bold font-serif text-on-surface">
               {totalPages >= 1000 ? `${(totalPages / 1000).toFixed(1)}k` : totalPages}
             </p>
@@ -766,7 +771,7 @@ function LibrarySidebar({ library, onAddBook }) {
           className="btn-primary w-full py-3.5 rounded-2xl text-sm font-bold flex items-center justify-center gap-2"
         >
           <span className="material-symbols-outlined text-lg">add</span>
-          Add New Book
+          {t('library.addNewBook')}
         </button>
       </div>
     </aside>
@@ -776,6 +781,7 @@ function LibrarySidebar({ library, onAddBook }) {
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 export default function LibraryPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [library, setLibrary] = useState([])
   const [loading, setLoading] = useState(true)
@@ -819,16 +825,16 @@ export default function LibraryPage() {
           {/* Header */}
           <div>
             <div className="flex items-center justify-between gap-4">
-              <h1 className="font-serif text-4xl md:text-5xl font-bold text-primary leading-tight">Your Library</h1>
+              <h1 className="font-serif text-4xl md:text-5xl font-bold text-primary leading-tight">{t('library.title')}</h1>
               <button
                 onClick={() => setShowAddModal(true)}
                 className="shrink-0 flex items-center gap-2 bg-primary text-on-primary px-4 py-2.5 rounded-xl font-bold text-sm hover:bg-primary/90 transition-colors shadow-sm"
               >
                 <span className="material-symbols-outlined text-base">add</span>
-                Add Book
+                {t('library.addBook')}
               </button>
             </div>
-            <p className="text-on-surface-variant mt-2 text-sm">Curating your personal journey through words and wisdom.</p>
+            <p className="text-on-surface-variant mt-2 text-sm">{t('library.subtitle')}</p>
           </div>
 
           {/* Pill tabs */}
@@ -843,7 +849,7 @@ export default function LibraryPage() {
                     : 'bg-surface-container text-on-surface-variant hover:bg-surface-container-high'
                 }`}
               >
-                {tab.label}
+                {t(tab.labelKey)}
               </button>
             ))}
           </div>
@@ -854,7 +860,7 @@ export default function LibraryPage() {
             <input
               value={search}
               onChange={e => setSearch(e.target.value)}
-              placeholder="Search your library..."
+              placeholder={t('library.searchLibrary')}
               className="w-full bg-surface-container-low rounded-2xl pl-9 pr-4 py-3 text-sm border-none focus:outline-none focus:ring-2 focus:ring-primary/20"
             />
           </div>
@@ -877,17 +883,21 @@ export default function LibraryPage() {
             <div className="text-center py-20">
               <span className="material-symbols-outlined text-6xl text-outline/30 block mb-4">auto_stories</span>
               <p className="font-serif text-xl text-on-surface mb-1">
-                {search ? 'No matching books' : activeTab === 'all' ? 'Your library is empty' : `No ${STATUS_TABS.find(t => t.id === activeTab)?.label} books`}
+                {search
+                  ? t('library.noBookMatchSearch')
+                  : activeTab === 'all'
+                    ? t('library.libraryEmpty')
+                    : t('library.noBooksInShelf', { shelf: t(STATUS_TABS.find(tab => tab.id === activeTab)?.labelKey || '') })}
               </p>
               <p className="text-sm text-on-surface-variant mt-1">
-                {!search && activeTab === 'all' && 'Start building your collection.'}
+                {!search && activeTab === 'all' && t('library.startBuilding')}
               </p>
               {!search && activeTab === 'all' && (
                 <button
                   onClick={() => setShowAddModal(true)}
                   className="btn-primary mt-6 px-6 py-2.5 text-sm rounded-xl"
                 >
-                  Add your first book
+                  {t('library.addFirstBook')}
                 </button>
               )}
             </div>

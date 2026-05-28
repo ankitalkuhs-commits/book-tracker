@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import { GoogleOAuthProvider } from '@react-oauth/google'
 import { HelmetProvider } from 'react-helmet-async'
+import './i18n'; // initialise i18next before anything renders
 import { AuthProvider } from './context/AuthContext'
 import { ToastProvider } from './components/Toast'
 import './index.css'

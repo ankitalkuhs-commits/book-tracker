@@ -8,6 +8,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { userAPI, authAPI, userbooksAPI, notesAPI, activityAPI, profileAPI } from '../services/api';
 import { PreloadContext } from '../../App';
 import { formatTimeAgo } from '../utils/bookUtils';
@@ -23,9 +24,10 @@ function getInitials(name) {
 
 // ── Activity bar chart ────────────────────────────────────────────────────────
 function ActivityChart({ data, streak }) {
+  const { t } = useTranslation();
   if (!data || data.length === 0) return (
     <Text style={{ fontSize: 13, color: colors.onSurfaceVariant, marginTop: 8 }}>
-      No activity data yet. Start logging pages!
+      {t('profile.noActivityData')}
     </Text>
   );
   const max = Math.max(...data.map(d => d.pages_read || 0), 1);
@@ -53,8 +55,8 @@ function ActivityChart({ data, streak }) {
         })}
       </View>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 }}>
-        <Text style={styles.axisLabel}>30 days ago</Text>
-        <Text style={styles.axisLabel}>Today</Text>
+        <Text style={styles.axisLabel}>{t('profile.thirtyDaysAgo')}</Text>
+        <Text style={styles.axisLabel}>{t('common.today')}</Text>
       </View>
     </View>
   );
@@ -195,6 +197,7 @@ function NoteCard({ note, currentUserId, onEdit, onDelete, onLike }) {
 
 // ── New Note Modal ─────────────────────────────────────────────────────────────
 function NewNoteModal({ visible, editNote, books, onClose, onSaved }) {
+  const { t } = useTranslation();
   const [text, setText]   = useState('');
   const [quote, setQuote] = useState('');
   const [ubId, setUbId]   = useState(null);
@@ -211,7 +214,7 @@ function NewNoteModal({ visible, editNote, books, onClose, onSaved }) {
   }, [editNote, visible]);
 
   const save = async () => {
-    if (!text.trim()) { Alert.alert('Error', 'Please write something'); return; }
+    if (!text.trim()) { Alert.alert(t('common.error'), 'Please write something'); return; }
     setSaving(true);
     try {
       if (editNote) {
@@ -221,7 +224,7 @@ function NewNoteModal({ visible, editNote, books, onClose, onSaved }) {
       }
       onSaved();
       onClose();
-    } catch { Alert.alert('Error', 'Could not save note'); }
+    } catch { Alert.alert(t('common.error'), 'Could not save note'); }
     setSaving(false);
   };
 
@@ -231,12 +234,12 @@ function NewNoteModal({ visible, editNote, books, onClose, onSaved }) {
         <View style={styles.modalRoot}>
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={onClose}>
-              <Text style={styles.modalCancel}>Cancel</Text>
+              <Text style={styles.modalCancel}>{t('common.cancel')}</Text>
             </TouchableOpacity>
-            <Text style={styles.modalTitle}>{editNote ? 'Edit Note' : 'New Note'}</Text>
+            <Text style={styles.modalTitle}>{editNote ? t('profile.editNote') : t('profile.newNote')}</Text>
             <TouchableOpacity onPress={save} disabled={saving || !text.trim()}>
               <Text style={[styles.modalSave, (!text.trim() || saving) && { opacity: 0.4 }]}>
-                {saving ? 'Saving…' : 'Save'}
+                {saving ? t('common.saving') : t('common.save')}
               </Text>
             </TouchableOpacity>
           </View>
@@ -244,9 +247,9 @@ function NewNoteModal({ visible, editNote, books, onClose, onSaved }) {
             {/* Book picker */}
             {books.length > 0 && (
               <>
-                <Text style={styles.fieldLabel}>Book (optional)</Text>
+                <Text style={styles.fieldLabel}>{t('profile.bookOptional')}</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }}>
-                  {[{ id: null, book: { title: 'No book' } }, ...books].map(ub => (
+                  {[{ id: null, book: { title: t('profile.noBook') } }, ...books].map(ub => (
                     <TouchableOpacity
                       key={ub.id ?? 'none'}
                       style={[styles.bookChip, ubId === ub.id && styles.bookChipActive]}
@@ -261,10 +264,10 @@ function NewNoteModal({ visible, editNote, books, onClose, onSaved }) {
               </>
             )}
 
-            <Text style={styles.fieldLabel}>Reflection</Text>
+            <Text style={styles.fieldLabel}>{t('profile.reflection')}</Text>
             <TextInput
               style={styles.noteInput}
-              placeholder="What are you thinking about your read?"
+              placeholder={t('profile.reflectionPlaceholder')}
               placeholderTextColor={colors.outline}
               value={text}
               onChangeText={setText}
@@ -273,10 +276,10 @@ function NewNoteModal({ visible, editNote, books, onClose, onSaved }) {
               textAlignVertical="top"
             />
 
-            <Text style={styles.fieldLabel}>Quote (optional)</Text>
+            <Text style={styles.fieldLabel}>{t('profile.quoteOptional')}</Text>
             <TextInput
               style={[styles.noteInput, { height: 72, fontStyle: 'italic' }]}
-              placeholder="A quote from the book…"
+              placeholder={t('profile.quoteFromBook')}
               placeholderTextColor={colors.outline}
               value={quote}
               onChangeText={setQuote}
@@ -292,6 +295,7 @@ function NewNoteModal({ visible, editNote, books, onClose, onSaved }) {
 
 // ── Profile Screen ─────────────────────────────────────────────────────────────
 export default function ProfileScreen({ navigation, onLogout }) {
+  const { t } = useTranslation();
   const insets    = useSafeAreaInsets();
   const preloaded = useContext(PreloadContext);
   const [profile,  setProfile]   = useState(preloaded?.profile || null);
@@ -353,11 +357,11 @@ export default function ProfileScreen({ navigation, onLogout }) {
   };
 
   const handleDeleteNote = (note) => {
-    Alert.alert('Delete note?', 'This cannot be undone.', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: async () => {
+    Alert.alert(t('profile.deleteNote'), t('common.cannotBeUndone'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('common.delete'), style: 'destructive', onPress: async () => {
         try { await notesAPI.deleteNote(note.id); setNotes(prev => prev.filter(n => n.id !== note.id)); }
-        catch { Alert.alert('Error', 'Could not delete note'); }
+        catch { Alert.alert(t('common.error'), 'Could not delete note'); }
       }},
     ]);
   };
@@ -384,9 +388,9 @@ export default function ProfileScreen({ navigation, onLogout }) {
   };
 
   const handleSignOut = () => {
-    Alert.alert('Sign out?', 'You will be logged out.', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Sign out', style: 'destructive', onPress: async () => {
+    Alert.alert(t('profile.signOut'), 'You will be logged out.', [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('profile.signOut'), style: 'destructive', onPress: async () => {
         await authAPI.logout();
         onLogout?.();
       }},
@@ -416,8 +420,8 @@ export default function ProfileScreen({ navigation, onLogout }) {
           <Ionicons name="arrow-back" size={22} color={colors.onSurface} />
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
-          <Text style={styles.topBarLabel}>YOUR READING STORY</Text>
-          <Text style={styles.topBarTitle}>Profile</Text>
+          <Text style={styles.topBarLabel}>{t('profile.eyebrow')}</Text>
+          <Text style={styles.topBarTitle}>{t('profile.title')}</Text>
         </View>
         <TouchableOpacity onPress={() => navigation?.navigate('Settings')} style={styles.settingsBtn}>
           <Ionicons name="settings-outline" size={22} color={colors.primary} />
@@ -457,7 +461,7 @@ export default function ProfileScreen({ navigation, onLogout }) {
             <Text style={styles.heroBio}>{profile.bio}</Text>
           ) : (
             <TouchableOpacity onPress={() => navigation?.navigate('Settings')}>
-              <Text style={styles.heroBioPlaceholder}>Add a bio in Settings…</Text>
+              <Text style={styles.heroBioPlaceholder}>{t('profile.addBioPrompt')}</Text>
             </TouchableOpacity>
           )}
 
@@ -465,42 +469,42 @@ export default function ProfileScreen({ navigation, onLogout }) {
           <View style={styles.statsPills}>
             <View style={styles.statPill}>
               <Text style={styles.statPillValue}>{followers}</Text>
-              <Text style={styles.statPillLabel}>Followers</Text>
+              <Text style={styles.statPillLabel}>{t('profile.followers')}</Text>
             </View>
             <View style={styles.statPillDivider} />
             <View style={styles.statPill}>
               <Text style={styles.statPillValue}>{following}</Text>
-              <Text style={styles.statPillLabel}>Following</Text>
+              <Text style={styles.statPillLabel}>{t('profile.following')}</Text>
             </View>
             <View style={styles.statPillDivider} />
             <View style={styles.statPill}>
               <Text style={styles.statPillValue}>{totalBooks}</Text>
-              <Text style={styles.statPillLabel}>Books</Text>
+              <Text style={styles.statPillLabel}>{t('profile.books')}</Text>
             </View>
           </View>
         </View>
 
         {/* ── Reading Analytics ── */}
         <View style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>Reading Analytics</Text>
+          <Text style={styles.sectionTitle}>{t('profile.readingAnalytics')}</Text>
           <View style={styles.analyticsRow}>
             <View style={styles.analyticsItem}>
               <Ionicons name="library-outline" size={18} color={colors.primary} />
               <Text style={styles.analyticsValue}>{totalBooks}</Text>
-              <Text style={styles.analyticsLabel}>Total Books</Text>
+              <Text style={styles.analyticsLabel}>{t('profile.totalBooks')}</Text>
             </View>
             <View style={styles.analyticsItem}>
               <Ionicons name="document-text-outline" size={18} color={colors.primary} />
               <Text style={styles.analyticsValue}>
                 {(profile?.stats?.total_pages_read ?? 0).toLocaleString()}
               </Text>
-              <Text style={styles.analyticsLabel}>Pages Read</Text>
+              <Text style={styles.analyticsLabel}>{t('profile.pagesRead')}</Text>
             </View>
             {streak > 0 && (
               <View style={styles.analyticsItem}>
                 <Ionicons name="flame-outline" size={18} color={colors.secondary} />
                 <Text style={[styles.analyticsValue, { color: colors.secondary }]}>🔥 {streak}</Text>
-                <Text style={styles.analyticsLabel}>Day Streak</Text>
+                <Text style={styles.analyticsLabel}>{t('profile.dayStreak')}</Text>
               </View>
             )}
           </View>
@@ -512,10 +516,10 @@ export default function ProfileScreen({ navigation, onLogout }) {
                 <Text style={{ fontSize: 12, fontWeight: '800', color: colors.onSurface }}>{goalPct}%</Text>
               </GoalRing>
               <View style={{ flex: 1, marginLeft: 12 }}>
-                <Text style={styles.goalLabel}>{new Date().getFullYear()} Reading Goal</Text>
+                <Text style={styles.goalLabel}>{t('profile.yearReadingGoal', { year: new Date().getFullYear() })}</Text>
                 <Text style={styles.goalValue}>{yearGoal.finished} / {yearGoal.goal} books</Text>
                 <Text style={[styles.goalStatus, { color: onTrack ? colors.primary : colors.secondary }]}>
-                  {onTrack ? 'On track' : 'Behind pace'}
+                  {onTrack ? t('insights.onTrack') : t('insights.behindPace')}
                 </Text>
               </View>
             </View>
@@ -525,7 +529,7 @@ export default function ProfileScreen({ navigation, onLogout }) {
         {/* ── Currently Reading ── */}
         {readingBooks.length > 0 && (
           <View style={styles.sectionCard}>
-            <Text style={styles.sectionTitle}>Currently Reading</Text>
+            <Text style={styles.sectionTitle}>{t('profile.currentlyReading')}</Text>
             <View style={{ gap: 12, marginTop: 8 }}>
               {readingBooks.map(ub => {
                 const book = ub.book;
@@ -560,27 +564,27 @@ export default function ProfileScreen({ navigation, onLogout }) {
 
         {/* ── 30-Day Activity ── */}
         <View style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>30-Day Activity</Text>
-          <Text style={styles.sectionSub}>Daily pages read</Text>
+          <Text style={styles.sectionTitle}>{t('profile.thirtyDayActivity')}</Text>
+          <Text style={styles.sectionSub}>{t('profile.dailyPagesRead')}</Text>
           <ActivityChart data={activity} streak={streak} />
         </View>
 
         {/* ── My Notes ── */}
         <View style={styles.sectionCard}>
           <View style={styles.notesHeader}>
-            <Text style={styles.sectionTitle}>My Notes</Text>
+            <Text style={styles.sectionTitle}>{t('profile.myNotes')}</Text>
             <TouchableOpacity style={styles.newNoteBtn} onPress={() => { setEditNote(null); setShowNoteModal(true); }}>
               <Ionicons name="add" size={16} color={colors.onPrimary} />
-              <Text style={styles.newNoteBtnText}>New Entry</Text>
+              <Text style={styles.newNoteBtnText}>{t('profile.newEntry')}</Text>
             </TouchableOpacity>
           </View>
 
           {notes.length === 0 ? (
             <View style={styles.notesEmpty}>
               <Ionicons name="journal-outline" size={40} color={colors.outlineVariant} />
-              <Text style={styles.notesEmptyText}>No notes yet</Text>
+              <Text style={styles.notesEmptyText}>{t('profile.noNotes')}</Text>
               <TouchableOpacity style={styles.notesEmptyBtn} onPress={() => { setEditNote(null); setShowNoteModal(true); }}>
-                <Text style={styles.notesEmptyBtnText}>Write your first note</Text>
+                <Text style={styles.notesEmptyBtnText}>{t('profile.writeFirstNote')}</Text>
               </TouchableOpacity>
             </View>
           ) : (
@@ -603,13 +607,13 @@ export default function ProfileScreen({ navigation, onLogout }) {
         <View style={styles.sectionCard}>
           <TouchableOpacity style={styles.accountRow} onPress={() => navigation?.navigate('Settings')}>
             <Ionicons name="settings-outline" size={18} color={colors.onSurfaceVariant} />
-            <Text style={styles.accountRowText}>Account Settings</Text>
+            <Text style={styles.accountRowText}>{t('profile.accountSettings')}</Text>
             <Ionicons name="chevron-forward" size={16} color={colors.outline} />
           </TouchableOpacity>
           <View style={styles.accountDivider} />
           <TouchableOpacity style={styles.accountRow} onPress={handleSignOut}>
             <Ionicons name="log-out-outline" size={18} color={colors.error} />
-            <Text style={[styles.accountRowText, { color: colors.error }]}>Sign out</Text>
+            <Text style={[styles.accountRowText, { color: colors.error }]}>{t('profile.signOut')}</Text>
           </TouchableOpacity>
         </View>
 

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../components/Toast'
 import BookPreviewModal from '../components/BookPreviewModal'
@@ -23,6 +24,7 @@ function pct(current, total) {
 // ─── Reading Velocity Chart ───────────────────────────────────────────────────
 
 function VelocityChart({ activity30, activity90 }) {
+  const { t } = useTranslation()
   const [range, setRange] = useState('30d')
   const data = range === '30d' ? activity30 : activity90
   const bars = data.slice(-(range === '30d' ? 30 : 90))
@@ -32,9 +34,9 @@ function VelocityChart({ activity30, activity90 }) {
     <div className="bg-surface-container-lowest rounded-3xl p-6 space-y-4">
       <div className="flex items-start justify-between">
         <div>
-          <h3 className="font-serif text-lg font-bold text-on-surface">Reading Velocity</h3>
+          <h3 className="font-serif text-lg font-bold text-on-surface">{t('profile.readingVelocity')}</h3>
           <p className="text-xs text-on-surface-variant mt-0.5">
-            Activity tracked over the last {range === '30d' ? '30' : '90'} days
+            {t('profile.activityTracked', { period: range === '30d' ? '30' : '90' })}
           </p>
         </div>
         <div className="flex items-center bg-surface-container rounded-full p-0.5 text-xs font-bold">
@@ -56,7 +58,7 @@ function VelocityChart({ activity30, activity90 }) {
 
       {bars.length === 0 || max === 1 ? (
         <div className="h-28 flex items-center justify-center text-sm text-on-surface-variant/50">
-          No reading activity yet
+          {t('profile.noReadingActivity')}
         </div>
       ) : (
         <>
@@ -86,8 +88,8 @@ function VelocityChart({ activity30, activity90 }) {
             })}
           </div>
           <div className="flex justify-between text-[10px] font-bold uppercase tracking-wider text-on-surface-variant/40">
-            <span>{range === '30d' ? '30' : '90'} Days Ago</span>
-            <span>Today</span>
+            <span>{t('profile.activityTracked', { period: range === '30d' ? '30' : '90' })}</span>
+            <span>{t('common.today')}</span>
           </div>
         </>
       )}
@@ -206,6 +208,7 @@ function PublicNoteCard({ note, profileUrl, isAdmin, onDelete, onLike }) {
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 export default function UserProfilePage() {
+  const { t } = useTranslation()
   const { userId } = useParams()
   const { user: me } = useAuth()
   const navigate = useNavigate()
@@ -383,16 +386,16 @@ export default function UserProfilePage() {
             {joinedDate && (
               <p className="text-xs text-on-surface-variant/60 flex items-center gap-1.5">
                 <span className="material-symbols-outlined text-sm">calendar_month</span>
-                Member since {joinedDate}
+                {t('profile.memberSince', { date: joinedDate })}
               </p>
             )}
 
             {/* Stats */}
             <div className="flex items-center gap-8 pt-2">
               {[
-                { value: profile.followers_count || 0, label: 'Followers' },
-                { value: profile.following_count || 0, label: 'Following' },
-                { value: stats?.total_books || books.length, label: 'Collections' },
+                { value: profile.followers_count || 0, label: t('profile.followersLabel') },
+                { value: profile.following_count || 0, label: t('profile.followingLabel') },
+                { value: stats?.total_books || books.length, label: t('profile.booksLabel') },
               ].map(({ value, label }) => (
                 <div key={label}>
                   <p className="font-serif text-2xl font-bold text-on-surface leading-none">{value?.toLocaleString()}</p>
@@ -405,7 +408,7 @@ export default function UserProfilePage() {
           {/* Follow button */}
           <div className="shrink-0 flex flex-col items-end gap-1.5">
             {profile.follows_you && !isFollowing && (
-              <span className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant/50">Follows you</span>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant/50">{t('profile.followsYou')}</span>
             )}
             <button
               onClick={toggleFollow}
@@ -419,7 +422,7 @@ export default function UserProfilePage() {
               <span className="material-symbols-outlined text-base">
                 {isFollowing ? 'person_check' : 'person_add'}
               </span>
-              {followLoading ? '...' : isFollowing ? 'Following' : profile.follows_you ? 'Follow Back' : 'Follow'}
+              {followLoading ? '...' : isFollowing ? t('profile.following_btn') : profile.follows_you ? t('profile.followBack') : t('profile.follow')}
             </button>
           </div>
         </div>
@@ -429,9 +432,9 @@ export default function UserProfilePage() {
       {profile.locked && (
         <div className="flex flex-col items-center justify-center py-20 space-y-4 text-center bg-surface-container-lowest rounded-3xl">
           <span className="material-symbols-outlined text-5xl text-outline/40" style={{ fontVariationSettings: "'FILL' 1" }}>lock</span>
-          <p className="font-serif text-xl font-bold text-on-surface">This profile is private</p>
+          <p className="font-serif text-xl font-bold text-on-surface">{t('profile.privateProfile')}</p>
           <p className="text-sm text-on-surface-variant max-w-xs">
-            Follow {profile.name?.split(' ')[0] || 'this user'} to see their library and reading notes.
+            {t('profile.followToSee', { name: profile.name?.split(' ')[0] || 'this user' })}
           </p>
         </div>
       )}
@@ -478,7 +481,7 @@ export default function UserProfilePage() {
             {totalPages > 0 && (
               <div className="flex items-center gap-2 text-sm text-on-surface-variant">
                 <span className="material-symbols-outlined text-base text-on-surface-variant/40">description</span>
-                {totalPages.toLocaleString()} pages read (90d)
+                {totalPages.toLocaleString()} {t('profile.pagesRead')}
               </div>
             )}
 
@@ -488,7 +491,7 @@ export default function UserProfilePage() {
                 <span className="material-symbols-outlined text-base text-primary">speed</span>
                 <div>
                   <span className="font-serif text-lg font-bold text-primary">{avgPpd}</span>
-                  <span className="text-xs text-primary/70 ml-1">avg pages/day</span>
+                  <span className="text-xs text-primary/70 ml-1">{t('profile.avgPagesPerDay')}</span>
                 </div>
               </div>
             )}
@@ -504,7 +507,7 @@ export default function UserProfilePage() {
       {/* ── Currently Reading ───────────────────────────────────── */}
       {books.filter(b => b.status === 'reading').length > 0 && (
         <div className="bg-surface-container-lowest rounded-3xl p-6 space-y-4">
-          <h2 className="font-serif text-xl font-bold text-on-surface">Currently Reading</h2>
+          <h2 className="font-serif text-xl font-bold text-on-surface">{t('profile.currentlyReading')}</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {books.filter(b => b.status === 'reading').slice(0, 3).map(ub => {
               const total = ub.book?.total_pages || 0
@@ -542,13 +545,13 @@ export default function UserProfilePage() {
         {/* Curated Library */}
         <div className="lg:col-span-7 space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="font-serif text-2xl font-bold text-on-surface">Curated Library</h2>
+            <h2 className="font-serif text-2xl font-bold text-on-surface">{t('profile.curatedLibrary')}</h2>
             {books.length > 6 && (
               <button
                 onClick={() => setShowAllBooks(v => !v)}
                 className="text-sm font-bold text-primary hover:text-primary/80 transition-colors flex items-center gap-1"
               >
-                {showAllBooks ? 'Show Less' : `View All ${books.length} Books`}
+                {showAllBooks ? t('profile.showLess') : t('profile.viewAllBooks', { count: books.length })}
                 <span className="material-symbols-outlined text-base">
                   {showAllBooks ? 'expand_less' : 'arrow_forward'}
                 </span>
@@ -578,7 +581,7 @@ export default function UserProfilePage() {
 
         {/* Public Notes */}
         <div className="lg:col-span-5 space-y-4">
-          <h2 className="font-serif text-2xl font-bold text-on-surface">Public Notes</h2>
+          <h2 className="font-serif text-2xl font-bold text-on-surface">{t('profile.publicNotes')}</h2>
 
           {notes.length === 0 ? (
             <div className="bg-surface-container-lowest rounded-2xl p-10 text-center border border-outline-variant/10">

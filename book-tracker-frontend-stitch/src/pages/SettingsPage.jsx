@@ -2,6 +2,8 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../components/Toast'
+import { useTranslation } from 'react-i18next'
+import { changeLanguage, SUPPORTED_LANGUAGES } from '../i18n'
 import { getMyProfile, updateMyProfile, uploadProfilePicture, deleteAccount, getNotificationPrefs, updateNotificationPrefs, importGoodreads, getCoversStatus, fixCoversBatch } from '../services/api'
 
 // Illustrated preset avatars via DiceBear adventurer style — synced with mobile
@@ -13,6 +15,7 @@ const PRESET_AVATARS = AVATAR_SEEDS.map((seed, i) => ({
 }))
 
 function AvatarPickerModal({ current, onSelect, onClose }) {
+  const { t } = useTranslation()
   const [selected, setSelected] = useState(current)
   const [applying, setApplying] = useState(false)
 
@@ -32,7 +35,7 @@ function AvatarPickerModal({ current, onSelect, onClose }) {
       >
         {/* Header */}
         <div className="flex items-center justify-between px-6 pt-6 pb-4">
-          <h3 className="font-serif text-xl font-bold text-on-surface">Choose Avatar</h3>
+          <h3 className="font-serif text-xl font-bold text-on-surface">{t('settings.chooseAvatarTitle')}</h3>
           <button onClick={onClose} className="text-on-surface-variant hover:text-on-surface transition-colors">
             <span className="material-symbols-outlined">close</span>
           </button>
@@ -69,7 +72,7 @@ function AvatarPickerModal({ current, onSelect, onClose }) {
             disabled={applying || !selected || selected === current}
             className="w-full btn-primary py-3 text-sm font-bold rounded-xl disabled:opacity-50 transition-opacity"
           >
-            {applying ? 'Applying...' : 'Use This Avatar'}
+            {applying ? t('common.loading') : t('settings.useThisAvatar')}
           </button>
         </div>
       </div>
@@ -78,6 +81,7 @@ function AvatarPickerModal({ current, onSelect, onClose }) {
 }
 
 export default function SettingsPage() {
+  const { t } = useTranslation()
   const { user, login, logout } = useAuth()
   const navigate = useNavigate()
   const toast = useToast()
@@ -303,11 +307,11 @@ export default function SettingsPage() {
 
   return (
     <main className="max-w-screen-sm mx-auto px-4 md:px-8 pt-8 pb-12 space-y-8">
-      <h1 className="font-serif text-3xl font-bold text-primary">Settings</h1>
+      <h1 className="font-serif text-3xl font-bold text-primary">{t('settings.title')}</h1>
 
       {/* Profile section */}
       <section className="bg-surface-container-lowest rounded-3xl p-8 space-y-6">
-        <h2 className="font-sans text-base font-bold text-on-surface uppercase tracking-wider">Profile</h2>
+        <h2 className="font-sans text-base font-bold text-on-surface uppercase tracking-wider">{t('settings.sectionProfile')}</h2>
 
         {/* Avatar */}
         <div className="flex items-center gap-5">
@@ -335,7 +339,7 @@ export default function SettingsPage() {
                 className="flex items-center gap-1 text-xs font-medium text-primary hover:text-primary/80 transition-colors"
               >
                 <span className="material-symbols-outlined text-sm">face</span>
-                Choose avatar
+                {t('settings.chooseAvatar')}
               </button>
               <span className="text-outline-variant text-xs">·</span>
               <button
@@ -344,7 +348,7 @@ export default function SettingsPage() {
                 className="flex items-center gap-1 text-xs font-medium text-on-surface-variant hover:text-on-surface transition-colors"
               >
                 <span className="material-symbols-outlined text-sm">upload</span>
-                Upload photo
+                {t('settings.uploadPhoto')}
               </button>
             </div>
           </div>
@@ -354,22 +358,22 @@ export default function SettingsPage() {
         {/* Edit form */}
         <form onSubmit={handleSave} className="space-y-4">
           <div className="space-y-1.5">
-            <label className="block text-sm font-medium text-on-surface-variant">Display Name</label>
+            <label className="block text-sm font-medium text-on-surface-variant">{t('settings.displayName')}</label>
             <input
               value={name}
               onChange={e => setName(e.target.value)}
-              placeholder="Your name"
+              placeholder={t('settings.yourNamePlaceholder')}
               className="w-full bg-surface-container-low rounded-xl px-4 py-3 text-sm border-none focus:outline-none focus:ring-2 focus:ring-primary/20"
               required
             />
           </div>
 
           <div className="space-y-1.5">
-            <label className="block text-sm font-medium text-on-surface-variant">Bio</label>
+            <label className="block text-sm font-medium text-on-surface-variant">{t('settings.bio')}</label>
             <textarea
               value={bio}
               onChange={e => setBio(e.target.value)}
-              placeholder="A little about you and your reading life..."
+              placeholder={t('settings.bioPlaceholder')}
               rows={3}
               className="w-full bg-surface-container-low rounded-xl px-4 py-3 text-sm border-none focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none"
             />
@@ -377,8 +381,8 @@ export default function SettingsPage() {
 
           <div className="space-y-1.5">
             <label className="block text-sm font-medium text-on-surface-variant">
-              Yearly Reading Goal
-              <span className="text-xs text-on-surface-variant/50 ml-2">books per year</span>
+              {t('settings.yearlyReadingGoal')}
+              <span className="text-xs text-on-surface-variant/50 ml-2">{t('settings.booksPerYear')}</span>
             </label>
             <input
               type="number"
@@ -386,7 +390,7 @@ export default function SettingsPage() {
               max="365"
               value={yearlyGoal}
               onChange={e => setYearlyGoal(e.target.value)}
-              placeholder="e.g. 24"
+              placeholder={t('settings.goalPlaceholder')}
               className="w-32 bg-surface-container-low rounded-xl px-4 py-3 text-sm border-none focus:outline-none focus:ring-2 focus:ring-primary/20"
             />
           </div>
@@ -397,12 +401,12 @@ export default function SettingsPage() {
               disabled={saving || !name.trim()}
               className="btn-primary px-6 py-2.5 text-sm rounded-xl disabled:opacity-50"
             >
-              {saving ? 'Saving...' : 'Save Changes'}
+              {saving ? t('common.saving') : t('settings.saveChanges')}
             </button>
             {saved && (
               <span className="flex items-center gap-1.5 text-sm text-secondary font-medium">
                 <span className="material-symbols-outlined text-base" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
-                Saved!
+                {t('settings.saved')}
               </span>
             )}
             {error && <span className="text-sm text-error">{error}</span>}
@@ -412,13 +416,13 @@ export default function SettingsPage() {
 
       {/* Privacy section */}
       <section className="bg-surface-container-lowest rounded-3xl p-8 space-y-5">
-        <h2 className="font-sans text-base font-bold text-on-surface uppercase tracking-wider">Privacy</h2>
+        <h2 className="font-sans text-base font-bold text-on-surface uppercase tracking-wider">{t('settings.sectionPrivacy')}</h2>
 
         <div className="flex items-start justify-between gap-4">
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-on-surface">Private Profile</p>
+            <p className="text-sm font-medium text-on-surface">{t('settings.privateProfile')}</p>
             <p className="text-sm text-on-surface-variant mt-0.5 leading-relaxed">
-              Only your followers can see your library and notes. Your name and avatar remain visible.
+              {t('settings.privateProfileDesc')}
             </p>
           </div>
           <button
@@ -439,23 +443,23 @@ export default function SettingsPage() {
         {isPrivate && (
           <div className="flex items-center gap-2 text-xs text-on-surface-variant bg-surface-container-low rounded-xl px-4 py-3">
             <span className="material-symbols-outlined text-sm text-secondary">lock</span>
-            Your profile is private. Non-followers see a locked view.
+            {t('settings.profileIsPrivate')}
           </div>
         )}
       </section>
 
       {/* Notifications section */}
       <section className="bg-surface-container-lowest rounded-3xl p-8 space-y-5">
-        <h2 className="font-sans text-base font-bold text-on-surface uppercase tracking-wider">Notifications</h2>
+        <h2 className="font-sans text-base font-bold text-on-surface uppercase tracking-wider">{t('settings.sectionNotifications')}</h2>
 
         {[
-          { key: 'new_follower',             label: 'New followers',         desc: 'When someone starts following you' },
-          { key: 'post_liked',               label: 'Likes',                 desc: 'When someone likes your post' },
-          { key: 'post_commented',           label: 'Comments',              desc: 'When someone comments on your post' },
-          { key: 'book_completed',           label: 'Friend activity',       desc: 'When friends add or finish books' },
-          { key: 'reading_streak_reminder',  label: 'Streak reminders',      desc: 'Daily reminder to keep your reading streak' },
-          { key: 'group_invite',             label: 'Circle invites',        desc: 'When someone invites you to join a Circle' },
-          { key: 'group_join_request',       label: 'Join requests',         desc: 'When someone requests to join your Circle (curators only)' },
+          { key: 'new_follower',             label: t('settings.notifNewFollowers'),    desc: t('settings.notifNewFollowersDesc') },
+          { key: 'post_liked',               label: t('settings.notifLikes'),           desc: t('settings.notifLikesDesc') },
+          { key: 'post_commented',           label: t('settings.notifComments'),        desc: t('settings.notifCommentsDesc') },
+          { key: 'book_completed',           label: t('settings.notifFriendActivity'),  desc: t('settings.notifFriendActivityDesc') },
+          { key: 'reading_streak_reminder',  label: t('settings.notifStreakReminders'), desc: t('settings.notifStreakRemindersDesc') },
+          { key: 'group_invite',             label: t('settings.notifCircleInvites'),   desc: t('settings.notifCircleInvitesDesc') },
+          { key: 'group_join_request',       label: t('settings.notifJoinRequests'),    desc: t('settings.notifJoinRequestsDesc') },
         ].map(({ key, label, desc }) => (
           <div key={key} className="flex items-start justify-between gap-4">
             <div className="flex-1 min-w-0">
@@ -489,9 +493,9 @@ export default function SettingsPage() {
               <span className="material-symbols-outlined text-secondary text-xl">download</span>
             </div>
             <div>
-              <h2 className="font-sans text-base font-bold text-on-surface uppercase tracking-wider">Import Your Library</h2>
+              <h2 className="font-sans text-base font-bold text-on-surface uppercase tracking-wider">{t('settings.importFromGoodreads')}</h2>
               <p className="text-sm text-on-surface-variant mt-1 leading-relaxed">
-                Bring your entire Goodreads reading history into TrackMyRead — books, status, star ratings, and reviews.
+                {t('settings.importGoodreadsDesc')}
               </p>
             </div>
           </div>
@@ -499,7 +503,7 @@ export default function SettingsPage() {
 
         {/* Step-by-step guide */}
         <div className="px-8 py-6 border-b border-outline-variant/15">
-          <p className="text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-4">How to export from Goodreads</p>
+          <p className="text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-4">{t('settings.howToExportFromGoodreads')}</p>
           <ol className="space-y-3">
             {[
               {
@@ -592,17 +596,16 @@ export default function SettingsPage() {
                         onClick={e => { e.stopPropagation(); setImportFile(null); setImportError(null) }}
                         className="text-xs text-on-surface-variant hover:text-error transition-colors mt-1"
                       >
-                        Remove file
+                        {t('common.remove')}
                       </button>
                     </>
                   ) : (
                     <>
                       <span className="material-symbols-outlined text-4xl text-outline-variant">upload_file</span>
                       <div>
-                        <p className="font-semibold text-sm text-on-surface">Drop your Goodreads CSV here</p>
-                        <p className="text-xs text-on-surface-variant mt-1">or click to browse your files</p>
+                        <p className="font-semibold text-sm text-on-surface">{t('settings.importFromGoodreads')}</p>
+                        <p className="text-xs text-on-surface-variant mt-1">{t('settings.goodreadsStep5')}</p>
                       </div>
-                      <p className="text-xs text-outline-variant">.csv files only</p>
                     </>
                   )}
                 </div>
@@ -635,12 +638,12 @@ export default function SettingsPage() {
                   {importing ? (
                     <>
                       <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      Importing your library…
+                      {t('settings.importingLibrary').split('…')[0]}…
                     </>
                   ) : (
                     <>
                       <span className="material-symbols-outlined text-base">upload</span>
-                      Import from Goodreads
+                      {t('settings.importFromGoodreads')}
                     </>
                   )}
                 </button>
@@ -656,35 +659,35 @@ export default function SettingsPage() {
             <div className="animate-fadeInUp">
               <div className="text-center mb-5">
                 <span className="text-5xl">{importResult.imported > 0 ? '🎉' : '📋'}</span>
-                <h3 className="font-serif text-xl font-bold text-on-surface mt-3">Import Complete</h3>
+                <h3 className="font-serif text-xl font-bold text-on-surface mt-3">{t('settings.importComplete')}</h3>
               </div>
 
               <div className="grid grid-cols-3 gap-3 mb-5">
                 <div className="bg-surface-container-low rounded-2xl p-4 text-center">
                   <p className="text-2xl font-bold text-primary">{importResult.imported}</p>
-                  <p className="text-xs text-on-surface-variant mt-1 font-medium">Imported</p>
+                  <p className="text-xs text-on-surface-variant mt-1 font-medium">{t('settings.importResultImported')}</p>
                 </div>
                 <div className="bg-surface-container-low rounded-2xl p-4 text-center">
                   <p className="text-2xl font-bold text-on-surface-variant">{importResult.skipped}</p>
-                  <p className="text-xs text-on-surface-variant mt-1 font-medium">Already in library</p>
+                  <p className="text-xs text-on-surface-variant mt-1 font-medium">{t('settings.importResultAlreadyInLibrary')}</p>
                 </div>
                 <div className="bg-surface-container-low rounded-2xl p-4 text-center">
                   <p className={`text-2xl font-bold ${importResult.failed > 0 ? 'text-error' : 'text-on-surface-variant'}`}>
                     {importResult.failed}
                   </p>
-                  <p className="text-xs text-on-surface-variant mt-1 font-medium">Errors</p>
+                  <p className="text-xs text-on-surface-variant mt-1 font-medium">{t('settings.importResultErrors')}</p>
                 </div>
               </div>
 
               {importResult.imported > 0 && (
                 <p className="text-sm text-on-surface-variant text-center leading-relaxed mb-4">
-                  Your Goodreads library is now in TrackMyRead. Ratings and reviews have been saved too.
-                  Head to your <a href="/library" className="text-primary font-medium hover:underline">Library</a> to see everything.
+                  {t('settings.importSuccessMessage')}
+                  {' '}<a href="/library" className="text-primary font-medium hover:underline">{t('tabs.library')}</a>
                 </p>
               )}
               {importResult.imported === 0 && importResult.skipped > 0 && (
                 <p className="text-sm text-on-surface-variant text-center leading-relaxed mb-4">
-                  All books were already in your library — nothing new to import.
+                  {t('settings.importAllAlreadyInLibrary')}
                 </p>
               )}
 
@@ -706,7 +709,7 @@ export default function SettingsPage() {
               className="w-full mt-2 flex items-center justify-center gap-2 py-2.5 rounded-xl border border-outline-variant/40 text-sm font-medium text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors"
             >
               <span className="material-symbols-outlined text-base">image_search</span>
-              Fix missing book covers
+              {t('settings.fixMissingCovers')}
             </button>
           )}
 
@@ -722,12 +725,12 @@ export default function SettingsPage() {
                   <div className="w-3.5 h-3.5 border-2 border-primary border-t-transparent rounded-full animate-spin shrink-0" />
                 )}
                 <p className="text-sm font-medium text-on-surface">
-                  {coverFix.phase === 'scanning' && 'Scanning for missing book covers…'}
-                  {coverFix.phase === 'fixing' && `Fetching book covers… ${coverFix.done} / ${coverFix.total}`}
+                  {coverFix.phase === 'scanning' && t('settings.scanningCovers')}
+                  {coverFix.phase === 'fixing' && t('settings.fetchingCovers', { done: coverFix.done, total: coverFix.total })}
                   {coverFix.phase === 'done' && (coverFix.fixed > 0
-                    ? `${coverFix.fixed} cover${coverFix.fixed > 1 ? 's' : ''} updated successfully`
-                    : 'All covers are up to date')}
-                  {coverFix.phase === 'error' && 'Cover fetch failed — you can retry by importing again'}
+                    ? t('settings.coversUpdated', { count: coverFix.fixed })
+                    : t('settings.allCoversUpToDate'))}
+                  {coverFix.phase === 'error' && t('settings.coverFetchFailed')}
                 </p>
               </div>
               {coverFix.phase !== 'error' && (
@@ -750,8 +753,27 @@ export default function SettingsPage() {
       </section>
 
       {/* Account section */}
+      {/* ── Language ── */}
       <section className="bg-surface-container-lowest rounded-3xl p-8 space-y-4">
-        <h2 className="font-sans text-base font-bold text-on-surface uppercase tracking-wider">Account</h2>
+        <h2 className="font-sans text-base font-bold text-on-surface uppercase tracking-wider">{t('settings.language')}</h2>
+        <div className="space-y-2">
+          <p className="text-sm text-on-surface-variant">{t('settings.languageDesc')}</p>
+          <div className="flex flex-wrap gap-2 pt-1">
+            {SUPPORTED_LANGUAGES.map(lang => (
+              <button
+                key={lang.code}
+                onClick={() => changeLanguage(lang.code)}
+                className="px-4 py-2 rounded-full text-sm font-medium border transition-colors border-outline-variant text-on-surface hover:bg-primary/10 hover:border-primary"
+              >
+                {lang.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="bg-surface-container-lowest rounded-3xl p-8 space-y-4">
+        <h2 className="font-sans text-base font-bold text-on-surface uppercase tracking-wider">{t('settings.sectionAccount')}</h2>
         <div className="space-y-3">
           <div className="flex items-center justify-between py-2">
             <div>
@@ -765,14 +787,14 @@ export default function SettingsPage() {
               className="flex items-center gap-2 text-sm text-error font-medium hover:text-error/80 transition-colors"
             >
               <span className="material-symbols-outlined text-base">logout</span>
-              Sign out
+              {t('settings.signOut')}
             </button>
             <button
               onClick={() => setShowDeleteConfirm(true)}
               className="flex items-center gap-2 text-sm text-error/60 hover:text-error transition-colors"
             >
               <span className="material-symbols-outlined text-base">delete_forever</span>
-              Delete account
+              {t('settings.deleteAccount')}
             </button>
           </div>
         </div>
@@ -792,23 +814,23 @@ export default function SettingsPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
           <div className="bg-surface-container-lowest rounded-3xl p-6 w-full max-w-sm shadow-float space-y-4 text-center">
             <span className="material-symbols-outlined text-4xl text-error block">warning</span>
-            <h3 className="font-serif text-xl font-bold text-on-surface">Delete Account?</h3>
+            <h3 className="font-serif text-xl font-bold text-on-surface">{t('settings.deleteAccount')}?</h3>
             <p className="text-sm text-on-surface-variant leading-relaxed">
-              This will permanently delete your account, library, notes, and all data. This cannot be undone.
+              {t('settings.deleteAccountDesc')}
             </p>
             <div className="flex gap-3 pt-2">
               <button
                 onClick={() => setShowDeleteConfirm(false)}
                 className="flex-1 py-2.5 text-sm font-bold border border-outline-variant rounded-xl hover:bg-surface-container transition-colors"
               >
-                Cancel
+                {t('common.cancel')}
               </button>
               <button
                 onClick={handleDeleteAccount}
                 disabled={deleting}
                 className="flex-1 py-2.5 text-sm font-bold bg-error text-on-error rounded-xl hover:bg-error/90 transition-colors disabled:opacity-50"
               >
-                {deleting ? 'Deleting...' : 'Delete'}
+                {deleting ? t('common.loading') : t('common.delete')}
               </button>
             </div>
           </div>

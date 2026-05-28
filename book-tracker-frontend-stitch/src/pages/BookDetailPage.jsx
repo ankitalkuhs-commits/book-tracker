@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useToast } from '../components/Toast'
+import { useTranslation } from 'react-i18next'
 import {
   updateProgress, updateUserBook, markFinished, removeFromLibrary,
   getNotesForBook, createNote, deleteNote, getUserbook,
@@ -23,16 +24,10 @@ function timeAgo(dateStr) {
 }
 
 const STATUS_BADGE = {
-  'reading':  { label: 'Reading',       cls: 'bg-primary/10 text-primary' },
-  'to-read':  { label: 'Want to Read',  cls: 'bg-tertiary/10 text-tertiary' },
-  'finished': { label: 'Finished',      cls: 'bg-secondary/10 text-secondary' },
+  'reading':  { labelKey: 'status.reading',    cls: 'bg-primary/10 text-primary' },
+  'to-read':  { labelKey: 'status.wantToRead', cls: 'bg-tertiary/10 text-tertiary' },
+  'finished': { labelKey: 'status.finished',   cls: 'bg-secondary/10 text-secondary' },
 }
-
-const STATUS_SEGMENTS = [
-  { key: 'to-read',  label: 'Want to Read' },
-  { key: 'reading',  label: 'Reading' },
-  { key: 'finished', label: 'Finished' },
-]
 
 function StarRating({ value, onChange, size = 'md' }) {
   const [hover, setHover] = useState(0)
@@ -88,6 +83,7 @@ function getAmazonUrl(title, author) {
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function BookDetailPage() {
+  const { t }             = useTranslation()
   const { state }         = useLocation()
   const { userbookId }    = useParams()
   const navigate          = useNavigate()
@@ -135,9 +131,15 @@ export default function BookDetailPage() {
       .finally(() => setLoadingNotes(false))
   }, [userbook?.id])
 
+  const STATUS_SEGMENTS = [
+    { key: 'to-read',  label: t('status.wantToRead') },
+    { key: 'reading',  label: t('status.reading') },
+    { key: 'finished', label: t('status.finished') },
+  ]
+
   if (loadingBook) return (
     <main className="max-w-screen-lg mx-auto px-4 pt-16 flex justify-center">
-      <span className="text-on-surface-variant text-sm">Loading…</span>
+      <span className="text-on-surface-variant text-sm">{t('common.loading')}</span>
     </main>
   )
 
@@ -244,7 +246,7 @@ export default function BookDetailPage() {
         className="flex items-center gap-1.5 text-sm text-on-surface-variant hover:text-primary transition-colors mb-6"
       >
         <span className="material-symbols-outlined text-base">arrow_back</span>
-        Back to Library
+        {t('library.backToLibrary')}
       </button>
 
       <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
@@ -255,17 +257,17 @@ export default function BookDetailPage() {
 
           {/* Star rating (always visible) */}
           <div className="space-y-1">
-            <p className="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Your rating</p>
+            <p className="text-xs font-bold text-on-surface-variant uppercase tracking-wider">{t('book.yourRating')}</p>
             <StarRating value={rating} onChange={handleRating} />
           </div>
 
           {/* Book meta */}
           {(book?.publisher || book?.published_date || book?.total_pages) && (
             <div className="space-y-1.5 text-sm text-on-surface-variant border-t border-outline-variant/15 pt-4">
-              {book?.published_date && <p><span className="font-medium text-on-surface">Published:</span> {book.published_date}</p>}
-              {book?.publisher     && <p><span className="font-medium text-on-surface">Publisher:</span> {book.publisher}</p>}
-              {book?.total_pages   && <p><span className="font-medium text-on-surface">Pages:</span> {book.total_pages}</p>}
-              {book?.isbn          && <p><span className="font-medium text-on-surface">ISBN:</span> {book.isbn}</p>}
+              {book?.published_date && <p><span className="font-medium text-on-surface">{t('book.published')}:</span> {book.published_date}</p>}
+              {book?.publisher     && <p><span className="font-medium text-on-surface">{t('book.publisher')}:</span> {book.publisher}</p>}
+              {book?.total_pages   && <p><span className="font-medium text-on-surface">{t('book.pages')}:</span> {book.total_pages}</p>}
+              {book?.isbn          && <p><span className="font-medium text-on-surface">{t('book.isbn')}:</span> {book.isbn}</p>}
             </div>
           )}
 
@@ -278,10 +280,10 @@ export default function BookDetailPage() {
               className="flex items-center justify-center gap-2 w-full px-4 py-2.5 rounded-xl border border-amber-400 text-amber-700 bg-amber-50 hover:bg-amber-100 transition-colors text-sm font-semibold"
             >
               <span className="material-symbols-outlined text-base" style={{ fontVariationSettings: "'FILL' 1" }}>shopping_cart</span>
-              Buy on Amazon
+              {t('book.buyOnAmazon')}
             </a>
           )}
-          <p className="text-center text-xs text-on-surface-variant/50 -mt-2">Affiliate link · helps support TrackMyRead</p>
+          <p className="text-center text-xs text-on-surface-variant/50 -mt-2">{t('book.affiliateDisclaimer')}</p>
         </div>
 
         {/* Right column — main content */}
@@ -293,7 +295,7 @@ export default function BookDetailPage() {
             <p className="text-lg text-on-surface-variant mt-1">{book?.author}</p>
             {STATUS_BADGE[status] && (
               <span className={`inline-block mt-3 text-xs font-bold uppercase tracking-wider px-3 py-1.5 rounded-full ${STATUS_BADGE[status].cls}`}>
-                {STATUS_BADGE[status].label}
+                {t(STATUS_BADGE[status].labelKey)}
               </span>
             )}
           </div>
@@ -301,7 +303,7 @@ export default function BookDetailPage() {
           {/* Description */}
           {book?.description && (
             <section>
-              <h2 className="text-sm font-bold text-on-surface uppercase tracking-wider mb-2">About this book</h2>
+              <h2 className="text-sm font-bold text-on-surface uppercase tracking-wider mb-2">{t('book.aboutThisBook')}</h2>
               <p className={`text-sm text-on-surface-variant leading-relaxed ${!descExpanded ? 'line-clamp-4' : ''}`}>
                 {book.description}
               </p>
@@ -310,7 +312,7 @@ export default function BookDetailPage() {
                   onClick={() => setDescExpanded(v => !v)}
                   className="text-xs text-primary font-medium mt-1 hover:underline"
                 >
-                  {descExpanded ? 'Show less' : 'Read more'}
+                  {descExpanded ? t('book.showLess') : t('book.readMore')}
                 </button>
               )}
             </section>
@@ -318,7 +320,7 @@ export default function BookDetailPage() {
 
           {/* Status selector */}
           <section className="space-y-3">
-            <h2 className="text-sm font-bold text-on-surface uppercase tracking-wider">Reading Status</h2>
+            <h2 className="text-sm font-bold text-on-surface uppercase tracking-wider">{t('book.sectionStatus')}</h2>
             <div className="flex rounded-2xl overflow-hidden border border-outline-variant/20 divide-x divide-outline-variant/20">
               {STATUS_SEGMENTS.map(seg => (
                 <button
@@ -342,11 +344,11 @@ export default function BookDetailPage() {
           {/* Progress */}
           {status === 'reading' && (
             <section className="space-y-3">
-              <h2 className="text-sm font-bold text-on-surface uppercase tracking-wider">Reading Progress</h2>
+              <h2 className="text-sm font-bold text-on-surface uppercase tracking-wider">{t('book.sectionProgress')}</h2>
               {book?.total_pages && (
                 <div className="space-y-1">
                   <div className="flex justify-between text-xs text-on-surface-variant">
-                    <span>{displayPage} of {book.total_pages} pages</span>
+                    <span>{t('book.pagesProgress', { current: displayPage, total: book.total_pages })}</span>
                     <span className="font-bold text-primary">{progress}%</span>
                   </div>
                   <div className="h-2 bg-surface-container-high rounded-full overflow-hidden">
@@ -361,7 +363,7 @@ export default function BookDetailPage() {
                   onChange={e => setPage(e.target.value)}
                   min="0"
                   max={book?.total_pages || undefined}
-                  placeholder="Current page"
+                  placeholder={t('book.currentPagePlaceholder')}
                   className="w-40 bg-surface-container-low rounded-xl px-3 py-2 text-sm border-none focus:outline-none focus:ring-2 focus:ring-primary/20"
                 />
                 <button
@@ -369,7 +371,7 @@ export default function BookDetailPage() {
                   disabled={savingProgress}
                   className="btn-primary px-5 py-2 text-sm rounded-xl"
                 >
-                  {savingProgress ? 'Saving…' : 'Update progress'}
+                  {savingProgress ? t('common.saving') : t('book.updateProgress')}
                 </button>
               </div>
             </section>
@@ -377,13 +379,13 @@ export default function BookDetailPage() {
 
           {/* Notes */}
           <section className="space-y-4">
-            <h2 className="text-sm font-bold text-on-surface uppercase tracking-wider">Notes & Reflections</h2>
+            <h2 className="text-sm font-bold text-on-surface uppercase tracking-wider">{t('book.sectionNotes')}</h2>
 
             <div className="bg-surface-container-low rounded-2xl p-4 space-y-3">
               <textarea
                 value={noteText}
                 onChange={e => setNoteText(e.target.value)}
-                placeholder="Write a reflection about this book…"
+                placeholder={t('book.writeReflection')}
                 className="w-full bg-surface-container-lowest rounded-xl p-3 text-sm text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:ring-2 focus:ring-primary/20 min-h-[90px] resize-none border-none"
               />
               <div className="flex gap-3 items-center">
@@ -392,7 +394,7 @@ export default function BookDetailPage() {
                   <input
                     value={noteQuote}
                     onChange={e => setNoteQuote(e.target.value)}
-                    placeholder="Add a quote (optional)…"
+                    placeholder={t('book.addQuoteOptional')}
                     className="w-full bg-surface-container-lowest rounded-xl pl-8 pr-3 py-2 text-sm border-none focus:outline-none focus:ring-2 focus:ring-primary/20"
                   />
                 </div>
@@ -401,14 +403,14 @@ export default function BookDetailPage() {
                   disabled={postingNote || !noteText.trim()}
                   className="btn-primary px-4 py-2 text-sm rounded-xl shrink-0 disabled:opacity-50"
                 >
-                  {postingNote ? '…' : 'Post'}
+                  {postingNote ? '…' : t('common.post')}
                 </button>
               </div>
             </div>
 
-            {loadingNotes && <p className="text-xs text-on-surface-variant">Loading notes…</p>}
+            {loadingNotes && <p className="text-xs text-on-surface-variant">{t('book.loadingNotes')}</p>}
             {!loadingNotes && notes.length === 0 && (
-              <p className="text-sm text-on-surface-variant/60 italic">No notes yet. Write your first reflection above.</p>
+              <p className="text-sm text-on-surface-variant/60 italic">{t('book.noNotesYet')}</p>
             )}
             {notes.map(note => (
               <div key={note.id} className="bg-surface-container-low rounded-2xl p-4 space-y-2">
@@ -418,7 +420,7 @@ export default function BookDetailPage() {
                 )}
                 <div className="flex justify-between items-center">
                   <span className="text-xs text-on-surface-variant/50">{timeAgo(note.created_at)}</span>
-                  <button onClick={() => removeNote(note.id)} className="text-xs text-error/60 hover:text-error transition-colors">Delete</button>
+                  <button onClick={() => removeNote(note.id)} className="text-xs text-error/60 hover:text-error transition-colors">{t('common.delete')}</button>
                 </div>
               </div>
             ))}
@@ -432,7 +434,7 @@ export default function BookDetailPage() {
               className="text-sm text-error/70 hover:text-error transition-colors flex items-center gap-1 disabled:opacity-50"
             >
               <span className="material-symbols-outlined text-base">{removing ? 'progress_activity' : 'delete'}</span>
-              {removing ? 'Removing…' : 'Remove from library'}
+              {removing ? t('common.loading') : t('book.removeFromLibrary')}
             </button>
           </section>
         </div>

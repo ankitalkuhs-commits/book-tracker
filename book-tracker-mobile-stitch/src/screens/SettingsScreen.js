@@ -7,6 +7,8 @@ import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
+import { changeLanguage, SUPPORTED_LANGUAGES } from '../i18n';
 import { profileAPI, notificationsAPI, authAPI, importAPI } from '../services/api';
 import { PreloadContext } from '../../App';
 import { colors, radius, shadow, type } from '../theme';
@@ -14,13 +16,13 @@ import { BUILD_NUMBER, BUILD_DATE } from '../buildInfo';
 
 // Notification pref keys must match the backend
 const NOTIF_PREFS = [
-  { key: 'new_follower',            icon: 'person-add-outline',    label: 'New followers',     desc: 'When someone starts following you' },
-  { key: 'post_liked',              icon: 'heart-outline',         label: 'Likes',              desc: 'When someone likes your post' },
-  { key: 'post_commented',          icon: 'chatbubble-outline',    label: 'Comments',           desc: 'When someone comments on your post' },
-  { key: 'book_completed',          icon: 'book-outline',          label: 'Friend activity',    desc: 'When friends add or finish books' },
-  { key: 'reading_streak_reminder', icon: 'flame-outline',         label: 'Streak reminders',   desc: 'Daily reminder to keep your reading streak' },
-  { key: 'group_invite',            icon: 'people-outline',        label: 'Circle invites',     desc: 'When someone invites you to join a Circle' },
-  { key: 'group_join_request',      icon: 'person-add-outline',    label: 'Join requests',      desc: 'When someone requests to join your Circle (curators only)' },
+  { key: 'new_follower',            icon: 'person-add-outline',    labelKey: 'settings.notifNewFollowers',     descKey: 'settings.notifNewFollowersDesc' },
+  { key: 'post_liked',              icon: 'heart-outline',         labelKey: 'settings.notifLikes',            descKey: 'settings.notifLikesDesc' },
+  { key: 'post_commented',          icon: 'chatbubble-outline',    labelKey: 'settings.notifComments',         descKey: 'settings.notifCommentsDesc' },
+  { key: 'book_completed',          icon: 'book-outline',          labelKey: 'settings.notifFriendActivity',   descKey: 'settings.notifFriendActivityDesc' },
+  { key: 'reading_streak_reminder', icon: 'flame-outline',         labelKey: 'settings.notifStreakReminders',  descKey: 'settings.notifStreakRemindersDesc' },
+  { key: 'group_invite',            icon: 'people-outline',        labelKey: 'settings.notifCircleInvites',    descKey: 'settings.notifCircleInvitesDesc' },
+  { key: 'group_join_request',      icon: 'person-add-outline',    labelKey: 'settings.notifJoinRequests',     descKey: 'settings.notifJoinRequestsDesc' },
 ];
 
 // 12 preset cartoon avatars via DiceBear adventurer
@@ -55,6 +57,7 @@ function Row({ icon, label, desc, onPress, danger, rightEl }) {
 
 // ── Avatar Picker Modal ───────────────────────────────────────────────────────
 function AvatarPickerModal({ visible, onClose, onSelect }) {
+  const { t } = useTranslation();
   const [selected, setSelected] = useState(null);
 
   const handleUse = () => {
@@ -67,7 +70,7 @@ function AvatarPickerModal({ visible, onClose, onSelect }) {
         <View style={styles.pickerSheet}>
           {/* Header */}
           <View style={styles.pickerHeader}>
-            <Text style={styles.pickerTitle}>Choose Avatar</Text>
+            <Text style={styles.pickerTitle}>{t('settings.chooseAvatarTitle')}</Text>
             <TouchableOpacity onPress={onClose} style={styles.pickerClose}>
               <Ionicons name="close" size={22} color={colors.onSurface} />
             </TouchableOpacity>
@@ -101,7 +104,7 @@ function AvatarPickerModal({ visible, onClose, onSelect }) {
             onPress={handleUse}
             disabled={!selected}
           >
-            <Text style={styles.useAvatarBtnText}>Use This Avatar</Text>
+            <Text style={styles.useAvatarBtnText}>{t('settings.useThisAvatar')}</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -111,6 +114,7 @@ function AvatarPickerModal({ visible, onClose, onSelect }) {
 
 // ── Settings Screen ───────────────────────────────────────────────────────────
 export default function SettingsScreen({ navigation, onLogout }) {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const preloaded = useContext(PreloadContext);
   const [profile,         setProfile]         = useState(null);
@@ -128,6 +132,9 @@ export default function SettingsScreen({ navigation, onLogout }) {
   const [showAvatarPicker,   setShowAvatarPicker]   = useState(false);
   const [importing,          setImporting]          = useState(false);
   const [importResult,       setImportResult]       = useState(null); // { imported, skipped, failed, total }
+
+  // Language picker state
+  const [showLangPicker, setShowLangPicker] = useState(false);
 
   // Cover fix state
   const [coverFixState,  setCoverFixState]  = useState(null);
@@ -153,7 +160,7 @@ export default function SettingsScreen({ navigation, onLogout }) {
   }, []);
 
   const saveProfile = async () => {
-    if (!editName.trim()) { Alert.alert('Name required'); return; }
+    if (!editName.trim()) { Alert.alert(t('settings.nameRequired')); return; }
     setSaving(true);
     try {
       const updated = await profileAPI.updateMe({
@@ -166,7 +173,7 @@ export default function SettingsScreen({ navigation, onLogout }) {
       setEditingProfile(false);
       setSavedFeedback(true);
       setTimeout(() => setSavedFeedback(false), 2500);
-    } catch (e) { Alert.alert('Error', e?.response?.data?.detail || 'Could not save profile'); }
+    } catch (e) { Alert.alert(t('common.error'), e?.response?.data?.detail || t('settings.couldNotSaveProfile')); }
     setSaving(false);
   };
 
@@ -176,13 +183,13 @@ export default function SettingsScreen({ navigation, onLogout }) {
       await profileAPI.updateMe({ profile_picture: avatar.url });
       setProfile(prev => ({ ...prev, profile_picture: avatar.url }));
       preloaded?.updateProfile?.({ profile_picture: avatar.url });
-    } catch { Alert.alert('Error', 'Could not set avatar'); }
+    } catch { Alert.alert(t('common.error'), t('settings.couldNotSetAvatar')); }
     setUploadingPhoto(false);
   };
 
   const handlePhotoUpload = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') { Alert.alert('Permission needed', 'Please allow photo library access.'); return; }
+    if (status !== 'granted') { Alert.alert(t('common.permissionNeeded'), t('settings.allowPhotoAccess')); return; }
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true, aspect: [1, 1], quality: 0.8,
@@ -193,7 +200,7 @@ export default function SettingsScreen({ navigation, onLogout }) {
       const updated = await profileAPI.uploadPicture(result.assets[0].uri);
       setProfile(prev => ({ ...prev, profile_picture: updated.profile_picture }));
       preloaded?.updateProfile?.({ profile_picture: updated.profile_picture });
-    } catch { Alert.alert('Error', 'Could not upload photo'); }
+    } catch { Alert.alert(t('common.error'), t('settings.couldNotUploadPhoto')); }
     setUploadingPhoto(false);
   };
 
@@ -270,25 +277,25 @@ export default function SettingsScreen({ navigation, onLogout }) {
         runCoverFix(false);
       }
     } catch (e) {
-      Alert.alert('Import failed', e?.response?.data?.detail || e?.message || 'Something went wrong. Please try again.');
+      Alert.alert(t('settings.importFailed'), e?.response?.data?.detail || e?.message || t('common.tryAgain'));
     } finally {
       setImporting(false);
     }
   };
 
-  const handleLogout = () => Alert.alert('Sign out', 'Are you sure?', [
-    { text: 'Cancel', style: 'cancel' },
-    { text: 'Sign out', style: 'destructive', onPress: async () => { await authAPI.logout(); onLogout?.(); } },
+  const handleLogout = () => Alert.alert(t('settings.signOut'), t('common.areYouSure'), [
+    { text: t('common.cancel'), style: 'cancel' },
+    { text: t('settings.signOut'), style: 'destructive', onPress: async () => { await authAPI.logout(); onLogout?.(); } },
   ]);
 
   const handleDeleteAccount = () => Alert.alert(
-    'Delete Account?',
-    'This will permanently delete your account, library, notes, and all data. This cannot be undone.',
+    `${t('settings.deleteAccount')}?`,
+    t('settings.deleteAccountDesc'),
     [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: async () => {
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('common.delete'), style: 'destructive', onPress: async () => {
         try { await profileAPI.deleteAccount(); await authAPI.logout(); onLogout?.(); }
-        catch (e) { Alert.alert('Error', e?.response?.data?.detail || 'Could not delete account'); }
+        catch (e) { Alert.alert(t('common.error'), e?.response?.data?.detail || t('settings.couldNotSaveProfile')); }
       }},
     ]
   );
@@ -304,14 +311,14 @@ export default function SettingsScreen({ navigation, onLogout }) {
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={22} color={colors.onSurface} />
         </TouchableOpacity>
-        <Text style={styles.topBarTitle}>Settings</Text>
+        <Text style={styles.topBarTitle}>{t('settings.title')}</Text>
         <View style={{ width: 40 }} />
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
 
         {/* ── Profile section ── */}
-        <SectionHeader label="Profile" />
+        <SectionHeader label={t('settings.sectionProfile')} />
         <View style={styles.card}>
           {/* Photo + name + email */}
           <View style={styles.profileHero}>
@@ -333,11 +340,11 @@ export default function SettingsScreen({ navigation, onLogout }) {
               <View style={styles.photoBtns}>
                 <TouchableOpacity style={styles.photoBtn} onPress={() => setShowAvatarPicker(true)}>
                   <Ionicons name="happy-outline" size={15} color={colors.primary} />
-                  <Text style={styles.photoBtnText}>Choose avatar</Text>
+                  <Text style={styles.photoBtnText}>{t('settings.chooseAvatar')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.photoBtn} onPress={handlePhotoUpload} disabled={uploadingPhoto}>
                   <Ionicons name="cloud-upload-outline" size={15} color={colors.primary} />
-                  <Text style={styles.photoBtnText}>Upload photo</Text>
+                  <Text style={styles.photoBtnText}>{t('settings.uploadPhoto')}</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -347,39 +354,39 @@ export default function SettingsScreen({ navigation, onLogout }) {
 
           {editingProfile ? (
             <View style={styles.editBlock}>
-              <Text style={styles.fieldLabel}>Display Name</Text>
+              <Text style={styles.fieldLabel}>{t('settings.displayName')}</Text>
               <TextInput
                 style={styles.input}
                 value={editName}
                 onChangeText={setEditName}
-                placeholder="Your name"
+                placeholder={t('settings.yourNamePlaceholder')}
                 placeholderTextColor={colors.outline}
                 autoFocus
               />
 
-              <Text style={[styles.fieldLabel, { marginTop: 14 }]}>Bio</Text>
+              <Text style={[styles.fieldLabel, { marginTop: 14 }]}>{t('settings.bio')}</Text>
               <TextInput
                 style={[styles.input, styles.inputMulti]}
                 value={editBio}
                 onChangeText={setEditBio}
-                placeholder="A little about you and your reading life…"
+                placeholder={t('settings.bioPlaceholder')}
                 placeholderTextColor={colors.outline}
                 multiline
                 numberOfLines={3}
               />
 
-              <Text style={[styles.fieldLabel, { marginTop: 14 }]}>Yearly Reading Goal</Text>
+              <Text style={[styles.fieldLabel, { marginTop: 14 }]}>{t('settings.yearlyReadingGoal')}</Text>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                 <TextInput
                   style={[styles.input, { width: 80 }]}
                   value={editGoal}
                   onChangeText={setEditGoal}
-                  placeholder="24"
+                  placeholder={t('settings.goalPlaceholder')}
                   placeholderTextColor={colors.outline}
                   keyboardType="number-pad"
                   maxLength={3}
                 />
-                <Text style={styles.rowDesc}>books per year</Text>
+                <Text style={styles.rowDesc}>{t('settings.booksPerYear')}</Text>
               </View>
 
               <View style={styles.editActions}>
@@ -389,21 +396,21 @@ export default function SettingsScreen({ navigation, onLogout }) {
                   setEditGoal(profile?.yearly_goal ? String(profile.yearly_goal) : '');
                   setEditingProfile(false);
                 }}>
-                  <Text style={styles.cancelBtnText}>Cancel</Text>
+                  <Text style={styles.cancelBtnText}>{t('common.cancel')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[styles.saveBtn, (!editName.trim() || saving) && { opacity: 0.5 }]}
                   onPress={saveProfile}
                   disabled={saving || !editName.trim()}
                 >
-                  <Text style={styles.saveBtnText}>{saving ? 'Saving…' : 'Save Changes'}</Text>
+                  <Text style={styles.saveBtnText}>{saving ? t('common.saving') : t('settings.saveChanges')}</Text>
                 </TouchableOpacity>
               </View>
 
               {savedFeedback && (
                 <View style={styles.savedBadge}>
                   <Ionicons name="checkmark-circle" size={14} color={colors.primary} />
-                  <Text style={styles.savedBadgeText}>Saved!</Text>
+                  <Text style={styles.savedBadgeText}>{t('settings.saved')}</Text>
                 </View>
               )}
             </View>
@@ -426,12 +433,12 @@ export default function SettingsScreen({ navigation, onLogout }) {
         </View>
 
         {/* ── Privacy section ── */}
-        <SectionHeader label="Privacy" />
+        <SectionHeader label={t('settings.sectionPrivacy')} />
         <View style={styles.card}>
           <Row
             icon="lock-closed-outline"
-            label="Private Profile"
-            desc="Only your followers can see your library and notes."
+            label={t('settings.privateProfile')}
+            desc={t('settings.privateProfileDesc')}
             rightEl={
               <Switch
                 value={isPrivate}
@@ -445,20 +452,20 @@ export default function SettingsScreen({ navigation, onLogout }) {
           {isPrivate && (
             <View style={styles.privateNotice}>
               <Ionicons name="lock-closed" size={13} color={colors.onSurfaceVariant} />
-              <Text style={styles.privateNoticeText}>Your profile is private. Non-followers see a locked view.</Text>
+              <Text style={styles.privateNoticeText}>{t('settings.profileIsPrivate')}</Text>
             </View>
           )}
         </View>
 
         {/* ── Notifications section ── */}
-        <SectionHeader label="Notifications" />
+        <SectionHeader label={t('settings.sectionNotifications')} />
         <View style={styles.card}>
           {NOTIF_PREFS.map((item, i) => (
             <View key={item.key}>
               <Row
                 icon={item.icon}
-                label={item.label}
-                desc={item.desc}
+                label={t(item.labelKey)}
+                desc={t(item.descKey)}
                 rightEl={
                   <Switch
                     value={prefs[item.key] ?? true}
@@ -474,12 +481,12 @@ export default function SettingsScreen({ navigation, onLogout }) {
         </View>
 
         {/* ── Your Data section ── */}
-        <SectionHeader label="Your Data" />
+        <SectionHeader label={t('settings.sectionYourData')} />
         <View style={styles.card}>
           <Row
             icon="cloud-download-outline"
-            label="Import from Goodreads"
-            desc="Bring your entire Goodreads library — status, ratings, and reviews — into TrackMyRead."
+            label={t('settings.importFromGoodreads')}
+            desc={t('settings.importGoodreadsDesc')}
             onPress={importing ? undefined : handleGoodreadsImport}
             rightEl={importing
               ? <ActivityIndicator size="small" color={colors.primary} />
@@ -488,24 +495,24 @@ export default function SettingsScreen({ navigation, onLogout }) {
           />
           <View style={styles.rowSep} />
           <View style={styles.howToBlock}>
-            <Text style={styles.howToTitle}>How to export from Goodreads</Text>
+            <Text style={styles.howToTitle}>{t('settings.howToExportFromGoodreads')}</Text>
             {/* Step 1 — tappable link */}
             <View style={styles.howToRow}>
               <View style={styles.howToNum}><Text style={styles.howToNumText}>1</Text></View>
               <Text style={styles.howToStep}>
-                Open Goodreads on desktop.{' '}
+                {t('settings.goodreadsStep1')}{' '}
                 <Text
                   style={styles.howToLink}
                   onPress={() => Linking.openURL('https://www.goodreads.com/review/import')}
                 >
-                  Go to Import & Export →
+                  {t('settings.goodreadsStep2')}
                 </Text>
               </Text>
             </View>
             {[
-              'Click "Export Library" — Goodreads will prepare the file',
-              'Download the .csv file to your phone (via email or cloud)',
-              'Come back here, tap Import, and select the file',
+              t('settings.goodreadsStep3'),
+              t('settings.goodreadsStep4'),
+              t('settings.goodreadsStep5'),
             ].map((step, i) => (
               <View key={i} style={styles.howToRow}>
                 <View style={styles.howToNum}><Text style={styles.howToNumText}>{i + 2}</Text></View>
@@ -516,7 +523,7 @@ export default function SettingsScreen({ navigation, onLogout }) {
           {importing && (
             <View style={styles.importingBanner}>
               <Ionicons name="sync-outline" size={14} color={colors.primary} />
-              <Text style={styles.importingText}>Importing your library… this may take a minute for large collections.</Text>
+              <Text style={styles.importingText}>{t('settings.importingLibrary')}</Text>
             </View>
           )}
 
@@ -527,8 +534,8 @@ export default function SettingsScreen({ navigation, onLogout }) {
                 <Ionicons name="image-outline" size={14} color={colors.primary} />
                 <Text style={styles.coverFixText}>
                   {coverFixState.phase === 'scanning'
-                    ? 'Scanning for missing book covers…'
-                    : `Fetching covers… ${coverFixState.done} / ${coverFixState.total}`}
+                    ? t('settings.scanningCovers')
+                    : t('settings.fetchingCovers', { done: coverFixState.done, total: coverFixState.total })}
                 </Text>
               </View>
               <View style={styles.coverFixTrack}>
@@ -550,8 +557,8 @@ export default function SettingsScreen({ navigation, onLogout }) {
                 <Ionicons name="checkmark-circle-outline" size={14} color={colors.secondary} />
                 <Text style={[styles.coverFixText, { color: colors.secondary }]}>
                   {coverFixState.fixed > 0
-                    ? `${coverFixState.fixed} cover${coverFixState.fixed > 1 ? 's' : ''} updated!`
-                    : 'All covers are up to date.'}
+                    ? t('settings.coversUpdated', { count: coverFixState.fixed })
+                    : t('settings.allCoversUpToDate')}
                 </Text>
               </View>
               <View style={styles.coverFixTrack}>
@@ -563,7 +570,7 @@ export default function SettingsScreen({ navigation, onLogout }) {
             <View style={styles.coverFixBanner}>
               <View style={styles.coverFixRow}>
                 <Ionicons name="alert-circle-outline" size={14} color={colors.error} />
-                <Text style={[styles.coverFixText, { color: colors.error }]}>Cover fetch failed. Tap below to retry.</Text>
+                <Text style={[styles.coverFixText, { color: colors.error }]}>{t('settings.coverFetchFailed')}</Text>
               </View>
             </View>
           )}
@@ -576,36 +583,47 @@ export default function SettingsScreen({ navigation, onLogout }) {
               activeOpacity={0.7}
             >
               <Ionicons name="image-outline" size={15} color={colors.onSurfaceVariant} />
-              <Text style={styles.coverFixBtnText}>Fix missing book covers</Text>
+              <Text style={styles.coverFixBtnText}>{t('settings.fixMissingCovers')}</Text>
             </TouchableOpacity>
           )}
         </View>
 
+        {/* ── Language section ── */}
+        <SectionHeader label={t('settings.language')} />
+        <View style={styles.card}>
+          <TouchableOpacity style={styles.row} onPress={() => setShowLangPicker(true)} activeOpacity={0.7}>
+            <Ionicons name="language-outline" size={18} color={colors.primary} style={styles.rowIcon} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.rowLabel}>{t('settings.language')}</Text>
+              <Text style={styles.rowSub}>{t('settings.languageDesc')}</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={16} color={colors.outline} />
+          </TouchableOpacity>
+        </View>
+
         {/* ── Account section ── */}
-        <SectionHeader label="Account" />
+        <SectionHeader label={t('settings.sectionAccount')} />
         <View style={styles.card}>
           <Row icon="mail-outline"    label={profile?.email || 'Email'} />
           <View style={styles.rowSep} />
-          <Row icon="log-out-outline" label="Sign out"       onPress={handleLogout} />
+          <Row icon="log-out-outline" label={t('settings.signOut')}      onPress={handleLogout} />
           <View style={styles.rowSep} />
-          <Row icon="trash-outline"   label="Delete account" onPress={handleDeleteAccount} danger />
+          <Row icon="trash-outline"   label={t('settings.deleteAccount')} onPress={handleDeleteAccount} danger />
         </View>
 
         {/* ── About section ── */}
-        <SectionHeader label="About" />
+        <SectionHeader label={t('settings.sectionAbout')} />
         <View style={styles.card}>
           <View style={styles.aboutBlock}>
-            <Text style={styles.aboutText}>
-              TrackMyRead — your social reading companion. Log progress, share highlights, and discover your next favorite read.
-            </Text>
-            <Text style={styles.buildText}>Build #{BUILD_NUMBER} · {BUILD_DATE}</Text>
+            <Text style={styles.aboutText}>{t('settings.aboutDescription')}</Text>
+            <Text style={styles.buildText}>{t('settings.buildInfo', { number: BUILD_NUMBER, date: BUILD_DATE })}</Text>
           </View>
           <View style={styles.rowSep} />
-          <Row icon="information-circle-outline" label="About TrackMyRead" onPress={() => Linking.openURL('https://www.trackmyread.com/about')} />
+          <Row icon="information-circle-outline" label={t('settings.aboutTrackMyRead')} onPress={() => Linking.openURL('https://www.trackmyread.com/about')} />
           <View style={styles.rowSep} />
-          <Row icon="shield-checkmark-outline" label="Privacy Policy" onPress={() => Linking.openURL('https://www.trackmyread.com/privacy')} />
+          <Row icon="shield-checkmark-outline" label={t('settings.privacyPolicy')} onPress={() => Linking.openURL('https://www.trackmyread.com/privacy')} />
           <View style={styles.rowSep} />
-          <Row icon="document-text-outline" label="Terms of Service" onPress={() => Linking.openURL('https://www.trackmyread.com/terms')} />
+          <Row icon="document-text-outline" label={t('settings.termsOfService')} onPress={() => Linking.openURL('https://www.trackmyread.com/terms')} />
         </View>
 
         <View style={{ height: 40 }} />
@@ -618,40 +636,36 @@ export default function SettingsScreen({ navigation, onLogout }) {
             <Text style={styles.resultEmoji}>
               {importResult?.imported > 0 ? '🎉' : '📋'}
             </Text>
-            <Text style={styles.resultTitle}>Import Complete</Text>
+            <Text style={styles.resultTitle}>{t('settings.importComplete')}</Text>
 
             <View style={styles.resultStats}>
               <View style={styles.resultStat}>
                 <Text style={styles.resultStatNum}>{importResult?.imported ?? 0}</Text>
-                <Text style={styles.resultStatLabel}>Imported</Text>
+                <Text style={styles.resultStatLabel}>{t('settings.importResultImported')}</Text>
               </View>
               <View style={styles.resultStatDivider} />
               <View style={styles.resultStat}>
                 <Text style={styles.resultStatNum}>{importResult?.skipped ?? 0}</Text>
-                <Text style={styles.resultStatLabel}>Already in library</Text>
+                <Text style={styles.resultStatLabel}>{t('settings.importResultAlreadyInLibrary')}</Text>
               </View>
               {(importResult?.failed ?? 0) > 0 && <>
                 <View style={styles.resultStatDivider} />
                 <View style={styles.resultStat}>
                   <Text style={[styles.resultStatNum, { color: colors.error }]}>{importResult?.failed}</Text>
-                  <Text style={styles.resultStatLabel}>Errors</Text>
+                  <Text style={styles.resultStatLabel}>{t('settings.importResultErrors')}</Text>
                 </View>
               </>}
             </View>
 
             {importResult?.imported > 0 && (
-              <Text style={styles.resultDesc}>
-                Your Goodreads library is now in TrackMyRead. Ratings and reviews have been imported too.
-              </Text>
+              <Text style={styles.resultDesc}>{t('settings.importSuccessMessage')}</Text>
             )}
             {importResult?.imported === 0 && importResult?.skipped > 0 && (
-              <Text style={styles.resultDesc}>
-                All books were already in your library — nothing new to import.
-              </Text>
+              <Text style={styles.resultDesc}>{t('settings.importAllAlreadyInLibrary')}</Text>
             )}
 
             <TouchableOpacity style={styles.resultBtn} onPress={() => setImportResult(null)}>
-              <Text style={styles.resultBtnText}>Done</Text>
+              <Text style={styles.resultBtnText}>{t('common.done')}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -662,6 +676,31 @@ export default function SettingsScreen({ navigation, onLogout }) {
         onClose={() => setShowAvatarPicker(false)}
         onSelect={handleSelectAvatar}
       />
+
+      {/* ── Language Picker Modal ── */}
+      <Modal visible={showLangPicker} animationType="slide" transparent onRequestClose={() => setShowLangPicker(false)}>
+        <View style={styles.resultOverlay}>
+          <View style={[styles.resultSheet, { paddingBottom: 24 }]}>
+            <Text style={[styles.resultTitle, { marginBottom: 16 }]}>{t('settings.language')}</Text>
+            {SUPPORTED_LANGUAGES.map(lang => (
+              <TouchableOpacity
+                key={lang.code}
+                style={styles.langRow}
+                onPress={async () => {
+                  await changeLanguage(lang.code);
+                  setShowLangPicker(false);
+                }}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.langLabel}>{lang.label}</Text>
+              </TouchableOpacity>
+            ))}
+            <TouchableOpacity style={[styles.doneBtn, { marginTop: 12 }]} onPress={() => setShowLangPicker(false)}>
+              <Text style={styles.doneBtnText}>{t('common.cancel')}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -769,4 +808,8 @@ const styles = StyleSheet.create({
   resultDesc:     { fontSize: 14, fontWeight: '400', color: colors.onSurfaceVariant, textAlign: 'center', lineHeight: 22, marginBottom: 20 },
   resultBtn:      { backgroundColor: colors.primary, borderRadius: radius.full, paddingHorizontal: 40, paddingVertical: 13, width: '100%', alignItems: 'center' },
   resultBtnText:  { fontSize: 15, fontWeight: '700', color: colors.onPrimary },
+  langRow:        { width: '100%', paddingVertical: 14, paddingHorizontal: 8, borderBottomWidth: 1, borderBottomColor: colors.outlineVariant + '40', alignItems: 'center' },
+  langLabel:      { fontSize: 16, fontWeight: '500', color: colors.onSurface },
+  doneBtn:        { backgroundColor: colors.surfaceContainerLow, borderRadius: radius.full, paddingHorizontal: 40, paddingVertical: 12, width: '100%', alignItems: 'center' },
+  doneBtnText:    { fontSize: 15, fontWeight: '600', color: colors.onSurfaceVariant },
 });

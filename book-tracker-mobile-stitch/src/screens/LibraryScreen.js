@@ -7,6 +7,7 @@ import {
 import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { userbooksAPI, booksAPI } from '../services/api';
 import { PreloadContext } from '../../App';
 import { colors, radius, shadow, type } from '../theme';
@@ -136,6 +137,7 @@ function ProgressBar({ current, total }) {
 
 // ── Book Tile (grid cell) ─────────────────────────────────────────────────────
 function BookTile({ userbook, onPress }) {
+  const { t } = useTranslation();
   const palette = getPalette(userbook.id);
   const book    = userbook.book;
   const isReading  = userbook.status === 'reading';
@@ -150,17 +152,17 @@ function BookTile({ userbook, onPress }) {
         {/* Status badge */}
         {isReading && (
           <View style={[styles.statusBadge, { backgroundColor: colors.primary }]}>
-            <Text style={styles.statusBadgeText}>Reading</Text>
+            <Text style={styles.statusBadgeText}>{t('status.reading')}</Text>
           </View>
         )}
         {isFinished && (
           <View style={[styles.statusBadge, { backgroundColor: colors.secondary }]}>
-            <Text style={styles.statusBadgeText}>Finished</Text>
+            <Text style={styles.statusBadgeText}>{t('status.finished')}</Text>
           </View>
         )}
         {userbook.status === 'to-read' && (
           <View style={[styles.statusBadge, { backgroundColor: colors.tertiary }]}>
-            <Text style={styles.statusBadgeText}>Want</Text>
+            <Text style={styles.statusBadgeText}>{t('status.wantToRead')}</Text>
           </View>
         )}
       </View>
@@ -170,7 +172,7 @@ function BookTile({ userbook, onPress }) {
         <Text style={styles.tileTitle} numberOfLines={2}>{book?.title || 'Untitled'}</Text>
         <Text style={[styles.tileAuthor, { color: palette.text }]} numberOfLines={1}>{book?.author || ''}</Text>
         <Text style={styles.tileStatus}>
-          {isReading ? 'READING' : isFinished ? 'FINISHED' : 'WANT TO READ'}
+          {isReading ? t('library.statusReading') : isFinished ? t('library.statusFinished') : t('library.statusWantToRead')}
         </Text>
 
         {isReading && book?.total_pages > 0 && (
@@ -203,6 +205,7 @@ function OptionChip({ label, count, active, onPress }) {
 
 // ── Add Book Modal ─────────────────────────────────────────────────────────────
 function AddBookModal({ visible, onClose, onAdded }) {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const [query, setQuery]               = useState('');
   const [results, setResults]           = useState([]);
@@ -229,7 +232,7 @@ function AddBookModal({ visible, onClose, onAdded }) {
       setResults(res?.results || []);
       setHasMore(res?.has_more ?? false);
       setNextStart(res?.next_start_index ?? 0);
-    } catch { Alert.alert('Error', 'Search failed'); }
+    } catch { Alert.alert(t('common.error'), t('common.tryAgain')); }
     finally { setSearching(false); }
   };
 
@@ -264,11 +267,11 @@ function AddBookModal({ visible, onClose, onAdded }) {
         format: bookFormat,
         ownership_status: ownership,
       });
-      Alert.alert('Added!', `"${selectedBook.title}" is in your library.`);
+      Alert.alert(t('library.added'), t('library.addedToLibrary', { title: selectedBook.title }));
       onAdded();
       handleClose();
     } catch (e) {
-      Alert.alert('Error', e?.response?.data?.detail || 'Could not add book');
+      Alert.alert(t('common.error'), e?.response?.data?.detail || t('library.couldNotAddBook'));
     } finally { setAdding(false); }
   };
 
@@ -284,9 +287,9 @@ function AddBookModal({ visible, onClose, onAdded }) {
         {/* Header */}
         <View style={[styles.modalHeader, { paddingTop: insets.top + 14 }]}>
           <TouchableOpacity onPress={handleClose}>
-            <Text style={styles.modalCancel}>Cancel</Text>
+            <Text style={styles.modalCancel}>{t('common.cancel')}</Text>
           </TouchableOpacity>
-          <Text style={styles.modalTitle}>Add Book</Text>
+          <Text style={styles.modalTitle}>{t('library.addBookModal')}</Text>
           <View style={{ width: 56 }} />
         </View>
 
@@ -297,7 +300,7 @@ function AddBookModal({ visible, onClose, onAdded }) {
               <View style={styles.searchRow}>
                 <TextInput
                   style={styles.searchInput}
-                  placeholder="Search by title or author…"
+                  placeholder={t('library.searchByTitleOrAuthor')}
                   placeholderTextColor={colors.outline}
                   value={query}
                   onChangeText={setQuery}
@@ -316,7 +319,7 @@ function AddBookModal({ visible, onClose, onAdded }) {
               {results.length === 0 && !searching ? (
                 <View style={styles.searchEmpty}>
                   <Ionicons name="search-outline" size={48} color={colors.outlineVariant} />
-                  <Text style={styles.searchEmptyText}>Search for a book to add</Text>
+                  <Text style={styles.searchEmptyText}>{t('library.searchForBook')}</Text>
                 </View>
               ) : (
                 <FlatList
@@ -398,31 +401,45 @@ function AddBookModal({ visible, onClose, onAdded }) {
               ) : null}
 
               {/* Status */}
-              <Text style={styles.optionLabel}>Add to</Text>
+              <Text style={styles.optionLabel}>{t('search.addTo')}</Text>
               <View style={styles.chipRow}>
-                {['to-read', 'reading', 'finished'].map(s => (
+                {[
+                  { key: 'to-read', label: t('status.wantToRead') },
+                  { key: 'reading', label: t('status.reading') },
+                  { key: 'finished', label: t('status.finished') },
+                ].map(s => (
                   <OptionChip
-                    key={s}
-                    label={s === 'to-read' ? 'Want to Read' : s === 'reading' ? 'Reading' : 'Finished'}
-                    active={bookStatus === s}
-                    onPress={() => setBookStatus(s)}
+                    key={s.key}
+                    label={s.label}
+                    active={bookStatus === s.key}
+                    onPress={() => setBookStatus(s.key)}
                   />
                 ))}
               </View>
 
               {/* Format */}
-              <Text style={styles.optionLabel}>Format</Text>
+              <Text style={styles.optionLabel}>{t('search.formatLabel')}</Text>
               <View style={styles.chipRow}>
-                {['paperback', 'hardcover', 'ebook', 'kindle', 'audiobook'].map(f => (
-                  <OptionChip key={f} label={f.charAt(0).toUpperCase() + f.slice(1)} active={bookFormat === f} onPress={() => setBookFormat(f)} />
+                {[
+                  { key: 'paperback', label: t('format.paperback') },
+                  { key: 'hardcover', label: t('format.hardcover') },
+                  { key: 'ebook',     label: t('format.ebook') },
+                  { key: 'kindle',    label: t('format.kindle') },
+                  { key: 'audiobook', label: t('format.audiobook') },
+                ].map(f => (
+                  <OptionChip key={f.key} label={f.label} active={bookFormat === f.key} onPress={() => setBookFormat(f.key)} />
                 ))}
               </View>
 
               {/* Ownership */}
               <Text style={styles.optionLabel}>Ownership</Text>
               <View style={styles.chipRow}>
-                {['owned', 'borrowed', 'loaned'].map(o => (
-                  <OptionChip key={o} label={o.charAt(0).toUpperCase() + o.slice(1)} active={ownership === o} onPress={() => setOwnership(o)} />
+                {[
+                  { key: 'owned',    label: t('ownership.owned') },
+                  { key: 'borrowed', label: t('ownership.borrowed') },
+                  { key: 'loaned',   label: t('ownership.loaned') },
+                ].map(o => (
+                  <OptionChip key={o.key} label={o.label} active={ownership === o.key} onPress={() => setOwnership(o.key)} />
                 ))}
               </View>
 
@@ -434,7 +451,7 @@ function AddBookModal({ visible, onClose, onAdded }) {
               >
                 {adding
                   ? <ActivityIndicator size="small" color={colors.onPrimary} />
-                  : <Text style={styles.addBtnText}>Add to Library</Text>
+                  : <Text style={styles.addBtnText}>{t('library.addToLibrary')}</Text>
                 }
               </TouchableOpacity>
             </ScrollView>
@@ -447,6 +464,7 @@ function AddBookModal({ visible, onClose, onAdded }) {
 
 // ── Library Screen ─────────────────────────────────────────────────────────────
 export default function LibraryScreen({ navigation }) {
+  const { t } = useTranslation();
   const preloaded  = useContext(PreloadContext);
   const currentUser = preloaded?.profile || null;
   const [books, setBooks]         = useState(preloaded?.library || []);
@@ -486,10 +504,10 @@ export default function LibraryScreen({ navigation }) {
   };
 
   const TABS = [
-    { key: 'all',      label: 'All',         count: books.length },
-    { key: 'reading',  label: 'Reading',     count: books.filter(b => b.status === 'reading').length },
-    { key: 'to-read',  label: 'To Read',     count: books.filter(b => b.status === 'to-read').length },
-    { key: 'finished', label: 'Finished',    count: books.filter(b => b.status === 'finished').length },
+    { key: 'all',      label: t('common.all'),         count: books.length },
+    { key: 'reading',  label: t('status.reading'),     count: books.filter(b => b.status === 'reading').length },
+    { key: 'to-read',  label: t('status.toRead'),      count: books.filter(b => b.status === 'to-read').length },
+    { key: 'finished', label: t('status.finished'),    count: books.filter(b => b.status === 'finished').length },
   ];
 
   if (loading) {
@@ -511,15 +529,15 @@ export default function LibraryScreen({ navigation }) {
       />
       {/* ── Header ── */}
       <View style={styles.header}>
-        <Text style={styles.headerEyebrow}>YOUR READING JOURNEY</Text>
+        <Text style={styles.headerEyebrow}>{t('library.eyebrow')}</Text>
         <View style={styles.headerTitleRow}>
-          <Text style={styles.headerTitle}>Your Library</Text>
+          <Text style={styles.headerTitle}>{t('library.title')}</Text>
           <TouchableOpacity style={styles.addBookBtn} onPress={() => setShowAddModal(true)}>
             <Ionicons name="add" size={18} color={colors.onPrimary} />
-            <Text style={styles.addBookBtnText}>Add Book</Text>
+            <Text style={styles.addBookBtnText}>{t('library.addBook')}</Text>
           </TouchableOpacity>
         </View>
-        <Text style={styles.headerSubtitle}>Curating your personal journey through words and wisdom.</Text>
+        <Text style={styles.headerSubtitle}>{t('library.subtitle')}</Text>
       </View>
 
       {/* ── Status tabs ── */}
@@ -540,7 +558,7 @@ export default function LibraryScreen({ navigation }) {
         <Ionicons name="search-outline" size={16} color={colors.outline} style={{ marginRight: 8 }} />
         <TextInput
           style={styles.searchInput}
-          placeholder="Search your library…"
+          placeholder={t('library.searchLibrary')}
           placeholderTextColor={colors.outline}
           value={searchQuery}
           onChangeText={setSearchQuery}
@@ -559,14 +577,14 @@ export default function LibraryScreen({ navigation }) {
           <Ionicons name="library-outline" size={64} color={colors.outlineVariant} />
           <Text style={styles.emptyText}>
             {searchQuery
-              ? 'No books match your search'
+              ? t('library.noBookMatchSearch')
               : books.length === 0
-              ? 'Your library is empty'
-              : 'No books in this shelf'}
+              ? t('library.libraryEmpty')
+              : t('library.noBooksInShelf')}
           </Text>
           {books.length === 0 && (
             <TouchableOpacity style={styles.emptyAddBtn} onPress={() => setShowAddModal(true)}>
-              <Text style={styles.emptyAddBtnText}>Add your first book</Text>
+              <Text style={styles.emptyAddBtnText}>{t('library.addFirstBook')}</Text>
             </TouchableOpacity>
           )}
         </View>

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { addToLibrary, getMyBooks } from '../services/api'
 import { useToast } from './Toast'
 
@@ -17,15 +18,16 @@ function getAmazonUrl(title, author) {
 
 // ── Modal ─────────────────────────────────────────────────────────────────────
 
-const STATUS_OPTIONS = [
-  { key: 'to-read',  label: 'Want to Read' },
-  { key: 'reading',  label: 'Reading' },
-  { key: 'finished', label: 'Finished' },
+const STATUS_KEYS = [
+  { key: 'to-read',  labelKey: 'status.wantToRead' },
+  { key: 'reading',  labelKey: 'status.reading' },
+  { key: 'finished', labelKey: 'status.finished' },
 ]
 
 export default function BookPreviewModal({ book: rawBook, onClose }) {
   // Normalize: accept either a flat book or a userbook with nested book
   const book     = rawBook?.book || rawBook
+  const { t }    = useTranslation()
   const navigate = useNavigate()
   const toast    = useToast()
 
@@ -80,7 +82,7 @@ export default function BookPreviewModal({ book: rawBook, onClose }) {
       >
         {/* Header */}
         <div className="flex items-center justify-between px-6 pt-5 pb-3 border-b border-outline-variant/15">
-          <h2 className="font-serif text-lg font-bold text-on-surface">Book Details</h2>
+          <h2 className="font-serif text-lg font-bold text-on-surface">{t('book.aboutThisBook')}</h2>
           <button onClick={onClose} className="text-on-surface-variant hover:text-on-surface transition-colors">
             <span className="material-symbols-outlined text-xl">close</span>
           </button>
@@ -119,9 +121,9 @@ export default function BookPreviewModal({ book: rawBook, onClose }) {
             className="flex items-center justify-center gap-2 w-full px-4 py-2.5 rounded-xl border border-amber-400 text-amber-700 bg-amber-50 hover:bg-amber-100 transition-colors text-sm font-semibold"
           >
             <span className="material-symbols-outlined text-base" style={{ fontVariationSettings: "'FILL' 1" }}>shopping_cart</span>
-            Buy on Amazon
+            {t('book.buyOnAmazon')}
           </a>
-          <p className="text-center text-xs text-on-surface-variant/40 -mt-3">Affiliate link · helps support TrackMyRead</p>
+          <p className="text-center text-xs text-on-surface-variant/40 -mt-3">{t('book.affiliateDisclaimer')}</p>
 
           {/* Library actions */}
           {loading ? (
@@ -132,20 +134,20 @@ export default function BookPreviewModal({ book: rawBook, onClose }) {
             <div className="space-y-3">
               <div className="flex items-center justify-center gap-2 text-secondary font-semibold text-sm">
                 <span className="material-symbols-outlined text-base" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
-                Already in your library
+                {t('book.alreadyInLibrary')}
               </div>
               <button
                 onClick={() => { navigate(`/library/book/${myUserbook.id}`, { state: { userbook: myUserbook } }); onClose() }}
                 className="w-full py-3 rounded-xl bg-primary text-on-primary font-bold text-sm hover:bg-primary/90 transition-colors"
               >
-                View in My Library
+                {t('book.viewInMyLibrary')}
               </button>
             </div>
           ) : (
             <div className="space-y-3">
-              <p className="text-xs font-bold uppercase tracking-widest text-on-surface-variant text-center">Add to your library</p>
+              <p className="text-xs font-bold uppercase tracking-widest text-on-surface-variant text-center">{t('book.addToLibrarySection')}</p>
               <div className="flex gap-2">
-                {STATUS_OPTIONS.map(opt => (
+                {STATUS_KEYS.map(opt => (
                   <button
                     key={opt.key}
                     onClick={() => setSelectedStatus(opt.key)}
@@ -155,7 +157,7 @@ export default function BookPreviewModal({ book: rawBook, onClose }) {
                         : 'border-outline-variant/40 text-on-surface-variant hover:border-primary/40'
                     }`}
                   >
-                    {opt.label}
+                    {t(opt.labelKey)}
                   </button>
                 ))}
               </div>
@@ -164,7 +166,7 @@ export default function BookPreviewModal({ book: rawBook, onClose }) {
                 disabled={!selectedStatus || adding}
                 className="w-full py-3 rounded-xl bg-primary text-on-primary font-bold text-sm hover:bg-primary/90 transition-colors disabled:opacity-50"
               >
-                {adding ? 'Adding…' : 'Add to Library'}
+                {adding ? t('common.loading') : t('library.addToLibrary')}
               </button>
             </div>
           )}

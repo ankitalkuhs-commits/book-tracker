@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../components/Toast'
+import { useTranslation } from 'react-i18next'
 import BookPreviewModal from '../components/BookPreviewModal'
 import {
   getCommunityFeed, getFriendsFeed, createNote, uploadNoteImage,
@@ -43,6 +44,7 @@ function Avatar({ user, size = 10 }) {
 function PostCard({ post, currentUserId, isAdmin, onLikeToggle, onDelete, onEdit }) {
   const navigate = useNavigate()
   const toast = useToast()
+  const { t } = useTranslation()
   const [showComments, setShowComments] = useState(false)
   const [comments, setComments] = useState([])
   const [commentText, setCommentText] = useState('')
@@ -189,7 +191,7 @@ function PostCard({ post, currentUserId, isAdmin, onLikeToggle, onDelete, onEdit
                       className="flex items-center gap-2 w-full px-4 py-2.5 text-sm text-on-surface hover:bg-surface-container transition-colors"
                     >
                       <span className="material-symbols-outlined text-sm">edit</span>
-                      Edit
+                      {t('common.edit')}
                     </button>
                   )}
                   <button
@@ -197,7 +199,7 @@ function PostCard({ post, currentUserId, isAdmin, onLikeToggle, onDelete, onEdit
                     className="flex items-center gap-2 w-full px-4 py-2.5 text-sm text-error hover:bg-error/5 transition-colors"
                   >
                     <span className="material-symbols-outlined text-sm">delete</span>
-                    Delete
+                    {t('common.delete')}
                   </button>
                 </div>
               )}
@@ -223,10 +225,10 @@ function PostCard({ post, currentUserId, isAdmin, onLikeToggle, onDelete, onEdit
             />
             <div className="flex gap-2">
               <button onClick={handleSaveEdit} disabled={saving} className="btn-primary px-4 py-1.5 text-xs rounded-lg">
-                {saving ? 'Saving…' : 'Save'}
+                {saving ? t('common.saving') : t('common.save')}
               </button>
               <button onClick={() => { setEditing(false); setEditText(post.text || '') }} className="px-4 py-1.5 text-xs rounded-lg border border-outline-variant/30 text-on-surface-variant hover:bg-surface-container transition-colors">
-                Cancel
+                {t('common.cancel')}
               </button>
             </div>
           </div>
@@ -276,7 +278,7 @@ function PostCard({ post, currentUserId, isAdmin, onLikeToggle, onDelete, onEdit
         {/* Comments section */}
         {showComments && (
           <div className="space-y-3 pt-2 border-t border-outline-variant/15">
-            {loadingComments && <p className="text-xs text-on-surface-variant">Loading...</p>}
+            {loadingComments && <p className="text-xs text-on-surface-variant">{t('common.loading')}</p>}
             {comments.map(c => (
               <div key={c.id} className="flex gap-2 text-sm items-start">
                 <Avatar user={c.user} size={7} />
@@ -302,11 +304,11 @@ function PostCard({ post, currentUserId, isAdmin, onLikeToggle, onDelete, onEdit
               <input
                 value={commentText}
                 onChange={e => setCommentText(e.target.value)}
-                placeholder="Add a comment..."
+                placeholder={t('feed.addComment')}
                 className="flex-1 bg-surface-container-low rounded-xl px-3 py-2 text-sm border-none focus:outline-none focus:ring-2 focus:ring-primary/20"
               />
               <button type="submit" disabled={submittingComment || !commentText.trim()} className="btn-primary px-4 py-2 text-xs rounded-xl disabled:opacity-50">
-                {submittingComment ? '...' : 'Post'}
+                {submittingComment ? '...' : t('common.post')}
               </button>
             </form>
           </div>
@@ -337,6 +339,7 @@ const EMOTION_OPTIONS = [
 
 function PostComposer({ user, onPost }) {
   const toast = useToast()
+  const { t } = useTranslation()
   const [text, setText] = useState('')
   const [quote, setQuote] = useState('')
   const [emotion, setEmotion] = useState('')
@@ -407,7 +410,7 @@ function PostComposer({ user, onPost }) {
             value={text}
             onChange={e => setText(e.target.value)}
             className="w-full bg-surface-container-low rounded-xl p-4 text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:ring-2 focus:ring-primary/20 min-h-[100px] resize-none text-base font-sans border-none"
-            placeholder="What are your thoughts on your current read?"
+            placeholder={t('feed.thoughtsPlaceholder')}
           />
 
           {/* Image preview */}
@@ -436,7 +439,7 @@ function PostComposer({ user, onPost }) {
                 }`}
               >
                 <span className="material-symbols-outlined text-base">menu_book</span>
-                {selectedBook ? selectedBook.book?.title : 'Tag a book (optional)'}
+                {selectedBook ? selectedBook.book?.title : t('feed.tagBookOptional')}
                 {selectedBook && (
                   <span
                     className="material-symbols-outlined text-sm ml-1 text-on-surface-variant hover:text-error"
@@ -468,7 +471,7 @@ function PostComposer({ user, onPost }) {
               value={quote}
               onChange={e => setQuote(e.target.value)}
               className="w-full bg-surface-container-low rounded-xl pl-9 pr-4 py-2.5 text-sm border-none focus:outline-none focus:ring-2 focus:ring-primary/20"
-              placeholder="Add a striking quote..."
+              placeholder={t('feed.addQuote')}
             />
           </div>
 
@@ -476,7 +479,7 @@ function PostComposer({ user, onPost }) {
           <div>
             <div className="flex items-center gap-1.5 mb-2">
               <span className="material-symbols-outlined text-outline/60 text-base">mood</span>
-              <span className="text-xs text-on-surface-variant">Current mood</span>
+              <span className="text-xs text-on-surface-variant">{t('feed.howAreYouFeeling')}</span>
             </div>
             <div className="flex flex-wrap gap-2">
               {EMOTION_OPTIONS.map(opt => (
@@ -501,7 +504,7 @@ function PostComposer({ user, onPost }) {
           <div className="flex items-center justify-between pt-1">
             <label className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-surface-container-low text-on-surface-variant hover:bg-surface-container cursor-pointer text-sm transition-colors">
               <span className="material-symbols-outlined text-base">image</span>
-              <span>Photo</span>
+              <span>{t('groups.photo')}</span>
               <input type="file" accept="image/*" className="hidden" onChange={handleImageSelect} />
             </label>
             <button
@@ -509,7 +512,7 @@ function PostComposer({ user, onPost }) {
               disabled={submitting || !text.trim()}
               className="btn-primary px-7 py-2.5 text-sm font-bold rounded-xl disabled:opacity-50"
             >
-              {uploadingImage ? 'Uploading...' : submitting ? 'Posting...' : 'Post Reflection'}
+              {uploadingImage ? t('common.loading') : submitting ? t('common.loading') : t('common.post')}
             </button>
           </div>
         </div>
@@ -534,6 +537,7 @@ function getReasonLabel(book) {
 function RecommendationsShelf() {
   const [recs, setRecs] = useState([])
   const [previewBook, setPreviewBook] = useState(null)
+  const { t } = useTranslation()
 
   useEffect(() => {
     getRecommendations().then(setRecs).catch(() => {})
@@ -545,8 +549,8 @@ function RecommendationsShelf() {
     <>
       <section className="space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="font-serif text-xl font-bold text-on-surface">For You</h2>
-          <span className="text-xs text-on-surface-variant/50 font-medium">Based on your network</span>
+          <h2 className="font-serif text-xl font-bold text-on-surface">{t('feed.forYou')}</h2>
+          <span className="text-xs text-on-surface-variant/50 font-medium">{t('feed.basedOnNetwork')}</span>
         </div>
         <div className="flex gap-4 overflow-x-auto pb-2 -mx-1 px-1 scrollbar-hide">
           {recs.slice(0, 8).map(book => (
@@ -576,6 +580,7 @@ function RecommendationsShelf() {
 
 function Sidebar() {
   const navigate = useNavigate()
+  const { t } = useTranslation()
   const [following, setFollowing] = useState([])
   const [friendReading, setFriendReading] = useState([])
   const [userSearch, setUserSearch] = useState('')
@@ -599,13 +604,13 @@ function Sidebar() {
     <aside className="hidden lg:flex col-span-4 flex-col space-y-6">
       {/* Search users */}
       <section className="bg-surface-container-low rounded-3xl p-6 space-y-4">
-        <h3 className="text-lg font-bold text-primary font-serif">Find Curators</h3>
+        <h3 className="text-lg font-bold text-primary font-serif">{t('feed.findFriends')}</h3>
         <div className="relative">
           <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline/60 text-base">search</span>
           <input
             value={userSearch}
             onChange={e => setUserSearch(e.target.value)}
-            placeholder="Search by username..."
+            placeholder={t('feed.searchUsers')}
             className="w-full bg-surface-container-lowest rounded-xl pl-9 pr-4 py-2.5 text-sm border-none focus:outline-none focus:ring-2 focus:ring-primary/20"
           />
         </div>
@@ -631,7 +636,7 @@ function Sidebar() {
       {/* Following list */}
       {following.length > 0 && (
         <section className="bg-surface-container-low rounded-3xl p-6 space-y-4">
-          <h3 className="text-lg font-bold text-primary font-serif">Your Friends</h3>
+          <h3 className="text-lg font-bold text-primary font-serif">{t('feed.friends')}</h3>
           <div className="space-y-3">
             {following.slice(0, 5).map(u => (
               <button
@@ -654,7 +659,7 @@ function Sidebar() {
       {/* Friends currently reading */}
       {friendReading.length > 0 && (
         <section className="bg-surface-container rounded-3xl p-6 space-y-4">
-          <h3 className="text-lg font-bold text-primary font-serif">Currently Reading</h3>
+          <h3 className="text-lg font-bold text-primary font-serif">{t('feed.whatFriendsAreReading')}</h3>
           <div className="grid grid-cols-2 gap-3">
             {friendReading.slice(0, 4).map(item => (
               <button key={item.id} className="space-y-1.5 group text-left" onClick={() => item.book && setPreviewBook(item.book)}>
@@ -698,6 +703,7 @@ function Sidebar() {
 export default function HomePage() {
   const { user } = useAuth()
   const toast = useToast()
+  const { t } = useTranslation()
   const [activeTab, setActiveTab] = useState('community')
   const [posts, setPosts] = useState([])
   const [loading, setLoading] = useState(true)
@@ -767,7 +773,7 @@ export default function HomePage() {
                   : 'text-on-surface-variant/60 font-medium hover:text-on-surface'
               }`}
             >
-              {tab === 'community' ? 'Community' : 'Friends'}
+              {tab === 'community' ? t('feed.community') : t('feed.friends')}
             </button>
           ))}
         </div>
@@ -791,9 +797,9 @@ export default function HomePage() {
         {!loading && !error && posts.length === 0 && (
           <div className="text-center py-16 text-on-surface-variant">
             <span className="material-symbols-outlined text-5xl block mb-3 text-outline">menu_book</span>
-            <p className="font-serif text-lg text-on-surface">No posts yet.</p>
+            <p className="font-serif text-lg text-on-surface">{activeTab === 'friends' ? t('feed.noFriendsYet').split('\n')[0] : t('feed.noPostsYet').split('\n')[0]}</p>
             <p className="text-sm mt-1">
-              {activeTab === 'friends' ? 'Follow some readers to see their posts here.' : 'Be the first to share a reflection!'}
+              {activeTab === 'friends' ? t('feed.noFriendsYet').split('\n')[1] : t('feed.noPostsYet').split('\n')[1]}
             </p>
           </div>
         )}

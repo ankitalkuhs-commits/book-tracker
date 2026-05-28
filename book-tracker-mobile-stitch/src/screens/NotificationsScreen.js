@@ -6,6 +6,7 @@ import {
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 import { notificationsAPI } from '../services/api';
 import { colors, radius, shadow, type } from '../theme';
 
@@ -64,6 +65,7 @@ function NotifRow({ item, onPress }) {
 }
 
 export default function NotificationsScreen({ navigation }) {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const [notifs,      setNotifs]      = useState([]);
   const [loading,     setLoading]     = useState(true);
@@ -140,12 +142,12 @@ export default function NotificationsScreen({ navigation }) {
           <Ionicons name="arrow-back" size={22} color={colors.onSurface} />
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
-          <Text style={styles.headerLabel}>YOUR LATEST UPDATES</Text>
-          <Text style={styles.headerTitle}>Notifications</Text>
+          <Text style={styles.headerLabel}>{t('notifications.eyebrow')}</Text>
+          <Text style={styles.headerTitle}>{t('notifications.title')}</Text>
         </View>
         {unreadCount > 0 && (
           <TouchableOpacity onPress={handleMarkAllRead} disabled={markingRead} style={styles.markBtn}>
-            <Text style={styles.markBtnText}>{markingRead ? 'Marking…' : 'Mark all read'}</Text>
+            <Text style={styles.markBtnText}>{markingRead ? t('notifications.markingAllRead') : t('notifications.markAllRead')}</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -153,7 +155,7 @@ export default function NotificationsScreen({ navigation }) {
       {unreadCount > 0 && (
         <View style={styles.unreadBanner}>
           <Text style={styles.unreadBannerText}>
-            {unreadCount} unread notification{unreadCount > 1 ? 's' : ''}
+            {t('notifications.unreadCount', { count: unreadCount })}
           </Text>
         </View>
       )}
@@ -161,8 +163,8 @@ export default function NotificationsScreen({ navigation }) {
       {notifs.length === 0 ? (
         <View style={styles.empty}>
           <Ionicons name="notifications-off-outline" size={56} color={colors.outlineVariant} />
-          <Text style={styles.emptyTitle}>All caught up</Text>
-          <Text style={styles.emptySub}>New activity will show up here.</Text>
+          <Text style={styles.emptyTitle}>{t('notifications.allCaughtUp')}</Text>
+          <Text style={styles.emptySub}>{t('notifications.newActivityWillShowUp')}</Text>
         </View>
       ) : (
         <FlatList

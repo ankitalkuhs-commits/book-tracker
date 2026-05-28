@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
+import { useTranslation } from 'react-i18next';
 import { groupsAPI, userAPI } from '../services/api';
 import { PreloadContext } from '../../App';
 import { colors, radius, shadow, type } from '../theme';
@@ -28,13 +29,14 @@ function GroupCover({ preset = 'teal', size = 80 }) {
 }
 
 function GroupCard({ group, onPress }) {
+  const { t } = useTranslation();
   const isCurator = group.user_role === 'curator';
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.75}>
       <GroupCover preset={group.cover_preset} size={80} />
       <View style={styles.cardBody}>
         {isCurator && (
-          <Text style={styles.curatorBadge}>CURATOR</Text>
+          <Text style={styles.curatorBadge}>{t('groups.curatorBadge')}</Text>
         )}
         <Text style={styles.cardName} numberOfLines={1}>{group.name}</Text>
         {group.description ? (
@@ -42,12 +44,12 @@ function GroupCard({ group, onPress }) {
         ) : null}
         <View style={styles.cardMeta}>
           <Ionicons name="people-outline" size={13} color={colors.onSurfaceVariant} />
-          <Text style={styles.cardMetaText}>{group.member_count ?? 0} members</Text>
+          <Text style={styles.cardMetaText}>{t('groups.memberCount', { count: group.member_count ?? 0 })}</Text>
           {group.is_private && (
             <>
               <Text style={styles.metaDot}>•</Text>
               <Ionicons name="lock-closed-outline" size={13} color={colors.onSurfaceVariant} />
-              <Text style={styles.cardMetaText}>Private</Text>
+              <Text style={styles.cardMetaText}>{t('common.private')}</Text>
             </>
           )}
         </View>
@@ -68,6 +70,7 @@ const COVER_PRESETS = [
 ];
 
 function CreateGroupModal({ visible, onClose, onCreated }) {
+  const { t } = useTranslation();
   const [name, setName]           = useState('');
   const [desc, setDesc]           = useState('');
   const [isPrivate, setIsPrivate] = useState(false);
@@ -79,7 +82,7 @@ function CreateGroupModal({ visible, onClose, onCreated }) {
   const selectedPreset = COVER_PRESETS.find(p => p.key === preset) || COVER_PRESETS[0];
 
   const handleCreate = async () => {
-    if (!name.trim()) { Alert.alert('Name required'); return; }
+    if (!name.trim()) { Alert.alert(t('common.error'), 'Name required'); return; }
     setSaving(true);
     try {
       const g = await groupsAPI.createGroup({
@@ -103,12 +106,12 @@ function CreateGroupModal({ visible, onClose, onCreated }) {
       <ScrollView style={styles.modalRoot} contentContainerStyle={styles.modalScroll} keyboardShouldPersistTaps="handled">
 
         {/* Header */}
-        <Text style={styles.modalEyebrow}>GROUPS</Text>
-        <Text style={styles.modalBigTitle}>Create a New Group</Text>
-        <Text style={styles.modalSubtitle}>Start a reading group, invite friends, and read together</Text>
+        <Text style={styles.modalEyebrow}>{t('groups.groupsEyebrow')}</Text>
+        <Text style={styles.modalBigTitle}>{t('groups.createGroupTitle')}</Text>
+        <Text style={styles.modalSubtitle}>{t('groups.createGroupSubtitle')}</Text>
 
         {/* Cover picker */}
-        <Text style={[styles.fieldLabel, { marginTop: 20 }]}>COVER</Text>
+        <Text style={[styles.fieldLabel, { marginTop: 20 }]}>{t('groups.coverLabel')}</Text>
         <View style={styles.coverGrid}>
           {COVER_PRESETS.map(p => (
             <TouchableOpacity
@@ -129,23 +132,23 @@ function CreateGroupModal({ visible, onClose, onCreated }) {
         </View>
 
         {/* Group name */}
-        <Text style={[styles.fieldLabel, { marginTop: 20 }]}>GROUP NAME</Text>
+        <Text style={[styles.fieldLabel, { marginTop: 20 }]}>{t('groups.groupNameLabel')}</Text>
         <TextInput
           style={styles.input}
           value={name}
           onChangeText={setName}
-          placeholder="e.g. Classic Fiction Club"
+          placeholder={t('groups.groupNamePlaceholder')}
           placeholderTextColor={colors.outline}
           maxLength={60}
         />
 
         {/* Description */}
-        <Text style={[styles.fieldLabel, { marginTop: 16 }]}>DESCRIPTION</Text>
+        <Text style={[styles.fieldLabel, { marginTop: 16 }]}>{t('groups.descriptionLabel')}</Text>
         <TextInput
           style={[styles.input, styles.inputMulti]}
           value={desc}
           onChangeText={setDesc}
-          placeholder="What's this group about? What are you reading together?"
+          placeholder={t('groups.descriptionPlaceholder')}
           placeholderTextColor={colors.outline}
           multiline
           numberOfLines={3}
@@ -159,11 +162,11 @@ function CreateGroupModal({ visible, onClose, onCreated }) {
             activeOpacity={0.8}
           >
             <Ionicons name="earth-outline" size={22} color={!isPrivate ? colors.primary : colors.onSurfaceVariant} style={{ marginBottom: 6 }} />
-            <Text style={[styles.privacyCardTitle, !isPrivate && { color: colors.primary }]}>Public</Text>
-            <Text style={styles.privacyCardSub}>Anyone can find and request to join this group</Text>
+            <Text style={[styles.privacyCardTitle, !isPrivate && { color: colors.primary }]}>{t('groups.privacyPublic')}</Text>
+            <Text style={styles.privacyCardSub}>{t('groups.privacyPublicDesc')}</Text>
             <View style={[styles.privacyCardBtn, !isPrivate && styles.privacyCardBtnSelected]}>
               <Text style={[styles.privacyCardBtnText, !isPrivate && { color: colors.primary }]}>
-                {!isPrivate ? 'Selected Public' : 'Select Public'}
+                {!isPrivate ? `Selected ${t('groups.privacyPublic')}` : `Select ${t('groups.privacyPublic')}`}
               </Text>
             </View>
           </TouchableOpacity>
@@ -174,24 +177,24 @@ function CreateGroupModal({ visible, onClose, onCreated }) {
             activeOpacity={0.8}
           >
             <Ionicons name="lock-closed-outline" size={22} color={isPrivate ? colors.primary : colors.onSurfaceVariant} style={{ marginBottom: 6 }} />
-            <Text style={[styles.privacyCardTitle, isPrivate && { color: colors.primary }]}>Private</Text>
-            <Text style={styles.privacyCardSub}>Hidden from search. Members join via invitation or invite link only</Text>
+            <Text style={[styles.privacyCardTitle, isPrivate && { color: colors.primary }]}>{t('groups.privacyPrivate')}</Text>
+            <Text style={styles.privacyCardSub}>{t('groups.privacyPrivateDesc')}</Text>
             <View style={[styles.privacyCardBtn, isPrivate && styles.privacyCardBtnSelected]}>
               <Text style={[styles.privacyCardBtnText, isPrivate && { color: colors.primary }]}>
-                {isPrivate ? 'Selected Private' : 'Select Private'}
+                {isPrivate ? `Selected ${t('groups.privacyPrivate')}` : `Select ${t('groups.privacyPrivate')}`}
               </Text>
             </View>
           </TouchableOpacity>
         </View>
 
         {/* Reading goal */}
-        <Text style={[styles.fieldLabel, { marginTop: 20 }]}>READING GOAL <Text style={styles.optionalLabel}>(Optional)</Text></Text>
+        <Text style={[styles.fieldLabel, { marginTop: 20 }]}>{t('groups.readingGoalLabel')}</Text>
         <View style={styles.goalRow}>
           <TextInput
             style={[styles.input, { flex: 1 }]}
             value={readingGoal}
             onChangeText={setReadingGoal}
-            placeholder="e.g. 50000 pages to read together"
+            placeholder={t('groups.goalPlaceholder')}
             placeholderTextColor={colors.outline}
             keyboardType="numeric"
           />
@@ -203,7 +206,7 @@ function CreateGroupModal({ visible, onClose, onCreated }) {
                 onPress={() => setGoalPeriod(p)}
               >
                 <Text style={[styles.goalPeriodText, goalPeriod === p && styles.goalPeriodTextActive]}>
-                  {p === 'monthly' ? 'Monthly' : 'Yearly'}
+                  {p === 'monthly' ? t('common.monthly') : t('common.yearly')}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -212,8 +215,8 @@ function CreateGroupModal({ visible, onClose, onCreated }) {
 
         {/* Ready to go */}
         <View style={styles.readyCard}>
-          <Text style={styles.readyTitle}>Ready to go?</Text>
-          <Text style={styles.readySub}>You'll be the admin of this group</Text>
+          <Text style={styles.readyTitle}>{t('groups.readyToGo')}</Text>
+          <Text style={styles.readySub}>{t('groups.youllBeAdmin')}</Text>
           <TouchableOpacity
             style={[styles.createBtn, saving && { opacity: 0.6 }]}
             onPress={handleCreate}
@@ -221,11 +224,11 @@ function CreateGroupModal({ visible, onClose, onCreated }) {
           >
             {saving
               ? <ActivityIndicator size="small" color={colors.onPrimary} />
-              : <Text style={styles.createBtnText}>Create Group</Text>
+              : <Text style={styles.createBtnText}>{t('groups.createGroup')}</Text>
             }
           </TouchableOpacity>
           <TouchableOpacity onPress={onClose} style={{ marginTop: 12, alignItems: 'center' }}>
-            <Text style={styles.cancelLink}>Cancel</Text>
+            <Text style={styles.cancelLink}>{t('common.cancel')}</Text>
           </TouchableOpacity>
         </View>
 
@@ -235,6 +238,7 @@ function CreateGroupModal({ visible, onClose, onCreated }) {
 }
 
 function JoinModal({ visible, onClose, onJoined }) {
+  const { t } = useTranslation();
   const [code, setCode] = useState('');
   const [joining, setJoining] = useState(false);
 
@@ -250,13 +254,13 @@ function JoinModal({ visible, onClose, onJoined }) {
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <View style={styles.joinOverlay}>
         <View style={styles.joinSheet}>
-          <Text style={styles.modalTitle}>Join by Invite Code</Text>
-          <TextInput style={[styles.input, { marginTop: 16, marginBottom: 12 }]} value={code} onChangeText={setCode} placeholder="Enter invite code…" placeholderTextColor={colors.outline} autoCapitalize="none" />
+          <Text style={styles.modalTitle}>{t('groups.joinByInviteCode')}</Text>
+          <TextInput style={[styles.input, { marginTop: 16, marginBottom: 12 }]} value={code} onChangeText={setCode} placeholder={t('groups.enterInviteCode')} placeholderTextColor={colors.outline} autoCapitalize="none" />
           <TouchableOpacity style={styles.createBtn} onPress={handleJoin} disabled={joining}>
-            <Text style={styles.createBtnText}>{joining ? 'Joining…' : 'Join Circle'}</Text>
+            <Text style={styles.createBtnText}>{joining ? t('groups.joining') : t('groups.joinCircle')}</Text>
           </TouchableOpacity>
           <TouchableOpacity onPress={onClose} style={{ marginTop: 10, alignItems: 'center' }}>
-            <Text style={{ color: colors.onSurfaceVariant, fontSize: 14 }}>Cancel</Text>
+            <Text style={{ color: colors.onSurfaceVariant, fontSize: 14 }}>{t('common.cancel')}</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -265,6 +269,7 @@ function JoinModal({ visible, onClose, onJoined }) {
 }
 
 export default function GroupsScreen({ navigation }) {
+  const { t } = useTranslation();
   const preloaded = useContext(PreloadContext);
   const [currentUser, setCurrentUser] = useState(preloaded?.profile || null);
 
@@ -334,26 +339,24 @@ export default function GroupsScreen({ navigation }) {
         {/* ── Hero header ── */}
         <View style={styles.hero}>
           <View style={styles.heroText}>
-            <Text style={styles.heroEyebrow}>YOUR LITERARY CIRCLES</Text>
-            <Text style={styles.heroTitle}>Literary{'\n'}Circles</Text>
-            <Text style={styles.heroSub}>
-              Discover niche reading communities, discuss your favourite chapters, and join global conversations curated for the discerning reader.
-            </Text>
+            <Text style={styles.heroEyebrow}>{t('groups.eyebrow')}</Text>
+            <Text style={styles.heroTitle}>{t('groups.title')}</Text>
+            <Text style={styles.heroSub}>{t('groups.subtitle')}</Text>
           </View>
           <TouchableOpacity style={styles.createHeroBtn} onPress={() => setShowCreate(true)}>
             <Ionicons name="add" size={16} color={colors.onPrimary} />
-            <Text style={styles.createHeroBtnText}>Create New Group</Text>
+            <Text style={styles.createHeroBtnText}>{t('groups.createNewGroup')}</Text>
           </TouchableOpacity>
         </View>
 
         {/* ── Your Groups ── */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Your Groups</Text>
+          <Text style={styles.sectionTitle}>{t('groups.yourGroups')}</Text>
           {myGroups.length === 0 ? (
             <View style={styles.emptySection}>
-              <Text style={styles.emptySectionText}>No circles yet.</Text>
+              <Text style={styles.emptySectionText}>{t('groups.noCirclesYet')}</Text>
               <TouchableOpacity onPress={() => setShowJoin(true)}>
-                <Text style={styles.joinLink}>Have an invite code? Join here</Text>
+                <Text style={styles.joinLink}>{t('groups.haveInviteCode')}</Text>
               </TouchableOpacity>
             </View>
           ) : (
@@ -363,7 +366,7 @@ export default function GroupsScreen({ navigation }) {
               ))}
               <TouchableOpacity style={styles.joinCodeBtn} onPress={() => setShowJoin(true)}>
                 <Ionicons name="enter-outline" size={15} color={colors.primary} />
-                <Text style={styles.joinCodeText}>Join with invite code</Text>
+                <Text style={styles.joinCodeText}>{t('groups.joinWithInviteCode')}</Text>
               </TouchableOpacity>
             </>
           )}
@@ -372,8 +375,8 @@ export default function GroupsScreen({ navigation }) {
         {/* ── Pending Requests ── */}
         {pendingGroups.length > 0 && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Pending Requests</Text>
-            <Text style={styles.sectionSub}>Waiting for curator approval.</Text>
+            <Text style={styles.sectionTitle}>{t('groups.pendingRequests')}</Text>
+            <Text style={styles.sectionSub}>{t('groups.waitingForApproval')}</Text>
             {pendingGroups.map(g => (
               <TouchableOpacity
                 key={g.id}
@@ -383,14 +386,14 @@ export default function GroupsScreen({ navigation }) {
               >
                 <GroupCover preset={g.cover_preset} size={80} />
                 <View style={styles.cardBody}>
-                  <Text style={[styles.curatorBadge, { color: colors.tertiary }]}>REQUEST PENDING</Text>
+                  <Text style={[styles.curatorBadge, { color: colors.tertiary }]}>{t('groups.requestPending')}</Text>
                   <Text style={styles.cardName} numberOfLines={1}>{g.name}</Text>
                   {g.description ? (
                     <Text style={styles.cardDesc} numberOfLines={2}>{g.description}</Text>
                   ) : null}
                   <View style={styles.cardMeta}>
                     <Ionicons name="people-outline" size={13} color={colors.onSurfaceVariant} />
-                    <Text style={styles.cardMetaText}>{g.member_count ?? 0} members</Text>
+                    <Text style={styles.cardMetaText}>{t('groups.memberCount', { count: g.member_count ?? 0 })}</Text>
                   </View>
                 </View>
               </TouchableOpacity>
@@ -400,22 +403,22 @@ export default function GroupsScreen({ navigation }) {
 
         {/* ── Discover Groups ── */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Discover Groups</Text>
-          <Text style={styles.sectionSub}>Find your next intellectual sanctuary.</Text>
+          <Text style={styles.sectionTitle}>{t('groups.discoverGroups')}</Text>
+          <Text style={styles.sectionSub}>{t('groups.discoverSubtitle')}</Text>
           <View style={styles.searchWrap}>
             <Ionicons name="search" size={15} color={colors.outline} />
             <TextInput
               style={styles.searchInput}
               value={discoverQ}
               onChangeText={setDiscoverQ}
-              placeholder="Search groups..."
+              placeholder={t('groups.searchGroups')}
               placeholderTextColor={colors.outline}
             />
           </View>
           {discover.length === 0 ? (
             <View style={styles.emptySection}>
               <Ionicons name="search-outline" size={40} color={colors.outlineVariant} />
-              <Text style={styles.emptySectionText}>{discoverQ ? 'No circles found' : 'Search to explore circles'}</Text>
+              <Text style={styles.emptySectionText}>{discoverQ ? t('groups.noCirclesFound') : t('groups.searchToExplore')}</Text>
             </View>
           ) : (
             discover.map(g => (

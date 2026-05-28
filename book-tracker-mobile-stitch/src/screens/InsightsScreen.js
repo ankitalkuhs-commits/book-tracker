@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { activityAPI, userbooksAPI, profileAPI } from '../services/api';
 import { PreloadContext } from '../../App';
 import { colors, radius, shadow, type } from '../theme';
@@ -137,6 +138,7 @@ function StatCard({ label, value, sub, icon, accent, secondAccent, wide }) {
 
 // ── Insights Screen ────────────────────────────────────────────────────────────
 export default function InsightsScreen({ navigation }) {
+  const { t } = useTranslation();
   const preloaded = useContext(PreloadContext);
   const [insights, setInsights]   = useState(preloaded?.insights || null);
   const [activity, setActivity]   = useState(preloaded?.activity || []);
@@ -218,24 +220,24 @@ export default function InsightsScreen({ navigation }) {
       >
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.headerLabel}>YOUR READING LIFE</Text>
-          <Text style={styles.headerTitle}>Reading Insights</Text>
-          <Text style={styles.headerSub}>Your reading life, quantified.</Text>
+          <Text style={styles.headerLabel}>{t('insights.eyebrow')}</Text>
+          <Text style={styles.headerTitle}>{t('insights.title')}</Text>
+          <Text style={styles.headerSub}>{t('insights.subtitle')}</Text>
         </View>
 
         {/* ── Stats grid row 1: Total Books | Finished ── */}
         <View style={styles.statsGrid}>
-          <StatCard label="Total Books" value={fmt(totalBooks)} icon="library-outline" />
-          <StatCard label="Finished"    value={fmt(finished)}   icon="checkmark-circle-outline" accent />
+          <StatCard label={t('insights.totalBooks')} value={fmt(totalBooks)} icon="library-outline" />
+          <StatCard label={t('insights.finished')}   value={fmt(finished)}   icon="checkmark-circle-outline" accent />
         </View>
 
         {/* ── Stats grid row 2: Pages Read | Avg Rating ── */}
         <View style={styles.statsGrid}>
-          <StatCard label="Pages Read" value={fmt(pagesRead)} icon="book-outline" />
+          <StatCard label={t('insights.pagesRead')} value={fmt(pagesRead)} icon="book-outline" />
           <StatCard
-            label="Avg Rating"
+            label={t('insights.avgRating')}
             value={avgRating ? avgRating.toFixed(1) : '—'}
-            sub={!avgRating ? 'rate your finished books' : undefined}
+            sub={!avgRating ? t('insights.rateYourBooks') : undefined}
             icon="star-outline"
             secondAccent
           />
@@ -244,41 +246,41 @@ export default function InsightsScreen({ navigation }) {
         {/* ── Stats grid row 3: Avg Pages/Day | This Year ── */}
         <View style={styles.statsGrid}>
           <StatCard
-            label="Avg Pages / Day"
+            label={t('insights.avgPagesPerDay')}
             value={avgPpd ? Math.round(avgPpd).toString() : '—'}
-            sub="last 30 days"
+            sub={t('insights.last30Days')}
             icon="trending-up-outline"
           />
           <StatCard
-            label="This Year"
+            label={t('insights.thisYear')}
             value={booksThisYear != null ? String(booksThisYear) : fmt(finished)}
-            sub={`books finished in ${new Date().getFullYear()}`}
+            sub={t('insights.booksFinishedInYear', { year: new Date().getFullYear() })}
             icon="calendar-outline"
           />
         </View>
 
         {/* ── Currently Reading — full width ── */}
         <StatCard
-          label="Currently Reading"
+          label={t('insights.currentlyReading')}
           value={String(currentlyReading)}
-          sub="books in progress"
+          sub={t('insights.booksInProgress')}
           icon="reader-outline"
           wide
         />
 
         {/* ── Reading Streak ── */}
         <View style={styles.card}>
-          <Text style={styles.cardEyebrow}>READING STREAK</Text>
+          <Text style={styles.cardEyebrow}>{t('insights.readingStreak')}</Text>
           <View style={styles.streakRow}>
             <View style={styles.streakHalf}>
               <Text style={styles.streakIcon}>🔥</Text>
               <Text style={styles.bigNumber}>{streak}</Text>
-              <Text style={styles.streakUnit}>current streak{'\n'}days</Text>
+              <Text style={styles.streakUnit}>{t('insights.currentStreakDays')}</Text>
             </View>
             <View style={styles.streakDivider} />
             <View style={styles.streakHalf}>
               <Text style={styles.bigNumber}>{bestStreak || 1}</Text>
-              <Text style={styles.streakUnit}>longest ever{'\n'}day</Text>
+              <Text style={styles.streakUnit}>{t('insights.longestEverDay')}</Text>
             </View>
           </View>
         </View>
@@ -287,10 +289,10 @@ export default function InsightsScreen({ navigation }) {
         {yearGoal ? (
           <View style={styles.card}>
             <View style={styles.goalHeader}>
-              <Text style={styles.cardEyebrow}>YEARLY GOAL</Text>
+              <Text style={styles.cardEyebrow}>{t('insights.yearlyGoal')}</Text>
               <View style={[styles.onTrackBadge, !onTrack && styles.behindBadge]}>
                 <Text style={[styles.onTrackText, !onTrack && styles.behindText]}>
-                  {onTrack ? 'On track' : 'Behind pace'}
+                  {onTrack ? t('insights.onTrack') : t('insights.behindPace')}
                 </Text>
               </View>
             </View>
@@ -301,25 +303,25 @@ export default function InsightsScreen({ navigation }) {
               <View style={styles.goalText}>
                 <Text style={styles.goalBooksNum}>{goalFinished}</Text>
                 <Text style={styles.goalBooksOf}>of {goalTarget} books</Text>
-                <Text style={styles.goalBooksLeft}>{Math.max(0, goalTarget - goalFinished)} to go</Text>
+                <Text style={styles.goalBooksLeft}>{t('insights.toGo', { remaining: Math.max(0, goalTarget - goalFinished) })}</Text>
               </View>
             </View>
           </View>
         ) : (
           <View style={[styles.card, styles.goalEmpty]}>
             <Ionicons name="flag-outline" size={32} color={colors.outlineVariant} />
-            <Text style={styles.cardSub}>Set a yearly goal in Settings</Text>
+            <Text style={styles.cardSub}>{t('insights.setGoalInSettings')}</Text>
           </View>
         )}
 
         {/* ── Monthly pages chart ── */}
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>Monthly Pages Read</Text>
+          <Text style={styles.cardTitle}>{t('insights.monthlyPagesRead')}</Text>
           {monthly.length > 0 ? (
             <>
               <View style={{ marginTop: 14 }}>
                 <BarChart
-                  data={monthly.map((m, i) => ({ value: m.pages || 0, isToday: i === monthly.length - 1 }))}
+                  data={monthly.map((m, i) => ({ value: m.pages_read || 0, isToday: i === monthly.length - 1 }))}
                   height={90}
                 />
               </View>
@@ -329,14 +331,14 @@ export default function InsightsScreen({ navigation }) {
               </View>
             </>
           ) : (
-            <Text style={[styles.cardSub, { marginTop: 12 }]}>No monthly data yet.</Text>
+            <Text style={[styles.cardSub, { marginTop: 12 }]}>{t('insights.noMonthlyData')}</Text>
           )}
         </View>
 
         {/* ── Projected finish dates ── */}
         {readingBooks.length > 0 && (
           <View style={styles.card}>
-            <Text style={styles.cardEyebrow}>PROJECTED FINISH DATES</Text>
+            <Text style={styles.cardEyebrow}>{t('insights.projectedFinishDates')}</Text>
             <View style={{ gap: 12, marginTop: 10 }}>
               {readingBooks.map(ub => {
                 const book  = ub.book;
@@ -372,7 +374,7 @@ export default function InsightsScreen({ navigation }) {
                     {proj?.projected_finish_date && (
                       <View style={styles.projDate}>
                         <Text style={styles.projDateText}>{shortDate(proj.projected_finish_date)}</Text>
-                        {dl ? <Text style={styles.projDaysLeft}>{dl}d left</Text> : null}
+                        {dl ? <Text style={styles.projDaysLeft}>{t('insights.daysLeft', { count: dl })}</Text> : null}
                       </View>
                     )}
                   </TouchableOpacity>
