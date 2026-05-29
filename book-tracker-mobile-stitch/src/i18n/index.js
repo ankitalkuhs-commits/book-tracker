@@ -1,6 +1,5 @@
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
-import * as Localization from 'expo-localization';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import en from './locales/en.json';
@@ -21,11 +20,15 @@ export const SUPPORTED_LANGUAGES = [
   { code: 'fr', label: 'Français' },
 ];
 
-// Map device locale to a supported language code
+// Map device locale to a supported language code using built-in Intl (no native module needed)
 function detectLanguage() {
-  const deviceLocale = Localization.getLocales()?.[0]?.languageCode ?? 'en';
-  const supported = SUPPORTED_LANGUAGES.map((l) => l.code);
-  return supported.includes(deviceLocale) ? deviceLocale : 'en';
+  try {
+    const deviceLocale = Intl.DateTimeFormat().resolvedOptions().locale.split('-')[0];
+    const supported = SUPPORTED_LANGUAGES.map((l) => l.code);
+    return supported.includes(deviceLocale) ? deviceLocale : 'en';
+  } catch {
+    return 'en';
+  }
 }
 
 export async function initI18n() {
