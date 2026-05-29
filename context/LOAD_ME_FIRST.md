@@ -14,7 +14,7 @@
 | **Backend** | FastAPI (Python) → `https://book-tracker-stitch.onrender.com` |
 | **Database** | PostgreSQL on Supabase (prod) / SQLite (local dev) |
 | **Branch** | Everything on `master` — `stitch-experiment` was deleted |
-| **Version** | 2.1.3 (versionCode 57) |
+| **Version** | 2.2.0 (versionCode 59) |
 
 ---
 
