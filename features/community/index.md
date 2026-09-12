@@ -1,3 +1,11 @@
+---
+feature: community
+status: production
+repos: api, web, mobile
+last_verified: 2026-05-03
+migrated_from: context/community/README.md (2026-09-12)
+---
+
 # Community Features
 
 **Last Updated:** May 3, 2026

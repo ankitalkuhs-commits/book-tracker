@@ -1,6 +1,6 @@
 # TrackMyRead — Context Index
 
-**Last Updated:** May 6, 2026
+**Last Updated:** September 12, 2026
 
 > Start every session by reading `LOAD_ME_FIRST.md`. This file is for navigation.
 
@@ -16,17 +16,21 @@
 | [`supabase_migration.sql`](supabase_migration.sql) | **Run before pushing models.py changes** — all DB column additions |
 | [`PRODUCTION_CUTOVER_PLAN.md`](PRODUCTION_CUTOVER_PLAN.md) | Plan for shipping stitch as prod (web + Android) |
 | [`MOBILE_STITCH_PHASE3.md`](MOBILE_STITCH_PHASE3.md) | Per-screen mobile rebuild changelog (April 2026) |
+| [`../AGENTS_DESIGN.md`](../AGENTS_DESIGN.md) | **7-agent process** (ported from School ERP 2026-09-12); prompts in `../agents/`; PM guide `../specs/PM_PLAYBOOK.md` |
+| [`../dependency-map.md`](../dependency-map.md) | **Endpoint → consumers.** Check before changing any API; regenerate with `python scripts/gen_dependency_map.py` |
 
 ---
 
-## Feature READMEs
+## Feature Nodes (`features/`)
+
+Moved from `context/*/README.md` on 2026-09-12. Per-screen sub-folders (`spec.md`, `architecture.md`, `tests.md`, `code-map.md`, `learnings.md`) are created when the agent process first touches a screen. Templates: `features/_templates/`. Repo overviews: `repos/{api,web,mobile}/index.md`.
 
 | Area | README | Key Files |
 |---|---|---|
-| Auth | [`auth/README.md`](auth/README.md) | `app/routers/auth_router.py`, `app/auth.py` |
-| Library | [`library/README.md`](library/README.md) | `books_router.py`, `userbooks_router.py`, `LibraryPage.jsx`, `LibraryScreen.js` |
-| Community | [`community/README.md`](community/README.md) | `notes_router.py`, `follow_router.py`, `likes_comments.py`, `HomePage.jsx`, `FeedScreen.js` |
-| Reading Stats | [`reading-stats/README.md`](reading-stats/README.md) | `InsightsPage.jsx`, `InsightsScreen.js` |
+| Auth | [`../features/auth/index.md`](../features/auth/index.md) | `app/routers/auth_router.py`, `app/auth.py` |
+| Library | [`../features/library/index.md`](../features/library/index.md) | `books_router.py`, `userbooks_router.py`, `LibraryPage.jsx`, `LibraryScreen.js` |
+| Community | [`../features/community/index.md`](../features/community/index.md) | `notes_router.py`, `follow_router.py`, `likes_comments.py`, `HomePage.jsx`, `FeedScreen.js` |
+| Reading Stats | [`../features/reading-stats/index.md`](../features/reading-stats/index.md) | `InsightsPage.jsx`, `InsightsScreen.js` |
 | Deployment | [`deployment/README.md`](deployment/README.md) | `eas.json`, `google-services.json`, Render, Supabase |
 
 ---

@@ -14,7 +14,7 @@
 | **Backend** | FastAPI (Python) → `https://book-tracker-stitch.onrender.com` |
 | **Database** | PostgreSQL on Supabase (prod) / SQLite (local dev) |
 | **Branch** | Everything on `master` — `stitch-experiment` was deleted |
-| **Version** | 2.2.0 (versionCode 59) |
+| **Version** | 2.2.1 (versionCode 60) |
 
 ---
 
@@ -102,6 +102,33 @@ The correct key names (backend + frontend must match):
 - India (`.in` TZ): tag = `trackmyread-21` → `amazon.in`
 - Global: tag = `trackmyread-20` → `amazon.com`
 - Detect via: `Intl.DateTimeFormat().resolvedOptions().timeZone`
+
+---
+
+## Recently Shipped (September 12, 2026)
+
+### Agent process installed (ported from School ERP)
+
+- `AGENTS_DESIGN.md`, `agents/*.md` (7 prompts, adapted: multi-tenancy → ownership + privacy), `specs/PM_PLAYBOOK.md`
+- `dependency-map.md` — curated contracts + a generated endpoint→consumer table; regenerate with `python scripts/gen_dependency_map.py`
+- `features/{auth,community,library,reading-stats}/index.md` — moved from `context/*/README.md`; templates in `features/_templates/`; `repos/{api,web,mobile}/index.md`
+- `CLAUDE.md` rewritten around the process. No application code changed.
+
+### Full read-through audit (no fixes applied yet — this is the first sprint's backlog)
+
+**CRITICAL**
+- `DELETE /books/{id}`, `POST /books/`, `GET /books/`, `GET /books/{id}` have **no auth** (`books_router.py`). Prod schema cascades `userbook.book_id`, so an anonymous DELETE removes every user's library row for that book.
+- `push_router.py` selects `PushToken` by `user_id` only — a mobile login overwrites the user's web-push row (`token_type` stays `web`, token becomes Expo); mobile logout can delete the web subscription.
+
+**Tests:** 103 pass / 12 fail — all `KeyError: 'userbook'`; `tests/test_books.py::_add_book` callers expect the pre-May-4 nested shape.
+
+**Bugs:** friends-feed sort inverted (`notes_router.py` — non-mutual first) · `/notes/me` hardcodes `liked_by_me: True` · scheduler bypasses `fire_event` (no prefs, no web push; Render is asleep at 14:30 UTC anyway) · insights monthly buckets step 30 days (February can vanish) · streak starts at today (yesterday-only reader = 0) · `note_posted` group activity fires for private notes · `profile_router.py` logs the full profile incl. email at WARNING on every call · admin broadcast still uses `send_push_to_many` · dead client calls: web `demoLogin`, mobile `userAPI.getUser`.
+
+**Repo hygiene:** `venv/` AND `.venv/` are tracked in git (`.venv/` not in .gitignore) · `book_tracker.db` tracked (empty) · `crash.txt` 3 MB at root · `requirements.txt` is UTF-16 · `deps.py` has a dead shadowed `get_current_user` stub · `get_session` used as a Depends returns a raw Session (never closed).
+
+**Web:** `og:image` → `/og-image.png` does not exist · Vercel build must be `build:ssg` (unverified).
+
+**GOTCHA — the Bash tool truncates long heredocs on this machine.** Files over ~6 KB written via `cat <<'EOF'` fail with "unexpected EOF while looking for matching quote". Use the Write tool for anything long.
 
 ---
 
@@ -244,7 +271,9 @@ The correct key names (backend + frontend must match):
 ## Known Issues / Next Priorities
 
 **HIGH:**
-1. None currently blocking
+1. Unauthenticated `DELETE /books/{id}` (see Sept 12 audit above)
+1b. `push_router.py` token_type bug
+1c. 12 stale failing tests
 
 **MEDIUM:**
 2. Web `/search` route still exists but removed from Nav — decide: keep or delete route
