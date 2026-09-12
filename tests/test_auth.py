@@ -45,3 +45,22 @@ class TestLogin:
     def test_invalid_token_rejected(self, client):
         r = client.get("/userbooks/", headers={"Authorization": "Bearer notarealtoken"})
         assert r.status_code == 401
+
+
+class TestPublicDeleteAccountForm:
+    def test_delete_account_form_stays_public(self, client, db):
+        _make_user(db, email="alice_f_delacct@example.com")
+        r = client.post("/auth/delete-account", json={"email": "alice_f_delacct@example.com", "reason": "qa"})
+        assert r.status_code == 200
+        assert r.json() == {"message": "Account deletion request received"}
+
+        db.expire_all()
+        from app import crud
+        user = crud.get_user_by_email(db, "alice_f_delacct@example.com")
+        assert user.deletion_requested_at is not None
+        assert user.deletion_reason == "qa"
+
+    def test_delete_account_unknown_email_same_response(self, client):
+        r = client.post("/auth/delete-account", json={"email": "nobody-xyz@example.com"})
+        assert r.status_code == 200
+        assert r.json() == {"message": "Account deletion request received"}

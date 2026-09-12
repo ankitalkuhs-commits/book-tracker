@@ -1,9 +1,9 @@
 # app/routers/books_router.py
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlmodel import select, Session
 from app.models import Book, UserBook, User
 from app.database import get_db
-from app.deps import get_current_user
+from app.deps import get_current_user, get_admin_user
 from datetime import datetime
 from pydantic import BaseModel
 from typing import Optional
@@ -147,14 +147,18 @@ def add_book_to_library(
 
 # --- GET all books ---
 @router.get("/")
-def list_books(db: Session = Depends(get_db)):
-    books = db.exec(select(Book)).all()
+def list_books(
+    limit: int = Query(50, ge=1, le=200),
+    db: Session = Depends(get_db),
+    _=Depends(get_current_user),
+):
+    books = db.exec(select(Book).limit(limit)).all()
     return books
 
 
 # --- POST: add a new book (supports both manual and Google API data) ---
 @router.post("/")
-def add_book(book_data: dict, db: Session = Depends(get_db)):
+def add_book(book_data: dict, db: Session = Depends(get_db), _=Depends(get_current_user)):
     """
     Add a new book to the library.
     If ISBN exists, returns existing book instead of creating duplicate.
@@ -334,7 +338,7 @@ def search_books(q: str, limit: int = 20, db: Session = Depends(get_db), _=Depen
 
 
 @router.get("/{book_id}")
-def get_book(book_id: int, db: Session = Depends(get_db)):
+def get_book(book_id: int, db: Session = Depends(get_db), _=Depends(get_current_user)):
     book = db.get(Book, book_id)
     if not book:
         raise HTTPException(status_code=404, detail="Book not found")
@@ -343,7 +347,7 @@ def get_book(book_id: int, db: Session = Depends(get_db)):
 
 # --- DELETE a book by ID ---
 @router.delete("/{book_id}")
-def delete_book(book_id: int, db: Session = Depends(get_db)):
+def delete_book(book_id: int, db: Session = Depends(get_db), _=Depends(get_admin_user)):
     book = db.get(Book, book_id)
     if not book:
         raise HTTPException(status_code=404, detail="Book not found")

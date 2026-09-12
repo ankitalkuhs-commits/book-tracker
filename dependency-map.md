@@ -35,7 +35,7 @@ Pref keys shared with both Settings screens: `new_follower · post_liked · post
 Template trap: `_render_template` returns the raw template on a missing `{placeholder}` — no error. Every `extra` must supply every placeholder in the config entry.
 
 ### `pushtoken` table
-One table, two channels: `token_type='expo'` (mobile) and `'web'` (PWA). `push_router.py` register/deregister currently select by `user_id` only — a mobile login can overwrite a web subscription. Any query on this table must filter `token_type`.
+One table, two channels: `token_type='expo'` (mobile) and `'web'` (PWA). `push_router.py` register and deregister both filter `user_id` AND `token_type == "expo"`, so a mobile login or logout never touches a user's web-push row. Any query on this table must filter `token_type`.
 
 ### `reading_activity` table
 Written only by `PUT /userbooks/{id}/progress` (upsert per userbook per UTC day). Read by `/reading-activity/daily`, `/insights`, `/user/{id}/daily`, and `GET /groups/{id}/leaderboard` + `/goal`. Changing the write (e.g. logging on PATCH too) changes all four readers.
@@ -98,12 +98,12 @@ _Regenerated from code. 107 backend routes, 85 web api.js functions, 77 mobile a
 | POST | `/auth/delete-account` ⚠️ | NONE | app/routers/auth_router.py:149 | — | — |
 | POST | `/auth/delete-account/me` | user | app/routers/auth_router.py:163 | `deleteAccount` → pages/SettingsPage.jsx | `profileAPI.deleteAccount` → screens/SettingsScreen.js |
 | POST | `/books/add-to-library` | user | app/routers/books_router.py:35 | `addToLibrary` → components/AppTour.jsx, components/BookPreviewModal.jsx, pages/HomePage.jsx, pages/LibraryPage.jsx, pages/SearchPage.jsx | `booksAPI.addToLibrary` → components/AppTour.js, screens/BookPreviewScreen.js, screens/FeedScreen.js, screens/LibraryScreen.js, screens/OnboardingScreen.js, screens/SearchScreen.js, screens/UserProfileScreen.js |
-| GET | `/books/` ⚠️ | NONE | app/routers/books_router.py:149 | — | `booksAPI.getAll` → (unused) |
-| POST | `/books/` ⚠️ | NONE | app/routers/books_router.py:156 | — | — |
-| GET | `/books/recommendations` | user | app/routers/books_router.py:202 | `getRecommendations` → pages/HomePage.jsx | `booksAPI.getRecommendations` → screens/FeedScreen.js |
-| GET | `/books/search` | user | app/routers/books_router.py:309 | `searchLocalBooks` → pages/SearchPage.jsx | — |
-| GET | `/books/{book_id}` ⚠️ | NONE | app/routers/books_router.py:336 | — | — |
-| DELETE | `/books/{book_id}` ⚠️ | NONE | app/routers/books_router.py:345 | — | — |
+| GET | `/books/` | user | app/routers/books_router.py:149 | — | `booksAPI.getAll` → (unused) |
+| POST | `/books/` | user | app/routers/books_router.py:160 | — | — |
+| GET | `/books/recommendations` | user | app/routers/books_router.py:206 | `getRecommendations` → pages/HomePage.jsx | `booksAPI.getRecommendations` → screens/FeedScreen.js |
+| GET | `/books/search` | user | app/routers/books_router.py:313 | `searchLocalBooks` → pages/SearchPage.jsx | — |
+| GET | `/books/{book_id}` | user | app/routers/books_router.py:340 | — | — |
+| DELETE | `/books/{book_id}` | admin | app/routers/books_router.py:349 | — | — |
 | POST | `/follow/{followed_id}` | user | app/routers/follow_router.py:12 | `followUser` → pages/UserProfilePage.jsx | `userAPI.followUser` → screens/FeedScreen.js, screens/UserProfileScreen.js |
 | DELETE | `/follow/{followed_id}` | user | app/routers/follow_router.py:55 | `unfollowUser` → pages/UserProfilePage.jsx | `userAPI.unfollowUser` → screens/FeedScreen.js, screens/UserProfileScreen.js |
 | GET | `/follow/following` | user | app/routers/follow_router.py:71 | — | — |
@@ -160,7 +160,7 @@ _Regenerated from code. 107 backend routes, 85 web api.js functions, 77 mobile a
 | POST | `/profile/me/picture` | user | app/routers/profile_router.py:174 | — | `profileAPI.uploadPicture` → screens/ProfileScreen.js, screens/SettingsScreen.js |
 | GET | `/profile/{user_id}` | user | app/routers/profile_router.py:210 | `getPublicProfile` → pages/UserProfilePage.jsx | `profileAPI.getPublicProfile` → screens/UserProfileScreen.js |
 | POST | `/push-tokens/` | user | app/routers/push_router.py:20 | — | `userAPI.registerPushToken` → (unused) |
-| DELETE | `/push-tokens/` | user | app/routers/push_router.py:56 | — | — |
+| DELETE | `/push-tokens/` | user | app/routers/push_router.py:63 | — | — |
 | GET | `/reading-activity/daily` | user | app/routers/reading_activity_router.py:12 | `getMyActivity` → pages/LibraryPage.jsx, pages/ProfilePage.jsx | `activityAPI.getMyActivity` → App.js, screens/InsightsScreen.js, screens/ProfileScreen.js |
 | GET | `/reading-activity/insights` | user | app/routers/reading_activity_router.py:55 | `getReadingInsights` → pages/InsightsPage.jsx, pages/ProfilePage.jsx | `activityAPI.getInsights` → App.js, screens/InsightsScreen.js, screens/ProfileScreen.js |
 | GET | `/reading-activity/user/{user_id}/daily` | user | app/routers/reading_activity_router.py:190 | `getUserActivity` → pages/UserProfilePage.jsx | `activityAPI.getUserActivity` → screens/UserProfileScreen.js |

@@ -37,7 +37,10 @@ def register_push_token(
         }
 
     existing = db.exec(
-        select(models.PushToken).where(models.PushToken.user_id == current_user.id)
+        select(models.PushToken).where(
+            models.PushToken.user_id == current_user.id,
+            models.PushToken.token_type == "expo",
+        )
     ).first()
 
     if existing:
@@ -46,7 +49,11 @@ def register_push_token(
         db.add(existing)
         print(f"[Push] Token updated for user {current_user.id} ({current_user.email})")
     else:
-        db.add(models.PushToken(user_id=current_user.id, token=payload.token))
+        db.add(models.PushToken(
+            user_id=current_user.id,
+            token=payload.token,
+            token_type="expo",
+        ))
         print(f"[Push] Token registered for user {current_user.id} ({current_user.email})")
 
     db.commit()
@@ -60,12 +67,16 @@ def deregister_push_token(
 ):
     """Remove push token on logout so the user stops receiving notifications."""
     existing = db.exec(
-        select(models.PushToken).where(models.PushToken.user_id == current_user.id)
-    ).first()
+        select(models.PushToken).where(
+            models.PushToken.user_id == current_user.id,
+            models.PushToken.token_type == "expo",
+        )
+    ).all()
 
+    for row in existing:
+        db.delete(row)
     if existing:
-        db.delete(existing)
         db.commit()
-        print(f"[Push] Token removed for user {current_user.id} ({current_user.email})")
+        print(f"[Push] Expo token(s) removed for user {current_user.id} ({current_user.email})")
 
     return {"message": "Push token removed"}

@@ -47,7 +47,7 @@ class TestDailyStats:
         user = _make_user(db, email="ra_progress@example.com")
         h = _auth(user)
         add = _add_book(client, h, title="Activity Book", pages=200, status="reading")
-        ub_id = add.json()["userbook"]["id"]
+        ub_id = add.json()["id"]
         client.put(f"/userbooks/{ub_id}/progress", json={"current_page": 50}, headers=h)
         r = client.get("/reading-activity/daily?days=1", headers=h)
         today_pages = r.json()["data"][-1]["pages_read"]
@@ -121,7 +121,7 @@ class TestInsights:
         user = _make_user(db, email="ra_proj@example.com")
         h = _auth(user)
         add = _add_book(client, h, title="Long Book", pages=500, status="reading")
-        ub_id = add.json()["userbook"]["id"]
+        ub_id = add.json()["id"]
         client.put(f"/userbooks/{ub_id}/progress", json={"current_page": 100}, headers=h)
         r = client.get("/reading-activity/insights", headers=h)
         # projected_finishes is a list (may be empty if avg_pages_per_day == 0)
@@ -131,7 +131,7 @@ class TestInsights:
         user = _make_user(db, email="ra_rated@example.com")
         h = _auth(user)
         add = _add_book(client, h, title="Rated Book", pages=100, status="finished")
-        ub_id = add.json()["userbook"]["id"]
+        ub_id = add.json()["id"]
         client.patch(f"/userbooks/{ub_id}", json={"rating": 4}, headers=h)
         r = client.get("/reading-activity/insights", headers=h)
         assert r.json()["avg_rating"] == 4.0

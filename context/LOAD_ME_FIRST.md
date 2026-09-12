@@ -268,12 +268,19 @@ The correct key names (backend + frontend must match):
 
 ---
 
+## Recently Shipped (September 12, 2026 — sprint-1-hardening)
+
+- `app/routers/books_router.py` — `GET /books/`, `GET /books/{id}`, `POST /books/` now require `get_current_user`; `DELETE /books/{id}` now requires `get_admin_user`. `GET /books/` takes `limit: int = Query(50, ge=1, le=200)` (out-of-range → 422, not clamped). No response shape changed.
+- `app/routers/push_router.py` — register/deregister now filter `PushToken.token_type == "expo"`, so a mobile login/logout never touches a user's `web` push row. Register upserts the single `expo` row per user; deregister deletes every `expo` row for the user (cleans up any historical duplicate).
+- `POST /auth/delete-account` deliberately left unauthenticated — it backs the public Play-Store account-deletion form (`account-deletion.html`), which must be reachable with no token. Not a bug; see `features/security/sprint-1-hardening/`.
+- Fixed 12 stale tests in `tests/test_books.py` / `tests/test_reading_activity.py` that asserted the pre-May-4 `add.json()["userbook"]["id"]` shape instead of the current flat `add.json()["id"]`. Added `TestCatalogAuth`, `TestCatalogList`, `TestCatalogCreate`, `TestRecommendations`, `tests/test_push_tokens.py`, and `TestPublicDeleteAccountForm`. Suite: 150 passed, 0 failed.
+- `.venv/` and `venv/` (12,313 files) removed from the git index (`git rm -r --cached`, kept on disk); `.venv/` added to `.gitignore` next to `venv/`.
+- `python scripts/gen_dependency_map.py` re-run — the four `/books` routes show `user`/`user`/`user`/`admin` with no ⚠️; `/auth/delete-account` and `/api/googlebooks/*` correctly keep theirs (out of scope).
+- Full detail: `features/security/sprint-1-hardening/{spec,architecture,tests,code-map}.md`.
+
 ## Known Issues / Next Priorities
 
-**HIGH:**
-1. Unauthenticated `DELETE /books/{id}` (see Sept 12 audit above)
-1b. `push_router.py` token_type bug
-1c. 12 stale failing tests
+**HIGH:** none carried over from the Sept 12 audit — the three items below were closed by sprint-1-hardening (see "Recently Shipped" above).
 
 **MEDIUM:**
 2. Web `/search` route still exists but removed from Nav — decide: keep or delete route
