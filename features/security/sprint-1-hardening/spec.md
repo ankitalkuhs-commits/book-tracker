@@ -2,8 +2,8 @@
 screen: sprint-1-hardening
 feature: security
 repo: api (+ repo root for git hygiene)
-status: in-progress
-last_verified: 2026-09-12
+status: tested
+last_verified: 2026-09-13
 approved_by: PM ("run the first sprint", 2026-09-12)
 ---
 

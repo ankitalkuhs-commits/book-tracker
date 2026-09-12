@@ -4,7 +4,7 @@ path: app/
 purpose: FastAPI backend — both clients consume this
 tech: FastAPI 0.95, SQLModel 0.0.8, SQLAlchemy 1.4, PostgreSQL (Supabase) / SQLite (dev)
 deploy: Render free tier → https://book-tracker-stitch.onrender.com, auto-deploys from master
-last_verified: 2026-09-12
+last_verified: 2026-09-13
 ---
 
 ## Entry Points
@@ -28,8 +28,9 @@ last_verified: 2026-09-12
 ## Called By
 - web (`book-tracker-frontend-stitch/src/services/api.js`) · mobile (`book-tracker-mobile-stitch/src/services/api.js`)
 
-## Health (2026-09-12)
-- pytest: 103 pass / 12 fail (stale `add-to-library` response-shape expectations in tests)
+## Health (2026-09-13)
+- pytest: 150 passed, 0 failed (was 103 pass / 12 fail; sprint-1-hardening +37 new tests, +12 fixed stale call sites)
+- Venvs untracked from git (12,313 files removed from index; both .venv/ and venv/ remain on disk)
 - No CI on backend (workflows only build the Android app)
 - Render free tier sleeps → 14:30 UTC scheduler job rarely fires
-- See dependency-map.md and the Sept 2026 audit memory for open findings
+- See dependency-map.md and the Sept 2026 audit memory for open findings (friends-feed sort, /notes/me hardcode, scheduler bypass, insights bugs, note_posted fires for private, profile logging, admin broadcast using old push path, dead client calls, /auth/signup|login decision, /api/googlebooks/* auth decision, tracked .pyc + book_tracker.db, missing og-image.png, Vercel build:ssg unverified)

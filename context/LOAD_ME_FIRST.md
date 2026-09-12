@@ -276,19 +276,25 @@ The correct key names (backend + frontend must match):
 - Fixed 12 stale tests in `tests/test_books.py` / `tests/test_reading_activity.py` that asserted the pre-May-4 `add.json()["userbook"]["id"]` shape instead of the current flat `add.json()["id"]`. Added `TestCatalogAuth`, `TestCatalogList`, `TestCatalogCreate`, `TestRecommendations`, `tests/test_push_tokens.py`, and `TestPublicDeleteAccountForm`. Suite: 150 passed, 0 failed.
 - `.venv/` and `venv/` (12,313 files) removed from the git index (`git rm -r --cached`, kept on disk); `.venv/` added to `.gitignore` next to `venv/`.
 - `python scripts/gen_dependency_map.py` re-run — the four `/books` routes show `user`/`user`/`user`/`admin` with no ⚠️; `/auth/delete-account` and `/api/googlebooks/*` correctly keep theirs (out of scope).
+- **Unpushed:** Four commits on master — e8c8e8b process install, 390606b venv untracking, 2aeab8b the R1–R4 fixes + tests, and the sprint-close docs commit. Render deploys from master on push, so the live server still has old code until PM pushes. After deploy, PM runs spec Done Checklist items 1–3 on Render to verify.
 - Full detail: `features/security/sprint-1-hardening/{spec,architecture,tests,code-map}.md`.
 
 ## Known Issues / Next Priorities
 
-**HIGH:** none carried over from the Sept 12 audit — the three items below were closed by sprint-1-hardening (see "Recently Shipped" above).
+**HIGH:** None — closed by sprint-1-hardening:
+- ~~Anonymous `DELETE /books/{id}` + `GET /books/` + `POST /books/`~~ (R1)
+- ~~Mobile login overwrites web push row~~ (R3)
+- ~~12 stale test failures~~ (R4)
 
 **MEDIUM:**
-2. Web `/search` route still exists but removed from Nav — decide: keep or delete route
-3. Onboarding "Add a Book" step (mobile) — verify book search + add flow end-to-end after tour changes
-4. Users who rated books before May 4, 2026 may have had their book status reset to "to-read" — consider a DB repair script to restore finished status for affected userbooks
+1. Web `/search` route still exists but removed from Nav — decide: keep or delete route
+2. Onboarding "Add a Book" step (mobile) — verify book search + add flow end-to-end after tour changes
+3. Users who rated books before May 4, 2026 may have had their book status reset to "to-read" — consider a DB repair script to restore finished status for affected userbooks
 
 **LOW:**
-5. `broadcast_push_notification` in admin_router.py uses old `send_push_to_many` — breaks for web push users on admin broadcasts
+4. `broadcast_push_notification` in admin_router.py uses old `send_push_to_many` — breaks for web push users on admin broadcasts
+5. `app/__pycache__/*.pyc` tracked in git despite `__pycache__/` in .gitignore (pre-existing; same class as venvs)
+6. `book_tracker.db`, `crash.txt`, loose `migrate_*.py`/`check_*.py` tracked in git (pre-existing; mentioned not fixed)
 
 ---
 

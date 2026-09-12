@@ -11,7 +11,7 @@ Cross-cutting hardening work: auth on every route, ownership/privacy enforcement
 ## Screens / Work Items
 | Item | Status | Node |
 |---|---|---|
-| Sprint 1 hardening (books auth, push token_type, stale tests, venv untracking) | in-progress | [sprint-1-hardening/](sprint-1-hardening/) |
+| Sprint 1 hardening (books auth, push token_type, stale tests, venv untracking) | tested | [sprint-1-hardening/](sprint-1-hardening/) |
 
 ## Cross-Feature Dependencies
 - depends_on: features/auth (`get_current_user`, `get_admin_user`)
