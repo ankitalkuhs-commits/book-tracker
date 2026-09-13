@@ -65,6 +65,31 @@ book-tracker/
 
 ## CRITICAL PATTERNS (learn these before touching anything)
 
+### Confirm a deploy
+Deploy verification is unauthenticated and does not depend on login working:
+```bash
+curl -s https://book-tracker-stitch.onrender.com/version
+# Expected: {"commit":"<GIT_SHA>","service":"book-tracker-stitch","branch":"master"}
+# Compare commit against: git rev-parse HEAD
+```
+
+### QA login (review accounts)
+For screenshots and post-deploy checks (no UI — endpoint only):
+```bash
+# Get a token (secret in .env.review or env var REVIEW_LOGIN_SECRET):
+curl -X POST https://book-tracker-stitch.onrender.com/auth/review-login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"review.reader@trackmyread.com","secret":"<SECRET>"}'
+
+# Seed accounts (idempotent):
+python scripts/seed_review_accounts.py --base-url https://book-tracker-stitch.onrender.com
+
+# Log browser in:
+localStorage.setItem('bt_token', '<access_token>'); location.href = '/home';
+```
+
+**Critical:** Render env vars must be **exactly** named `REVIEW_LOGIN_SECRET` and `REVIEW_LOGIN_EMAILS` (not `Reader_acc` / `Friend_acc`).
+
 ### Push Notifications
 ```python
 # ✅ ALWAYS use this:
@@ -102,6 +127,20 @@ The correct key names (backend + frontend must match):
 - India (`.in` TZ): tag = `trackmyread-21` → `amazon.in`
 - Global: tag = `trackmyread-20` → `amazon.com`
 - Detect via: `Intl.DateTimeFormat().resolvedOptions().timeZone`
+
+---
+
+## Recently Shipped (September 13, 2026 — Review login + /version)
+
+### QA login + deploy verification endpoints (pytest 252/252, 5 BLOCKED live checks)
+
+**What changed:** Backend now has `POST /auth/review-login` (allowlisted review accounts with a shared secret, gated by env, 404 when unconfigured) and `GET /version` (returns the running commit SHA so a deploy can be verified without logging in). `scripts/seed_review_accounts.py` populates both accounts through the API with books, notes, a mutual follow, and a public Circle. QA can now take post-deploy screenshots without a Google account or UI changes. `/version` closes the sprint-2 verification gap — behaviour-only deploys leave `/openapi.json` byte-identical, so only the commit SHA proves it worked.
+
+**Where to find it:** `features/auth/review-login/{spec,architecture,tests,code-map,learnings}.md` → requirements R1–R6; all implemented and tested 2026-09-13.
+
+**Gotchas:** `POST /auth/review-login` returns **404 unless both `REVIEW_LOGIN_SECRET` and `REVIEW_LOGIN_EMAILS` env vars are set on Render** — PM action required. Keys must be named **exactly** `REVIEW_LOGIN_SECRET` and `REVIEW_LOGIN_EMAILS` (not `Reader_acc` or `Friend_acc`). The seed script reads the secret from env var first, then from `.env.review` at the repo root (gitignored). Live checks (seed twice, production screenshots with `/version` verify, sprint-2 live checks 1–4) are **BLOCKED** until the PM sets those keys.
+
+**Next sprint:** PM to set `REVIEW_LOGIN_SECRET` (generated with `python -c "import secrets; print(secrets.token_urlsafe(32))"`) and `REVIEW_LOGIN_EMAILS=review.reader@trackmyread.com,review.friend@trackmyread.com` in Render → Environment. Then run the live checks and `/auth/signup|login` + `/api/googlebooks/*` PM decisions can proceed.
 
 ---
 
@@ -295,12 +334,15 @@ The correct key names (backend + frontend must match):
 
 ## Known Issues / Next Priorities
 
+**BLOCKED (PM action pending):**
+- `REVIEW_LOGIN_SECRET` and `REVIEW_LOGIN_EMAILS` not yet set on Render → the two live checks (T47, T74–T77) cannot run; no production screenshots or sprint-2 live verifications until these are set. See "Recently Shipped (September 13 — Review login)" above.
+
 **HIGH:** None — all critical/auth/security items closed.
 
 **MEDIUM (Carried from sprints 1–2):**
 1. Web `/search` route still exists but removed from Nav — decide: keep or delete route
 2. Onboarding "Add a Book" step (mobile) — verify book search + add flow end-to-end after tour changes
-3. **PM decisions pending:** Remove `/auth/signup|login` (unused, password-based)? Add auth to `/api/googlebooks/*` (landing page may want anonymous search)?
+3. **PM decisions pending:** Remove `/auth/signup|login` (unused, password-based, now fully redundant)? Add auth to `/api/googlebooks/*` (landing page may want anonymous search)?
 
 **LOW:**
 4. Users who rated books before May 4, 2026 may have had their book status reset to "to-read" — consider a DB repair script to restore finished status for affected userbooks (needs PM approval)

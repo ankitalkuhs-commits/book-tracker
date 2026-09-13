@@ -2,7 +2,7 @@
 screen: review-login
 feature: auth
 repo: api (+ scripts/, .gitignore)
-status: in-progress
+status: tested
 last_verified: 2026-09-13
 approved_by: PM (2026-09-13 — "create similar dummy accounts to login … so that you can take screenshots [and] understand the deployment is working")
 ---

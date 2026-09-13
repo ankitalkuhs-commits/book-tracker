@@ -133,4 +133,4 @@ To force re-onboarding for all web users: bump `ONBOARDING_KEY` from `'bt_onboar
 ## Screens / Work Items (node system)
 | Item | Status | Node |
 |---|---|---|
-| Review login + GET /version (QA/reviewer accounts, deploy verification) | in-progress | [review-login/](review-login/) |
+| Review login + GET /version (QA/reviewer accounts, deploy verification) | tested | [review-login/](review-login/) |

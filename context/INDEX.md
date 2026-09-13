@@ -18,6 +18,7 @@
 | [`MOBILE_STITCH_PHASE3.md`](MOBILE_STITCH_PHASE3.md) | Per-screen mobile rebuild changelog (April 2026) |
 | [`../AGENTS_DESIGN.md`](../AGENTS_DESIGN.md) | **7-agent process** (ported from School ERP 2026-09-12); prompts in `../agents/`; PM guide `../specs/PM_PLAYBOOK.md` |
 | [`../dependency-map.md`](../dependency-map.md) | **Endpoint → consumers.** Check before changing any API; regenerate with `python scripts/gen_dependency_map.py` |
+| [`../qa/screenshots.mjs`](../qa/screenshots.mjs) | Post-deploy screenshot tool (logs in as review account, renders Home/Library/Circles/Insights/Profile/Notifications, writes `report.json`) |
 
 ---
 
@@ -28,6 +29,7 @@ Moved from `context/*/README.md` on 2026-09-12. Per-screen sub-folders (`spec.md
 | Area | README | Key Files |
 |---|---|---|
 | Auth | [`../features/auth/index.md`](../features/auth/index.md) | `app/routers/auth_router.py`, `app/auth.py` |
+| — | [`../features/auth/review-login/`](../features/auth/review-login/) | `POST /auth/review-login`, `GET /version`, `scripts/seed_review_accounts.py`, `qa/screenshots.mjs` |
 | Library | [`../features/library/index.md`](../features/library/index.md) | `books_router.py`, `userbooks_router.py`, `LibraryPage.jsx`, `LibraryScreen.js` |
 | Community | [`../features/community/index.md`](../features/community/index.md) | `notes_router.py`, `follow_router.py`, `likes_comments.py`, `HomePage.jsx`, `FeedScreen.js` |
 | Reading Stats | [`../features/reading-stats/index.md`](../features/reading-stats/index.md) | `InsightsPage.jsx`, `InsightsScreen.js` |
@@ -41,7 +43,8 @@ Moved from `context/*/README.md` on 2026-09-12. Per-screen sub-folders (`spec.md
 
 | Router | Endpoints |
 |---|---|
-| `auth_router.py` | `POST /auth/google`, `DELETE /auth/delete-account/me` |
+| `auth_router.py` | `POST /auth/google`, `POST /auth/review-login` (new), `DELETE /auth/delete-account/me` |
+| `meta_router.py` | `GET /version` (new — Render env metadata) |
 | `books_router.py` | `GET /books/search`, `GET /books/recommendations` |
 | `userbooks_router.py` | `GET/POST /userbooks/`, `PATCH /userbooks/{id}` |
 | `notes_router.py` | `GET /notes/feed`, `POST /notes/`, `POST /notes/upload-image`, `DELETE /notes/{id}` (removes likes+comments first) |

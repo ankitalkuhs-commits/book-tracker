@@ -28,10 +28,12 @@ last_verified: 2026-09-13 (sprint-2-audit-bugs: R1–R7 shipped, 72/72 verdict P
 ## Called By
 - web (`book-tracker-frontend-stitch/src/services/api.js`) · mobile (`book-tracker-mobile-stitch/src/services/api.js`)
 
-## Health (2026-09-13 — sprint 2)
-- pytest: 213 passed, 0 failed (was 150; sprint-2-audit-bugs +63 new tests)
+## Health (2026-09-13 — sprint 2 + review-login)
+- pytest: 252 passed, 0 failed (was 213; review-login +39 new tests)
+- `GET /version` exists and returns Render-injected env (commit/service/branch); deployments now verifiable
+- `POST /auth/review-login` gated by env allowlist + secret, 404 when unconfigured (local dev default safe)
 - Venvs + `.pyc` files untracked from git; `book_tracker.db` untracked (12,313 files removed from index; both .venv/ and venv/ remain on disk)
 - No CI on backend (workflows only build the Android app)
 - Render free tier sleeps → 14:30 UTC; scheduler fires but is queued inefficiently (all users per-recipient sequentially)
 - Seven audit bugs fixed: friends-feed reorder (mutuals first), own-note likes (real state), private-note privacy (group activity), insights months/streak (calendar math), profile PII logging, streak reminder through dispatcher, admin broadcast on both channels
-- Carried open items: `/auth/signup|login` PM decision, `/api/googlebooks/*` auth PM decision, dead client calls (web `demoLogin`, mobile `userAPI.getUser`), DB repair for pre-May-4 rating bugs, unused `send_push_notification_to_user` import, missing `og-image.png`, Vercel `build:ssg` unverified
+- Carried open items: PM to set `REVIEW_LOGIN_*` env keys on Render; `/auth/signup|login` PM decision, `/api/googlebooks/*` auth PM decision, dead client calls (web `demoLogin`, mobile `userAPI.getUser`), DB repair for pre-May-4 rating bugs, unused `send_push_notification_to_user` import, missing `og-image.png`, Vercel `build:ssg` unverified
