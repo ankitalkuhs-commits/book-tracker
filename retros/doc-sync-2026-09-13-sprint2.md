@@ -178,3 +178,6 @@ Run the spec Done Checklist 1–6 on live Render backend:
 - All privacy cases (R2, R3) and consent cases (R6 pref gate) passed; no regressions
 - Next sprint can tackle carried items: PM decisions, dead calls, DB repair, performance batching, cleanup passes
 - Six learnings captured for next hardening sprint (tuple sorting, month iteration, streak anchoring, timing edge case, dead import cleanup, builder validation)
+
+## Added after close (orchestrator, 2026-09-13 09:25)
+- Deploy of f20bb08 could not be confirmed externally (schema unchanged, all changed routes need auth). Sprint-1's deploy took ~3 min after push; f20bb08 was pushed 09:01. **Sprint 3 candidate:** `GET /version` → `{commit: RENDER_GIT_COMMIT}` so deploys are verifiable.
