@@ -57,3 +57,6 @@ public_key.pem
 
 # QA screenshot output (qa/screenshots.mjs)
 qa/screenshots/
+
+# Editor / Office lock files (e.g. ~$.env.review created when opening .env.review)
+~$*
