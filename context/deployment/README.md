@@ -79,6 +79,9 @@ screenshots and post-deploy checks. They are ordinary users in every other respe
 above). `POST /auth/review-login` returns **404** unless both are set — local dev and CI have it
 switched off by default, and switching it on is a deliberate act on Render.
 
+The Render **key names must be exactly** `REVIEW_LOGIN_EMAILS` and `REVIEW_LOGIN_SECRET`. Keys with
+any other name (e.g. `Reader_acc`, `Friend_acc`) are ignored and the endpoint stays 404.
+
 **Domain guard:** every address in `REVIEW_LOGIN_EMAILS` must end in `@trackmyread.com`; anything
 else is ignored and gets a 401. A typo can never open login for a real user's Gmail.
 
@@ -113,6 +116,18 @@ curl -s https://book-tracker-stitch.onrender.com/version
 # {"commit":"b8b6124…","service":"book-tracker-stitch","branch":"master"}
 ```
 Compare `commit` against `git rev-parse HEAD`.
+
+**Post-deploy screenshots** (logs in as `review.reader` via the endpoint above, screenshots
+Home / Library / Circles / Insights / Profile / Notifications on desktop plus Home / Library on
+mobile, and writes `report.json` with console errors and failed API calls per page):
+```bash
+npm --prefix qa install          # once; Playwright 1.60.0, reuses the cached Chromium
+node qa/screenshots.mjs --web https://www.trackmyread.com --api https://book-tracker-stitch.onrender.com --out qa/screenshots/<date>-prod
+```
+Reads the secret from `REVIEW_LOGIN_SECRET` or `.env.review` (`--secret-file` to override; not
+`--env-file`, which Node 22 claims for itself). Exit codes: `0` all pages rendered logged-in with no
+failed API calls · `1` a page redirected to login or had failed API calls · `2` no secret · `3` login
+refused (`404` = env vars not set on Render). Output under `qa/screenshots/` is gitignored.
 
 ---
 
@@ -215,4 +230,5 @@ Cloudinary validates image format server-side; no local validation needed.
 
 ## Known Issues
 
-- `broadcast_push_notification` in `admin_router.py` uses old `send_push_to_many` — breaks for web push users on admin broadcasts. Not yet fixed.
+- ~~`broadcast_push_notification` uses old `send_push_to_many`~~ — fixed in sprint 2 (2026-09-13): per-user Expo + web push, `admin_broadcast` NotificationLog rows.
+- `app/utils/push.py` is still imported (unused) by `likes_comments.py` — cleanup item.

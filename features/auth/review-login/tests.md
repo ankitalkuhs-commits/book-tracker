@@ -2,8 +2,8 @@
 screen: review-login
 feature: auth
 test_plan_written: 2026-09-13
-last_run: —
-pass_rate: —/77
+last_run: 2026-09-13
+pass_rate: 72/77
 written_by: Senior QA (before Builder; no build code exists yet — only shipped pre-sprint code was read, to state current behaviour where the plan requires it)
 sources: spec.md (APPROVED, R1–R6), architecture.md (PM-approved Technical Brief), decisions/ADR-001-version-route-placement.md, dependency-map.md (curated "Auth / review"), tests/conftest.py, tests/test_auth.py, features/maintenance/sprint-2-audit-bugs/tests.md, features/_templates/screen-tests.md
 baseline: 213 tests collected, 107 routes in the generated map (both verified 2026-09-13, pre-build)
@@ -46,89 +46,89 @@ would fail mysteriously. T29 and T39 are the two cases that catch it.
 | # | Case | Priority | Severity | Status | Notes |
 |---|---|---|---|---|---|
 | **R1 — `POST /auth/review-login`** | | | | | |
-| T01 | Both env vars unset → `404` | P0 | **Critical** | | The default state of local dev, CI, every fork |
-| T02 | Only `REVIEW_LOGIN_SECRET` set → `404` | P0 | **Critical** | | |
-| T03 | Only `REVIEW_LOGIN_EMAILS` set → `404` | P0 | **Critical** | | |
-| T04 | `REVIEW_LOGIN_SECRET="   "` (blank after strip) → `404` | P0 | **Critical** | | |
-| T05 | `REVIEW_LOGIN_EMAILS=" , , "` (no entries after parse) → `404` | P0 | **Critical** | | |
-| T06 | Both set, email not on the allowlist, correct secret → `401` | P0 | **Critical** | | |
-| T07 | Both set, allowlisted email, wrong secret → `401` | P0 | **Critical** | | |
-| T08 | T06 and T07 return a byte-identical body | P0 | **Critical** | | No allowlist enumeration |
-| T09 | Allowlist holds `someone@gmail.com`, that address + **correct** secret → `401`, no user row | P0 | **Critical** | | The mistyped-env-var guard |
-| T10 | Allowlist holds a lookalike domain (`x@trackmyread.com.evil.io`) + correct secret → `401` | P0 | **Critical** | | `endswith`, not `in` |
-| T11 | Secret that is a **prefix** of the real one → `401` | P0 | **Critical** | | |
-| T12 | Secret that has the real one as a prefix (real + `"x"`) → `401` | P0 | **Critical** | | |
-| T13 | `{"secret": ""}` with a configured server → `401` (**not** 422) | P0 | Major | | Arch pins `secret: str`, unconstrained |
-| T14 | `secret` key absent from the body → `422` | P1 | Minor | | Known, accepted disclosure |
-| T15 | Non-ASCII / emoji secret → `401`, never `500` | P0 | Major | | `compare_digest` on `str` raises `TypeError` |
-| T16 | 10 000-character email and secret → `401`, never `500` | P1 | Minor | | |
-| T17 | Happy path → `200`, `is_new is True`, `name == "Review.Reader"` | P0 | **Critical** | | Feature dead if this fails |
-| T18 | Body is exactly `{access_token, is_new, user:{id,name,email}}` | P0 | **Critical** | | Same shape as `/auth/google` |
-| T19 | Second call, same email → `is_new is False`, same `user.id` | P0 | Major | | |
-| T20 | `" Review.Reader@TrackMyRead.com "` → `200`, **same id** as the lowercase call, one row | P0 | **Critical** | | Duplicate-row bug the arch flags as most likely |
-| T21 | Allowlist entries are trimmed and case-folded (` A@… , B@… `) → `200` | P0 | Major | | |
-| T22 | `name` uses `.title()` not `.capitalize()` | P1 | Minor | | `Review.Shape`, not `Review.shape` |
-| T23 | Returned token → `GET /profile/me` `200`, `email` matches | P0 | **Critical** | | R5 headline |
-| T24 | Returned token → `GET /userbooks/` `200` and `[]` | P0 | Major | | |
-| T25 | `user.last_active` is not None and `.date() == date.today()` | P1 | Major | | |
-| T26 | `auth.verify_password(secret, user.password_hash)` is **False** | P0 | **Critical** | | The secret must never become the account password |
-| T27 | Created review user has `is_admin is False` | P0 | **Critical** | | |
-| T28 | Extra body fields (`is_admin`, `id`, `name`) are ignored | P0 | **Critical** | | Mass assignment |
-| T29 | `404` again **after** a successful 200 test, with the vars removed | P0 | **Critical** | | Env leak between tests |
-| T30 | Review token cannot `PATCH` Alice's userbook → `404`, row unchanged | P0 | **Critical** | | Ownership |
-| T31 | `/auth/review-login` absent from `GET /openapi.json` | P2 | Minor | | `include_in_schema=False` |
-| T32 | `GET /auth/review-login` → `405` even when unconfigured | P2 | Minor | | Documents the accepted disclosure |
+| T01 | Both env vars unset → `404` | P0 | **Critical** | PASS | 1 passed |
+| T02 | Only `REVIEW_LOGIN_SECRET` set → `404` | P0 | **Critical** | PASS | 1 passed |
+| T03 | Only `REVIEW_LOGIN_EMAILS` set → `404` | P0 | **Critical** | PASS | 1 passed |
+| T04 | `REVIEW_LOGIN_SECRET="   "` (blank after strip) → `404` | P0 | **Critical** | PASS | 1 passed |
+| T05 | `REVIEW_LOGIN_EMAILS=" , , "` (no entries after parse) → `404` | P0 | **Critical** | PASS | 1 passed |
+| T06 | Both set, email not on the allowlist, correct secret → `401` | P0 | **Critical** | PASS | 1 passed |
+| T07 | Both set, allowlisted email, wrong secret → `401` | P0 | **Critical** | PASS | 1 passed |
+| T08 | T06 and T07 return a byte-identical body | P0 | **Critical** | PASS | 1 passed |
+| T09 | Allowlist holds `someone@gmail.com`, that address + **correct** secret → `401`, no user row | P0 | **Critical** | PASS | 1 passed |
+| T10 | Allowlist holds a lookalike domain (`x@trackmyread.com.evil.io`) + correct secret → `401` | P0 | **Critical** | PASS | 1 passed |
+| T11 | Secret that is a **prefix** of the real one → `401` | P0 | **Critical** | PASS | 1 passed |
+| T12 | Secret that has the real one as a prefix (real + `"x"`) → `401` | P0 | **Critical** | PASS | 1 passed |
+| T13 | `{"secret": ""}` with a configured server → `401` (**not** 422) | P0 | Major | PASS | 1 passed |
+| T14 | `secret` key absent from the body → `422` | P1 | Minor | PASS | 1 passed |
+| T15 | Non-ASCII / emoji secret → `401`, never `500` | P0 | Major | PASS | 1 passed |
+| T16 | 10 000-character email and secret → `401`, never `500` | P1 | Minor | PASS | 1 passed |
+| T17 | Happy path → `200`, `is_new is True`, `name == "Review.Reader"` | P0 | **Critical** | PASS | 1 passed |
+| T18 | Body is exactly `{access_token, is_new, user:{id,name,email}}` | P0 | **Critical** | PASS | 1 passed |
+| T19 | Second call, same email → `is_new is False`, same `user.id` | P0 | Major | PASS | 1 passed |
+| T20 | `" Review.Reader@TrackMyRead.com "` → `200`, **same id** as the lowercase call, one row | P0 | **Critical** | PASS | 1 passed |
+| T21 | Allowlist entries are trimmed and case-folded (` A@… , B@… `) → `200` | P0 | Major | PASS | 1 passed |
+| T22 | `name` uses `.title()` not `.capitalize()` | P1 | Minor | PASS | 1 passed |
+| T23 | Returned token → `GET /profile/me` `200`, `email` matches | P0 | **Critical** | PASS | 1 passed |
+| T24 | Returned token → `GET /userbooks/` `200` and `[]` | P0 | Major | PASS | 1 passed |
+| T25 | `user.last_active` is not None and `.date() == date.today()` | P1 | Major | PASS | 1 passed |
+| T26 | `auth.verify_password(secret, user.password_hash)` is **False** | P0 | **Critical** | PASS | 1 passed |
+| T27 | Created review user has `is_admin is False` | P0 | **Critical** | PASS | 1 passed |
+| T28 | Extra body fields (`is_admin`, `id`, `name`) are ignored | P0 | **Critical** | PASS | 1 passed |
+| T29 | `404` again **after** a successful 200 test, with the vars removed | P0 | **Critical** | PASS | 1 passed |
+| T30 | Review token cannot `PATCH` Alice's userbook → `404`, row unchanged | P0 | **Critical** | PASS | 1 passed |
+| T31 | `/auth/review-login` absent from `GET /openapi.json` | P2 | Minor | PASS | 1 passed |
+| T32 | `GET /auth/review-login` → `405` even when unconfigured | P2 | Minor | PASS | 1 passed |
 | **R2 — `GET /version`** | | | | | |
-| T33 | No env → exactly `{"commit": null, "service": null, "branch": null}` | P0 | Major | | |
-| T34 | All three Render vars set → echoed under the right keys | P0 | Major | | Catches a commit/branch swap |
-| T35 | Exactly three keys — no extras | P0 | **Critical** | | The no-env-dump guarantee |
-| T36 | No `Authorization` header → `200` (not 401) | P0 | Major | | Auth-free by design |
-| T37 | No other env var (`SECRET_KEY`, `DATABASE_URL`, a decoy) appears in the body | P0 | **Critical** | | |
-| T38 | Only `RENDER_GIT_COMMIT` set → commit echoed, other two `null` | P1 | Minor | | |
-| T39 | Two calls either side of a `setenv` give different answers | P1 | Major | | Proves per-request read |
+| T33 | No env → exactly `{"commit": null, "service": null, "branch": null}` | P0 | Major | PASS | 1 passed |
+| T34 | All three Render vars set → echoed under the right keys | P0 | Major | PASS | 1 passed |
+| T35 | Exactly three keys — no extras | P0 | **Critical** | PASS | 1 passed |
+| T36 | No `Authorization` header → `200` (not 401) | P0 | Major | PASS | 1 passed |
+| T37 | No other env var (`SECRET_KEY`, `DATABASE_URL`, a decoy) appears in the body | P0 | **Critical** | PASS | 1 passed |
+| T38 | Only `RENDER_GIT_COMMIT` set → commit echoed, other two `null` | P1 | Minor | PASS | 1 passed |
+| T39 | Two calls either side of a `setenv` give different answers | P1 | Major | PASS | 1 passed |
 | **R3 — seed script** | | | | | |
-| T40 | `seed_review_accounts.py --help` exits `0` and documents `--base-url` | P1 | Major | | |
-| T41 | No secret in env and no `.env.review` → exit `2`, clear stderr, **no HTTP request** | P0 | Major | | |
-| T42 | grep: no secret-shaped literal anywhere in the script | P0 | **Critical** | | |
-| T43 | grep: no `from app`, `import app`, `sqlmodel`, `sqlite3`, `create_engine`, `DATABASE_URL` | P0 | **Critical** | | Public API only |
-| T44 | grep: `.env.review` is resolved from the **repo root**, not the cwd | P1 | Major | | |
-| T45 | grep: both account constants end in `@trackmyread.com` | P1 | Major | | |
-| T46 | grep: the script never opens `.env.review` for writing | P1 | Minor | | |
-| T47 | Two consecutive runs against a live server → second reports `created 0`, exit `0` | P0 | Major | **BLOCKED** | Live check |
+| T40 | `seed_review_accounts.py --help` exits `0` and documents `--base-url` | P1 | Major | PASS | help output shows --base-url |
+| T41 | No secret in env and no `.env.review` → exit `2`, clear stderr, **no HTTP request** | P0 | Major | PASS | exit=2, no connection error |
+| T42 | grep: no secret-shaped literal anywhere in the script | P0 | **Critical** | PASS | no literal found (exit=1) |
+| T43 | grep: no `from app`, `import app`, `sqlmodel`, `sqlite3`, `create_engine`, `DATABASE_URL` | P0 | **Critical** | PASS | no imports found (exit=1) |
+| T44 | grep: `.env.review` is resolved from the **repo root**, not the cwd | P1 | Major | PASS | Path(__file__).resolve().parent.parent pattern confirmed |
+| T45 | grep: both account constants end in `@trackmyread.com` | P1 | Major | PASS | READER, FRIEND both @trackmyread.com |
+| T46 | grep: the script never opens `.env.review` for writing | P1 | Minor | PASS | no write patterns found (exit=1) |
+| T47 | Two consecutive runs against a live server → second reports `created 0`, exit `0` | P0 | Major | **BLOCKED** | Live environment; orchestrator verifies after deploy |
 | **R4 — git hygiene + deployment README** | | | | | |
-| T48 | `.gitignore` contains `.env.*` **and** still contains the bare `.env` | P0 | **Critical** | | |
-| T49 | `git check-ignore .env.review` prints `.env.review`, exit `0` | P0 | **Critical** | | |
-| T50 | `git ls-files` lists no `.env*` file | P0 | **Critical** | | |
-| T51 | README has a `## Review accounts` section | P1 | Major | | |
-| T52 | That section names **both** env vars | P1 | Major | | |
-| T53 | It gives the secret-generation command (`secrets.token_urlsafe(32)`) | P1 | Major | | |
-| T54 | It gives the seed command and the token curl | P1 | Major | | |
-| T55 | It gives the `localStorage.setItem('bt_token'` line | P1 | Major | | |
-| T56 | It gives the `/version` deploy-verification curl | P1 | Minor | | |
-| T57 | The backend `.env` block gained both `REVIEW_LOGIN_*` keys with an **empty** secret value | P0 | **Critical** | | No real secret committed |
-| T58 | `## Known Issues` in the README is untouched | P2 | Minor | | Sprint-2 Doc Sync owns it |
+| T48 | `.gitignore` contains `.env.*` **and** still contains the bare `.env` | P0 | **Critical** | PASS | .env, .env.local, .env.* all present (lines 19-21) |
+| T49 | `git check-ignore .env.review` prints `.env.review`, exit `0` | P0 | **Critical** | PASS | properly ignored, exit=0 |
+| T50 | `git ls-files` lists no `.env*` file | P0 | **Critical** | PASS | no .env files tracked (exit=1) |
+| T51 | README has a `## Review accounts` section | P1 | Major | PASS | section found at line 72 |
+| T52 | That section names **both** env vars | P1 | Major | PASS | REVIEW_LOGIN_SECRET (2x), REVIEW_LOGIN_EMAILS (3x) |
+| T53 | It gives the secret-generation command (`secrets.token_urlsafe(32)`) | P1 | Major | PASS | command documented at line 87 |
+| T54 | It gives the seed command and the token curl | P1 | Major | PASS | both commands present (lines 101, 79) |
+| T55 | It gives the `localStorage.setItem('bt_token'` line | P1 | Major | PASS | line present at 107 |
+| T56 | It gives the `/version` deploy-verification curl | P1 | Minor | PASS | curl at line 112 |
+| T57 | The backend `.env` block gained both `REVIEW_LOGIN_*` keys with an **empty** secret value | P0 | **Critical** | PASS | REVIEW_LOGIN_SECRET= (empty), documented |
+| T58 | `## Known Issues` in the README is untouched | P2 | Minor | PASS | broadcast_push_notification not in diff (exit=1) |
 | **R6 — dependency map** | | | | | |
-| T59 | `gen_dependency_map.py` exits `0` and prints `109 routes` (was 107) | P0 | Major | | |
-| T60 | Generated table has `POST /auth/review-login ⚠️ | NONE` from `auth_router.py` | P0 | Major | | ⚠️ NONE is **expected** |
-| T61 | Generated table has `GET /version ⚠️ | NONE` from `meta_router.py` — not `/auth/version` | P0 | Major | | ADR-001 |
-| T62 | The curated `### Auth / review` section survives regeneration and explains both ⚠️s | P0 | Major | | |
-| T63 | No pre-existing row changed auth level, path or consumers | P0 | **Critical** | | Diff is additive only |
+| T59 | `gen_dependency_map.py` exits `0` and prints `109 routes` (was 107) | P0 | Major | PASS | 109 routes reported |
+| T60 | Generated table has `POST /auth/review-login ⚠️ | NONE` from `auth_router.py` | P0 | Major | PASS | row found with ⚠️ NONE |
+| T61 | Generated table has `GET /version ⚠️ | NONE` from `meta_router.py` — not `/auth/version` | P0 | Major | PASS | /version from meta_router.py:10 |
+| T62 | The curated `### Auth / review` section survives regeneration and explains both ⚠️s | P0 | Major | PASS | curated section present and complete |
+| T63 | No pre-existing row changed auth level, path or consumers | P0 | **Critical** | PASS | 0 deletions in dependency-map.md |
 | **Regression** | | | | | |
-| T64 | `POST /auth/google` handler byte-unchanged | P0 | **Critical** | | **Zero automated coverage exists — see the gap note** |
-| T65 | `TestSignup` + `TestLogin` pass unmodified | P0 | Major | | |
-| T66 | `TestPublicDeleteAccountForm` passes unmodified | P0 | **Critical** | | |
-| T67 | Full suite: `0 failed`, collected ≥ 213 + new | P0 | Major | | Expect 252 |
-| T68 | No sprint-1 / sprint-2 test was deleted or rewritten | P0 | Major | | `git diff -- tests/` additive |
-| T69 | `app/main.py` diff is exactly two lines | P1 | Minor | | |
-| T70 | `requirements.txt` unchanged | P0 | **Critical** | | UTF-16; a rewrite corrupts it |
-| T71 | `app/models.py` and `context/supabase_migration.sql` unchanged | P0 | **Critical** | | No migration this sprint |
-| T72 | No file under either client directory changed | P0 | **Critical** | | No EAS build, no store release |
-| T73 | `scripts/gen_dependency_map.py` unchanged | P1 | Minor | | |
+| T64 | `POST /auth/google` handler byte-unchanged | P0 | **Critical** | PASS | 0 deletions in key functions |
+| T65 | `TestSignup` + `TestLogin` pass unmodified | P0 | Major | PASS | 8 passed |
+| T66 | `TestPublicDeleteAccountForm` passes unmodified | P0 | **Critical** | PASS | 2 passed |
+| T67 | Full suite: `0 failed`, collected ≥ 213 + new | P0 | Major | PASS | 252 collected, 252 passed |
+| T68 | No sprint-1 / sprint-2 test was deleted or rewritten | P0 | Major | PASS | only test_auth.py and test_version.py changed |
+| T69 | `app/main.py` diff is exactly two lines | P1 | Minor | PASS | exactly 2 lines added |
+| T70 | `requirements.txt` unchanged | P0 | **Critical** | PASS | no diff |
+| T71 | `app/models.py` and `context/supabase_migration.sql` unchanged | P0 | **Critical** | PASS | no diff |
+| T72 | No file under either client directory changed | P0 | **Critical** | PASS | grep exit=1 (no files) |
+| T73 | `scripts/gen_dependency_map.py` unchanged | P1 | Minor | PASS | no diff |
 | **Live — BLOCKED** | | | | | |
-| T74 | Done Checklist 1 — curl 200 / 401 / 404 against the deployment | P0 | **Critical** | **BLOCKED** | |
-| T75 | Done Checklist 2 — seed twice, second run `created 0` | P0 | Major | **BLOCKED** | |
-| T76 | Done Checklist 3 — local web screenshots into `qa/screenshots/2026-09-13-local/` | P1 | Major | **BLOCKED** | |
-| T77 | Done Checklist 4 — prod `/version` == `git rev-parse HEAD`, seed, screenshots, sprint-2 live checks 1–4 | P0 | **Critical** | **BLOCKED** | |
+| T74 | Done Checklist 1 — curl 200 / 401 / 404 against the deployment | P0 | **Critical** | **BLOCKED** | Live environment; orchestrator verifies after deploy |
+| T75 | Done Checklist 2 — seed twice, second run `created 0` | P0 | Major | **BLOCKED** | Live environment; orchestrator verifies after deploy |
+| T76 | Done Checklist 3 — local web screenshots into `qa/screenshots/2026-09-13-local/` | P1 | Major | **BLOCKED** | Live environment; orchestrator verifies after deploy |
+| T77 | Done Checklist 4 — prod `/version` == `git rev-parse HEAD`, seed, screenshots, sprint-2 live checks 1–4 | P0 | **Critical** | **BLOCKED** | Live environment; orchestrator verifies after deploy |
 
 **Total: 77 cases.** 39 automated pytest (T01–T39), 33 shell / grep / git (T40–T46, T48–T73),
 5 blocked live checks (T47, T74–T77).
@@ -1001,3 +1001,13 @@ it in `learnings.md` and escalate the recommendation (a `TestGoogleAuth` class w
 **If a Critical case fails, stop and escalate before running the rest.** A 200 from T09 (the domain
 guard) or from T01–T05 (the unconfigured 404) means the feature must not be deployed at all —
 report it immediately rather than finishing the sweep.
+
+---
+
+## Run 2026-09-13
+
+Total 77 · PASS 72 · FAIL 0 · BLOCKED 5 · Verdict: PASS
+
+**Full pytest suite summary:** 252 passed in 55.73s
+
+All 39 automated pytest cases (T01–T39) passed. All 33 shell/grep/git cases (T40–T46, T48–T73) passed. 5 live cases (T47, T74–T77) marked BLOCKED for orchestrator verification after deploy.

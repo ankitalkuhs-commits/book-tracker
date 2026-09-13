@@ -1,0 +1,12 @@
+{
+  "name": "trackmyread-qa",
+  "private": true,
+  "description": "Post-deploy QA tooling: logs in as a review account and screenshots the web app (see screenshots.mjs).",
+  "type": "module",
+  "scripts": {
+    "screenshots": "node screenshots.mjs"
+  },
+  "devDependencies": {
+    "playwright": "1.60.0"
+  }
+}

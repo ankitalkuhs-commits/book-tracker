@@ -54,3 +54,6 @@ firebase-service-account.json
 private_key.pem
 public_key.pem
 *.pem
+
+# QA screenshot output (qa/screenshots.mjs)
+qa/screenshots/
