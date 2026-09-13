@@ -1,0 +1,2632 @@
+{
+  "api": "https://book-tracker-stitch.onrender.com",
+  "date": "2026-09-13",
+  "counts": {
+    "PASS": 122,
+    "FAIL": 12,
+    "INFO": 53
+  },
+  "created": 20,
+  "cleaned": 20,
+  "leaks": [],
+  "probes": [
+    {
+      "category": "AuthN",
+      "request": {
+        "method": "GET",
+        "path": "/profile/me",
+        "token": "none",
+        "body": "-"
+      },
+      "expected": "401",
+      "actual_status": 401,
+      "actual_body": "{\"detail\":\"Not authenticated\"}",
+      "verdict": "PASS",
+      "note": ""
+    },
+    {
+      "category": "AuthN",
+      "request": {
+        "method": "GET",
+        "path": "/userbooks/",
+        "token": "none",
+        "body": "-"
+      },
+      "expected": "401",
+      "actual_status": 401,
+      "actual_body": "{\"detail\":\"Not authenticated\"}",
+      "verdict": "PASS",
+      "note": ""
+    },
+    {
+      "category": "AuthN",
+      "request": {
+        "method": "GET",
+        "path": "/notes/me",
+        "token": "none",
+        "body": "-"
+      },
+      "expected": "401",
+      "actual_status": 401,
+      "actual_body": "{\"detail\":\"Not authenticated\"}",
+      "verdict": "PASS",
+      "note": ""
+    },
+    {
+      "category": "AuthN",
+      "request": {
+        "method": "GET",
+        "path": "/books/recommendations",
+        "token": "none",
+        "body": "-"
+      },
+      "expected": "401",
+      "actual_status": 401,
+      "actual_body": "{\"detail\":\"Not authenticated\"}",
+      "verdict": "PASS",
+      "note": ""
+    },
+    {
+      "category": "AuthN",
+      "request": {
+        "method": "GET",
+        "path": "/follow/following",
+        "token": "none",
+        "body": "-"
+      },
+      "expected": "401",
+      "actual_status": 401,
+      "actual_body": "{\"detail\":\"Not authenticated\"}",
+      "verdict": "PASS",
+      "note": ""
+    },
+    {
+      "category": "AuthN",
+      "request": {
+        "method": "GET",
+        "path": "/groups/my",
+        "token": "none",
+        "body": "-"
+      },
+      "expected": "401",
+      "actual_status": 401,
+      "actual_body": "{\"detail\":\"Not authenticated\"}",
+      "verdict": "PASS",
+      "note": ""
+    },
+    {
+      "category": "AuthN",
+      "request": {
+        "method": "GET",
+        "path": "/users/following",
+        "token": "none",
+        "body": "-"
+      },
+      "expected": "401",
+      "actual_status": 401,
+      "actual_body": "{\"detail\":\"Not authenticated\"}",
+      "verdict": "PASS",
+      "note": ""
+    },
+    {
+      "category": "AuthN",
+      "request": {
+        "method": "GET",
+        "path": "/reading-activity/insights",
+        "token": "none",
+        "body": "-"
+      },
+      "expected": "401",
+      "actual_status": 401,
+      "actual_body": "{\"detail\":\"Not authenticated\"}",
+      "verdict": "PASS",
+      "note": ""
+    },
+    {
+      "category": "AuthN",
+      "request": {
+        "method": "GET",
+        "path": "/notifications/unread-count",
+        "token": "none",
+        "body": "-"
+      },
+      "expected": "401",
+      "actual_status": 401,
+      "actual_body": "{\"detail\":\"Not authenticated\"}",
+      "verdict": "PASS",
+      "note": ""
+    },
+    {
+      "category": "AuthN",
+      "request": {
+        "method": "GET",
+        "path": "/import/covers-status",
+        "token": "none",
+        "body": "-"
+      },
+      "expected": "401",
+      "actual_status": 401,
+      "actual_body": "{\"detail\":\"Not authenticated\"}",
+      "verdict": "PASS",
+      "note": ""
+    },
+    {
+      "category": "AuthN",
+      "request": {
+        "method": "GET",
+        "path": "/journals/entry/1",
+        "token": "none",
+        "body": "-"
+      },
+      "expected": "401",
+      "actual_status": 404,
+      "actual_body": "{\"detail\":\"Not Found\"}",
+      "verdict": "INFO",
+      "note": ""
+    },
+    {
+      "category": "AuthN",
+      "request": {
+        "method": "GET",
+        "path": "/notes/167/comments",
+        "token": "none",
+        "body": "-"
+      },
+      "expected": "401",
+      "actual_status": 401,
+      "actual_body": "{\"detail\":\"Not authenticated\"}",
+      "verdict": "PASS",
+      "note": ""
+    },
+    {
+      "category": "AuthN",
+      "request": {
+        "method": "GET",
+        "path": "/profile/me",
+        "token": "garbage",
+        "body": "-"
+      },
+      "expected": "401",
+      "actual_status": 401,
+      "actual_body": "{\"detail\":\"Invalid authentication credentials\"}",
+      "verdict": "PASS",
+      "note": ""
+    },
+    {
+      "category": "AuthN",
+      "request": {
+        "method": "GET",
+        "path": "/userbooks/",
+        "token": "garbage",
+        "body": "-"
+      },
+      "expected": "401",
+      "actual_status": 401,
+      "actual_body": "{\"detail\":\"Invalid authentication credentials\"}",
+      "verdict": "PASS",
+      "note": ""
+    },
+    {
+      "category": "AuthN",
+      "request": {
+        "method": "GET",
+        "path": "/notes/me",
+        "token": "garbage",
+        "body": "-"
+      },
+      "expected": "401",
+      "actual_status": 401,
+      "actual_body": "{\"detail\":\"Invalid authentication credentials\"}",
+      "verdict": "PASS",
+      "note": ""
+    },
+    {
+      "category": "AuthN",
+      "request": {
+        "method": "GET",
+        "path": "/books/recommendations",
+        "token": "garbage",
+        "body": "-"
+      },
+      "expected": "401",
+      "actual_status": 401,
+      "actual_body": "{\"detail\":\"Invalid authentication credentials\"}",
+      "verdict": "PASS",
+      "note": ""
+    },
+    {
+      "category": "AuthN",
+      "request": {
+        "method": "GET",
+        "path": "/follow/following",
+        "token": "garbage",
+        "body": "-"
+      },
+      "expected": "401",
+      "actual_status": 401,
+      "actual_body": "{\"detail\":\"Invalid authentication credentials\"}",
+      "verdict": "PASS",
+      "note": ""
+    },
+    {
+      "category": "AuthN",
+      "request": {
+        "method": "GET",
+        "path": "/groups/my",
+        "token": "garbage",
+        "body": "-"
+      },
+      "expected": "401",
+      "actual_status": 401,
+      "actual_body": "{\"detail\":\"Invalid authentication credentials\"}",
+      "verdict": "PASS",
+      "note": ""
+    },
+    {
+      "category": "AuthN",
+      "request": {
+        "method": "GET",
+        "path": "/users/following",
+        "token": "garbage",
+        "body": "-"
+      },
+      "expected": "401",
+      "actual_status": 401,
+      "actual_body": "{\"detail\":\"Invalid authentication credentials\"}",
+      "verdict": "PASS",
+      "note": ""
+    },
+    {
+      "category": "AuthN",
+      "request": {
+        "method": "GET",
+        "path": "/reading-activity/insights",
+        "token": "garbage",
+        "body": "-"
+      },
+      "expected": "401",
+      "actual_status": 401,
+      "actual_body": "{\"detail\":\"Invalid authentication credentials\"}",
+      "verdict": "PASS",
+      "note": ""
+    },
+    {
+      "category": "AuthN",
+      "request": {
+        "method": "GET",
+        "path": "/notifications/unread-count",
+        "token": "garbage",
+        "body": "-"
+      },
+      "expected": "401",
+      "actual_status": 401,
+      "actual_body": "{\"detail\":\"Invalid authentication credentials\"}",
+      "verdict": "PASS",
+      "note": ""
+    },
+    {
+      "category": "AuthN",
+      "request": {
+        "method": "GET",
+        "path": "/import/covers-status",
+        "token": "garbage",
+        "body": "-"
+      },
+      "expected": "401",
+      "actual_status": 401,
+      "actual_body": "{\"detail\":\"Invalid authentication credentials\"}",
+      "verdict": "PASS",
+      "note": ""
+    },
+    {
+      "category": "AuthN",
+      "request": {
+        "method": "GET",
+        "path": "/journals/entry/1",
+        "token": "garbage",
+        "body": "-"
+      },
+      "expected": "401",
+      "actual_status": 404,
+      "actual_body": "{\"detail\":\"Not Found\"}",
+      "verdict": "INFO",
+      "note": ""
+    },
+    {
+      "category": "AuthN",
+      "request": {
+        "method": "GET",
+        "path": "/notes/167/comments",
+        "token": "garbage",
+        "body": "-"
+      },
+      "expected": "401",
+      "actual_status": 401,
+      "actual_body": "{\"detail\":\"Invalid authentication credentials\"}",
+      "verdict": "PASS",
+      "note": ""
+    },
+    {
+      "category": "AuthN",
+      "request": {
+        "method": "GET",
+        "path": "/profile/me",
+        "token": "alg_none",
+        "body": "-"
+      },
+      "expected": "401",
+      "actual_status": 401,
+      "actual_body": "{\"detail\":\"Invalid authentication credentials\"}",
+      "verdict": "PASS",
+      "note": ""
+    },
+    {
+      "category": "AuthN",
+      "request": {
+        "method": "GET",
+        "path": "/userbooks/",
+        "token": "alg_none",
+        "body": "-"
+      },
+      "expected": "401",
+      "actual_status": 401,
+      "actual_body": "{\"detail\":\"Invalid authentication credentials\"}",
+      "verdict": "PASS",
+      "note": ""
+    },
+    {
+      "category": "AuthN",
+      "request": {
+        "method": "GET",
+        "path": "/notes/me",
+        "token": "alg_none",
+        "body": "-"
+      },
+      "expected": "401",
+      "actual_status": 401,
+      "actual_body": "{\"detail\":\"Invalid authentication credentials\"}",
+      "verdict": "PASS",
+      "note": ""
+    },
+    {
+      "category": "AuthN",
+      "request": {
+        "method": "GET",
+        "path": "/books/recommendations",
+        "token": "alg_none",
+        "body": "-"
+      },
+      "expected": "401",
+      "actual_status": 401,
+      "actual_body": "{\"detail\":\"Invalid authentication credentials\"}",
+      "verdict": "PASS",
+      "note": ""
+    },
+    {
+      "category": "AuthN",
+      "request": {
+        "method": "GET",
+        "path": "/follow/following",
+        "token": "alg_none",
+        "body": "-"
+      },
+      "expected": "401",
+      "actual_status": 401,
+      "actual_body": "{\"detail\":\"Invalid authentication credentials\"}",
+      "verdict": "PASS",
+      "note": ""
+    },
+    {
+      "category": "AuthN",
+      "request": {
+        "method": "GET",
+        "path": "/groups/my",
+        "token": "alg_none",
+        "body": "-"
+      },
+      "expected": "401",
+      "actual_status": 401,
+      "actual_body": "{\"detail\":\"Invalid authentication credentials\"}",
+      "verdict": "PASS",
+      "note": ""
+    },
+    {
+      "category": "AuthN",
+      "request": {
+        "method": "GET",
+        "path": "/users/following",
+        "token": "alg_none",
+        "body": "-"
+      },
+      "expected": "401",
+      "actual_status": 401,
+      "actual_body": "{\"detail\":\"Invalid authentication credentials\"}",
+      "verdict": "PASS",
+      "note": ""
+    },
+    {
+      "category": "AuthN",
+      "request": {
+        "method": "GET",
+        "path": "/reading-activity/insights",
+        "token": "alg_none",
+        "body": "-"
+      },
+      "expected": "401",
+      "actual_status": 401,
+      "actual_body": "{\"detail\":\"Invalid authentication credentials\"}",
+      "verdict": "PASS",
+      "note": ""
+    },
+    {
+      "category": "AuthN",
+      "request": {
+        "method": "GET",
+        "path": "/notifications/unread-count",
+        "token": "alg_none",
+        "body": "-"
+      },
+      "expected": "401",
+      "actual_status": 401,
+      "actual_body": "{\"detail\":\"Invalid authentication credentials\"}",
+      "verdict": "PASS",
+      "note": ""
+    },
+    {
+      "category": "AuthN",
+      "request": {
+        "method": "GET",
+        "path": "/import/covers-status",
+        "token": "alg_none",
+        "body": "-"
+      },
+      "expected": "401",
+      "actual_status": 401,
+      "actual_body": "{\"detail\":\"Invalid authentication credentials\"}",
+      "verdict": "PASS",
+      "note": ""
+    },
+    {
+      "category": "AuthN",
+      "request": {
+        "method": "GET",
+        "path": "/journals/entry/1",
+        "token": "alg_none",
+        "body": "-"
+      },
+      "expected": "401",
+      "actual_status": 404,
+      "actual_body": "{\"detail\":\"Not Found\"}",
+      "verdict": "INFO",
+      "note": ""
+    },
+    {
+      "category": "AuthN",
+      "request": {
+        "method": "GET",
+        "path": "/notes/167/comments",
+        "token": "alg_none",
+        "body": "-"
+      },
+      "expected": "401",
+      "actual_status": 401,
+      "actual_body": "{\"detail\":\"Invalid authentication credentials\"}",
+      "verdict": "PASS",
+      "note": ""
+    },
+    {
+      "category": "AuthN",
+      "request": {
+        "method": "GET",
+        "path": "/profile/me",
+        "token": "wrongkey",
+        "body": "-"
+      },
+      "expected": "401",
+      "actual_status": 401,
+      "actual_body": "{\"detail\":\"Invalid authentication credentials\"}",
+      "verdict": "PASS",
+      "note": ""
+    },
+    {
+      "category": "AuthN",
+      "request": {
+        "method": "GET",
+        "path": "/userbooks/",
+        "token": "wrongkey",
+        "body": "-"
+      },
+      "expected": "401",
+      "actual_status": 401,
+      "actual_body": "{\"detail\":\"Invalid authentication credentials\"}",
+      "verdict": "PASS",
+      "note": ""
+    },
+    {
+      "category": "AuthN",
+      "request": {
+        "method": "GET",
+        "path": "/notes/me",
+        "token": "wrongkey",
+        "body": "-"
+      },
+      "expected": "401",
+      "actual_status": 401,
+      "actual_body": "{\"detail\":\"Invalid authentication credentials\"}",
+      "verdict": "PASS",
+      "note": ""
+    },
+    {
+      "category": "AuthN",
+      "request": {
+        "method": "GET",
+        "path": "/books/recommendations",
+        "token": "wrongkey",
+        "body": "-"
+      },
+      "expected": "401",
+      "actual_status": 401,
+      "actual_body": "{\"detail\":\"Invalid authentication credentials\"}",
+      "verdict": "PASS",
+      "note": ""
+    },
+    {
+      "category": "AuthN",
+      "request": {
+        "method": "GET",
+        "path": "/follow/following",
+        "token": "wrongkey",
+        "body": "-"
+      },
+      "expected": "401",
+      "actual_status": 401,
+      "actual_body": "{\"detail\":\"Invalid authentication credentials\"}",
+      "verdict": "PASS",
+      "note": ""
+    },
+    {
+      "category": "AuthN",
+      "request": {
+        "method": "GET",
+        "path": "/groups/my",
+        "token": "wrongkey",
+        "body": "-"
+      },
+      "expected": "401",
+      "actual_status": 401,
+      "actual_body": "{\"detail\":\"Invalid authentication credentials\"}",
+      "verdict": "PASS",
+      "note": ""
+    },
+    {
+      "category": "AuthN",
+      "request": {
+        "method": "GET",
+        "path": "/users/following",
+        "token": "wrongkey",
+        "body": "-"
+      },
+      "expected": "401",
+      "actual_status": 401,
+      "actual_body": "{\"detail\":\"Invalid authentication credentials\"}",
+      "verdict": "PASS",
+      "note": ""
+    },
+    {
+      "category": "AuthN",
+      "request": {
+        "method": "GET",
+        "path": "/reading-activity/insights",
+        "token": "wrongkey",
+        "body": "-"
+      },
+      "expected": "401",
+      "actual_status": 401,
+      "actual_body": "{\"detail\":\"Invalid authentication credentials\"}",
+      "verdict": "PASS",
+      "note": ""
+    },
+    {
+      "category": "AuthN",
+      "request": {
+        "method": "GET",
+        "path": "/notifications/unread-count",
+        "token": "wrongkey",
+        "body": "-"
+      },
+      "expected": "401",
+      "actual_status": 401,
+      "actual_body": "{\"detail\":\"Invalid authentication credentials\"}",
+      "verdict": "PASS",
+      "note": ""
+    },
+    {
+      "category": "AuthN",
+      "request": {
+        "method": "GET",
+        "path": "/import/covers-status",
+        "token": "wrongkey",
+        "body": "-"
+      },
+      "expected": "401",
+      "actual_status": 401,
+      "actual_body": "{\"detail\":\"Invalid authentication credentials\"}",
+      "verdict": "PASS",
+      "note": ""
+    },
+    {
+      "category": "AuthN",
+      "request": {
+        "method": "GET",
+        "path": "/journals/entry/1",
+        "token": "wrongkey",
+        "body": "-"
+      },
+      "expected": "401",
+      "actual_status": 404,
+      "actual_body": "{\"detail\":\"Not Found\"}",
+      "verdict": "INFO",
+      "note": ""
+    },
+    {
+      "category": "AuthN",
+      "request": {
+        "method": "GET",
+        "path": "/notes/167/comments",
+        "token": "wrongkey",
+        "body": "-"
+      },
+      "expected": "401",
+      "actual_status": 401,
+      "actual_body": "{\"detail\":\"Invalid authentication credentials\"}",
+      "verdict": "PASS",
+      "note": ""
+    },
+    {
+      "category": "AuthN",
+      "request": {
+        "method": "GET",
+        "path": "/profile/me",
+        "token": "sub_nonexistent",
+        "body": "-"
+      },
+      "expected": "401",
+      "actual_status": 401,
+      "actual_body": "{\"detail\":\"Invalid authentication credentials\"}",
+      "verdict": "PASS",
+      "note": ""
+    },
+    {
+      "category": "AuthN",
+      "request": {
+        "method": "GET",
+        "path": "/userbooks/",
+        "token": "sub_nonexistent",
+        "body": "-"
+      },
+      "expected": "401",
+      "actual_status": 401,
+      "actual_body": "{\"detail\":\"Invalid authentication credentials\"}",
+      "verdict": "PASS",
+      "note": ""
+    },
+    {
+      "category": "AuthN",
+      "request": {
+        "method": "GET",
+        "path": "/notes/me",
+        "token": "sub_nonexistent",
+        "body": "-"
+      },
+      "expected": "401",
+      "actual_status": 401,
+      "actual_body": "{\"detail\":\"Invalid authentication credentials\"}",
+      "verdict": "PASS",
+      "note": ""
+    },
+    {
+      "category": "AuthN",
+      "request": {
+        "method": "GET",
+        "path": "/books/recommendations",
+        "token": "sub_nonexistent",
+        "body": "-"
+      },
+      "expected": "401",
+      "actual_status": 401,
+      "actual_body": "{\"detail\":\"Invalid authentication credentials\"}",
+      "verdict": "PASS",
+      "note": ""
+    },
+    {
+      "category": "AuthN",
+      "request": {
+        "method": "GET",
+        "path": "/follow/following",
+        "token": "sub_nonexistent",
+        "body": "-"
+      },
+      "expected": "401",
+      "actual_status": 401,
+      "actual_body": "{\"detail\":\"Invalid authentication credentials\"}",
+      "verdict": "PASS",
+      "note": ""
+    },
+    {
+      "category": "AuthN",
+      "request": {
+        "method": "GET",
+        "path": "/groups/my",
+        "token": "sub_nonexistent",
+        "body": "-"
+      },
+      "expected": "401",
+      "actual_status": 401,
+      "actual_body": "{\"detail\":\"Invalid authentication credentials\"}",
+      "verdict": "PASS",
+      "note": ""
+    },
+    {
+      "category": "AuthN",
+      "request": {
+        "method": "GET",
+        "path": "/users/following",
+        "token": "sub_nonexistent",
+        "body": "-"
+      },
+      "expected": "401",
+      "actual_status": 401,
+      "actual_body": "{\"detail\":\"Invalid authentication credentials\"}",
+      "verdict": "PASS",
+      "note": ""
+    },
+    {
+      "category": "AuthN",
+      "request": {
+        "method": "GET",
+        "path": "/reading-activity/insights",
+        "token": "sub_nonexistent",
+        "body": "-"
+      },
+      "expected": "401",
+      "actual_status": 401,
+      "actual_body": "{\"detail\":\"Invalid authentication credentials\"}",
+      "verdict": "PASS",
+      "note": ""
+    },
+    {
+      "category": "AuthN",
+      "request": {
+        "method": "GET",
+        "path": "/notifications/unread-count",
+        "token": "sub_nonexistent",
+        "body": "-"
+      },
+      "expected": "401",
+      "actual_status": 401,
+      "actual_body": "{\"detail\":\"Invalid authentication credentials\"}",
+      "verdict": "PASS",
+      "note": ""
+    },
+    {
+      "category": "AuthN",
+      "request": {
+        "method": "GET",
+        "path": "/import/covers-status",
+        "token": "sub_nonexistent",
+        "body": "-"
+      },
+      "expected": "401",
+      "actual_status": 401,
+      "actual_body": "{\"detail\":\"Invalid authentication credentials\"}",
+      "verdict": "PASS",
+      "note": ""
+    },
+    {
+      "category": "AuthN",
+      "request": {
+        "method": "GET",
+        "path": "/journals/entry/1",
+        "token": "sub_nonexistent",
+        "body": "-"
+      },
+      "expected": "401",
+      "actual_status": 404,
+      "actual_body": "{\"detail\":\"Not Found\"}",
+      "verdict": "INFO",
+      "note": ""
+    },
+    {
+      "category": "AuthN",
+      "request": {
+        "method": "GET",
+        "path": "/notes/167/comments",
+        "token": "sub_nonexistent",
+        "body": "-"
+      },
+      "expected": "401",
+      "actual_status": 401,
+      "actual_body": "{\"detail\":\"Invalid authentication credentials\"}",
+      "verdict": "PASS",
+      "note": ""
+    },
+    {
+      "category": "AuthN",
+      "request": {
+        "method": "GET",
+        "path": "/profile/me",
+        "token": "expired_wrongkey",
+        "body": "-"
+      },
+      "expected": "401",
+      "actual_status": 401,
+      "actual_body": "{\"detail\":\"Invalid authentication credentials\"}",
+      "verdict": "PASS",
+      "note": ""
+    },
+    {
+      "category": "AuthN",
+      "request": {
+        "method": "GET",
+        "path": "/userbooks/",
+        "token": "expired_wrongkey",
+        "body": "-"
+      },
+      "expected": "401",
+      "actual_status": 401,
+      "actual_body": "{\"detail\":\"Invalid authentication credentials\"}",
+      "verdict": "PASS",
+      "note": ""
+    },
+    {
+      "category": "AuthN",
+      "request": {
+        "method": "GET",
+        "path": "/notes/me",
+        "token": "expired_wrongkey",
+        "body": "-"
+      },
+      "expected": "401",
+      "actual_status": 401,
+      "actual_body": "{\"detail\":\"Invalid authentication credentials\"}",
+      "verdict": "PASS",
+      "note": ""
+    },
+    {
+      "category": "AuthN",
+      "request": {
+        "method": "GET",
+        "path": "/books/recommendations",
+        "token": "expired_wrongkey",
+        "body": "-"
+      },
+      "expected": "401",
+      "actual_status": 401,
+      "actual_body": "{\"detail\":\"Invalid authentication credentials\"}",
+      "verdict": "PASS",
+      "note": ""
+    },
+    {
+      "category": "AuthN",
+      "request": {
+        "method": "GET",
+        "path": "/follow/following",
+        "token": "expired_wrongkey",
+        "body": "-"
+      },
+      "expected": "401",
+      "actual_status": 401,
+      "actual_body": "{\"detail\":\"Invalid authentication credentials\"}",
+      "verdict": "PASS",
+      "note": ""
+    },
+    {
+      "category": "AuthN",
+      "request": {
+        "method": "GET",
+        "path": "/groups/my",
+        "token": "expired_wrongkey",
+        "body": "-"
+      },
+      "expected": "401",
+      "actual_status": 401,
+      "actual_body": "{\"detail\":\"Invalid authentication credentials\"}",
+      "verdict": "PASS",
+      "note": ""
+    },
+    {
+      "category": "AuthN",
+      "request": {
+        "method": "GET",
+        "path": "/users/following",
+        "token": "expired_wrongkey",
+        "body": "-"
+      },
+      "expected": "401",
+      "actual_status": 401,
+      "actual_body": "{\"detail\":\"Invalid authentication credentials\"}",
+      "verdict": "PASS",
+      "note": ""
+    },
+    {
+      "category": "AuthN",
+      "request": {
+        "method": "GET",
+        "path": "/reading-activity/insights",
+        "token": "expired_wrongkey",
+        "body": "-"
+      },
+      "expected": "401",
+      "actual_status": 401,
+      "actual_body": "{\"detail\":\"Invalid authentication credentials\"}",
+      "verdict": "PASS",
+      "note": ""
+    },
+    {
+      "category": "AuthN",
+      "request": {
+        "method": "GET",
+        "path": "/notifications/unread-count",
+        "token": "expired_wrongkey",
+        "body": "-"
+      },
+      "expected": "401",
+      "actual_status": 401,
+      "actual_body": "{\"detail\":\"Invalid authentication credentials\"}",
+      "verdict": "PASS",
+      "note": ""
+    },
+    {
+      "category": "AuthN",
+      "request": {
+        "method": "GET",
+        "path": "/import/covers-status",
+        "token": "expired_wrongkey",
+        "body": "-"
+      },
+      "expected": "401",
+      "actual_status": 401,
+      "actual_body": "{\"detail\":\"Invalid authentication credentials\"}",
+      "verdict": "PASS",
+      "note": ""
+    },
+    {
+      "category": "AuthN",
+      "request": {
+        "method": "GET",
+        "path": "/journals/entry/1",
+        "token": "expired_wrongkey",
+        "body": "-"
+      },
+      "expected": "401",
+      "actual_status": 404,
+      "actual_body": "{\"detail\":\"Not Found\"}",
+      "verdict": "INFO",
+      "note": ""
+    },
+    {
+      "category": "AuthN",
+      "request": {
+        "method": "GET",
+        "path": "/notes/167/comments",
+        "token": "expired_wrongkey",
+        "body": "-"
+      },
+      "expected": "401",
+      "actual_status": 401,
+      "actual_body": "{\"detail\":\"Invalid authentication credentials\"}",
+      "verdict": "PASS",
+      "note": ""
+    },
+    {
+      "category": "AuthN",
+      "request": {
+        "method": "GET",
+        "path": "/profile/me",
+        "token": "valid/bearer",
+        "body": "casing"
+      },
+      "expected": "200",
+      "actual_status": 200,
+      "actual_body": "{\"id\":110,\"name\":\"Review.Reader\",\"username\":\"review.reader\",\"email\":\"review.reader@trackmyread.com\",\"bio\":null,\"profile_picture\":null,\"yearly_goal\":1000000000,\"created_at\":\"2026-09-13T11:44:08.324691\"",
+      "verdict": "PASS",
+      "note": "HTTPBearer scheme is case-insensitive"
+    },
+    {
+      "category": "AuthN",
+      "request": {
+        "method": "GET",
+        "path": "/profile/me",
+        "token": "valid/BEARER",
+        "body": "casing"
+      },
+      "expected": "200",
+      "actual_status": 200,
+      "actual_body": "{\"id\":110,\"name\":\"Review.Reader\",\"username\":\"review.reader\",\"email\":\"review.reader@trackmyread.com\",\"bio\":null,\"profile_picture\":null,\"yearly_goal\":1000000000,\"created_at\":\"2026-09-13T11:44:08.324691\"",
+      "verdict": "PASS",
+      "note": "HTTPBearer scheme is case-insensitive"
+    },
+    {
+      "category": "AuthN",
+      "request": {
+        "method": "GET",
+        "path": "/profile/me",
+        "token": "valid/BeArEr",
+        "body": "casing"
+      },
+      "expected": "200",
+      "actual_status": 200,
+      "actual_body": "{\"id\":110,\"name\":\"Review.Reader\",\"username\":\"review.reader\",\"email\":\"review.reader@trackmyread.com\",\"bio\":null,\"profile_picture\":null,\"yearly_goal\":1000000000,\"created_at\":\"2026-09-13T11:44:08.324691\"",
+      "verdict": "PASS",
+      "note": "HTTPBearer scheme is case-insensitive"
+    },
+    {
+      "category": "AuthN",
+      "request": {
+        "method": "GET",
+        "path": "/profile/me",
+        "token": "valid/no-scheme",
+        "body": "raw token no 'Bearer'"
+      },
+      "expected": "401",
+      "actual_status": 401,
+      "actual_body": "{\"detail\":\"Not authenticated\"}",
+      "verdict": "PASS",
+      "note": ""
+    },
+    {
+      "category": "AuthN",
+      "request": {
+        "method": "GET",
+        "path": "/admin/stats",
+        "token": "reader",
+        "body": "non-admin"
+      },
+      "expected": "403",
+      "actual_status": 403,
+      "actual_body": "{\"detail\":\"Admin access required\"}",
+      "verdict": "PASS",
+      "note": ""
+    },
+    {
+      "category": "AuthN",
+      "request": {
+        "method": "POST",
+        "path": "/admin/push/broadcast",
+        "token": "reader",
+        "body": "empty body, non-admin"
+      },
+      "expected": "403",
+      "actual_status": 403,
+      "actual_body": "{\"detail\":\"Admin access required\"}",
+      "verdict": "PASS",
+      "note": ""
+    },
+    {
+      "category": "IDOR",
+      "request": {
+        "method": "PUT",
+        "path": "/userbooks/881/progress",
+        "token": "reader\u2192friend",
+        "body": "{'current_page': 999}"
+      },
+      "expected": "403/404",
+      "actual_status": 404,
+      "actual_body": "{\"detail\":\"UserBook not found\"}",
+      "verdict": "PASS",
+      "note": ""
+    },
+    {
+      "category": "IDOR",
+      "request": {
+        "method": "PATCH",
+        "path": "/userbooks/881",
+        "token": "reader\u2192friend",
+        "body": "{'rating': 1, 'status': 'finished'}"
+      },
+      "expected": "403/404",
+      "actual_status": 404,
+      "actual_body": "{\"detail\":\"UserBook not found\"}",
+      "verdict": "PASS",
+      "note": ""
+    },
+    {
+      "category": "IDOR",
+      "request": {
+        "method": "DELETE",
+        "path": "/userbooks/881",
+        "token": "reader\u2192friend",
+        "body": "None"
+      },
+      "expected": "403/404",
+      "actual_status": 404,
+      "actual_body": "{\"detail\":\"UserBook not found\"}",
+      "verdict": "PASS",
+      "note": ""
+    },
+    {
+      "category": "IDOR",
+      "request": {
+        "method": "POST",
+        "path": "/userbooks/881/finish",
+        "token": "reader\u2192friend",
+        "body": "None"
+      },
+      "expected": "403/404",
+      "actual_status": 404,
+      "actual_body": "{\"detail\":\"UserBook not found\"}",
+      "verdict": "PASS",
+      "note": ""
+    },
+    {
+      "category": "IDOR",
+      "request": {
+        "method": "GET",
+        "path": "/userbooks/881",
+        "token": "reader\u2192friend",
+        "body": "None"
+      },
+      "expected": "403/404",
+      "actual_status": 404,
+      "actual_body": "{\"detail\":\"Not found\"}",
+      "verdict": "PASS",
+      "note": ""
+    },
+    {
+      "category": "IDOR",
+      "request": {
+        "method": "GET",
+        "path": "/notes/userbook/881",
+        "token": "reader\u2192friend",
+        "body": "None"
+      },
+      "expected": "403/404",
+      "actual_status": 404,
+      "actual_body": "{\"detail\":\"UserBook not found\"}",
+      "verdict": "PASS",
+      "note": ""
+    },
+    {
+      "category": "IDOR",
+      "request": {
+        "method": "GET",
+        "path": "/userbooks/881",
+        "token": "friend(verify)",
+        "body": "re-read owner"
+      },
+      "expected": "row unchanged",
+      "actual_status": 200,
+      "actual_body": "{\"id\":881,\"user_id\":111,\"book_id\":844,\"status\":\"to-read\",\"current_page\":0,\"rating\":null,\"private_notes\":null,\"format\":\"hardcover\",\"ownership_status\":\"owned\",\"borrowed_from\":null,\"loaned_to\":null,\"crea",
+      "verdict": "PASS",
+      "note": "verifies the friend row survived reader's attempts"
+    },
+    {
+      "category": "IDOR",
+      "request": {
+        "method": "PUT",
+        "path": "/notes/169",
+        "token": "reader\u2192friend",
+        "body": "edit note"
+      },
+      "expected": "403",
+      "actual_status": 403,
+      "actual_body": "{\"detail\":\"Not authorized to edit this note\"}",
+      "verdict": "PASS",
+      "note": ""
+    },
+    {
+      "category": "IDOR",
+      "request": {
+        "method": "DELETE",
+        "path": "/notes/169",
+        "token": "reader\u2192friend",
+        "body": "delete note"
+      },
+      "expected": "403",
+      "actual_status": 403,
+      "actual_body": "{\"detail\":\"Not authorized to delete this note\"}",
+      "verdict": "PASS",
+      "note": ""
+    },
+    {
+      "category": "IDOR",
+      "request": {
+        "method": "DELETE",
+        "path": "/groups/7/posts/5",
+        "token": "friend(non-curator)\u2192reader post",
+        "body": "delete"
+      },
+      "expected": "403",
+      "actual_status": 403,
+      "actual_body": "{\"detail\":\"Not allowed\"}",
+      "verdict": "PASS",
+      "note": ""
+    },
+    {
+      "category": "IDOR",
+      "request": {
+        "method": "POST",
+        "path": "/notes/204/comments",
+        "token": "reader\u2192friend private note",
+        "body": "comment on is_public=False note"
+      },
+      "expected": "403/404 (should not be commentable)",
+      "actual_status": 201,
+      "actual_body": "{\"id\":24,\"text\":\"seen your private note\",\"created_at\":\"2026-09-13T12:55:04.688921Z\",\"user\":{\"id\":110,\"name\":\"Review.Reader\"}}",
+      "verdict": "FAIL",
+      "note": "likes_comments.create_comment does not check note.is_public / author privacy"
+    },
+    {
+      "category": "IDOR",
+      "request": {
+        "method": "POST",
+        "path": "/notes/204/like",
+        "token": "reader\u2192friend private note",
+        "body": "like on is_public=False note"
+      },
+      "expected": "403/404",
+      "actual_status": 201,
+      "actual_body": "{\"message\":\"Liked\",\"liked\":true}",
+      "verdict": "FAIL",
+      "note": "likes_comments.like_note does not check note.is_public / author privacy"
+    },
+    {
+      "category": "IDOR",
+      "request": {
+        "method": "GET",
+        "path": "/journals/entry/881",
+        "token": "reader",
+        "body": "journals for friend's userbook"
+      },
+      "expected": "empty/own only",
+      "actual_status": 404,
+      "actual_body": "{\"detail\":\"Not Found\"}",
+      "verdict": "INFO",
+      "note": "journals.get_journals_for_entry has no user_id filter (dead route, table likely empty)"
+    },
+    {
+      "category": "Validation",
+      "request": {
+        "method": "PATCH",
+        "path": "/userbooks/882",
+        "token": "reader",
+        "body": "rating=-1"
+      },
+      "expected": "422 or clamp",
+      "actual_status": 200,
+      "actual_body": "{\"id\":882,\"status\":\"to-read\",\"current_page\":0,\"rating\":-1,\"updated_at\":\"2026-09-13T12:55:15.189576\",\"book_total_pages\":239}",
+      "verdict": "INFO",
+      "note": "PATCH payload is an unvalidated dict \u2192 crud.update_userbook setattr"
+    },
+    {
+      "category": "Validation",
+      "request": {
+        "method": "PATCH",
+        "path": "/userbooks/882",
+        "token": "reader",
+        "body": "rating=0"
+      },
+      "expected": "422 or clamp",
+      "actual_status": 200,
+      "actual_body": "{\"id\":882,\"status\":\"to-read\",\"current_page\":0,\"rating\":0,\"updated_at\":\"2026-09-13T12:55:15.189576\",\"book_total_pages\":239}",
+      "verdict": "PASS",
+      "note": "PATCH payload is an unvalidated dict \u2192 crud.update_userbook setattr"
+    },
+    {
+      "category": "Validation",
+      "request": {
+        "method": "PATCH",
+        "path": "/userbooks/882",
+        "token": "reader",
+        "body": "rating=6"
+      },
+      "expected": "422 or clamp",
+      "actual_status": 200,
+      "actual_body": "{\"id\":882,\"status\":\"to-read\",\"current_page\":0,\"rating\":6,\"updated_at\":\"2026-09-13T12:55:15.189576\",\"book_total_pages\":239}",
+      "verdict": "INFO",
+      "note": "PATCH payload is an unvalidated dict \u2192 crud.update_userbook setattr"
+    },
+    {
+      "category": "Validation",
+      "request": {
+        "method": "PATCH",
+        "path": "/userbooks/882",
+        "token": "reader",
+        "body": "rating=99"
+      },
+      "expected": "422 or clamp",
+      "actual_status": 200,
+      "actual_body": "{\"id\":882,\"status\":\"to-read\",\"current_page\":0,\"rating\":99,\"updated_at\":\"2026-09-13T12:55:15.189576\",\"book_total_pages\":239}",
+      "verdict": "INFO",
+      "note": "PATCH payload is an unvalidated dict \u2192 crud.update_userbook setattr"
+    },
+    {
+      "category": "Validation",
+      "request": {
+        "method": "PATCH",
+        "path": "/userbooks/882",
+        "token": "reader",
+        "body": "rating='abc'"
+      },
+      "expected": "422 or clamp",
+      "actual_status": 500,
+      "actual_body": "Internal Server Error",
+      "verdict": "FAIL",
+      "note": "PATCH payload is an unvalidated dict \u2192 crud.update_userbook setattr"
+    },
+    {
+      "category": "Validation",
+      "request": {
+        "method": "PATCH",
+        "path": "/userbooks/882",
+        "token": "reader",
+        "body": "rating=4.5"
+      },
+      "expected": "422 or clamp",
+      "actual_status": 200,
+      "actual_body": "{\"id\":882,\"status\":\"to-read\",\"current_page\":0,\"rating\":5,\"updated_at\":\"2026-09-13T12:55:15.189576\",\"book_total_pages\":239}",
+      "verdict": "INFO",
+      "note": "PATCH payload is an unvalidated dict \u2192 crud.update_userbook setattr"
+    },
+    {
+      "category": "Validation",
+      "request": {
+        "method": "PATCH",
+        "path": "/userbooks/882",
+        "token": "reader",
+        "body": "status='banana'"
+      },
+      "expected": "422/400",
+      "actual_status": 200,
+      "actual_body": "{\"id\":882,\"status\":\"banana\",\"current_page\":0,\"rating\":5,\"updated_at\":\"2026-09-13T12:55:15.189576\",\"book_total_pages\":239}",
+      "verdict": "INFO",
+      "note": ""
+    },
+    {
+      "category": "Validation",
+      "request": {
+        "method": "PATCH",
+        "path": "/userbooks/882",
+        "token": "reader",
+        "body": "current_page=-5"
+      },
+      "expected": "422/clamp",
+      "actual_status": 200,
+      "actual_body": "{\"id\":882,\"status\":\"banana\",\"current_page\":-5,\"rating\":5,\"updated_at\":\"2026-09-13T12:55:15.189576\",\"book_total_pages\":239}",
+      "verdict": "INFO",
+      "note": "int column; a non-numeric string may 500 on PostgreSQL bind"
+    },
+    {
+      "category": "Validation",
+      "request": {
+        "method": "PATCH",
+        "path": "/userbooks/882",
+        "token": "reader",
+        "body": "current_page=1000000000"
+      },
+      "expected": "422/clamp",
+      "actual_status": 200,
+      "actual_body": "{\"id\":882,\"status\":\"banana\",\"current_page\":1000000000,\"rating\":5,\"updated_at\":\"2026-09-13T12:55:15.189576\",\"book_total_pages\":239}",
+      "verdict": "INFO",
+      "note": "int column; a non-numeric string may 500 on PostgreSQL bind"
+    },
+    {
+      "category": "Validation",
+      "request": {
+        "method": "PATCH",
+        "path": "/userbooks/882",
+        "token": "reader",
+        "body": "current_page='10'"
+      },
+      "expected": "422/clamp",
+      "actual_status": 200,
+      "actual_body": "{\"id\":882,\"status\":\"banana\",\"current_page\":10,\"rating\":5,\"updated_at\":\"2026-09-13T12:55:15.189576\",\"book_total_pages\":239}",
+      "verdict": "INFO",
+      "note": "int column; a non-numeric string may 500 on PostgreSQL bind"
+    },
+    {
+      "category": "Validation",
+      "request": {
+        "method": "PATCH",
+        "path": "/userbooks/882",
+        "token": "reader",
+        "body": "total_pages=0"
+      },
+      "expected": "422/clamp",
+      "actual_status": 200,
+      "actual_body": "{\"id\":882,\"status\":\"banana\",\"current_page\":10,\"rating\":5,\"updated_at\":\"2026-09-13T12:55:15.189576\",\"book_total_pages\":0}",
+      "verdict": "INFO",
+      "note": "PATCH total_pages writes the SHARED Book row (not just the userbook)"
+    },
+    {
+      "category": "Validation",
+      "request": {
+        "method": "PATCH",
+        "path": "/userbooks/882",
+        "token": "reader",
+        "body": "total_pages=-1"
+      },
+      "expected": "422/clamp",
+      "actual_status": 200,
+      "actual_body": "{\"id\":882,\"status\":\"banana\",\"current_page\":10,\"rating\":5,\"updated_at\":\"2026-09-13T12:55:15.189576\",\"book_total_pages\":-1}",
+      "verdict": "INFO",
+      "note": "PATCH total_pages writes the SHARED Book row (not just the userbook)"
+    },
+    {
+      "category": "Validation",
+      "request": {
+        "method": "PATCH",
+        "path": "/userbooks/882",
+        "token": "reader",
+        "body": "total_pages=1000000000"
+      },
+      "expected": "422/clamp",
+      "actual_status": 200,
+      "actual_body": "{\"id\":882,\"status\":\"banana\",\"current_page\":10,\"rating\":5,\"updated_at\":\"2026-09-13T12:55:15.189576\",\"book_total_pages\":1000000000}",
+      "verdict": "INFO",
+      "note": "PATCH total_pages writes the SHARED Book row (not just the userbook)"
+    },
+    {
+      "category": "Validation",
+      "request": {
+        "method": "PATCH",
+        "path": "/userbooks/882",
+        "token": "reader",
+        "body": "format='banana'"
+      },
+      "expected": "422/400",
+      "actual_status": 200,
+      "actual_body": "{\"id\":882,\"status\":\"banana\",\"current_page\":10,\"rating\":5,\"updated_at\":\"2026-09-13T12:55:15.189576\",\"book_total_pages\":239}",
+      "verdict": "INFO",
+      "note": ""
+    },
+    {
+      "category": "Validation",
+      "request": {
+        "method": "PATCH",
+        "path": "/userbooks/882",
+        "token": "reader",
+        "body": "ownership_status='junk'"
+      },
+      "expected": "422/400",
+      "actual_status": 200,
+      "actual_body": "{\"id\":882,\"status\":\"banana\",\"current_page\":10,\"rating\":5,\"updated_at\":\"2026-09-13T12:55:15.189576\",\"book_total_pages\":239}",
+      "verdict": "INFO",
+      "note": ""
+    },
+    {
+      "category": "Validation",
+      "request": {
+        "method": "POST",
+        "path": "/notes/",
+        "token": "reader",
+        "body": "text empty"
+      },
+      "expected": "400 for empty; else 201",
+      "actual_status": 400,
+      "actual_body": "{\"detail\":\"Post must have text, a quote, or an image\"}",
+      "verdict": "PASS",
+      "note": ""
+    },
+    {
+      "category": "Validation",
+      "request": {
+        "method": "POST",
+        "path": "/notes/",
+        "token": "reader",
+        "body": "text whitespace"
+      },
+      "expected": "400 for empty; else 201",
+      "actual_status": 400,
+      "actual_body": "{\"detail\":\"Post must have text, a quote, or an image\"}",
+      "verdict": "PASS",
+      "note": ""
+    },
+    {
+      "category": "Validation",
+      "request": {
+        "method": "POST",
+        "path": "/notes/",
+        "token": "reader",
+        "body": "text 100KB"
+      },
+      "expected": "400 for empty; else 201",
+      "actual_status": 201,
+      "actual_body": "{\"id\":205,\"user_id\":null,\"text\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+      "verdict": "PASS",
+      "note": ""
+    },
+    {
+      "category": "Validation",
+      "request": {
+        "method": "POST",
+        "path": "/notes/",
+        "token": "reader",
+        "body": "text emoji"
+      },
+      "expected": "400 for empty; else 201",
+      "actual_status": 201,
+      "actual_body": "{\"id\":206,\"user_id\":null,\"text\":\"\ud83d\udcda\ud83d\udd25\u2728 reading\",\"emotion\":null,\"page_number\":null,\"chapter\":null,\"image_url\":null,\"quote\":null,\"is_public\":false,\"created_at\":\"2026-09-13T12:55:59.062502Z\",\"updated_at\":n",
+      "verdict": "PASS",
+      "note": ""
+    },
+    {
+      "category": "Validation",
+      "request": {
+        "method": "POST",
+        "path": "/notes/",
+        "token": "reader",
+        "body": "text RTL"
+      },
+      "expected": "400 for empty; else 201",
+      "actual_status": 201,
+      "actual_body": "{\"id\":207,\"user_id\":null,\"text\":\"\u0645\u0631\u062d\u0628\u0627 \u0628\u0627\u0644\u0639\u0627\u0644\u0645\",\"emotion\":null,\"page_number\":null,\"chapter\":null,\"image_url\":null,\"quote\":null,\"is_public\":false,\"created_at\":\"2026-09-13T12:56:00.908071Z\",\"updated_at\"",
+      "verdict": "PASS",
+      "note": ""
+    },
+    {
+      "category": "Validation",
+      "request": {
+        "method": "POST",
+        "path": "/notes/",
+        "token": "reader",
+        "body": "text zero-width"
+      },
+      "expected": "400 for empty; else 201",
+      "actual_status": 201,
+      "actual_body": "{\"id\":208,\"user_id\":null,\"text\":\"a\u200bb\u200bc\",\"emotion\":null,\"page_number\":null,\"chapter\":null,\"image_url\":null,\"quote\":null,\"is_public\":false,\"created_at\":\"2026-09-13T12:56:02.732200Z\",\"updated_at\":null,\"l",
+      "verdict": "PASS",
+      "note": ""
+    },
+    {
+      "category": "Validation",
+      "request": {
+        "method": "POST",
+        "path": "/notes/",
+        "token": "reader",
+        "body": "text script-tag"
+      },
+      "expected": "400 for empty; else 201",
+      "actual_status": 201,
+      "actual_body": "{\"id\":209,\"user_id\":null,\"text\":\"<script>alert(1)</script>\",\"emotion\":null,\"page_number\":null,\"chapter\":null,\"image_url\":null,\"quote\":null,\"is_public\":false,\"created_at\":\"2026-09-13T12:56:04.536501Z\",",
+      "verdict": "INFO",
+      "note": "stored raw; web renders image_url only in <img src> (not href, no dangerouslySetInnerHTML on note fields) so script/js-url is not directly executable"
+    },
+    {
+      "category": "Validation",
+      "request": {
+        "method": "POST",
+        "path": "/notes/",
+        "token": "reader",
+        "body": "text js-url-image"
+      },
+      "expected": "400 for empty; else 201",
+      "actual_status": 201,
+      "actual_body": "{\"id\":210,\"user_id\":null,\"text\":\"note\",\"emotion\":null,\"page_number\":null,\"chapter\":null,\"image_url\":\"javascript:alert(1)\",\"quote\":null,\"is_public\":false,\"created_at\":\"2026-09-13T12:56:06.329184Z\",\"upd",
+      "verdict": "INFO",
+      "note": "stored raw; web renders image_url only in <img src> (not href, no dangerouslySetInnerHTML on note fields) so script/js-url is not directly executable"
+    },
+    {
+      "category": "Validation",
+      "request": {
+        "method": "POST",
+        "path": "/notes/211/comments",
+        "token": "reader",
+        "body": "empty comment"
+      },
+      "expected": "400",
+      "actual_status": 400,
+      "actual_body": "{\"detail\":\"Comment text cannot be empty\"}",
+      "verdict": "PASS",
+      "note": ""
+    },
+    {
+      "category": "Validation",
+      "request": {
+        "method": "POST",
+        "path": "/notes/211/comments",
+        "token": "reader",
+        "body": "100KB comment"
+      },
+      "expected": "201 or 413",
+      "actual_status": 201,
+      "actual_body": "{\"id\":25,\"text\":\"CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC",
+      "verdict": "INFO",
+      "note": ""
+    },
+    {
+      "category": "Validation",
+      "request": {
+        "method": "POST",
+        "path": "/groups/",
+        "token": "reader",
+        "body": "empty name"
+      },
+      "expected": "400 for empty name; else 201",
+      "actual_status": 400,
+      "actual_body": "{\"detail\":\"Group name is required\"}",
+      "verdict": "PASS",
+      "note": ""
+    },
+    {
+      "category": "Validation",
+      "request": {
+        "method": "POST",
+        "path": "/groups/",
+        "token": "reader",
+        "body": "10KB desc"
+      },
+      "expected": "400 for empty name; else 201",
+      "actual_status": 201,
+      "actual_body": "{\"id\":20,\"name\":\"QA-adv-grp-desc\",\"description\":\"DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD",
+      "verdict": "INFO",
+      "note": ""
+    },
+    {
+      "category": "Validation",
+      "request": {
+        "method": "POST",
+        "path": "/groups/",
+        "token": "reader",
+        "body": "cover junk"
+      },
+      "expected": "400 for empty name; else 201",
+      "actual_status": 201,
+      "actual_body": "{\"id\":21,\"name\":\"QA-adv-grp-cover\",\"description\":null,\"is_private\":false,\"invite_code\":\"ZXhULF3yPCA\",\"cover_preset\":\"not-a-preset\",\"created_by\":110,\"creator_name\":\"Review.Reader\",\"goal_pages\":null,\"go",
+      "verdict": "INFO",
+      "note": ""
+    },
+    {
+      "category": "Validation",
+      "request": {
+        "method": "POST",
+        "path": "/groups/",
+        "token": "reader",
+        "body": "goal_pages neg"
+      },
+      "expected": "400 for empty name; else 201",
+      "actual_status": 201,
+      "actual_body": "{\"id\":22,\"name\":\"QA-adv-grp-goalneg\",\"description\":null,\"is_private\":false,\"invite_code\":\"_R_haMozyTo\",\"cover_preset\":\"teal\",\"created_by\":110,\"creator_name\":\"Review.Reader\",\"goal_pages\":-5,\"goal_perio",
+      "verdict": "INFO",
+      "note": ""
+    },
+    {
+      "category": "Validation",
+      "request": {
+        "method": "POST",
+        "path": "/groups/",
+        "token": "reader",
+        "body": "goal_period junk"
+      },
+      "expected": "400 for empty name; else 201",
+      "actual_status": 201,
+      "actual_body": "{\"id\":23,\"name\":\"QA-adv-grp-period\",\"description\":null,\"is_private\":false,\"invite_code\":\"adDSYH4mJ2k\",\"cover_preset\":\"teal\",\"created_by\":110,\"creator_name\":\"Review.Reader\",\"goal_pages\":null,\"goal_peri",
+      "verdict": "INFO",
+      "note": ""
+    },
+    {
+      "category": "Validation",
+      "request": {
+        "method": "GET",
+        "path": "/users/search",
+        "token": "reader",
+        "body": "q percent"
+      },
+      "expected": "200",
+      "actual_status": 200,
+      "actual_body": "[{\"id\":3,\"name\":\"sapna.singh330\",\"username\":null,\"bio\":null,\"is_following\":false,\"follows_you\":false,\"is_mutual\":false},{\"id\":5,\"name\":\"Anushika B\",\"username\":null,\"bio\":\"\",\"is_following\":false,\"follo",
+      "verdict": "PASS",
+      "note": ""
+    },
+    {
+      "category": "Validation",
+      "request": {
+        "method": "GET",
+        "path": "/users/search",
+        "token": "reader",
+        "body": "q underscore"
+      },
+      "expected": "200",
+      "actual_status": 200,
+      "actual_body": "[{\"id\":3,\"name\":\"sapna.singh330\",\"username\":null,\"bio\":null,\"is_following\":false,\"follows_you\":false,\"is_mutual\":false},{\"id\":5,\"name\":\"Anushika B\",\"username\":null,\"bio\":\"\",\"is_following\":false,\"follo",
+      "verdict": "PASS",
+      "note": ""
+    },
+    {
+      "category": "Validation",
+      "request": {
+        "method": "GET",
+        "path": "/users/search",
+        "token": "reader",
+        "body": "q quotes"
+      },
+      "expected": "200",
+      "actual_status": 200,
+      "actual_body": "[]",
+      "verdict": "PASS",
+      "note": ""
+    },
+    {
+      "category": "Validation",
+      "request": {
+        "method": "GET",
+        "path": "/users/search",
+        "token": "reader",
+        "body": "q 5KB"
+      },
+      "expected": "200",
+      "actual_status": 200,
+      "actual_body": "[]",
+      "verdict": "PASS",
+      "note": ""
+    },
+    {
+      "category": "Validation",
+      "request": {
+        "method": "GET",
+        "path": "/notes/feed",
+        "token": "reader",
+        "body": "limit=0"
+      },
+      "expected": "422 or cap<=200",
+      "actual_status": 200,
+      "actual_body": "[]",
+      "verdict": "PASS",
+      "note": "/books/ caps via Query(ge=1,le=200); /notes/* have no cap"
+    },
+    {
+      "category": "Validation",
+      "request": {
+        "method": "GET",
+        "path": "/notes/feed",
+        "token": "reader",
+        "body": "limit=-1"
+      },
+      "expected": "422 or cap<=200",
+      "actual_status": 500,
+      "actual_body": "Internal Server Error",
+      "verdict": "FAIL",
+      "note": "/books/ caps via Query(ge=1,le=200); /notes/* have no cap"
+    },
+    {
+      "category": "Validation",
+      "request": {
+        "method": "GET",
+        "path": "/notes/feed",
+        "token": "reader",
+        "body": "limit=100000"
+      },
+      "expected": "422 or cap<=200",
+      "actual_status": 200,
+      "actual_body": "[{\"id\":169,\"user_id\":111,\"text\":\"A line from this book has been stuck in my head all week.\",\"emotion\":null,\"page_number\":null,\"chapter\":null,\"image_url\":null,\"quote\":\"It is a truth universally acknowl",
+      "verdict": "INFO",
+      "note": "/books/ caps via Query(ge=1,le=200); /notes/* have no cap"
+    },
+    {
+      "category": "Validation",
+      "request": {
+        "method": "GET",
+        "path": "/notes/me",
+        "token": "reader",
+        "body": "limit=0"
+      },
+      "expected": "422 or cap<=200",
+      "actual_status": 200,
+      "actual_body": "[]",
+      "verdict": "PASS",
+      "note": "/books/ caps via Query(ge=1,le=200); /notes/* have no cap"
+    },
+    {
+      "category": "Validation",
+      "request": {
+        "method": "GET",
+        "path": "/notes/me",
+        "token": "reader",
+        "body": "limit=-1"
+      },
+      "expected": "422 or cap<=200",
+      "actual_status": 500,
+      "actual_body": "Internal Server Error",
+      "verdict": "FAIL",
+      "note": "/books/ caps via Query(ge=1,le=200); /notes/* have no cap"
+    },
+    {
+      "category": "Validation",
+      "request": {
+        "method": "GET",
+        "path": "/notes/me",
+        "token": "reader",
+        "body": "limit=100000"
+      },
+      "expected": "422 or cap<=200",
+      "actual_status": 200,
+      "actual_body": "[{\"id\":211,\"user_id\":110,\"text\":\"comment target\",\"emotion\":null,\"page_number\":null,\"chapter\":null,\"image_url\":null,\"quote\":null,\"is_public\":false,\"created_at\":\"2026-09-13T12:56:08.150511Z\",\"updated_at",
+      "verdict": "INFO",
+      "note": "/books/ caps via Query(ge=1,le=200); /notes/* have no cap"
+    },
+    {
+      "category": "Validation",
+      "request": {
+        "method": "GET",
+        "path": "/books/",
+        "token": "reader",
+        "body": "limit=0"
+      },
+      "expected": "422 or cap<=200",
+      "actual_status": 422,
+      "actual_body": "{\"detail\":[{\"loc\":[\"query\",\"limit\"],\"msg\":\"ensure this value is greater than or equal to 1\",\"type\":\"value_error.number.not_ge\",\"ctx\":{\"limit_value\":1}}]}",
+      "verdict": "PASS",
+      "note": "/books/ caps via Query(ge=1,le=200); /notes/* have no cap"
+    },
+    {
+      "category": "Validation",
+      "request": {
+        "method": "GET",
+        "path": "/books/",
+        "token": "reader",
+        "body": "limit=-1"
+      },
+      "expected": "422 or cap<=200",
+      "actual_status": 422,
+      "actual_body": "{\"detail\":[{\"loc\":[\"query\",\"limit\"],\"msg\":\"ensure this value is greater than or equal to 1\",\"type\":\"value_error.number.not_ge\",\"ctx\":{\"limit_value\":1}}]}",
+      "verdict": "PASS",
+      "note": "/books/ caps via Query(ge=1,le=200); /notes/* have no cap"
+    },
+    {
+      "category": "Validation",
+      "request": {
+        "method": "GET",
+        "path": "/books/",
+        "token": "reader",
+        "body": "limit=100000"
+      },
+      "expected": "422 or cap<=200",
+      "actual_status": 422,
+      "actual_body": "{\"detail\":[{\"loc\":[\"query\",\"limit\"],\"msg\":\"ensure this value is less than or equal to 200\",\"type\":\"value_error.number.not_le\",\"ctx\":{\"limit_value\":200}}]}",
+      "verdict": "PASS",
+      "note": "/books/ caps via Query(ge=1,le=200); /notes/* have no cap"
+    },
+    {
+      "category": "Validation",
+      "request": {
+        "method": "GET",
+        "path": "/reading-activity/daily",
+        "token": "reader",
+        "body": "days=0 (0.94s)"
+      },
+      "expected": "200, bounded time",
+      "actual_status": 200,
+      "actual_body": "{\"days\":0,\"data\":[]}",
+      "verdict": "PASS",
+      "note": ""
+    },
+    {
+      "category": "Validation",
+      "request": {
+        "method": "GET",
+        "path": "/reading-activity/daily",
+        "token": "reader",
+        "body": "days=-1 (0.94s)"
+      },
+      "expected": "200, bounded time",
+      "actual_status": 200,
+      "actual_body": "{\"days\":-1,\"data\":[]}",
+      "verdict": "PASS",
+      "note": ""
+    },
+    {
+      "category": "Validation",
+      "request": {
+        "method": "GET",
+        "path": "/reading-activity/daily",
+        "token": "reader",
+        "body": "days=100000 (2.47s)"
+      },
+      "expected": "200, bounded time",
+      "actual_status": 200,
+      "actual_body": "{\"days\":100000,\"data\":[{\"date\":\"1752-11-29\",\"pages_read\":0},{\"date\":\"1752-11-30\",\"pages_read\":0},{\"date\":\"1752-12-01\",\"pages_read\":0},{\"date\":\"1752-12-02\",\"pages_read\":0},{\"date\":\"1752-12-03\",\"pages_r",
+      "verdict": "PASS",
+      "note": ""
+    },
+    {
+      "category": "Validation",
+      "request": {
+        "method": "PATCH",
+        "path": "/notifications/prefs",
+        "token": "reader",
+        "body": "valid 7-key payload"
+      },
+      "expected": "200",
+      "actual_status": 500,
+      "actual_body": "Internal Server Error",
+      "verdict": "FAIL",
+      "note": "write path \u2014 GET /prefs works but this PATCH 500s on every payload (endpoint broken)"
+    },
+    {
+      "category": "Validation",
+      "request": {
+        "method": "PATCH",
+        "path": "/notifications/prefs",
+        "token": "reader",
+        "body": "unknown extra key"
+      },
+      "expected": "200 ignored",
+      "actual_status": 500,
+      "actual_body": "Internal Server Error",
+      "verdict": "FAIL",
+      "note": "same 500 as the valid payload \u2014 not caused by the extra key"
+    },
+    {
+      "category": "Validation",
+      "request": {
+        "method": "PATCH",
+        "path": "/notifications/prefs",
+        "token": "reader",
+        "body": "non-bool value"
+      },
+      "expected": "422",
+      "actual_status": 422,
+      "actual_body": "{\"detail\":[{\"loc\":[\"body\",\"new_follower\"],\"msg\":\"value could not be parsed to a boolean\",\"type\":\"type_error.bool\"}]}",
+      "verdict": "PASS",
+      "note": ""
+    },
+    {
+      "category": "Validation",
+      "request": {
+        "method": "PUT",
+        "path": "/profile/me",
+        "token": "reader",
+        "body": "name 10KB"
+      },
+      "expected": "200 or 422",
+      "actual_status": 200,
+      "actual_body": "{\"id\":110,\"name\":\"NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN",
+      "verdict": "INFO",
+      "note": ""
+    },
+    {
+      "category": "Validation",
+      "request": {
+        "method": "PUT",
+        "path": "/profile/me",
+        "token": "reader",
+        "body": "yearly_goal=-1"
+      },
+      "expected": "422/clamp",
+      "actual_status": 200,
+      "actual_body": "{\"id\":110,\"name\":\"NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN",
+      "verdict": "INFO",
+      "note": ""
+    },
+    {
+      "category": "Validation",
+      "request": {
+        "method": "PUT",
+        "path": "/profile/me",
+        "token": "reader",
+        "body": "yearly_goal=1000000000"
+      },
+      "expected": "422/clamp",
+      "actual_status": 200,
+      "actual_body": "{\"id\":110,\"name\":\"NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN",
+      "verdict": "INFO",
+      "note": ""
+    },
+    {
+      "category": "State/race",
+      "request": {
+        "method": "POST",
+        "path": "/books/add-to-library",
+        "token": "reader x2 concurrent",
+        "body": "same google_id; statuses=[200, 200]"
+      },
+      "expected": "1 userbook row",
+      "actual_status": 200,
+      "actual_body": "2 userbook rows for this book",
+      "verdict": "FAIL",
+      "note": "duplicate-guard is a check-then-insert, not a unique constraint"
+    },
+    {
+      "category": "State/race",
+      "request": {
+        "method": "POST",
+        "path": "/notes/212/like",
+        "token": "reader x3 concurrent",
+        "body": "like own note"
+      },
+      "expected": "likes_count==1",
+      "actual_status": 201,
+      "actual_body": "likes_count=3",
+      "verdict": "FAIL",
+      "note": "like has no unique(note_id,user_id); concurrent inserts can duplicate"
+    },
+    {
+      "category": "State/race",
+      "request": {
+        "method": "POST",
+        "path": "/follow/111",
+        "token": "reader x2 concurrent",
+        "body": "double follow; statuses=[200, 200]"
+      },
+      "expected": "1 follow row",
+      "actual_status": 200,
+      "actual_body": "2 follow rows",
+      "verdict": "FAIL",
+      "note": "follow has no unique constraint; concurrent inserts can duplicate"
+    },
+    {
+      "category": "State/race",
+      "request": {
+        "method": "PUT",
+        "path": "/userbooks/856/progress",
+        "token": "reader",
+        "body": "seed book to total then 0; total=292"
+      },
+      "expected": "finished\u2192to-read",
+      "actual_status": 200,
+      "actual_body": "status total-hit=finished, status after-0=to-read",
+      "verdict": "PASS",
+      "note": "book_completed fires to followers on the finished transition; book restored after"
+    },
+    {
+      "category": "State/race",
+      "request": {
+        "method": "POST",
+        "path": "/groups/7/join",
+        "token": "friend",
+        "body": "join twice"
+      },
+      "expected": "idempotent (already member)",
+      "actual_status": 201,
+      "actual_body": "{\"status\":\"active\",\"message\":\"Already a member or pending\"}",
+      "verdict": "PASS",
+      "note": ""
+    },
+    {
+      "category": "State/race",
+      "request": {
+        "method": "DELETE",
+        "path": "/groups/7/leave",
+        "token": "reader(sole curator)",
+        "body": "leave"
+      },
+      "expected": "400 transfer-curator",
+      "actual_status": 400,
+      "actual_body": "{\"detail\":\"Transfer curator role before leaving\"}",
+      "verdict": "PASS",
+      "note": ""
+    },
+    {
+      "category": "State/race",
+      "request": {
+        "method": "GET",
+        "path": "/groups/my",
+        "token": "reader(verify)",
+        "body": "still member of Circle"
+      },
+      "expected": "member",
+      "actual_status": 200,
+      "actual_body": "True",
+      "verdict": "PASS",
+      "note": ""
+    },
+    {
+      "category": "State/race",
+      "request": {
+        "method": "POST",
+        "path": "/groups/7/approve/111",
+        "token": "reader(curator)",
+        "body": "approve already-active member"
+      },
+      "expected": "no-op / 200",
+      "actual_status": 200,
+      "actual_body": "{\"ok\":true}",
+      "verdict": "INFO",
+      "note": "re-fires group_join_approved notification for an already-active member"
+    },
+    {
+      "category": "State/race",
+      "request": {
+        "method": "DELETE",
+        "path": "/notes/213",
+        "token": "reader",
+        "body": "delete note with like+comment"
+      },
+      "expected": "200, FK-safe",
+      "actual_status": 200,
+      "actual_body": "{\"message\":\"Note deleted successfully\"}",
+      "verdict": "PASS",
+      "note": ""
+    },
+    {
+      "category": "State/race",
+      "request": {
+        "method": "DELETE",
+        "path": "/userbooks/885",
+        "token": "reader",
+        "body": "delete userbook that still has a note"
+      },
+      "expected": "200 (or cascade)",
+      "actual_status": 200,
+      "actual_body": "{\"status\":\"ok\",\"message\":\"Book removed from library successfully\"}",
+      "verdict": "PASS",
+      "note": "userbooks_router.delete_userbook does not pre-delete dependent notes/reading_activity"
+    },
+    {
+      "category": "State/race",
+      "request": {
+        "method": "GET",
+        "path": "/notes/214/comments",
+        "token": "reader(verify)",
+        "body": "note after userbook delete"
+      },
+      "expected": "404 if cascaded",
+      "actual_status": 200,
+      "actual_body": "[]",
+      "verdict": "INFO",
+      "note": ""
+    },
+    {
+      "category": "State/race",
+      "request": {
+        "method": "DELETE",
+        "path": "/userbooks/864",
+        "token": "reader",
+        "body": "delete userbook that has reading_activity rows (book_id 837)"
+      },
+      "expected": "200 FK-safe",
+      "actual_status": 500,
+      "actual_body": "Internal Server Error",
+      "verdict": "FAIL",
+      "note": "delete_userbook does not pre-delete reading_activity; reading_activity.userbook_id FK blocks the delete \u2192 500. LEFTOVER: userbook 864 (review.reader) cannot be removed via API and STILL EXISTS \u2014 needs a manual Supabase delete of its reading_activity rows then the userbook."
+    },
+    {
+      "category": "Uploads",
+      "request": {
+        "method": "POST",
+        "path": "/notes/upload-image",
+        "token": "reader",
+        "body": "text-as-png (image/png)"
+      },
+      "expected": "400/500 (Cloudinary refuses non-images)",
+      "actual_status": 500,
+      "actual_body": "{\"detail\":\"Failed to upload image: Invalid image file\"}",
+      "verdict": "INFO",
+      "note": "url_issued=False"
+    },
+    {
+      "category": "Uploads",
+      "request": {
+        "method": "POST",
+        "path": "/notes/upload-image",
+        "token": "reader",
+        "body": "svg-with-script (image/svg+xml)"
+      },
+      "expected": "400/500 (Cloudinary refuses non-images)",
+      "actual_status": 500,
+      "actual_body": "{\"detail\":\"Failed to upload image: Zero-sized SVG is invalid\"}",
+      "verdict": "INFO",
+      "note": "url_issued=False"
+    },
+    {
+      "category": "Uploads",
+      "request": {
+        "method": "POST",
+        "path": "/notes/upload-image",
+        "token": "reader",
+        "body": "zero-byte (image/png)"
+      },
+      "expected": "400/500 (Cloudinary refuses non-images)",
+      "actual_status": 500,
+      "actual_body": "{\"detail\":\"Failed to upload image: Missing required parameter - file\"}",
+      "verdict": "INFO",
+      "note": "url_issued=False"
+    },
+    {
+      "category": "Import",
+      "request": {
+        "method": "POST",
+        "path": "/import/goodreads",
+        "token": "friend",
+        "body": "5-row malformed CSV (missing cols, bad ISBN, dup, no-title)"
+      },
+      "expected": "summary imported/skipped/failed, no 500",
+      "actual_status": 200,
+      "actual_body": "{\"imported\": 3, \"skipped\": 1, \"failed\": 1, \"total\": 5, \"errors\": [{\"row\": 5, \"reason\": \"Missing title\"}]}",
+      "verdict": "PASS",
+      "note": ""
+    },
+    {
+      "category": "CORS/HTTP",
+      "request": {
+        "method": "OPTIONS",
+        "path": "/userbooks/",
+        "token": "none",
+        "body": "Origin: https://evil.example"
+      },
+      "expected": "no ACAO for evil origin",
+      "actual_status": 400,
+      "actual_body": "ACAO=None",
+      "verdict": "PASS",
+      "note": ""
+    },
+    {
+      "category": "CORS/HTTP",
+      "request": {
+        "method": "DELETE",
+        "path": "/version",
+        "token": "none",
+        "body": "wrong method"
+      },
+      "expected": "405",
+      "actual_status": 405,
+      "actual_body": "{\"detail\":\"Method Not Allowed\"}",
+      "verdict": "PASS",
+      "note": ""
+    },
+    {
+      "category": "CORS/HTTP",
+      "request": {
+        "method": "PUT",
+        "path": "/notes/feed",
+        "token": "reader",
+        "body": "wrong method"
+      },
+      "expected": "405",
+      "actual_status": 422,
+      "actual_body": "{\"detail\":[{\"loc\":[\"path\",\"note_id\"],\"msg\":\"value is not a valid integer\",\"type\":\"type_error.integer\"},{\"loc\":[\"body\"],\"msg\":\"field required\",\"type\":\"value_error.missing\"}]}",
+      "verdict": "INFO",
+      "note": ""
+    },
+    {
+      "category": "CORS/HTTP",
+      "request": {
+        "method": "GET",
+        "path": "/userbooks",
+        "token": "reader",
+        "body": "trailing-slash redirect"
+      },
+      "expected": "307 to https",
+      "actual_status": 307,
+      "actual_body": "Location='https://book-tracker-stitch.onrender.com/userbooks/'",
+      "verdict": "INFO",
+      "note": ""
+    },
+    {
+      "category": "CORS/HTTP",
+      "request": {
+        "method": "GET",
+        "path": "/uploads/",
+        "token": "none",
+        "body": "directory listing"
+      },
+      "expected": "404/no listing",
+      "actual_status": 404,
+      "actual_body": "{\"detail\":\"Not Found\"}",
+      "verdict": "PASS",
+      "note": ""
+    },
+    {
+      "category": "CORS/HTTP",
+      "request": {
+        "method": "GET",
+        "path": "/uploads/..%2f..%2fapp/main.py",
+        "token": "none",
+        "body": "path traversal"
+      },
+      "expected": "404, no file",
+      "actual_status": 400,
+      "actual_body": "<html>\r <head><title>400 Bad Request</title></head>\r <body>\r <center><h1>400 Bad Request</h1></center>\r <hr><center>cloudflare</center>\r </body>\r </html>\r ",
+      "verdict": "PASS",
+      "note": ""
+    },
+    {
+      "category": "CORS/HTTP",
+      "request": {
+        "method": "GET",
+        "path": "/version",
+        "token": "none",
+        "body": "security headers"
+      },
+      "expected": "HSTS/XFO/XCTO/CSP present",
+      "actual_status": 200,
+      "actual_body": "present=[] missing=['strict-transport-security', 'x-frame-options', 'x-content-type-options', 'content-security-policy', 'referrer-policy']",
+      "verdict": "INFO",
+      "note": "Render may add HSTS at the edge; app sets none"
+    },
+    {
+      "category": "Public",
+      "request": {
+        "method": "GET",
+        "path": "/api/googlebooks/search",
+        "token": "none",
+        "body": "unauth max_results=40 start_index=999999"
+      },
+      "expected": "200",
+      "actual_status": 500,
+      "actual_body": "{\"detail\":\"Unexpected error: \"}",
+      "verdict": "FAIL",
+      "note": ""
+    },
+    {
+      "category": "Public",
+      "request": {
+        "method": "GET",
+        "path": "/notifications/vapid-public-key",
+        "token": "none",
+        "body": "unauth"
+      },
+      "expected": "200 key or 503",
+      "actual_status": 200,
+      "actual_body": "{\"public_key\":\"BE6n6jg0vUczMfJ27Zhfa375VWz4ibMJSy3yt4PpjX1ZW4D2Zt6X16AQkeljY2ZAmiJihgjLZ86CfvAo3-lb_tc\"}",
+      "verdict": "PASS",
+      "note": ""
+    },
+    {
+      "category": "Public",
+      "request": {
+        "method": "POST",
+        "path": "/auth/delete-account",
+        "token": "none",
+        "body": "email=review.reader@trackmyread.com"
+      },
+      "expected": "already flagged in a prior run \u2014 NOT repeated",
+      "actual_status": null,
+      "actual_body": "not run (already flagged; not repeated per task)",
+      "verdict": "INFO",
+      "note": "Prior run set deletion_requested_at on review.reader (110). Skipped to avoid repeating."
+    },
+    {
+      "category": "Privacy",
+      "request": {
+        "method": "PUT",
+        "path": "/profile/me",
+        "token": "friend",
+        "body": "set is_private_profile=true"
+      },
+      "expected": "200 private",
+      "actual_status": 200,
+      "actual_body": "{\"id\":111,\"name\":\"Review.Friend\",\"username\":\"review.friend\",\"email\":\"review.friend@trackmyread.com\",\"bio\":null,\"profile_picture\":null,\"yearly_goal\":null,\"created_at\":\"2026-09-13T11:44:16.402055\",\"foll",
+      "verdict": "PASS",
+      "note": ""
+    },
+    {
+      "category": "Privacy",
+      "request": {
+        "method": "GET",
+        "path": "/profile/111",
+        "token": "reader (still follows friend)",
+        "body": "profile"
+      },
+      "expected": "follower access; community feed excludes private author",
+      "actual_status": 200,
+      "actual_body": "friend_present=True",
+      "verdict": "INFO",
+      "note": "visible to reader as a retained follower (expected)"
+    },
+    {
+      "category": "Privacy",
+      "request": {
+        "method": "GET",
+        "path": "/userbooks/user/111",
+        "token": "reader (still follows friend)",
+        "body": "books"
+      },
+      "expected": "follower access; community feed excludes private author",
+      "actual_status": 200,
+      "actual_body": "friend_present=False",
+      "verdict": "INFO",
+      "note": "not present"
+    },
+    {
+      "category": "Privacy",
+      "request": {
+        "method": "GET",
+        "path": "/notes/user/111",
+        "token": "reader (still follows friend)",
+        "body": "notes"
+      },
+      "expected": "follower access; community feed excludes private author",
+      "actual_status": 200,
+      "actual_body": "friend_present=False",
+      "verdict": "INFO",
+      "note": "not present"
+    },
+    {
+      "category": "Privacy",
+      "request": {
+        "method": "GET",
+        "path": "/users/111/stats",
+        "token": "reader (still follows friend)",
+        "body": "stats"
+      },
+      "expected": "follower access; community feed excludes private author",
+      "actual_status": 200,
+      "actual_body": "friend_present=False",
+      "verdict": "INFO",
+      "note": "not present"
+    },
+    {
+      "category": "Privacy",
+      "request": {
+        "method": "GET",
+        "path": "/reading-activity/user/111/daily",
+        "token": "reader (still follows friend)",
+        "body": "activity"
+      },
+      "expected": "follower access; community feed excludes private author",
+      "actual_status": 200,
+      "actual_body": "friend_present=False",
+      "verdict": "INFO",
+      "note": "not present"
+    },
+    {
+      "category": "Privacy",
+      "request": {
+        "method": "GET",
+        "path": "/users/search?q=review.friend",
+        "token": "reader (still follows friend)",
+        "body": "search"
+      },
+      "expected": "follower access; community feed excludes private author",
+      "actual_status": 200,
+      "actual_body": "friend_present=True",
+      "verdict": "INFO",
+      "note": "private profile is returned by /users/search (id/name/username/bio). Design choice \u2014 recorded as INFO."
+    },
+    {
+      "category": "Privacy",
+      "request": {
+        "method": "GET",
+        "path": "/books/recommendations",
+        "token": "reader (still follows friend)",
+        "body": "recommendations"
+      },
+      "expected": "follower access; community feed excludes private author",
+      "actual_status": 200,
+      "actual_body": "friend_present=False",
+      "verdict": "INFO",
+      "note": "not present"
+    },
+    {
+      "category": "Privacy",
+      "request": {
+        "method": "GET",
+        "path": "/userbooks/friends/currently-reading",
+        "token": "reader (still follows friend)",
+        "body": "friends-currently-reading"
+      },
+      "expected": "follower access; community feed excludes private author",
+      "actual_status": 200,
+      "actual_body": "friend_present=True",
+      "verdict": "INFO",
+      "note": "visible to reader as a retained follower (expected)"
+    },
+    {
+      "category": "Privacy",
+      "request": {
+        "method": "GET",
+        "path": "/notes/feed",
+        "token": "reader (still follows friend)",
+        "body": "community-feed"
+      },
+      "expected": "follower access; community feed excludes private author",
+      "actual_status": 200,
+      "actual_body": "friend_present=False",
+      "verdict": "PASS",
+      "note": "private author correctly excluded"
+    },
+    {
+      "category": "Privacy",
+      "request": {
+        "method": "GET",
+        "path": "/notes/friends-feed",
+        "token": "reader (still follows friend)",
+        "body": "friends-feed"
+      },
+      "expected": "follower access; community feed excludes private author",
+      "actual_status": 200,
+      "actual_body": "friend_present=True",
+      "verdict": "INFO",
+      "note": "visible to reader as a retained follower (expected)"
+    },
+    {
+      "category": "Privacy",
+      "request": {
+        "method": "GET",
+        "path": "/notes/169/comments",
+        "token": "reader (follows)",
+        "body": "read comments on private friend's note"
+      },
+      "expected": "200 (follower)",
+      "actual_status": 200,
+      "actual_body": "[]",
+      "verdict": "PASS",
+      "note": ""
+    },
+    {
+      "category": "Privacy",
+      "request": {
+        "method": "GET",
+        "path": "/groups/7/leaderboard",
+        "token": "reader (member)",
+        "body": "leaderboard"
+      },
+      "expected": "members see each other (group scope, unaffected by profile privacy)",
+      "actual_status": 200,
+      "actual_body": "friend_present=False",
+      "verdict": "INFO",
+      "note": ""
+    },
+    {
+      "category": "Privacy",
+      "request": {
+        "method": "GET",
+        "path": "/groups/7/members",
+        "token": "reader (member)",
+        "body": "members"
+      },
+      "expected": "members see each other (group scope, unaffected by profile privacy)",
+      "actual_status": 200,
+      "actual_body": "friend_present=False",
+      "verdict": "INFO",
+      "note": ""
+    },
+    {
+      "category": "Privacy",
+      "request": {
+        "method": "GET",
+        "path": "/groups/7/activity",
+        "token": "reader (member)",
+        "body": "activity"
+      },
+      "expected": "members see each other (group scope, unaffected by profile privacy)",
+      "actual_status": 200,
+      "actual_body": "friend_present=False",
+      "verdict": "INFO",
+      "note": ""
+    },
+    {
+      "category": "Privacy",
+      "request": {
+        "method": "PUT",
+        "path": "/profile/me",
+        "token": "friend(restore)",
+        "body": "un-private + re-follow reader"
+      },
+      "expected": "private=false, friend\u2192reader follow restored",
+      "actual_status": 200,
+      "actual_body": "private_restored=True, refollowed=True",
+      "verdict": "PASS",
+      "note": ""
+    },
+    {
+      "category": "Cleanup",
+      "request": {
+        "method": "-",
+        "path": "-",
+        "token": "-",
+        "body": "assert no QA notes remain"
+      },
+      "expected": "0 remaining",
+      "actual_status": null,
+      "actual_body": "remaining_qa_notes=[]",
+      "verdict": "PASS",
+      "note": ""
+    },
+    {
+      "category": "Cleanup",
+      "request": {
+        "method": "-",
+        "path": "-",
+        "token": "-",
+        "body": "created vs cleaned"
+      },
+      "expected": "created 20",
+      "actual_status": null,
+      "actual_body": "created 20 / cleaned 20 / uncleaned []",
+      "verdict": "PASS",
+      "note": ""
+    }
+  ]
+}
