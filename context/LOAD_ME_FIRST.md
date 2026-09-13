@@ -132,6 +132,10 @@ The correct key names (backend + frontend must match):
 
 ## Recently Shipped (September 13, 2026 — Review login + /version)
 
+**Production verified 2026-09-13 17:25 IST:** Render `REVIEW_LOGIN_*` keys live; seed created 19 items; 8 prod screenshots all logged-in with 0 failed API calls; `python qa/live_checks.py` 15/15 (self-cleaning).
+
+**Post-deploy routine:** `curl https://book-tracker-stitch.onrender.com/version` (commit = `git rev-parse HEAD`) → `node qa/screenshots.mjs --web https://www.trackmyread.com --api https://book-tracker-stitch.onrender.com --out qa/screenshots/<date>-prod` → `python qa/live_checks.py`.
+
 ### QA login + deploy verification endpoints (pytest 252/252, 5 BLOCKED live checks)
 
 **What changed:** Backend now has `POST /auth/review-login` (allowlisted review accounts with a shared secret, gated by env, 404 when unconfigured) and `GET /version` (returns the running commit SHA so a deploy can be verified without logging in). `scripts/seed_review_accounts.py` populates both accounts through the API with books, notes, a mutual follow, and a public Circle. QA can now take post-deploy screenshots without a Google account or UI changes. `/version` closes the sprint-2 verification gap — behaviour-only deploys leave `/openapi.json` byte-identical, so only the commit SHA proves it worked.
