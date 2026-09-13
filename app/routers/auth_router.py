@@ -1,4 +1,9 @@
 # app/routers/auth_router.py
+import hmac
+import os
+import secrets
+from typing import Optional
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, select
 from google.oauth2 import id_token
@@ -32,6 +37,10 @@ class LoginIn(BaseModel):
 
 class GoogleAuthIn(BaseModel):
     token: str
+
+class ReviewLoginIn(BaseModel):
+    email: str
+    secret: str
 
 class AccountDeletionRequest(BaseModel):
     email: str
@@ -144,6 +153,74 @@ def google_auth(payload: GoogleAuthIn, db: Session = Depends(get_session)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Google authentication failed: {str(e)}")
 
+
+def _review_login_config() -> tuple[Optional[str], list[str]]:
+    """
+    Read the review-login env vars on every request so tests can monkeypatch them
+    and so an operator can set them on Render without a redeploy of this module.
+    Returns (secret_or_None, allowlist) where allowlist is lowercased + trimmed
+    and NOT yet domain-filtered.
+    """
+    secret = (os.getenv("REVIEW_LOGIN_SECRET") or "").strip()
+    raw = os.getenv("REVIEW_LOGIN_EMAILS") or ""
+    allowlist = [e.strip().lower() for e in raw.split(",") if e.strip()]
+    return (secret or None), allowlist
+
+
+TRACKMYREAD_DOMAIN = "@trackmyread.com"
+
+
+@router.post("/review-login", include_in_schema=False)
+def review_login(payload: ReviewLoginIn, db: Session = Depends(get_session)):
+    """
+    Password-style login for allowlisted @trackmyread.com QA / review accounts.
+    Returns 404 unless BOTH REVIEW_LOGIN_SECRET and REVIEW_LOGIN_EMAILS are set,
+    so the route is unusable in local dev, in tests, and in any fork.
+    """
+    from datetime import datetime, date
+
+    configured_secret, allowlist = _review_login_config()
+
+    # 1. Not opted in -> the route behaves as if it does not exist.
+    if not configured_secret or not allowlist:
+        raise HTTPException(status_code=404, detail="Not Found")
+
+    # 2 + 3. Domain guard, allowlist membership and secret are all evaluated
+    #        before a single 401 is raised, so the response cannot be used to
+    #        tell "unknown email" from "wrong secret".
+    email = payload.email.strip().lower()
+    permitted = {e for e in allowlist if e.endswith(TRACKMYREAD_DOMAIN)}
+    email_ok = email in permitted
+    secret_ok = hmac.compare_digest(
+        payload.secret.encode("utf-8"), configured_secret.encode("utf-8")
+    )
+    if not (email_ok and secret_ok):
+        raise HTTPException(status_code=401, detail="Invalid review credentials")
+
+    # 4. Find or create, exactly as /auth/google does.
+    user = crud.get_user_by_email(db, email)
+    is_new_user = False
+    if not user:
+        random_password = secrets.token_urlsafe(32)
+        hashed = auth.hash_password(random_password)
+        name = email.split("@")[0].title()          # review.reader -> Review.Reader
+        user = crud.create_user(db, name=name, email=email, password_hash=hashed)
+        is_new_user = True
+
+    # last_active once per day — copied from google_auth (auth_router.py:129-135)
+    today = date.today()
+    if user.last_active is None or user.last_active.date() != today:
+        user.last_active = datetime.utcnow()
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+
+    token = auth.create_access_token({"sub": user.email})
+    return {
+        "access_token": token,
+        "is_new": is_new_user,
+        "user": {"id": user.id, "name": user.name, "email": user.email},
+    }
 
 
 @router.post("/delete-account")

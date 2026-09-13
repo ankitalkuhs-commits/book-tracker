@@ -50,6 +50,8 @@ CLOUDINARY_API_SECRET=
 VAPID_PRIVATE_KEY=
 VAPID_PUBLIC_KEY=
 VAPID_CLAIMS_SUB=
+REVIEW_LOGIN_SECRET=                          # see "Review accounts" below
+REVIEW_LOGIN_EMAILS=review.reader@trackmyread.com,review.friend@trackmyread.com
 ```
 
 ### Web frontend (`.env`)
@@ -64,6 +66,53 @@ VITE_GOOGLE_CLIENT_ID=
 API_BASE_URL=https://book-tracker-stitch.onrender.com
 GOOGLE_ANDROID_CLIENT_ID=
 ```
+
+---
+
+## Review accounts
+
+Two allowlisted `@trackmyread.com` accounts (`review.reader@trackmyread.com`,
+`review.friend@trackmyread.com`) log in with a shared secret instead of Google, for QA,
+screenshots and post-deploy checks. They are ordinary users in every other respect.
+
+**Env vars:** `REVIEW_LOGIN_SECRET` and `REVIEW_LOGIN_EMAILS` (see the backend `.env` block
+above). `POST /auth/review-login` returns **404** unless both are set — local dev and CI have it
+switched off by default, and switching it on is a deliberate act on Render.
+
+**Domain guard:** every address in `REVIEW_LOGIN_EMAILS` must end in `@trackmyread.com`; anything
+else is ignored and gets a 401. A typo can never open login for a real user's Gmail.
+
+Generate the secret:
+```bash
+python -c "import secrets; print(secrets.token_urlsafe(32))"
+```
+Set it in **Render → Environment**, and locally in `.env.review` at the repo root (gitignored via
+`.env.*`).
+
+Get a token:
+```bash
+curl -s -X POST https://book-tracker-stitch.onrender.com/auth/review-login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"review.reader@trackmyread.com","secret":"<SECRET>"}'
+```
+
+Seed the two accounts:
+```bash
+python scripts/seed_review_accounts.py --base-url https://book-tracker-stitch.onrender.com
+```
+Idempotent — a second run reports `created 0`.
+
+Log a browser in: open `https://www.trackmyread.com`, then in the console
+```js
+localStorage.setItem('bt_token', '<access_token>'); location.href = '/home';
+```
+
+**Confirm which build is live** (the sprint-2 gap this closes):
+```bash
+curl -s https://book-tracker-stitch.onrender.com/version
+# {"commit":"b8b6124…","service":"book-tracker-stitch","branch":"master"}
+```
+Compare `commit` against `git rev-parse HEAD`.
 
 ---
 

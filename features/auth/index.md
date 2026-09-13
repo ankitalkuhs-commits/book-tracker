@@ -2,7 +2,7 @@
 feature: auth
 status: production
 repos: api, web, mobile
-last_verified: 2026-05-03
+last_verified: 2026-09-13
 migrated_from: context/auth/README.md (2026-09-12)
 ---
 
@@ -127,3 +127,10 @@ To force re-onboarding for all web users: bump `ONBOARDING_KEY` from `'bt_onboar
 
 - Admin UI gates (showing trash icons, admin panel link) are frontend-only convenience — the backend always enforces 403
 - Initial admin user: set `is_admin = true` in Supabase for the account
+
+---
+
+## Screens / Work Items (node system)
+| Item | Status | Node |
+|---|---|---|
+| Review login + GET /version (QA/reviewer accounts, deploy verification) | in-progress | [review-login/](review-login/) |
