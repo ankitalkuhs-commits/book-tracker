@@ -77,21 +77,6 @@ def get_profile(db: Session = Depends(get_db), current_user=Depends(get_current_
         "totalPagesRead": total_pages_read,
     }
 
-    # Log the outgoing profile response for debugging mobile issues
-    import logging
-    _log_data = {
-        'id': user.id,
-        'name': user.name,
-        'email': user.email,
-        'bio': user.bio,
-        'created_at': user.created_at,
-        'followers_count': len(followers),
-        'following_count': len(following),
-        'stats': stats,
-        'is_admin': user.is_admin,
-    }
-    logging.warning(f"/profile/me response: {repr(_log_data)}")
-
     return {
         "id": user.id,
         "name": user.name,

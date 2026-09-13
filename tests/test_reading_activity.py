@@ -1,4 +1,6 @@
 """Tests for /reading-activity/* endpoints."""
+from datetime import datetime, timedelta
+
 from tests.conftest import _make_user, _auth
 
 
@@ -6,6 +8,18 @@ def _add_book(client, headers, title="Test Book", pages=200, status="reading"):
     return client.post("/books/add-to-library", json={
         "title": title, "total_pages": pages, "status": status
     }, headers=headers)
+
+
+def _log_activity(db, user_id, userbook_id, days_ago, pages=10):
+    from app.models import ReadingActivity
+    db.add(ReadingActivity(
+        user_id=user_id,
+        userbook_id=userbook_id,
+        date=datetime.utcnow() - timedelta(days=days_ago),
+        pages_read=pages,
+    ))
+    db.commit()
+    db.expire_all()
 
 
 class TestDailyStats:
@@ -52,6 +66,29 @@ class TestDailyStats:
         r = client.get("/reading-activity/daily?days=1", headers=h)
         today_pages = r.json()["data"][-1]["pages_read"]
         assert today_pages >= 50
+
+    def test_daily_shape_unchanged_after_insights_fix(self, client, db):
+        user = _make_user(db, email="ra_daily_shape@example.com")
+        h = _auth(user)
+        add = _add_book(client, h, title="Daily Shape Book", pages=200, status="reading")
+        ub_id = add.json()["id"]
+        _log_activity(db, user.id, ub_id, days_ago=0, pages=5)
+
+        r = client.get("/reading-activity/daily", headers=h)
+        assert r.status_code == 200
+        data = r.json()
+        assert set(data.keys()) == {"days", "data"}
+        assert data["days"] == 30
+        assert len(data["data"]) == 30
+        for d in data["data"]:
+            assert set(d.keys()) == {"date", "pages_read"}
+            assert isinstance(d["pages_read"], int)
+        today = datetime.utcnow().date().isoformat()
+        assert data["data"][-1]["date"] == today
+
+        r7 = client.get("/reading-activity/daily?days=7", headers=h)
+        assert r7.status_code == 200
+        assert len(r7.json()["data"]) == 7
 
 
 class TestInsights:
@@ -164,3 +201,147 @@ class TestPublicUserDaily:
         client.post(f"/follow/{target.id}", headers=_auth(viewer))
         r = client.get(f"/reading-activity/user/{target.id}/daily", headers=_auth(viewer))
         assert r.status_code == 200
+
+
+class TestInsightsMonthBuckets:
+    """R4 — monthly_pages walks real calendar months, never a 30-day step."""
+
+    def test_insights_monthly_has_exactly_12_entries(self, client, db):
+        user = _make_user(db, email="ramb_12@example.com")
+        r = client.get("/reading-activity/insights", headers=_auth(user))
+        assert len(r.json()["monthly_pages"]) == 12
+
+    def test_insights_monthly_months_match_independent_calendar_walk(self, client, db):
+        user = _make_user(db, email="ramb_walk@example.com")
+        today = datetime.utcnow().date()
+        expected = []
+        y, m = today.year, today.month
+        for _ in range(12):
+            expected.append(f"{y}-{m:02d}")
+            m -= 1
+            if m == 0:
+                m, y = 12, y - 1
+        expected.reverse()
+
+        r = client.get("/reading-activity/insights", headers=_auth(user))
+        got = [e["month"] for e in r.json()["monthly_pages"]]
+        assert got == expected
+        assert got[-1] == f"{today.year}-{today.month:02d}"
+
+    def test_insights_monthly_months_are_consecutive_and_unique(self, client, db):
+        user = _make_user(db, email="ramb_consec@example.com")
+        r = client.get("/reading-activity/insights", headers=_auth(user))
+        months = r.json()["monthly_pages"]
+        pairs = [tuple(int(p) for p in e["month"].split("-")) for e in months]
+        assert len(pairs) == 12
+        assert len(set(pairs)) == 12
+        for i in range(1, len(pairs)):
+            y, m = pairs[i - 1]
+            expected_next = (y + 1, 1) if m == 12 else (y, m + 1)
+            assert pairs[i] == expected_next
+        today = datetime.utcnow().date()
+        assert pairs[-1] == (today.year, today.month)
+
+    def test_insights_monthly_covers_every_month_number_once(self, client, db):
+        user = _make_user(db, email="ramb_allmonths@example.com")
+        r = client.get("/reading-activity/insights", headers=_auth(user))
+        nums = sorted(int(e["month"].split("-")[1]) for e in r.json()["monthly_pages"])
+        assert nums == list(range(1, 13))
+
+    def test_insights_monthly_pages_bucketed_into_correct_month(self, client, db):
+        user = _make_user(db, email="ramb_bucket@example.com")
+        h = _auth(user)
+        add = _add_book(client, h, title="Bucket Book", pages=300, status="reading")
+        ub_id = add.json()["id"]
+        _log_activity(db, user.id, ub_id, days_ago=0, pages=7)
+        _log_activity(db, user.id, ub_id, days_ago=70, pages=13)
+
+        key0 = datetime.utcnow().date()
+        key0 = f"{key0.year}-{key0.month:02d}"
+        key70 = (datetime.utcnow() - timedelta(days=70)).date()
+        key70 = f"{key70.year}-{key70.month:02d}"
+
+        r = client.get("/reading-activity/insights", headers=h)
+        by_month = {e["month"]: e["pages_read"] for e in r.json()["monthly_pages"]}
+        assert key0 in by_month
+        assert key70 in by_month
+        if key0 != key70:
+            assert by_month[key0] == 7
+            assert by_month[key70] == 13
+
+    def test_insights_monthly_pages_shape_unchanged(self, client, db):
+        user = _make_user(db, email="ramb_shape@example.com")
+        r = client.get("/reading-activity/insights", headers=_auth(user))
+        months = r.json()["monthly_pages"]
+        assert isinstance(months, list)
+        import re
+        for e in months:
+            assert set(e.keys()) == {"month", "pages_read"}
+            assert re.match(r"^\d{4}-\d{2}$", e["month"])
+            assert isinstance(e["pages_read"], int)
+
+
+class TestInsightsStreak:
+    """R4 — current_streak anchors on today if active, else yesterday."""
+
+    def test_insights_streak_one_when_only_today(self, client, db):
+        user = _make_user(db, email="ras_today@example.com")
+        h = _auth(user)
+        add = _add_book(client, h, title="Streak Today", pages=200, status="reading")
+        ub_id = add.json()["id"]
+        _log_activity(db, user.id, ub_id, days_ago=0)
+        r = client.get("/reading-activity/insights", headers=h)
+        assert r.json()["current_streak"] == 1
+
+    def test_insights_streak_one_when_only_yesterday(self, client, db):
+        user = _make_user(db, email="ras_yesterday@example.com")
+        h = _auth(user)
+        add = _add_book(client, h, title="Streak Yesterday", pages=200, status="reading")
+        ub_id = add.json()["id"]
+        _log_activity(db, user.id, ub_id, days_ago=1)
+        r = client.get("/reading-activity/insights", headers=h)
+        data = r.json()
+        assert data["current_streak"] == 1
+        assert data["longest_streak"] == 1
+
+    def test_insights_streak_two_for_yesterday_and_today(self, client, db):
+        user = _make_user(db, email="ras_both@example.com")
+        h = _auth(user)
+        add = _add_book(client, h, title="Streak Both", pages=200, status="reading")
+        ub_id = add.json()["id"]
+        _log_activity(db, user.id, ub_id, days_ago=0)
+        _log_activity(db, user.id, ub_id, days_ago=1)
+        r = client.get("/reading-activity/insights", headers=h)
+        data = r.json()
+        assert data["current_streak"] == 2
+        assert data["longest_streak"] == 2
+
+    def test_insights_streak_zero_when_last_activity_two_days_ago(self, client, db):
+        user = _make_user(db, email="ras_twoago@example.com")
+        h = _auth(user)
+        add = _add_book(client, h, title="Streak Two Ago", pages=200, status="reading")
+        ub_id = add.json()["id"]
+        _log_activity(db, user.id, ub_id, days_ago=2)
+        r = client.get("/reading-activity/insights", headers=h)
+        data = r.json()
+        assert data["current_streak"] == 0
+        assert data["longest_streak"] == 1
+
+    def test_insights_streak_zero_for_user_with_no_activity(self, client, db):
+        user = _make_user(db, email="ras_none@example.com")
+        r = client.get("/reading-activity/insights", headers=_auth(user))
+        data = r.json()
+        assert data["current_streak"] == 0
+        assert data["longest_streak"] == 0
+
+    def test_insights_longest_streak_unaffected_by_anchor_change(self, client, db):
+        user = _make_user(db, email="ras_longest@example.com")
+        h = _auth(user)
+        add = _add_book(client, h, title="Streak Longest", pages=200, status="reading")
+        ub_id = add.json()["id"]
+        for days_ago in (10, 11, 12):
+            _log_activity(db, user.id, ub_id, days_ago=days_ago)
+        r = client.get("/reading-activity/insights", headers=h)
+        data = r.json()
+        assert data["current_streak"] == 0
+        assert data["longest_streak"] == 3

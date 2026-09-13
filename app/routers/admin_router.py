@@ -11,7 +11,9 @@ from datetime import datetime, timedelta
 from ..database import get_session
 from ..deps import get_admin_user
 from .. import models
-from ..utils.push import send_push_to_many
+from ..notifications.push_mobile import send_expo_push
+from ..notifications.push_web import send_web_push
+from ..notifications.config import NOTIFICATION_EVENTS
 from ..notifications.dispatcher import fire_event
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -396,16 +398,33 @@ def broadcast_push_notification(
     Send a custom push notification to ALL registered devices.
     Admin only. Use for book launches, quizzes, announcements, etc.
     """
-    tokens = db.exec(select(models.PushToken)).all()
-    if not tokens:
+    event_cfg = NOTIFICATION_EVENTS.get("admin_broadcast", {})
+    if not event_cfg.get("is_active", True):
+        return {"message": "admin_broadcast is disabled in config", "sent_to": 0}
+
+    user_ids = db.exec(select(models.PushToken.user_id).distinct()).all()
+    if not user_ids:
         return {"message": "No registered push tokens found", "sent_to": 0}
 
-    token_list = [t.token for t in tokens]
-    send_push_to_many(token_list, title=payload.title, body=payload.body, data=payload.data)
+    data = {"type": "admin_broadcast", **(payload.data or {})}
+
+    for user_id in user_ids:
+        send_expo_push(db, user_id, payload.title, payload.body, data)
+        send_web_push(db, user_id, payload.title, payload.body, data)
+        db.add(models.NotificationLog(
+            user_id=user_id,
+            actor_id=admin_user.id,
+            event_type="admin_broadcast",
+            title=payload.title,
+            body=payload.body,
+            data=data,
+        ))
+
+    db.commit()
 
     return {
-        "message": f"Broadcast sent to {len(token_list)} device(s)",
-        "sent_to": len(token_list),
+        "message": f"Broadcast sent to {len(user_ids)} user(s)",
+        "sent_to": len(user_ids),
     }
 
 

@@ -145,13 +145,15 @@ def create_note(payload: NoteCreateSchema, db: Session = Depends(get_db), curren
         quote=quote
     )
 
-    # Fire group activity for note posted
-    book_for_activity = note.userbook.book if note.userbook else None
-    fire_group_activity_for_user(
-        db, current_user.id, "note_posted",
-        {"note_id": note.id,
-         "book_title": book_for_activity.title if book_for_activity else None},
-    )
+    # Fire group activity for note posted — public notes only.
+    # A private note must never surface in GET /groups/{id}/activity.
+    if is_public:
+        book_for_activity = note.userbook.book if note.userbook else None
+        fire_group_activity_for_user(
+            db, current_user.id, "note_posted",
+            {"note_id": note.id,
+             "book_title": book_for_activity.title if book_for_activity else None},
+        )
 
     # Build response shape (include basic user and book info for convenience)
     book = note.userbook.book if note.userbook else None
@@ -310,10 +312,16 @@ def get_my_notes(limit: int = 50, db: Session = Depends(get_db), current_user: m
         select(models.Comment.note_id, func.count(models.Comment.id))
         .where(models.Comment.note_id.in_(note_ids)).group_by(models.Comment.note_id)
     ).all()}
+    liked_set = set(db.exec(
+        select(models.Like.note_id)
+        .where(models.Like.user_id == current_user.id)
+        .where(models.Like.note_id.in_(note_ids))
+    ).all())
     out = []
     for n in notes:
         book = n.userbook.book if n.userbook else None
         user = n.user
+        user_has_liked = n.id in liked_set
         out.append({
             "id": n.id,
             "user_id": n.user_id,
@@ -328,7 +336,8 @@ def get_my_notes(limit: int = 50, db: Session = Depends(get_db), current_user: m
             "updated_at": format_timestamp(n.updated_at),
             "likes_count": likes_map.get(n.id, 0),
             "comments_count": comments_map.get(n.id, 0),
-            "liked_by_me": True,
+            "liked_by_me": user_has_liked,
+            "user_has_liked": user_has_liked,
             "user": {
                 "id": user.id, "name": user.name,
                 "username": getattr(user, "username", None),
@@ -545,11 +554,9 @@ def get_friends_feed(
             } if book else None
         })
     
-    # Sort: mutual follows' posts first, then by created_at descending
-    result.sort(key=lambda x: (
-        0 if x["user"] and x["user"].get("is_mutual") else 1,
-        x["created_at"]
-    ), reverse=True)
+    # Mutual follows' posts first; the DB already returned newest-first, and
+    # list.sort is stable, so the order inside each group is preserved.
+    result.sort(key=lambda x: 0 if (x["user"] and x["user"].get("is_mutual")) else 1)
     
     return result
 

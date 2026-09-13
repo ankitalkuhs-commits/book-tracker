@@ -119,4 +119,17 @@ NOTIFICATION_EVENTS: dict[str, dict] = {
     #     "is_active": True,
     #     "daily_cap": False,
     # },
+
+    # ── Operational ───────────────────────────────────────────────────────────
+    # Sent by POST /admin/push/broadcast. This event does NOT go through
+    # fire_event(): the admin supplies title/body at call time, and it is
+    # deliberately NOT gated on per-user notification preferences — it is the
+    # operational announcement channel (outages, launches, policy changes).
+    # Only `is_active` is honoured, as an admin kill-switch.
+    "admin_broadcast": {
+        "title": "TrackMyRead",          # placeholder — the admin supplies the real title
+        "body": "",                      # placeholder — the admin supplies the real body
+        "is_active": True,
+        "daily_cap": False,              # an admin may legitimately send twice in one day
+    },
 }

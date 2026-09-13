@@ -1,4 +1,6 @@
 """Tests for /follow/*, /profile/*, /users/* endpoints."""
+import logging
+
 import pytest
 from tests.conftest import _make_user, _auth
 
@@ -133,3 +135,73 @@ class TestUserSearch:
         r = client.get("/users/search?q=", headers=alice_headers)
         assert r.status_code == 200
         assert r.json() == []
+
+
+class TestProfileMeNoPII:
+    """R5 — /profile/me no longer logs PII; response shape unchanged."""
+
+    def test_profile_me_logs_no_email(self, client, db, caplog):
+        user = _make_user(db, email="pii_probe_unique@example.com", name="PII Probe")
+        with caplog.at_level(logging.WARNING):
+            r = client.get("/profile/me", headers=_auth(user))
+        assert r.status_code == 200
+        assert not any("pii_probe_unique@example.com" in rec.getMessage() for rec in caplog.records)
+        assert "pii_probe_unique@example.com" not in caplog.text
+        assert "/profile/me response" not in caplog.text
+
+    def test_profile_me_response_shape_unchanged(self, client, db):
+        user = _make_user(db, email="shape_probe@example.com")
+        r = client.get("/profile/me", headers=_auth(user))
+        assert r.status_code == 200
+        data = r.json()
+        assert set(data.keys()) == {
+            "id", "name", "username", "email", "bio", "profile_picture", "yearly_goal",
+            "created_at", "followers_count", "following_count", "stats", "is_admin",
+            "is_private_profile",
+        }
+        assert set(data["stats"].keys()) == {
+            "total_books", "totalBooks", "finished", "reading", "to_read", "toRead",
+            "total_pages_read", "totalPagesRead",
+        }
+        assert isinstance(data["followers_count"], int)
+        assert isinstance(data["following_count"], int)
+
+    def test_profile_me_logs_no_pii_at_debug_level(self, client, db, caplog):
+        user = _make_user(db, email="pii_probe_debug@example.com")
+        client.put("/profile/me", json={"bio": "pii-probe-bio-marker"}, headers=_auth(user))
+        with caplog.at_level(logging.DEBUG):
+            r = client.get("/profile/me", headers=_auth(user))
+        assert r.status_code == 200
+        assert "pii_probe_debug@example.com" not in caplog.text
+        assert "pii-probe-bio-marker" not in caplog.text
+
+    def test_public_profile_shape_unchanged(self, client, db):
+        a = _make_user(db, email="pubshape_a@example.com")
+        b = _make_user(db, email="pubshape_b@example.com")
+        r = client.get(f"/profile/{b.id}", headers=_auth(a))
+        assert r.status_code == 200
+        data = r.json()
+        assert data["stats"] is not None
+        assert "follows_you" in data
+        assert "yearly_goal" in data
+
+        client.put("/profile/me", json={"is_private_profile": True}, headers=_auth(b))
+        r2 = client.get(f"/profile/{b.id}", headers=_auth(a))
+        assert r2.status_code == 200
+        data2 = r2.json()
+        assert data2["stats"] is None
+        assert data2["locked"] is True
+
+    def test_follow_still_writes_notification_log(self, client, db):
+        from sqlmodel import select
+        from app import models
+        a = _make_user(db, email="followlog_a@example.com")
+        b = _make_user(db, email="followlog_b@example.com")
+        client.post(f"/follow/{b.id}", headers=_auth(a))
+        db.expire_all()
+        rows = db.exec(
+            select(models.NotificationLog)
+            .where(models.NotificationLog.user_id == b.id)
+            .where(models.NotificationLog.event_type == "new_follower")
+        ).all()
+        assert any(r.actor_id == a.id for r in rows)

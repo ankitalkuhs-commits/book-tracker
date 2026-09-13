@@ -28,7 +28,9 @@ Why: on 2026-05-04 `add-to-library` returned `{message, book, userbook}`, BookPr
 Every authenticated route. Also writes `user.last_active` once per day — the streak-reminder scheduler reads it. Changing this touches every request and the reminder logic.
 
 ### `app/notifications/dispatcher.py :: fire_event()` + `config.py`
-The only push path (Expo + web push + NotificationLog). Callers: follow_router, likes_comments, books_router, userbooks_router (×3), groups_router (invite, join request, approve/reject), notifications/router (admin test). **Not** using it (known debt): `notifications/scheduler.py`, `admin_router.broadcast_push_notification`.
+The only push path (Expo + web push + NotificationLog). Callers: follow_router, likes_comments, books_router, userbooks_router (×3), groups_router (invite, join request, approve/reject), notifications/router (admin test), `notifications/scheduler.py` (`reading_streak_reminder`, `actor_id=0`, added sprint-2).
+
+One deliberate exception: `admin_router.broadcast_push_notification` fires `event_type="admin_broadcast"` by calling `send_expo_push` + `send_web_push` per user and writing its own `NotificationLog` row (`actor_id=<admin id>`). It bypasses `fire_event` because the admin supplies `title`/`body` at call time (nothing to template) and an operational announcement is **not** gated on per-user prefs — `admin_broadcast` is therefore absent from `USER_PREF_KEYS`. It is registered in `config.py` so the admin events screen can list and kill-switch it; only `is_active` is honoured.
 
 Pref keys shared with both Settings screens: `new_follower · post_liked · post_commented · book_completed · reading_streak_reminder · group_invite · group_join_request` (`book_added` follows `book_completed`).
 
@@ -80,18 +82,18 @@ _Regenerated from code. 107 backend routes, 85 web api.js functions, 77 mobile a
 | GET | `/notifications/admin/events` | admin | app/notifications/router.py:234 | — | — |
 | PATCH | `/notifications/admin/events/{event_type}/toggle` | admin | app/notifications/router.py:243 | — | — |
 | POST | `/notifications/admin/test/{event_type}/{user_id}` | admin | app/notifications/router.py:262 | — | — |
-| GET | `/admin/stats` | admin | app/routers/admin_router.py:73 | `getAdminStats` → pages/AdminPage.jsx | — |
-| GET | `/admin/users` | admin | app/routers/admin_router.py:164 | `getAdminUsers` → pages/AdminPage.jsx | — |
-| GET | `/admin/books` | admin | app/routers/admin_router.py:219 | — | — |
-| GET | `/admin/follows` | admin | app/routers/admin_router.py:279 | — | — |
-| POST | `/admin/set-admin/{user_id}` | admin | app/routers/admin_router.py:316 | `setAdminRole` → pages/AdminPage.jsx | — |
-| POST | `/admin/bot/trigger` | admin | app/routers/admin_router.py:346 | `triggerBot` → pages/AdminPage.jsx | — |
-| POST | `/admin/push/broadcast` | admin | app/routers/admin_router.py:389 | `broadcastPush` → pages/AdminPage.jsx | — |
-| GET | `/admin/content/notes` | admin | app/routers/admin_router.py:435 | `getAdminNotes` → pages/AdminPage.jsx | — |
-| GET | `/admin/content/comments` | admin | app/routers/admin_router.py:481 | `getAdminComments` → pages/AdminPage.jsx | — |
-| DELETE | `/admin/content/note/{note_id}` | admin | app/routers/admin_router.py:510 | `adminDeleteNote` → pages/AdminPage.jsx, pages/HomePage.jsx, pages/UserProfilePage.jsx | `notesAPI.adminDeleteNote` → screens/UserProfileScreen.js |
-| DELETE | `/admin/content/comment/{comment_id}` | admin | app/routers/admin_router.py:529 | `adminDeleteComment` → pages/AdminPage.jsx, pages/HomePage.jsx | `notesAPI.adminDeleteComment` → screens/FeedScreen.js |
-| POST | `/admin/push/test/{user_id}` | admin | app/routers/admin_router.py:543 | `sendTestPush` → pages/AdminPage.jsx | — |
+| GET | `/admin/stats` | admin | app/routers/admin_router.py:75 | `getAdminStats` → pages/AdminPage.jsx | — |
+| GET | `/admin/users` | admin | app/routers/admin_router.py:166 | `getAdminUsers` → pages/AdminPage.jsx | — |
+| GET | `/admin/books` | admin | app/routers/admin_router.py:221 | — | — |
+| GET | `/admin/follows` | admin | app/routers/admin_router.py:281 | — | — |
+| POST | `/admin/set-admin/{user_id}` | admin | app/routers/admin_router.py:318 | `setAdminRole` → pages/AdminPage.jsx | — |
+| POST | `/admin/bot/trigger` | admin | app/routers/admin_router.py:348 | `triggerBot` → pages/AdminPage.jsx | — |
+| POST | `/admin/push/broadcast` | admin | app/routers/admin_router.py:391 | `broadcastPush` → pages/AdminPage.jsx | — |
+| GET | `/admin/content/notes` | admin | app/routers/admin_router.py:454 | `getAdminNotes` → pages/AdminPage.jsx | — |
+| GET | `/admin/content/comments` | admin | app/routers/admin_router.py:500 | `getAdminComments` → pages/AdminPage.jsx | — |
+| DELETE | `/admin/content/note/{note_id}` | admin | app/routers/admin_router.py:529 | `adminDeleteNote` → pages/AdminPage.jsx, pages/HomePage.jsx, pages/UserProfilePage.jsx | `notesAPI.adminDeleteNote` → screens/UserProfileScreen.js |
+| DELETE | `/admin/content/comment/{comment_id}` | admin | app/routers/admin_router.py:548 | `adminDeleteComment` → pages/AdminPage.jsx, pages/HomePage.jsx | `notesAPI.adminDeleteComment` → screens/FeedScreen.js |
+| POST | `/admin/push/test/{user_id}` | admin | app/routers/admin_router.py:562 | `sendTestPush` → pages/AdminPage.jsx | — |
 | POST | `/auth/signup` ⚠️ | NONE | app/routers/auth_router.py:41 | — | — |
 | POST | `/auth/login` ⚠️ | NONE | app/routers/auth_router.py:51 | — | — |
 | POST | `/auth/google` ⚠️ | NONE | app/routers/auth_router.py:70 | `googleLogin` → pages/LoginPage.jsx | `authAPI.googleLogin` → screens/LoginScreen.js |
@@ -148,22 +150,22 @@ _Regenerated from code. 107 backend routes, 85 web api.js functions, 77 mobile a
 | GET | `/notes/{note_id}/comments` | user | app/routers/likes_comments.py:128 | `getComments` → pages/HomePage.jsx | `notesAPI.getComments` → screens/FeedScreen.js, screens/ProfileScreen.js |
 | POST | `/notes/upload-image` | user | app/routers/notes_router.py:73 | — | `notesAPI.uploadImage` → screens/FeedScreen.js<br>`groupsAPI.uploadGroupPostImage` → screens/GroupDetailScreen.js |
 | POST | `/notes/` | user | app/routers/notes_router.py:115 | `createNote` → pages/BookDetailPage.jsx, pages/HomePage.jsx, pages/LibraryPage.jsx, pages/ProfilePage.jsx | `notesAPI.createNote` → screens/BookDetailScreen.js, screens/FeedScreen.js, screens/ProfileScreen.js |
-| PUT | `/notes/{note_id}` | user | app/routers/notes_router.py:175 | `updateNote` → pages/HomePage.jsx, pages/ProfilePage.jsx | `notesAPI.updateNote` → screens/ProfileScreen.js |
-| GET | `/notes/feed` | optional | app/routers/notes_router.py:229 | `getCommunityFeed` → pages/HomePage.jsx | `notesAPI.getCommunityFeed` → App.js, screens/FeedScreen.js |
-| GET | `/notes/me` | user | app/routers/notes_router.py:298 | `getMyNotes` → pages/ProfilePage.jsx | `notesAPI.getMyNotes` → App.js, screens/ProfileScreen.js |
-| GET | `/notes/user/{user_id}` | user | app/routers/notes_router.py:345 | `getUserNotes` → pages/UserProfilePage.jsx | `userAPI.getUserNotes` → screens/UserProfileScreen.js |
-| GET | `/notes/userbook/{userbook_id}` | user | app/routers/notes_router.py:403 | `getNotesForBook` → pages/BookDetailPage.jsx, pages/LibraryPage.jsx | `notesAPI.getNotesForBook` → screens/BookDetailScreen.js |
-| GET | `/notes/friends-feed` | user | app/routers/notes_router.py:444 | `getFriendsFeed` → pages/HomePage.jsx | `notesAPI.getFriendsFeed` → (unused) |
-| DELETE | `/notes/{note_id}` | user | app/routers/notes_router.py:557 | `deleteNote` → pages/BookDetailPage.jsx, pages/HomePage.jsx, pages/LibraryPage.jsx, pages/ProfilePage.jsx | `notesAPI.deleteNote` → screens/BookDetailScreen.js, screens/FeedScreen.js, screens/ProfileScreen.js |
+| PUT | `/notes/{note_id}` | user | app/routers/notes_router.py:177 | `updateNote` → pages/HomePage.jsx, pages/ProfilePage.jsx | `notesAPI.updateNote` → screens/ProfileScreen.js |
+| GET | `/notes/feed` | optional | app/routers/notes_router.py:231 | `getCommunityFeed` → pages/HomePage.jsx | `notesAPI.getCommunityFeed` → App.js, screens/FeedScreen.js |
+| GET | `/notes/me` | user | app/routers/notes_router.py:300 | `getMyNotes` → pages/ProfilePage.jsx | `notesAPI.getMyNotes` → App.js, screens/ProfileScreen.js |
+| GET | `/notes/user/{user_id}` | user | app/routers/notes_router.py:354 | `getUserNotes` → pages/UserProfilePage.jsx | `userAPI.getUserNotes` → screens/UserProfileScreen.js |
+| GET | `/notes/userbook/{userbook_id}` | user | app/routers/notes_router.py:412 | `getNotesForBook` → pages/BookDetailPage.jsx, pages/LibraryPage.jsx | `notesAPI.getNotesForBook` → screens/BookDetailScreen.js |
+| GET | `/notes/friends-feed` | user | app/routers/notes_router.py:453 | `getFriendsFeed` → pages/HomePage.jsx | `notesAPI.getFriendsFeed` → (unused) |
+| DELETE | `/notes/{note_id}` | user | app/routers/notes_router.py:564 | `deleteNote` → pages/BookDetailPage.jsx, pages/HomePage.jsx, pages/LibraryPage.jsx, pages/ProfilePage.jsx | `notesAPI.deleteNote` → screens/BookDetailScreen.js, screens/FeedScreen.js, screens/ProfileScreen.js |
 | GET | `/profile/me` | user | app/routers/profile_router.py:36 | `getMyProfile` → context/AuthContext.jsx, pages/ProfilePage.jsx, pages/SettingsPage.jsx | `userAPI.getProfile` → App.js, screens/FeedScreen.js, screens/GroupDetailScreen.js, screens/GroupsScreen.js, screens/ProfileScreen.js<br>`profileAPI.getMe` → screens/InsightsScreen.js, screens/SettingsScreen.js |
-| PUT | `/profile/me` | user | app/routers/profile_router.py:115 | `updateMyProfile` → components/AppTour.jsx, pages/OnboardingPage.jsx, pages/ProfilePage.jsx, pages/SettingsPage.jsx | `userAPI.updateProfile` → components/AppTour.js, screens/OnboardingScreen.js<br>`profileAPI.updateMe` → components/AppTour.js, screens/SettingsScreen.js |
-| POST | `/profile/me/picture` | user | app/routers/profile_router.py:174 | — | `profileAPI.uploadPicture` → screens/ProfileScreen.js, screens/SettingsScreen.js |
-| GET | `/profile/{user_id}` | user | app/routers/profile_router.py:210 | `getPublicProfile` → pages/UserProfilePage.jsx | `profileAPI.getPublicProfile` → screens/UserProfileScreen.js |
+| PUT | `/profile/me` | user | app/routers/profile_router.py:100 | `updateMyProfile` → components/AppTour.jsx, pages/OnboardingPage.jsx, pages/ProfilePage.jsx, pages/SettingsPage.jsx | `userAPI.updateProfile` → components/AppTour.js, screens/OnboardingScreen.js<br>`profileAPI.updateMe` → components/AppTour.js, screens/SettingsScreen.js |
+| POST | `/profile/me/picture` | user | app/routers/profile_router.py:159 | — | `profileAPI.uploadPicture` → screens/ProfileScreen.js, screens/SettingsScreen.js |
+| GET | `/profile/{user_id}` | user | app/routers/profile_router.py:195 | `getPublicProfile` → pages/UserProfilePage.jsx | `profileAPI.getPublicProfile` → screens/UserProfileScreen.js |
 | POST | `/push-tokens/` | user | app/routers/push_router.py:20 | — | `userAPI.registerPushToken` → (unused) |
 | DELETE | `/push-tokens/` | user | app/routers/push_router.py:63 | — | — |
 | GET | `/reading-activity/daily` | user | app/routers/reading_activity_router.py:12 | `getMyActivity` → pages/LibraryPage.jsx, pages/ProfilePage.jsx | `activityAPI.getMyActivity` → App.js, screens/InsightsScreen.js, screens/ProfileScreen.js |
 | GET | `/reading-activity/insights` | user | app/routers/reading_activity_router.py:55 | `getReadingInsights` → pages/InsightsPage.jsx, pages/ProfilePage.jsx | `activityAPI.getInsights` → App.js, screens/InsightsScreen.js, screens/ProfileScreen.js |
-| GET | `/reading-activity/user/{user_id}/daily` | user | app/routers/reading_activity_router.py:190 | `getUserActivity` → pages/UserProfilePage.jsx | `activityAPI.getUserActivity` → screens/UserProfileScreen.js |
+| GET | `/reading-activity/user/{user_id}/daily` | user | app/routers/reading_activity_router.py:198 | `getUserActivity` → pages/UserProfilePage.jsx | `activityAPI.getUserActivity` → screens/UserProfileScreen.js |
 | PUT | `/userbooks/{userbook_id}/progress` | user | app/routers/userbooks_router.py:26 | `updateProgress` → pages/BookDetailPage.jsx, pages/LibraryPage.jsx | `userbooksAPI.updateProgress` → screens/BookDetailScreen.js |
 | POST | `/userbooks/{userbook_id}/finish` | user | app/routers/userbooks_router.py:142 | `markFinished` → pages/BookDetailPage.jsx, pages/LibraryPage.jsx | `userbooksAPI.finishBook` → (unused) |
 | POST | `/userbooks/` | user | app/routers/userbooks_router.py:191 | — | `userbooksAPI.addBook` → (unused) |

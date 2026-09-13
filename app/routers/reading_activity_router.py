@@ -107,8 +107,10 @@ def get_reading_insights(
         d = a.date.date() if isinstance(a.date, datetime) else a.date
         active_dates.add(d)
 
+    # Anchor on today if there is activity today, else on yesterday — a reader
+    # who read yesterday but has not opened the app yet today still has a streak.
     current_streak = 0
-    check = today
+    check = today if today in active_dates else today - timedelta(days=1)
     while check in active_dates:
         current_streak += 1
         check -= timedelta(days=1)
@@ -132,10 +134,16 @@ def get_reading_insights(
         key = f"{d.year}-{d.month:02d}"
         monthly[key] = monthly.get(key, 0) + (a.pages_read or 0)
     monthly_list = []
-    for i in range(11, -1, -1):
-        ref = (today.replace(day=1) - timedelta(days=i * 30))
-        key = f"{ref.year}-{ref.month:02d}"
-        monthly_list.append({"month": key, "pages_read": monthly.get(key, 0)})
+    _y, _m = today.year, today.month
+    for _ in range(12):
+        monthly_list.append({
+            "month": f"{_y}-{_m:02d}",
+            "pages_read": monthly.get(f"{_y}-{_m:02d}", 0),
+        })
+        _m -= 1
+        if _m == 0:
+            _m, _y = 12, _y - 1
+    monthly_list.reverse()   # oldest-first, ending with the current month
 
     # ── Avg pages/day (last 30 days) ─────────────────────────────────────────
     thirty_ago = today - timedelta(days=30)

@@ -14,7 +14,7 @@ from sqlmodel import Session, select
 
 from ..database import engine
 from .. import models
-from .push_mobile import send_expo_push
+from .dispatcher import fire_event
 from .config import NOTIFICATION_EVENTS
 
 scheduler = AsyncIOScheduler(timezone="UTC")
@@ -27,52 +27,31 @@ def _send_inactivity_reminders() -> None:
         print("[scheduler] reading_streak_reminder is disabled — skipping.")
         return
 
-    title: str = event_cfg["title"]
-    body: str = event_cfg["body"]
     today = date.today()
-    sent = 0
 
     with Session(engine) as db:
-        # Only consider users who have at least one registered Expo push token
-        user_ids = db.exec(
-            select(models.PushToken.user_id)
-            .where(models.PushToken.token_type == "expo")
-            .distinct()
-        ).all()
+        # Any push channel — expo (mobile) or web (PWA). Not filtered by token_type:
+        # filtering it was the bug (web subscribers never got the reminder).
+        user_ids = db.exec(select(models.PushToken.user_id).distinct()).all()
 
+        recipient_ids = []
         for user_id in user_ids:
             user = db.get(models.User, user_id)
             if not user:
                 continue
-
-            # Skip users who were already active today
             if user.last_active and user.last_active.date() >= today:
-                continue
+                continue          # already read today — nothing to remind them about
+            recipient_ids.append(user_id)
 
-            # Send push to all their Expo devices
-            send_expo_push(
-                db=db,
-                user_id=user_id,
-                title=title,
-                body=body,
-                data={"type": "streak_reminder"},
-            )
+        summary = fire_event(
+            db=db,
+            event_type="reading_streak_reminder",
+            actor_id=0,
+            actor_name="TrackMyRead",
+            recipient_ids=recipient_ids,
+        )
 
-            # Log to NotificationLog for in-app notification history
-            log = models.NotificationLog(
-                user_id=user_id,
-                actor_id=None,          # system-generated, no actor
-                event_type="reading_streak_reminder",
-                title=title,
-                body=body,
-                data={"type": "streak_reminder"},
-            )
-            db.add(log)
-            sent += 1
-
-        db.commit()
-
-    print(f"[scheduler] Inactivity reminders sent: {sent} users notified.")
+    print(f"[scheduler] Inactivity reminders sent: {summary.get('sent', 0)} users notified.")
 
 
 def start_scheduler() -> None:
