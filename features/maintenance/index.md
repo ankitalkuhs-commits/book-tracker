@@ -1,7 +1,7 @@
 ---
 feature: maintenance
 status: in-progress
-repos: api
+repos: api, web
 last_verified: 2026-09-13
 ---
 
@@ -12,6 +12,7 @@ Home for correctness and hygiene sprints that fix bugs across several features a
 | Item | Status | Node |
 |---|---|---|
 | Sprint 2 — seven audit bugs + git hygiene | tested | [sprint-2-audit-bugs/](sprint-2-audit-bugs/) |
+| Sprint 4A — platform audit (api + web; decision-free subset + PM decisions + live probes) | in-progress (architecture complete) | [sprint-4a-platform-audit/](sprint-4a-platform-audit/) |
 
 ## Cross-Feature Dependencies
 - depends_on: features/community (notes, feed, push), features/reading-stats (insights), features/auth (profile)
