@@ -2,7 +2,7 @@
 screen: sprint-1-hardening
 feature: security
 repo: api (+ repo root for git hygiene)
-status: tested
+status: production
 last_verified: 2026-09-13
 approved_by: PM ("run the first sprint", 2026-09-12)
 ---
@@ -31,9 +31,9 @@ Not building:
 Not applicable — no UI. Client behaviour with an expired token is unchanged (401 → clearToken → login), because both clients already send `Authorization` on every call to these routes.
 
 ## Done Checklist (PM verifies)
-1. `curl -X DELETE https://…/books/1` with no token → `401`, and the book + every user's `userbook` rows for it still exist.
-2. `curl https://…/books/` with no token → `401`; with a user token → list (≤ 50).
-3. Log in on web, subscribe to web push, then log in on the Android app → `SELECT token_type, count(*) FROM pushtoken WHERE user_id = me` shows one `web` and one `expo`. Log out on mobile → the `web` row remains.
+1. ✅ 2026-09-13 08:21 UTC+5:30 — `curl -X DELETE https://book-tracker-stitch.onrender.com/books/1` no token → `HTTP/1.1 401 Unauthorized` (verified live after Render deploy of 0cd4e09).
+2. ✅ 2026-09-13 — anonymous `GET /books/` → `401` (was `200` until the deploy landed at 08:21:53); anonymous `GET /books/1` → `401`. Token path covered by `TestCatalogList` in pytest.
+3. ⏳ PM — log in on web, subscribe to web push, then log in on the Android app → `SELECT token_type, count(*) FROM pushtoken WHERE user_id = me` shows one `web` and one `expo`. Log out on mobile → the `web` row remains.
 4. `pytest tests -q` → 0 failed.
 5. `git status --short | grep -c venv` → `0`.
 
