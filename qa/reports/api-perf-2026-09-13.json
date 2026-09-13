@@ -1,0 +1,447 @@
+{
+  "api": "https://book-tracker-stitch.onrender.com",
+  "date": "2026-09-13",
+  "samples": 8,
+  "cold_version_ms": 407,
+  "cold_version_status": 200,
+  "login_ms": 3731,
+  "rows": [
+    {
+      "path": "/",
+      "status": [
+        "200"
+      ],
+      "bytes": 42,
+      "p50_ms": 245,
+      "p95_ms": 288,
+      "max_ms": 288
+    },
+    {
+      "path": "/version",
+      "status": [
+        "200"
+      ],
+      "bytes": 103,
+      "p50_ms": 246,
+      "p95_ms": 269,
+      "max_ms": 269
+    },
+    {
+      "path": "/profile/me",
+      "status": [
+        "200"
+      ],
+      "bytes": 412,
+      "p50_ms": 1481,
+      "p95_ms": 1498,
+      "max_ms": 1498
+    },
+    {
+      "path": "/profile/111",
+      "status": [
+        "200"
+      ],
+      "bytes": 331,
+      "p50_ms": 1838,
+      "p95_ms": 1849,
+      "max_ms": 1849
+    },
+    {
+      "path": "/userbooks/",
+      "status": [
+        "200"
+      ],
+      "bytes": 2944,
+      "p50_ms": 1131,
+      "p95_ms": 1151,
+      "max_ms": 1151
+    },
+    {
+      "path": "/userbooks/friends/currently-reading",
+      "status": [
+        "200"
+      ],
+      "bytes": 351,
+      "p50_ms": 1655,
+      "p95_ms": 1685,
+      "max_ms": 1685
+    },
+    {
+      "path": "/userbooks/user/111",
+      "status": [
+        "200"
+      ],
+      "bytes": 3108,
+      "p50_ms": 1302,
+      "p95_ms": 1331,
+      "max_ms": 1331
+    },
+    {
+      "path": "/notes/feed",
+      "status": [
+        "200"
+      ],
+      "bytes": 31002,
+      "p50_ms": 9240,
+      "p95_ms": 9281,
+      "max_ms": 9281
+    },
+    {
+      "path": "/notes/friends-feed",
+      "status": [
+        "200"
+      ],
+      "bytes": 1283,
+      "p50_ms": 2709,
+      "p95_ms": 2729,
+      "max_ms": 2729
+    },
+    {
+      "path": "/notes/me",
+      "status": [
+        "200"
+      ],
+      "bytes": 1254,
+      "p50_ms": 2183,
+      "p95_ms": 2192,
+      "max_ms": 2192
+    },
+    {
+      "path": "/notes/user/111",
+      "status": [
+        "200"
+      ],
+      "bytes": 1151,
+      "p50_ms": 2185,
+      "p95_ms": 2208,
+      "max_ms": 2208
+    },
+    {
+      "path": "/books/recommendations",
+      "status": [
+        "200"
+      ],
+      "bytes": 2995,
+      "p50_ms": 2718,
+      "p95_ms": 2751,
+      "max_ms": 2751
+    },
+    {
+      "path": "/books/search?q=hobbit",
+      "status": [
+        "200"
+      ],
+      "bytes": 832,
+      "p50_ms": 942,
+      "p95_ms": 959,
+      "max_ms": 959
+    },
+    {
+      "path": "/books/?limit=50",
+      "status": [
+        "200"
+      ],
+      "bytes": 41833,
+      "p50_ms": 1155,
+      "p95_ms": 1358,
+      "max_ms": 1358
+    },
+    {
+      "path": "/api/googlebooks/search?query=dune",
+      "status": [
+        "200"
+      ],
+      "bytes": 8885,
+      "p50_ms": 703,
+      "p95_ms": 865,
+      "max_ms": 865
+    },
+    {
+      "path": "/users/search?q=review",
+      "status": [
+        "200"
+      ],
+      "bytes": 129,
+      "p50_ms": 2506,
+      "p95_ms": 2753,
+      "max_ms": 2753
+    },
+    {
+      "path": "/users/following",
+      "status": [
+        "200"
+      ],
+      "bytes": 154,
+      "p50_ms": 2081,
+      "p95_ms": 3573,
+      "max_ms": 3573
+    },
+    {
+      "path": "/users/111/stats",
+      "status": [
+        "200"
+      ],
+      "bytes": 101,
+      "p50_ms": 2084,
+      "p95_ms": 3729,
+      "max_ms": 3729
+    },
+    {
+      "path": "/follow/following",
+      "status": [
+        "200"
+      ],
+      "bytes": 21,
+      "p50_ms": 2167,
+      "p95_ms": 2856,
+      "max_ms": 2856
+    },
+    {
+      "path": "/follow/followers",
+      "status": [
+        "200"
+      ],
+      "bytes": 21,
+      "p50_ms": 1293,
+      "p95_ms": 2185,
+      "max_ms": 2185
+    },
+    {
+      "path": "/reading-activity/daily",
+      "status": [
+        "200"
+      ],
+      "bytes": 1132,
+      "p50_ms": 941,
+      "p95_ms": 1803,
+      "max_ms": 1803
+    },
+    {
+      "path": "/reading-activity/insights",
+      "status": [
+        "200"
+      ],
+      "bytes": 958,
+      "p50_ms": 1287,
+      "p95_ms": 1307,
+      "max_ms": 1307
+    },
+    {
+      "path": "/reading-activity/user/111/daily",
+      "status": [
+        "200"
+      ],
+      "bytes": 1132,
+      "p50_ms": 1124,
+      "p95_ms": 1158,
+      "max_ms": 1158
+    },
+    {
+      "path": "/notifications/unread-count",
+      "status": [
+        "200"
+      ],
+      "bytes": 12,
+      "p50_ms": 956,
+      "p95_ms": 980,
+      "max_ms": 980
+    },
+    {
+      "path": "/notifications/history",
+      "status": [
+        "200"
+      ],
+      "bytes": 216,
+      "p50_ms": 944,
+      "p95_ms": 1840,
+      "max_ms": 1840
+    },
+    {
+      "path": "/notifications/prefs",
+      "status": [
+        "200"
+      ],
+      "bytes": 160,
+      "p50_ms": 770,
+      "p95_ms": 779,
+      "max_ms": 779
+    },
+    {
+      "path": "/groups/my",
+      "status": [
+        "200"
+      ],
+      "bytes": 406,
+      "p50_ms": 1489,
+      "p95_ms": 1509,
+      "max_ms": 1509
+    },
+    {
+      "path": "/groups/my/pending",
+      "status": [
+        "200"
+      ],
+      "bytes": 2,
+      "p50_ms": 952,
+      "p95_ms": 1244,
+      "max_ms": 1244
+    },
+    {
+      "path": "/groups/invites/pending",
+      "status": [
+        "200"
+      ],
+      "bytes": 2,
+      "p50_ms": 935,
+      "p95_ms": 970,
+      "max_ms": 970
+    },
+    {
+      "path": "/groups/discover",
+      "status": [
+        "200"
+      ],
+      "bytes": 830,
+      "p50_ms": 1668,
+      "p95_ms": 1838,
+      "max_ms": 1838
+    },
+    {
+      "path": "/import/covers-status",
+      "status": [
+        "200"
+      ],
+      "bytes": 33,
+      "p50_ms": 1314,
+      "p95_ms": 2362,
+      "max_ms": 2362
+    },
+    {
+      "path": "/userbooks/856",
+      "status": [
+        "200"
+      ],
+      "bytes": 1127,
+      "p50_ms": 1121,
+      "p95_ms": 1181,
+      "max_ms": 1181
+    },
+    {
+      "path": "/notes/userbook/856",
+      "status": [
+        "200"
+      ],
+      "bytes": 459,
+      "p50_ms": 1287,
+      "p95_ms": 1323,
+      "max_ms": 1323
+    },
+    {
+      "path": "/books/829",
+      "status": [
+        "200"
+      ],
+      "bytes": 968,
+      "p50_ms": 955,
+      "p95_ms": 975,
+      "max_ms": 975
+    },
+    {
+      "path": "/notes/167/comments",
+      "status": [
+        "200"
+      ],
+      "bytes": 2,
+      "p50_ms": 1144,
+      "p95_ms": 2028,
+      "max_ms": 2028
+    },
+    {
+      "path": "/groups/7",
+      "status": [
+        "200"
+      ],
+      "bytes": 404,
+      "p50_ms": 1282,
+      "p95_ms": 1332,
+      "max_ms": 1332
+    },
+    {
+      "path": "/groups/7/members",
+      "status": [
+        "200"
+      ],
+      "bytes": 294,
+      "p50_ms": 1283,
+      "p95_ms": 1317,
+      "max_ms": 1317
+    },
+    {
+      "path": "/groups/7/posts",
+      "status": [
+        "200"
+      ],
+      "bytes": 376,
+      "p50_ms": 1647,
+      "p95_ms": 1681,
+      "max_ms": 1681
+    },
+    {
+      "path": "/groups/7/leaderboard",
+      "status": [
+        "200"
+      ],
+      "bytes": 324,
+      "p50_ms": 2010,
+      "p95_ms": 2058,
+      "max_ms": 2058
+    },
+    {
+      "path": "/groups/7/goal",
+      "status": [
+        "200"
+      ],
+      "bytes": 42,
+      "p50_ms": 957,
+      "p95_ms": 972,
+      "max_ms": 972
+    },
+    {
+      "path": "/groups/7/activity",
+      "status": [
+        "200"
+      ],
+      "bytes": 182,
+      "p50_ms": 1320,
+      "p95_ms": 2173,
+      "max_ms": 2173
+    },
+    {
+      "path": "/groups/7/pending",
+      "status": [
+        "200"
+      ],
+      "bytes": 2,
+      "p50_ms": 1116,
+      "p95_ms": 1138,
+      "max_ms": 1138
+    }
+  ],
+  "concurrency_5x20": {
+    "/notes/feed": {
+      "p50_ms": 9239,
+      "p95_ms": 9431,
+      "errors": 0
+    },
+    "/reading-activity/insights": {
+      "p50_ms": 1300,
+      "p95_ms": 1390,
+      "errors": 0
+    },
+    "/books/recommendations": {
+      "p50_ms": 2717,
+      "p95_ms": 2768,
+      "errors": 0
+    }
+  }
+}

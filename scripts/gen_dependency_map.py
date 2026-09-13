@@ -139,6 +139,39 @@ out += ["", "## Fan-out (4+ consuming files) — a response-shape change here is
 for n, meth, path in sorted(fan, reverse=True):
     out.append(f"- **{n}** files — {meth} `{path}`")
 
+# ---- UI actions (qa/inventory/*.json, written by the inventory agents) ----
+import json
+
+inv_dir = ROOT / "qa" / "inventory"
+inv = []
+if inv_dir.exists():
+    for f in sorted(inv_dir.glob("*.json")):
+        try:
+            inv += json.loads(read(f))
+        except json.JSONDecodeError as e:
+            print(f"skipping {f.name}: {e}")
+if inv:
+    route_keys = {(m, route_key(p)) for m, p, _, _ in routes}
+    out += ["", "## UI actions → API (from qa/inventory)", "",
+            f"_{len(inv)} actionable elements across web + Android. `side_effect`: none · self · others · destructive · external._", ""]
+    for platform in sorted({e.get("platform", "?") for e in inv}):
+        rows = [e for e in inv if e.get("platform") == platform]
+        out += [f"### {platform} — {len(rows)} elements", "",
+                "| screen / route | element | side effect | API calls | contract |", "|---|---|---|---|---|"]
+        for e in sorted(rows, key=lambda x: (x.get("route") or x.get("screen") or "", x.get("id", ""))):
+            calls = []
+            for c in e.get("api") or []:
+                m, p = (c.get("method") or "?").upper(), c.get("path") or "?"
+                known = (m, route_key(norm(p))) in route_keys
+                calls.append(f"`{m} {p}`" + ("" if known else " ⚠️no route"))
+            where = e.get("route") or e.get("screen") or "?"
+            contract = e.get("contract_check") or ("MISSING cacheClear" if e.get("cache_invalidation") == "MISSING" else "")
+            out.append(f"| `{where}` | {str(e.get('element', '')).replace('|', '/')} | {e.get('side_effect', '')} | "
+                       f"{'<br>'.join(calls) or '—'} | {str(contract).replace('|', '/')} |")
+        out.append("")
+    by_effect = collections.Counter((e.get("platform"), e.get("side_effect")) for e in inv)
+    out += ["**Counts:** " + " · ".join(f"{p} {s}: {n}" for (p, s), n in sorted(by_effect.items(), key=str)), ""]
+
 dm = ROOT / "dependency-map.md"
 existing = read(dm) if dm.exists() else ""
 head = existing.split(MARK)[0].rstrip() + "\n\n" if MARK in existing else existing.rstrip() + "\n\n"

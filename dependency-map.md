@@ -215,3 +215,347 @@ _Regenerated from code. 109 backend routes, 85 web api.js functions, 77 mobile a
 - **5** files — DELETE `/notes/{id}/like`
 - **4** files — POST `/groups/join/{id}`
 - **4** files — DELETE `/admin/content/note/{id}`
+
+## UI actions → API (from qa/inventory)
+
+_327 actionable elements across web + Android. `side_effect`: none · self · others · destructive · external._
+
+### android — 143 elements
+
+| screen / route | element | side effect | API calls | contract |
+|---|---|---|---|---|
+| `AppHeader` | Avatar button | navigate | — | ok |
+| `AppHeader` | Bell icon button | navigate | — | ok |
+| `AppTour` | Avatar preset tile (8 DiceBear options) | self | — | ok |
+| `AppTour` | Back button | none | — | ok |
+| `AppTour` | Search result row (tap to add book) | self | `POST /books/add-to-library` | MISMATCH: field name |
+| `AppTour` | Add-a-book search TextInput | none | `GET /api/googlebooks/search` | MISMATCH: response shape |
+| `AppTour` | Custom goal number TextInput | none | — | ok |
+| `AppTour` | Goal preset chip (6/12/24/36/52 books) + custom (#) toggle | self | — | ok |
+| `AppTour` | Continue / Start Reading button | self | `PUT /profile/me`<br>`PUT /profile/me` | ok |
+| `AppTour` | Skip button | self | — | ok |
+| `BookDetailScreen` | Buy on Amazon button | external | — | ok |
+| `BookDetailScreen` | Delete note (trash icon + Alert confirm) | destructive | `DELETE /notes/{id}` | ok |
+| `BookDetailScreen` | Reflection/quote note composer + Post | self | `POST /notes/` | MISMATCH: unintended default |
+| `BookDetailScreen` | Current page TextInput + Update Progress button | self | `PUT /userbooks/{id}/progress` | ok — correctly uses PUT /progress for page updates, matching the May-2026 fix |
+| `BookDetailScreen` | Optional page TextInput (non-reading statuses), onEndEditing save | self | `PUT /userbooks/{id}/progress` | ok |
+| `BookDetailScreen` | Remove from Library (Alert confirm) | destructive | `DELETE /userbooks/{id}` | ok |
+| `BookDetailScreen` | Star rating (1-5) | self | `PATCH /userbooks/{id}` | ok |
+| `BookDetailScreen` | Status pill (To Read / Reading / Finished) | self | `PATCH /userbooks/{id}` | ok — matches PATCH contract; only status/current_page/total_pages sent, matching the minimal-dict return contract |
+| `BookDetailScreen` | Total pages modal — Cancel | none | — | ok |
+| `BookDetailScreen` | Total pages modal — Confirm | self | `PATCH /userbooks/{id}` | ok |
+| `BookPreviewScreen` | Add to Library button | self | `POST /books/add-to-library` | ok — correctly uses the flat May-2026 response shape (setMyUserbook(result), no .userbook unwrap) |
+| `BookPreviewScreen` | Buy on Amazon button | external | — | ok |
+| `BookPreviewScreen` | Status pill (To Read / Reading / Finished) | none | — | ok |
+| `BookPreviewScreen` | View in My Library button | navigate | — | ok |
+| `FeedScreen` | Add comment TextInput + Post | others | `POST /notes/{id}/comments` | ok |
+| `FeedScreen` | Comment toggle (expand/collapse) | none | `GET /notes/{id}/comments` | ok |
+| `FeedScreen` | Composer avatar | navigate | — | ok |
+| `FeedScreen` | Reflection text composer | none | — | ok |
+| `FeedScreen` | Admin delete comment (Alert confirm) | destructive | `DELETE /admin/content/comment/{id}` | ok |
+| `FeedScreen` | Delete post (menu item + Alert confirm) | destructive | `DELETE /notes/{id}` | ok |
+| `FeedScreen` | Emotion chip (14 options, toggle select) | none | — | ok |
+| `FeedScreen` | Follow / Following button (user search results) | others | `POST /follow/{id}`<br>`DELETE /follow/{id}` | ok |
+| `FeedScreen` | Friend's currently-reading book card | navigate | — | MISMATCH: see code_findings |
+| `FeedScreen` | Friend reading card header (avatar+name) | navigate | `GET /userbooks/friends/currently-reading` | MISMATCH: missing field |
+| `FeedScreen` | Like button | others | `POST /notes/{id}/like`<br>`DELETE /notes/{id}/like` | ok |
+| `FeedScreen` | Image picker button | external | — | ok |
+| `FeedScreen` | Tagged-book cover thumbnail on a post | navigate | — | MISMATCH: see code_findings |
+| `FeedScreen` | Post overflow menu (···) | none | — | ok |
+| `FeedScreen` | Post Reflection button | others | `POST /notes/upload-image`<br>`POST /notes/` | ok |
+| `FeedScreen` | Post author avatar/name | navigate | — | ok |
+| `FeedScreen` | Optional quote TextInput | none | — | ok |
+| `FeedScreen` | For You recommendation card | navigate | `GET /books/recommendations` | ok |
+| `FeedScreen` | Pull-to-refresh (Community feed) | none | `GET /notes/feed`<br>`GET /userbooks/friends/currently-reading`<br>`GET /books/recommendations` | ok |
+| `FeedScreen` | Remove image preview (X) | none | — | ok |
+| `FeedScreen` | Shelf-book modal — Want to Read / Reading buttons | self | `POST /books/add-to-library` | MISMATCH: duplicate-book risk |
+| `FeedScreen` | Shelf modal Cancel | none | — | ok |
+| `FeedScreen` | Community tab | none | — | ok |
+| `FeedScreen` | Friends tab | none | — | ok |
+| `FeedScreen` | Tag a book toggle + dropdown | none | — | ok |
+| `FeedScreen` | Find friends search TextInput | none | `GET /users/search` | ok |
+| `GroupDetailScreen` | Pending member "Approve" button | others | `POST /groups/{group_id}/approve/{user_id}` | ok |
+| `GroupDetailScreen` | "Post" button (Discussion section) | none | — | ok |
+| `GroupDetailScreen` | Composer "Photo" button | none | — | ok |
+| `GroupDetailScreen` | Composer "Post" button | self | `POST /notes/upload-image`<br>`POST /groups/{group_id}/posts` | ok |
+| `GroupDetailScreen` | "Disband Circle" button | destructive | `DELETE /groups/{group_id}` | CRASH: groupsAPI.deleteGroup does not exist in services/api.js (groupsAPI has no deleteGroup wrapper for DELETE /groups/{group_id}, even though the backend route exists at groups_router.py:466). |
+| `GroupDetailScreen` | "Copy Invite Link" button | none | — | ok |
+| `GroupDetailScreen` | Invite search result row | others | `POST /groups/{group_id}/invite/{user_id}` | ok (unreachable in practice — see invite.search crash above, since inviteResults never populates) |
+| `GroupDetailScreen` | "Invite Friends" username search | none | `GET /users/search` | MISMATCH / CRASH: `usersAPI` is imported (line 11) but api.js only exports `userAPI` (services/api.js:97) — there is no `usersAPI` export at all. |
+| `GroupDetailScreen` | "Join Circle" / "Request to Join" button | self | `POST /groups/{group_id}/join` | ok |
+| `GroupDetailScreen` | Leaderboard row long-press → Remove member | others | `DELETE /groups/{group_id}/remove/{user_id}` | ok |
+| `GroupDetailScreen` | Leaderboard row tap | none | — | ok |
+| `GroupDetailScreen` | "Leave Circle" button | self | `DELETE /groups/{group_id}/leave` | ok |
+| `GroupDetailScreen` | Post author avatar tap | none | — | ok |
+| `GroupDetailScreen` | Post trash icon (curator) | destructive | `DELETE /groups/{group_id}/posts/{post_id}` | ok |
+| `GroupDetailScreen` | "Reading Goal" progress card | none | — | MISMATCH: reads group.reading_goal / group.pages_read_total, neither of which _serialize_group ever returns (fields are goal_pages/goal_period; progress lives only in GET /groups/{id}/goal). groupsAPI in api.js also has no wrapper for that endpoint at all. |
+| `GroupDetailScreen` | Pull-to-refresh | none | `GET /groups/{group_id}`<br>`GET /groups/{group_id}/posts`<br>`GET /groups/{group_id}/activity`<br>`GET /groups/{group_id}/members`<br>`GET /groups/{group_id}/leaderboard`<br>`GET /groups/{group_id}/pending` | ok |
+| `GroupDetailScreen` | Pending member "Reject" button | others | `POST /groups/{group_id}/reject/{user_id}` | ok |
+| `GroupDetailScreen` | "Remove" group book link | others | `DELETE /groups/{group_id}/book` | ok |
+| `GroupDetailScreen` | SetGroupBookModal "Set as Group Book" button | others | `PUT /groups/{group_id}/book` | ok |
+| `GroupDetailScreen` | SetGroupBookModal results list end (pagination) | none | `GET /api/googlebooks/search` | ok |
+| `GroupDetailScreen` | "Change book" / "Set a book" link | none | — | ok |
+| `GroupDetailScreen` | SetGroupBookModal search field/button | none | `GET /api/googlebooks/search` | ok |
+| `GroupsScreen` | Curator badge on GroupCard | none | — | MISMATCH: reads group.user_role, but every group-list endpoint (_serialize_group in groups_router.py:69) returns membership_role, not user_role. |
+| `GroupsScreen` | Group card (My Groups / Pending / Discover) | none | — | ok |
+| `GroupsScreen` | Public / Private privacy selector cards | none | — | ok |
+| `GroupsScreen` | CreateGroupModal "Create Group" button | self | `POST /groups/` | MISMATCH: payload sends `reading_goal` (GroupsScreen.js:93) but CreateGroupBody (groups_router.py:77-84) expects `goal_pages`. Pydantic silently drops the unrecognized field, so a curator's chosen reading goal is never persisted at creation time. |
+| `GroupsScreen` | Discover groups search input | none | `GET /groups/discover` | ok |
+| `GroupsScreen` | "Have an invite code?" / "Join with invite code" links | none | — | ok |
+| `GroupsScreen` | JoinModal "Join Circle" button | self | `POST /groups/join/{invite_code}` | ok |
+| `GroupsScreen` | "Create New Group" hero button | none | — | ok |
+| `GroupsScreen` | Pull-to-refresh | none | `GET /groups/my`<br>`GET /groups/my/pending`<br>`GET /groups/discover` | ok |
+| `InsightsScreen` | AppHeader bell icon | none | — | ok |
+| `InsightsScreen` | Projected-finish book row | none | — | ok |
+| `InsightsScreen` | Pull-to-refresh / focus refresh | none | `GET /reading-activity/insights`<br>`GET /reading-activity/daily`<br>`GET /userbooks/`<br>`GET /profile/me` | MISMATCH: several fields read from the insights response do not exist under those names (see review doc) — avgRating, booksThisYear, yearGoal.finished, projected.projected_finish_date. |
+| `LibraryScreen` | Add Book button (header) | modal-action | — | ok |
+| `LibraryScreen` | Book grid tile | navigate | — | ok |
+| `LibraryScreen` | Add your first book (empty state) | modal-action | — | ok |
+| `LibraryScreen` | Pull-to-refresh library grid | none | `GET /userbooks/` | ok |
+| `LibraryScreen` | Search my library TextInput | none | — | ok |
+| `LibraryScreen` | All / Reading / Want to Read / Finished filter chips | none | — | ok |
+| `LibraryScreen (AddBookModal)` | Back to search results | none | — | ok |
+| `LibraryScreen (AddBookModal)` | Modal Cancel (header) | none | — | ok |
+| `LibraryScreen (AddBookModal)` | Add to Library confirm button | self | `POST /books/add-to-library` | ok — correctly sends google_books_id: selectedBook.google_id |
+| `LibraryScreen (AddBookModal)` | Format chip (paperback/hardcover/ebook/kindle/audiobook) | none | — | MISMATCH: value not in backend's documented set |
+| `LibraryScreen (AddBookModal)` | Ownership chip (owned/borrowed/loaned) | none | — | ok |
+| `LibraryScreen (AddBookModal)` | Search results FlatList, onEndReached pagination | none | `GET /api/googlebooks/search` | ok |
+| `LibraryScreen (AddBookModal)` | Search TextInput + search button | none | `GET /api/googlebooks/search` | ok |
+| `LibraryScreen (AddBookModal)` | Search result row (tap to select) | none | — | ok |
+| `LibraryScreen (AddBookModal)` | Status chip (To Read/Reading/Finished) | none | — | ok |
+| `LoginScreen` | Continue with Google button | self | `POST /auth/google` | ok |
+| `NotificationsScreen` | Back arrow | none | — | ok |
+| `NotificationsScreen` | "Mark All Read" button | self | `POST /notifications/mark-read` | ok |
+| `NotificationsScreen` | Pull-to-refresh / focus refresh | none | `GET /notifications/history` | ok |
+| `NotificationsScreen` | Notification row tap | self | — | MISMATCH: EVENT_CONFIG (NotificationsScreen.js:22-37) does not include entries for group_join_approved, group_join_rejected, or admin_broadcast — all three are registered, active event types in app/notifications/config.py. |
+| `OnboardingScreen` | Entire screen (Welcome/Tour/Goal/Book/Done steps, Skip, CTA button, book search+add) | self | `PUT /profile/me`<br>`GET /api/googlebooks/search`<br>`POST /books/add-to-library` | MISMATCH: same res.items bug as AppTour |
+| `ProfileScreen` | Avatar camera-overlay upload button | self | `POST /profile/me/picture` | ok |
+| `ProfileScreen` | Comment send button | others | `POST /notes/{note_id}/comments` | ok |
+| `ProfileScreen` | Note trash icon | destructive | `DELETE /notes/{note_id}` | ok |
+| `ProfileScreen` | Note pencil icon | none | — | ok |
+| `ProfileScreen` | Note heart (like) button | others | `POST /notes/{note_id}/like`<br>`DELETE /notes/{note_id}/like` | ok |
+| `ProfileScreen` | "New Entry" / "Write First Note" buttons | none | — | ok |
+| `ProfileScreen` | NewNoteModal "Save" button | self | `POST /notes/`<br>`PUT /notes/{note_id}` | ok |
+| `ProfileScreen` | Pull-to-refresh / focus refresh | none | `GET /profile/me`<br>`GET /userbooks/`<br>`GET /notes/me`<br>`GET /reading-activity/daily`<br>`GET /reading-activity/insights` | MISMATCH: yearGoal.finished used directly with no fallback. |
+| `ProfileScreen` | Settings gear icon (top bar) | none | — | ok |
+| `ProfileScreen` | "Sign Out" row | self | — | ok |
+| `SearchScreen` | Add to Library button (per result card) | modal-action | — | ok |
+| `SearchScreen` | Add to Library modal — confirm button | self | `POST /books/add-to-library` | MISMATCH: missing field |
+| `SearchScreen` | Genre filter chip | none | — | ok |
+| `SearchScreen` | FlatList of results, onEndReached pagination | none | `GET /api/googlebooks/search` | ok |
+| `SearchScreen` | Book search TextInput | none | `GET /api/googlebooks/search` | ok (this screen itself uses data.results/has_more/next_start_index correctly) |
+| `SearchScreen` | Sort by relevance/newest toggle | none | — | ok |
+| `SettingsScreen` | AvatarPickerModal "Use This Avatar" | self | `PUT /profile/me` | ok |
+| `SettingsScreen` | "Delete Account" row | destructive | `POST /auth/delete-account/me` | ok — confirmation present, token cleared, navigation handled via onLogout callback. |
+| `SettingsScreen` | "Save Changes" button | self | `PUT /profile/me` | ok |
+| `SettingsScreen` | Goodreads export link, About/Privacy/Terms rows | external | — | ok |
+| `SettingsScreen` | "Fix Missing Covers" button | self | `GET /import/covers-status`<br>`POST /import/fix-covers-batch` | ok |
+| `SettingsScreen` | "Import from Goodreads" row | self | `POST /import/goodreads` | ok — MIME handling and 120000ms timeout both match importAPI.importGoodreads (services/api.js:184-194). |
+| `SettingsScreen` | Language row | none | — | ok |
+| `SettingsScreen` | Language picker row | self | — | ok — all 6 locale files have identical key coverage (verified by diff; ru.json additionally carries correct _few/_many plural variants). |
+| `SettingsScreen` | Per-event notification switches (7x, NOTIF_PREFS) | self | `PATCH /notifications/prefs` | MISMATCH: keys themselves match USER_PREF_KEYS exactly, but the update semantics are broken — see code_findings. |
+| `SettingsScreen` | "Upload Photo" button | self | `POST /profile/me/picture` | ok |
+| `SettingsScreen` | "Private Profile" switch | self | `PUT /profile/me` | ok — is_private_profile field name matches ProfileUpdate schema (profile_router.py:30) exactly. |
+| `SettingsScreen` | "Sign Out" row | self | — | ok |
+| `UserProfileScreen` | Curated Library book tile | none | — | ok |
+| `UserProfileScreen` | Follow / Following / Follow Back button | others | `POST /follow/{followed_id}`<br>`DELETE /follow/{followed_id}` | ok — is_private / is_following / follows_you field names all correctly match GET /profile/{user_id} (profile_router.py:219-231). |
+| `UserProfileScreen` | Note trash icon (admin only) | destructive | `DELETE /admin/content/note/{note_id}` | MISMATCH (gating, not a crash): currentUser is read from PreloadContext.profile (line 87), which is only refreshed at login/preload time, not re-fetched on this screen — if admin status changes mid-session the icon's visibility can be stale in either direction. |
+| `UserProfileScreen` | Note heart (like) button | others | `POST /notes/{note_id}/like`<br>`DELETE /notes/{note_id}/like` | ok |
+| `UserProfileScreen` | Note share icon | external | — | ok |
+| `UserProfileScreen` | Pull-to-refresh | none | `GET /profile/{user_id}`<br>`GET /users/{user_id}/stats`<br>`GET /userbooks/user/{user_id}`<br>`GET /notes/user/{user_id}`<br>`GET /reading-activity/user/{user_id}/daily` | ok — stats.finished/reading/this_year/total_pages all correctly match UserStats (users_router.py:169-177); privacy 403s from the 4 secondary calls are correctly swallowed because is_private already gates rendering. |
+| `UserProfileScreen` | Shelf modal "Reading" button | self | `POST /books/add-to-library` | unverified (books_router.py not in review scope) |
+| `UserProfileScreen` | Shelf modal "Want to Read" button | self | `POST /books/add-to-library` | unverified (books_router.py not in review scope) — payload shape matches the pattern used elsewhere per dependency-map.md |
+| `UserProfileScreen` | Followers / Following / Books stat pills | none | — | ok (dead tap target, not a crash) |
+| `UserProfileScreen` | 30D / 90D velocity toggle | none | `GET /reading-activity/user/{user_id}/daily` | ok |
+
+### web — 184 elements
+
+| screen / route | element | side effect | API calls | contract |
+|---|---|---|---|---|
+| `*` | 12 preset DiceBear avatar swatches | none | — |  |
+| `*` | Save & Continue / Skip for now (avatar step) | self | `PUT /profile/me` |  |
+| `*` | Upload your own photo (button triggers hidden file input) | self | `POST /profile/me/picture` |  |
+| `*` | Add button on a search result (tour) | self | `POST /books/add-to-library` |  |
+| `*` | Book search input (tour add-first-book step) | external | `GET /api/googlebooks/search` |  |
+| `*` | Continue → (after add) / Skip for now → (book step) | none | — |  |
+| `*` | Start Reading button (done step) | self | — |  |
+| `*` | Custom goal number input | none | — |  |
+| `*` | Reading goal preset chips (6,12,24,36,52) + custom toggle | none | — |  |
+| `*` | Save & Continue button (goal step) | self | `PUT /profile/me` |  |
+| `*` | Next / Back buttons on nav spotlight steps | none | — |  |
+| `*` | Skip tour button | self | — |  |
+| `*` | Admin nav link (desktop + mobile) | none | — |  |
+| `*` | Sign out button (desktop dropdown + mobile menu) | self | — |  |
+| `*` | Profile link in avatar dropdown | none | — |  |
+| `*` | Settings link in avatar dropdown | none | — |  |
+| `*` | Avatar button opening the account dropdown | none | — |  |
+| `*` | Desktop nav tab links (Feed / Library / Circles / Insights / Notifications) | none | — |  |
+| `*` | Mobile dropdown nav links (closes menu on click) | none | — |  |
+| `*` | Mobile hamburger menu button | none | — |  |
+| `*` | Toast notification (click to dismiss) | none | — |  |
+| `/` | Footer nav links (Blog, About, Privacy, Terms) | none | — |  |
+| `/` | Sign in with Google button (styled overlay on real GoogleLogin widget) | self | `POST /auth/google` |  |
+| `/about` | Back button | none | — |  |
+| `/about` | Privacy Policy / Terms of Service buttons | none | — |  |
+| `/about` | Contact email mailto link | external | — |  |
+| `/admin` | Delete comment button (content moderation tab) | destructive | `DELETE /admin/content/comment/{comment_id}` |  |
+| `/admin` | Delete post button (content moderation tab) | destructive | `DELETE /admin/content/note/{note_id}` |  |
+| `/admin` | Trigger Bot button | external | `POST /admin/bot/trigger` |  |
+| `/admin` | Send Broadcast button (push tab) | external | `POST /admin/push/broadcast` |  |
+| `/admin` | Send test push button | external | `POST /admin/push/test/{user_id}` |  |
+| `/admin` | Make Admin button (per user row) | others | `POST /admin/set-admin/{user_id}` |  |
+| `/blog` | TrackMyRead breadcrumb link (back to home) | none | — |  |
+| `/blog` | 'Get started free' bottom CTA link | none | — |  |
+| `/blog` | Blog post card link | none | — |  |
+| `/blog/:slug` | Related article card link | none | — |  |
+| `/blog/:slug` | In-article section CTA link | none | — |  |
+| `/groups` | Create New Circle button | none | — |  |
+| `/groups` | Discover card - Join Circle button | others | `POST /groups/{group_id}/join` |  |
+| `/groups` | Pending invite card - Approve (join) button | self | `POST /groups/{group_id}/accept` |  |
+| `/groups` | Pending invite card - Reject button | self | `DELETE /groups/{group_id}/decline` |  |
+| `/groups` | My Group card (whole card button) | none | — |  |
+| `/groups` | Discover groups search input | none | — |  |
+| `/groups/:groupId` | Member Activity - Load more button | none | — |  |
+| `/groups/:groupId` | Back button (hero header) | none | — |  |
+| `/groups/:groupId` | Group book cover/title (open BookPreviewModal) | none | — |  |
+| `/groups/:groupId` | Group book - Remove link | others | `DELETE /groups/{group_id}/book` |  |
+| `/groups/:groupId` | Set/Change Group Book button | none | — |  |
+| `/groups/:groupId` | Disband confirmation modal - Disband button | destructive | `DELETE /groups/{group_id}` |  |
+| `/groups/:groupId` | Disband Group button | none | — |  |
+| `/groups/:groupId` | EditGroupModal - Save button | others | `PUT /groups/{group_id}` |  |
+| `/groups/:groupId` | Edit button (hero header) | none | — |  |
+| `/groups/:groupId` | Copy invite link button | external | — |  |
+| `/groups/:groupId` | Invite search result - Invite button | others | `POST /groups/{group_id}/invite/{user_id}` |  |
+| `/groups/:groupId` | Leaderboard period tab (Monthly / All-time) | none | `GET /groups/{group_id}/leaderboard?period={period}` |  |
+| `/groups/:groupId` | Leaderboard row (navigate to member profile) | none | — |  |
+| `/groups/:groupId` | Leave Circle button | destructive | `DELETE /groups/{group_id}/leave` |  |
+| `/groups/:groupId` | Member row - remove member icon-button | others | `DELETE /groups/{group_id}/remove/{user_id}` |  |
+| `/groups/:groupId` | NewPostModal - photo file input | none | — |  |
+| `/groups/:groupId` | NewPostModal - Post submit button | others | `POST /notes/upload-image`<br>`POST /groups/{group_id}/posts` |  |
+| `/groups/:groupId` | Post button (opens NewPostModal) | none | — |  |
+| `/groups/:groupId` | Pending join request - Approve (check) icon-button | others | `POST /groups/{group_id}/approve/{user_id}` |  |
+| `/groups/:groupId` | Pending join request - Decline (X) icon-button | others | `POST /groups/{group_id}/reject/{user_id}` |  |
+| `/groups/:groupId` | Post card - delete (trash) icon-button | destructive | `DELETE /groups/{group_id}/posts/{post_id}` |  |
+| `/groups/:groupId` | Group posts - Load more button | none | — |  |
+| `/groups/:groupId` | SetBookModal - search result item | others | `PUT /groups/{group_id}/book` |  |
+| `/groups/new` | Invite search result item (add to invite list) | none | — |  |
+| `/groups/new` | Public/Private privacy selector (2 buttons) | none | — |  |
+| `/groups/new` | Create Circle submit button | others | `POST /groups/` |  |
+| `/home` | Clear tagged-book chip (x) | none | — |  |
+| `/home` | Book option in the tag-a-book dropdown | none | — |  |
+| `/home` | Tag a book dropdown toggle | none | — |  |
+| `/home` | 14 emotion chips (Joyful, Moved, ...) | none | — |  |
+| `/home` | Add photo (hidden file input behind label) | none | — |  |
+| `/home` | Post button in composer | self | `POST /notes/upload-image`<br>`POST /notes/` |  |
+| `/home` | Add a quote input | none | — |  |
+| `/home` | Remove selected image (x on preview) | none | — |  |
+| `/home` | Composer reflection textarea | none | — |  |
+| `/home` | Community / Friends feed tabs | none | `GET /notes/feed`<br>`GET /notes/friends-feed` |  |
+| `/home` | Post author name/avatar (navigates to profile) | none | — |  |
+| `/home` | Delete comment icon (admin only) | destructive | `DELETE /admin/content/comment/{comment_id}` |  |
+| `/home` | Add a comment input | none | — |  |
+| `/home` | Comment submit button / form | others | `POST /notes/{note_id}/comments` |  |
+| `/home` | Comment count button (expands comment thread) | none | `GET /notes/{note_id}/comments` |  |
+| `/home` | Delete menu item | destructive | `DELETE /notes/{note_id}`<br>`DELETE /admin/content/note/{note_id}` |  |
+| `/home` | Cancel button (inline post edit) | none | — |  |
+| `/home` | Save button (inline post edit) | self | `PUT /notes/{note_id}` |  |
+| `/home` | Edit menu item | none | — |  |
+| `/home` | Like (heart) button on a post | others | `POST /notes/{note_id}/like`<br>`DELETE /notes/{note_id}/like` |  |
+| `/home` | Post overflow menu (⋯) | none | — |  |
+| `/home` | Recommendation shelf book tile | none | `GET /books/recommendations` |  |
+| `/home` | Following list item | none | `GET /users/following` |  |
+| `/home` | "What friends are reading" book tile | none | `GET /userbooks/friends/currently-reading` |  |
+| `/home` | Find Friends search input | none | `GET /users/search` |  |
+| `/home` | User search result row | none | — |  |
+| `/home, /profile/:userId` | Add to Library button | self | `POST /books/add-to-library` |  |
+| `/home, /profile/:userId` | Buy on Amazon link | external | — |  |
+| `/home, /profile/:userId` | Want to Read / Reading / Finished status pills (pre-add) | none | — |  |
+| `/home, /profile/:userId` | View in My Library button | none | — |  |
+| `/home, /profile/:userId (via BookPreviewModal)` | Close button and backdrop click on Book Preview modal | none | — |  |
+| `/join/:inviteCode` | Automatic join-by-invite-code on page load | others | `POST /groups/join/{invite_code}` |  |
+| `/join/:inviteCode` | Error state - Discover Circles button | none | — |  |
+| `/join/:inviteCode` | Pending state - go to Circles button | none | — |  |
+| `/library` | Close button on Add Book modal | none | — |  |
+| `/library` | Infinite-scroll sentinel (loads more results) | external | `GET /api/googlebooks/search` |  |
+| `/library` | Want to Read / Reading / Finished buttons per search result | self | `POST /books/add-to-library` |  |
+| `/library` | Search button in Add Book modal | external | `GET /api/googlebooks/search` |  |
+| `/library` | Enter key in Add Book search input | external | `GET /api/googlebooks/search` |  |
+| `/library` | Add Book modal search input | none | — |  |
+| `/library` | Book tile in the grid | none | — |  |
+| `/library` | Add Your First Book (empty-state CTA) | none | — |  |
+| `/library` | Add Book header button | none | — |  |
+| `/library` | Search library input | none | — |  |
+| `/library` | Add New Book sidebar CTA | none | — |  |
+| `/library` | All / Reading / Want to Read / Finished pill tabs | none | — |  |
+| `/library/book/:userbookId` | Back to Library button | none | — |  |
+| `/library/book/:userbookId` | Buy on Amazon link | external | — |  |
+| `/library/book/:userbookId` | Direct-URL / refresh load path (no router state) | none | `GET /userbooks/ (fetches the FULL list, then finds by id client-side)` ⚠️no route |  |
+| `/library/book/:userbookId` | Delete note button (per note) | destructive | `DELETE /notes/{note_id}` |  |
+| `/library/book/:userbookId` | Post note button | self | `POST /notes/` |  |
+| `/library/book/:userbookId` | New note textarea + optional quote input | none | — |  |
+| `/library/book/:userbookId` | Current page number input | none | — |  |
+| `/library/book/:userbookId` | Update Progress button | self | `PUT /userbooks/{userbook_id}/progress` |  |
+| `/library/book/:userbookId` | Read more / Show less (description) | none | — |  |
+| `/library/book/:userbookId` | Remove from Library button | destructive | `DELETE /userbooks/{userbook_id}` |  |
+| `/library/book/:userbookId` | 5-star rating control | self | `PATCH /userbooks/{userbook_id}` |  |
+| `/library/book/:userbookId` | Want to Read / Reading / Finished segmented control | self | `POST /userbooks/{userbook_id}/finish`<br>`PATCH /userbooks/{userbook_id}`<br>`PUT /userbooks/{userbook_id}/progress` |  |
+| `/notifications` | PushPermissionBanner - Enable button | external | `GET /notifications/vapid-public-key`<br>`POST /notifications/web-subscribe` |  |
+| `/notifications` | Notification list item | self | — |  |
+| `/notifications` | Mark all read link/button | self | `POST /notifications/mark-read` |  |
+| `/onboarding` | ImportStep - Import from Goodreads button | self | `POST /import/goodreads` |  |
+| `/onboarding` | Continue / Start Reading footer button | self | `PUT /profile/me` |  |
+| `/onboarding` | Skip link (top bar) | self | — |  |
+| `/privacy` | Back button | none | — |  |
+| `/profile` | "Add a bio" empty-state prompt | none | — |  |
+| `/profile` | Edit-profile pencil button (on avatar) | none | — |  |
+| `/profile` | Change-photo camera button + hidden file input | self | `POST /profile/me/picture` |  |
+| `/profile` | Bio textarea (Edit Profile modal) | none | — |  |
+| `/profile` | Cancel button (Edit Profile modal) | none | — |  |
+| `/profile` | Display name input (Edit Profile modal) | none | — |  |
+| `/profile` | Save button (Edit Profile modal) | self | `PUT /profile/me` |  |
+| `/profile` | Edit bio button (next to name) | none | — |  |
+| `/profile` | New Entry / Write Your First Note buttons | none | — |  |
+| `/profile` | Book <select> (New Note modal, optional) | none | `GET /userbooks/?status=reading` |  |
+| `/profile` | Close (X) button on New Note modal | none | — |  |
+| `/profile` | Post button (New Note modal) | self | `POST /notes/` |  |
+| `/profile` | Reflection textarea + Quote input (New Note modal) | none | — |  |
+| `/profile` | Delete menu item (note) | destructive | `DELETE /notes/{note_id}` |  |
+| `/profile` | Cancel button (inline note edit) | none | — |  |
+| `/profile` | Quote input + text textarea (inline note edit) | none | — |  |
+| `/profile` | Save button (inline note edit) | self | `PUT /notes/{note_id}` |  |
+| `/profile` | Edit menu item (note) | none | — |  |
+| `/profile` | Note card overflow menu (⋮) | none | — |  |
+| `/profile` | Account Settings link | none | — |  |
+| `/profile` | Sign Out button | self | — |  |
+| `/profile/:userId` | Curated Library book tile | none | — |  |
+| `/profile/:userId` | Currently Reading book tile | none | — |  |
+| `/profile/:userId` | Follow / Following button | others | `POST /follow/{followed_id}`<br>`DELETE /follow/{followed_id}`<br>`GET /userbooks/user/{user_id}`<br>`GET /notes/user/{user_id}`<br>`GET /reading-activity/user/{user_id}/daily`<br>`GET /users/{user_id}/stats` |  |
+| `/profile/:userId` | Delete note button (admin only, on another user's public note) | destructive | `DELETE /admin/content/note/{note_id}` |  |
+| `/profile/:userId` | Like (heart) button on a public note | others | `POST /notes/{note_id}/like`<br>`DELETE /notes/{note_id}/like` |  |
+| `/profile/:userId` | Share (native share/clipboard) button per public note | external | — |  |
+| `/profile/:userId` | View All Books / Show Less toggle | none | — |  |
+| `/profile/:userId` | 30D / 90D reading velocity range toggle | none | — |  |
+| `/search` | Search button | external | `GET /api/googlebooks/search`<br>`GET /books/search` |  |
+| `/search` | Format filter chips (All, Paperback, Hardcover, Ebook, Audiobook) | none | — |  |
+| `/search` | Genre filter chips (All, Fiction, Fantasy, ...) | external | `GET /api/googlebooks/search` |  |
+| `/search` | Load More Books button | external | `GET /api/googlebooks/search` |  |
+| `/search` | Main search input | none | — |  |
+| `/search` | Add button per search result | self | `POST /books/add-to-library` |  |
+| `/search` | Status <select> per search result | none | — |  |
+| `/search` | Relevance / Newest sort toggle | external | `GET /api/googlebooks/search` |  |
+| `/search` | Google Books / Community Library tabs | none | `GET /books/search` |  |
+| `/settings` | About / Privacy Policy / Terms of Service links | none | — |  |
+| `/settings` | Upload photo hidden file input | self | `POST /profile/me/picture` |  |
+| `/settings` | Avatar picker modal - Use this avatar button | self | `PUT /profile/me` |  |
+| `/settings` | Delete account confirmation modal - Delete button | destructive | `POST /auth/delete-account/me` |  |
+| `/settings` | Profile form - Save Changes button | self | `PUT /profile/me` |  |
+| `/settings` | Fix Missing Covers button | self | `GET /import/covers-status`<br>`POST /import/fix-covers-batch` |  |
+| `/settings` | Goodreads import - Import button | self | `POST /import/goodreads` |  |
+| `/settings` | Notification preference toggle (7 instances: new_follower, post_liked, post_commented, book_completed, reading_streak_reminder, group_invite, group_join_request) | self | `PATCH /notifications/prefs` |  |
+| `/settings` | Private profile toggle | self | `PUT /profile/me` |  |
+| `/settings` | Sign Out button | self | — |  |
+| `/terms` | Back button | none | — |  |
+| `n/a — never rendered` | BookDetailPanel component (status selector, progress input, star rating, notes CRUD, remove-from-library — ~300 lines) | none | — |  |
+
+**Counts:** android destructive: 9 · android external: 5 · android modal-action: 3 · android navigate: 10 · android none: 64 · android others: 14 · android self: 38 · web destructive: 12 · web external: 17 · web none: 102 · web others: 16 · web self: 37
+
