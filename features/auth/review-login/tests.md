@@ -1011,3 +1011,19 @@ Total 77 · PASS 72 · FAIL 0 · BLOCKED 5 · Verdict: PASS
 **Full pytest suite summary:** 252 passed in 55.73s
 
 All 39 automated pytest cases (T01–T39) passed. All 33 shell/grep/git cases (T40–T46, T48–T73) passed. 5 live cases (T47, T74–T77) marked BLOCKED for orchestrator verification after deploy.
+
+## Live run 2026-09-13 17:14-17:25 IST (orchestrator, production)
+
+Render keys set by PM; `POST /auth/review-login` -> 200 for review.reader (secret matches `.env.review`). `GET /version` -> `a224f4d`.
+
+| Check | Result |
+|---|---|
+| Seed `scripts/seed_review_accounts.py --base-url <prod>` | PASS - created 19, skipped 0, failed 0 (6 books, progress, 2 ratings, 4 notes, mutual follow, Review Circle, group post). reader id 110, friend id 111 |
+| Screenshots `qa/screenshots.mjs` (8 pages, desktop + mobile) | PASS - every page rendered logged-in (no redirect to `/`), 0 failed API calls. 1 console error per page: "Chrome does not support the Push API in incognito mode" - headless-browser artifact, not an app bug |
+| Live checks `qa/live_checks.py` | PASS 15/15 - friends-feed mutual flag + newest-first, `/notes/me` real `liked_by_me`, private note absent from circle activity, 12 consecutive months (2025-10..2026-09), streak fields, anonymous `DELETE /books/1` -> 401. Self-cleaned (unlike + private note deleted, both 200) |
+
+Blocked-live cases T47 and T74-T77 are covered by the run above. Not provable with two review accounts: mutual-before-non-mutual ordering (needs a third, non-mutual user; covered by pytest).
+
+Observations outside the plan (not bugs in this feature):
+- Some Google Books covers are Google's own "image not available" placeholder image (The Hobbit, Old Man and the Sea). It loads successfully, so the app's fallback cover never shows.
+- Review-account notes are visible to real users in the Community feed (accepted in the spec; PM may want them hidden).
