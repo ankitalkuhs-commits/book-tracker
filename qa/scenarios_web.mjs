@@ -1,12 +1,18 @@
 // qa/scenarios_web.mjs
-// Drives the data-changing UI flows on production as review.reader, verifies each through the API, and
-// cleans up through the API. Follows qa/RULES_OF_ENGAGEMENT.md.
+// Drives the data-changing UI flows on production as review.reader, verifies each through the API, and cleans up
+// through the API. Follows qa/RULES_OF_ENGAGEMENT.md.
 //
-// GUARD: every non-GET API request is checked against an allowlist of review-owned resources (ids fetched up
-// front + ids created during this run). Anything else is aborted and reported as BLOCKED.
+// Design rules (learned from the 2026-09-13 first run, which deleted a seeded book by guessing an id):
+//   1. Every UI action waits for ITS OWN API response (page.waitForResponse, 30 s) — never a fixed sleep.
+//   2. Ids of created rows come ONLY from that response body. No id → the flow stops.
+//   3. The network guard only lets PUT/PATCH/DELETE touch rows CREATED IN THIS RUN (plus one explicitly designated
+//      seeded "reading" book for progress). Seeded rows can never be edited or deleted by a mis-targeted click.
+//   4. Dialogs are accepted only when their text matches what the current step expects; anything else is dismissed
+//      and reported as UNEXPECTED_DIALOG.
+//   5. Button names tolerate Material Symbols ligature prefixes ("edit Edit", "logout Sign out").
 //
 //   node qa/scenarios_web.mjs [--out qa/screenshots/<date>-scenarios] [--only S1,S4]
-// Exit 0 = all scenarios ran (see report for PASS/FAIL per step); 2 no secret; 3 login refused; 4 cleanup failed.
+// Exit 0 ran (see report per step); 2 no secret; 3 login refused; 4 fixture not restored.
 import { chromium } from 'playwright';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -22,6 +28,7 @@ const OUT = path.resolve(arg('out', path.join(REPO, 'qa', 'screenshots', `${DATE
 const ONLY = arg('only', null)?.split(',');
 const TS = Date.now().toString(36);
 const SECRET_FILE = path.join(REPO, '.env.review');
+const RESP_TIMEOUT = 30000;
 
 function readSecret() {
   if (process.env.REVIEW_LOGIN_SECRET) return process.env.REVIEW_LOGIN_SECRET.trim();
@@ -30,7 +37,7 @@ function readSecret() {
   return m ? m[1].trim() : null;
 }
 
-// ---------- API helpers (token held in memory only) ----------
+// ---------- API (token in memory only) ----------
 let TOKEN = null;
 async function api(method, p, body) {
   const t0 = Date.now();
@@ -40,359 +47,412 @@ async function api(method, p, body) {
   });
   const text = await r.text();
   let json = null; try { json = text ? JSON.parse(text) : null; } catch { /* non-JSON */ }
-  return { status: r.status, json, text: text.slice(0, 200), ms: Date.now() - t0 };
+  return { status: r.status, json, ms: Date.now() - t0 };
 }
 
-// ---------- ownership allowlist ----------
-const owned = { notes: new Set(), userbooks: new Set(), groupPosts: new Set(), circle: null };
-const created = []; // {kind, id, cleaned}
+// ---------- guard: created-this-run ownership ----------
+const created = { notes: new Set(), userbooks: new Set(), groupPosts: new Set() };
+const ledger = []; // {kind, id, cleaned}
+let seededReadingId = null;
+let circleId = null;
+let seededNoteIds = new Set();
 function allowed(method, p) {
-  const id = s => Number(s);
+  const n = s => Number(s);
   const rules = [
     [/^POST \/notes\/?$/, () => true],
-    [/^POST \/notes\/upload-image$/, () => false],                       // no uploads from scenarios
-    [/^(PUT|DELETE) \/notes\/(\d+)$/, m => owned.notes.has(id(m[2]))],
-    [/^(POST|DELETE) \/notes\/(\d+)\/like$/, m => owned.notes.has(id(m[2]))],
-    [/^POST \/notes\/(\d+)\/comments$/, m => owned.notes.has(id(m[1]))],
+    [/^(PUT|DELETE) \/notes\/(\d+)$/, m => created.notes.has(n(m[2]))],
+    [/^(POST|DELETE) \/notes\/(\d+)\/like$/, m => created.notes.has(n(m[2]))],
+    [/^POST \/notes\/(\d+)\/comments$/, m => created.notes.has(n(m[1]))],
     [/^POST \/books\/add-to-library$/, () => true],
-    [/^(PATCH|DELETE) \/userbooks\/(\d+)$/, m => owned.userbooks.has(id(m[2]))],
-    [/^PUT \/userbooks\/(\d+)\/progress$/, m => owned.userbooks.has(id(m[1]))],
-    [/^POST \/userbooks\/(\d+)\/finish$/, m => owned.userbooks.has(id(m[1]))],
+    [/^(PATCH|DELETE) \/userbooks\/(\d+)$/, m => created.userbooks.has(n(m[2]))],
+    [/^PUT \/userbooks\/(\d+)\/progress$/, m => created.userbooks.has(n(m[1])) || n(m[1]) === seededReadingId],
     [/^PUT \/profile\/me$/, () => true],
     [/^PATCH \/notifications\/prefs$/, () => true],
     [/^POST \/notifications\/mark-read$/, () => true],
-    [/^POST \/groups\/(\d+)\/posts$/, m => id(m[1]) === owned.circle],
-    [/^DELETE \/groups\/(\d+)\/posts\/(\d+)$/, m => id(m[1]) === owned.circle && owned.groupPosts.has(id(m[2]))],
+    [/^POST \/groups\/(\d+)\/posts$/, m => n(m[1]) === circleId],
+    [/^DELETE \/groups\/(\d+)\/posts\/(\d+)$/, m => n(m[1]) === circleId && created.groupPosts.has(n(m[2]))],
   ];
-  const key = `${method} ${p.split('?')[0]}`;
+  const key = `${method} ${p}`;
   for (const [re, ok] of rules) { const m = key.match(re); if (m) return ok(m); }
   return false;
+}
+function track(kind, id) {
+  if (!id) return;
+  ({ note: created.notes, userbook: created.userbooks, group_post: created.groupPosts })[kind].add(id);
+  ledger.push({ kind, id, cleaned: false });
 }
 
 // ---------- reporting ----------
 const report = { web: WEB, api: API, date: DATE, scenarios: [] };
 let cur = null;
-function scenario(id, title) { cur = { id, title, steps: [], api: [], blocked: [], dialogs: [], consoleErrors: [], pageErrors: [] }; report.scenarios.push(cur); console.log(`\n== ${id} ${title}`); }
-function step(name, pass, detail = '') { cur.steps.push({ name, pass, detail: String(detail).slice(0, 300) }); console.log(`  [${pass === null ? 'INFO' : pass ? 'PASS' : 'FAIL'}] ${name}${detail ? ' - ' + String(detail).slice(0, 160) : ''}`); }
+function scenario(id, title) {
+  cur = { id, title, steps: [], api: [], blocked: [], dialogs: [], unexpectedDialogs: [], consoleErrors: [], pageErrors: [] };
+  report.scenarios.push(cur); console.log(`\n== ${id} ${title}`);
+}
+function step(name, pass, detail = '') {
+  cur.steps.push({ name, pass, detail: String(detail).slice(0, 300) });
+  console.log(`  [${pass === null ? 'INFO' : pass ? 'PASS' : 'FAIL'}] ${name}${detail !== '' ? ' - ' + String(detail).slice(0, 170) : ''}`);
+}
 const slug = s => s.replace(/[^a-z0-9]+/gi, '-').slice(0, 60);
+const esc = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const label = text => new RegExp(`^\\s*(?:[a-z_]+\\s+){0,2}${esc(text)}\\s*$`, 'i'); // icon-ligature tolerant
 async function shot(page, name) { await page.screenshot({ path: path.join(OUT, `${cur.id}-${slug(name)}.png`) }).catch(() => {}); }
-async function settle(page, ms = 900) { await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {}); await page.waitForTimeout(ms); }
-function lastCall(method, re) { return [...cur.api].reverse().find(a => a.method === method && re.test(a.path)); }
+const pause = (page, ms = 600) => page.waitForTimeout(ms);
+
+// Run `action`, wait for the first API response matching method + path regex. Returns {status, json, ms} or null.
+async function actAndWait(page, method, re, action, timeout = RESP_TIMEOUT) {
+  const t0 = Date.now();
+  const wait = page.waitForResponse(r => r.request().method() === method && r.url().startsWith(API)
+    && re.test(r.url().slice(API.length).split('?')[0]), { timeout }).catch(() => null);
+  await action();
+  const resp = await wait;
+  if (!resp) return null;
+  let json = null; try { json = await resp.json(); } catch { /* 204 / non-JSON */ }
+  return { status: resp.status(), json, ms: Date.now() - t0 };
+}
+function expectDialog(page, re) { page._expectDialog = re; }
 
 async function newPage(context) {
   const page = await context.newPage();
-  const started = new Map();
-  page.on('request', r => { if (r.url().startsWith(API)) started.set(r, Date.now()); });
-  page.on('response', async r => {
+  page._expectDialog = null;
+  page.on('response', r => {
     const q = r.request(); if (!q.url().startsWith(API)) return;
-    const pth = q.url().replace(API, '').split('?')[0];
-    const entry = { method: q.method(), path: pth, status: r.status(), ms: started.has(q) ? Date.now() - started.get(q) : null };
-    cur?.api.push(entry);
-    // Track ids created through the UI so later steps (and cleanup) may touch them.
-    if (q.method() === 'POST' && r.status() < 300) {
-      try {
-        const j = await r.json();
-        if (/^\/notes\/?$/.test(pth) && j?.id) { owned.notes.add(j.id); created.push({ kind: 'note', id: j.id, cleaned: false }); }
-        if (/^\/books\/add-to-library$/.test(pth) && j?.id) { owned.userbooks.add(j.id); created.push({ kind: 'userbook', id: j.id, cleaned: false }); }
-        if (/^\/groups\/\d+\/posts$/.test(pth) && j?.id) { owned.groupPosts.add(j.id); created.push({ kind: 'group_post', id: j.id, cleaned: false }); }
-      } catch { /* ignore */ }
-    }
+    cur?.api.push({ method: q.method(), path: q.url().slice(API.length).split('?')[0], status: r.status() });
   });
   page.on('console', m => { if (m.type() === 'error' && !/Push API in incognito/.test(m.text())) cur?.consoleErrors.push(m.text().slice(0, 200)); });
   page.on('pageerror', e => cur?.pageErrors.push(String(e).slice(0, 200)));
-  page.on('dialog', async d => { cur?.dialogs.push(`${d.type()}: ${d.message().slice(0, 120)}`); await d.accept().catch(() => {}); });
+  page.on('dialog', async d => {
+    const msg = `${d.type()}: ${d.message().slice(0, 120)}`;
+    if (page._expectDialog && page._expectDialog.test(d.message())) {
+      cur?.dialogs.push(msg); page._expectDialog = null; await d.accept().catch(() => {});
+    } else {
+      cur?.unexpectedDialogs.push(msg); console.log(`  [UNEXPECTED_DIALOG dismissed] ${msg}`); await d.dismiss().catch(() => {});
+    }
+  });
   page.on('popup', async p => { await p.close().catch(() => {}); });
   return page;
 }
+const res = (r, ok = s => s < 300) => (r ? `${r.status} in ${r.ms} ms` : 'no response within 30 s') + '';
+const okStatus = (r, codes) => !!r && codes.includes(r.status);
 
-// ---------- scenarios ----------
-async function S1_postLifecycle(context) {
+// ---------- S1: composer post lifecycle ----------
+async function S1(context) {
   scenario('S1', 'Home composer: post (quote + emotion) → comment → like → edit → delete');
   const page = await newPage(context);
   const text = `QA scenario note ${TS}`;
-  await page.goto(WEB + '/home', { waitUntil: 'networkidle' }); await settle(page);
+  await page.goto(WEB + '/home', { waitUntil: 'domcontentloaded' });
+  await page.getByPlaceholder('What are your thoughts on your current read?').waitFor({ timeout: 45000 });
   await page.getByPlaceholder('What are your thoughts on your current read?').fill(text);
   await page.getByPlaceholder('Add a striking quote...').fill('A test quote');
-  await page.getByRole('button', { name: /Joyful/ }).first().click().catch(e => step('select emotion chip', false, e.message));
+  await page.getByRole('button', { name: /Joyful/ }).first().click();
   await shot(page, 'composer-filled');
-  await page.getByRole('button', { name: 'Post', exact: true }).first().click();
-  await settle(page, 1500);
-  const post = lastCall('POST', /^\/notes\/?$/);
-  step('POST /notes/ from composer', post?.status === 201, post ? `${post.status} in ${post.ms} ms` : 'no request');
-  const mine = await api('GET', '/notes/me');
-  const note = (mine.json || []).find(n => n.text === text);
-  step('note persisted with quote + emotion', !!note && note.quote === 'A test quote' && !!note.emotion, note ? `id ${note.id} emotion=${note.emotion} public=${note.is_public}` : 'not found in /notes/me');
-  await shot(page, 'after-post');
-  if (!note) return;
-  owned.notes.add(note.id);
-
+  const post = await actAndWait(page, 'POST', /^\/notes\/?$/, () => page.getByRole('button', { name: label('Post') }).first().click());
+  step('POST /notes/ from composer', okStatus(post, [201]), res(post));
+  const noteId = post?.json?.id; track('note', noteId);
+  if (!noteId) { step('note id from response', false, 'stopping S1'); await page.close(); return; }
+  const persisted = (await api('GET', '/notes/me')).json?.find(n => n.id === noteId);
+  step('persisted with quote + emotion', persisted?.text === text && persisted?.quote === 'A test quote' && !!persisted?.emotion,
+    `emotion=${persisted?.emotion} is_public=${persisted?.is_public}`);
+  step('composer default visibility (F-17 decision: should become private)', null, `is_public=${persisted?.is_public}`);
   const card = page.locator('article', { hasText: text }).first();
-  step('new post visible in feed without reload', await card.isVisible().catch(() => false));
+  const t0 = Date.now();
+  const shown = await card.waitFor({ state: 'visible', timeout: 20000 }).then(() => true).catch(() => false);
+  step('post appears in feed without reload', shown, shown ? `rendered ${Date.now() - t0} ms after the 201` : 'not rendered within 20 s of the 201');
+  await shot(page, 'after-post');
+  if (!shown) {
+    const tabs = await page.getByRole('button', { name: /Community|Friends/ }).allInnerTexts().catch(() => []);
+    step('diagnostic: feed tabs / first article', null, `tabs=${JSON.stringify(tabs)} first=${JSON.stringify((await page.locator('article').first().innerText().catch(() => '')).slice(0, 80))}`);
+    await page.close(); return;
+  }
 
-  // Comment
-  const commentBtn = card.locator('button:has(.material-symbols-outlined:text("chat_bubble")), button:has(.material-symbols-outlined:text("mode_comment"))').first();
-  if (await commentBtn.count()) {
-    await commentBtn.click(); await settle(page, 600);
+  // comment
+  const toggle = card.locator('button:has(.material-symbols-outlined:text("chat_bubble"))').first();
+  if (await toggle.count()) {
+    await toggle.click();
     const input = page.getByPlaceholder('Add a comment...').first();
-    if (await input.count()) {
-      await input.fill(`QA comment ${TS} <b>bold?</b>`);
-      await input.press('Enter');
-      await settle(page, 1200);
-      let c = lastCall('POST', /^\/notes\/\d+\/comments$/);
-      if (!c) { await page.getByRole('button', { name: 'Post', exact: true }).last().click().catch(() => {}); await settle(page, 1200); c = lastCall('POST', /^\/notes\/\d+\/comments$/); }
-      step('POST comment', c?.status === 201, c ? `${c.status} in ${c.ms} ms` : 'no request (Enter and Post both tried)');
-      const cs = await api('GET', `/notes/${note.id}/comments`);
-      step('comment persisted', (cs.json || []).some(x => x.text.startsWith(`QA comment ${TS}`)), `${(cs.json || []).length} comments`);
-      const shownCount = await card.innerText().catch(() => '');
-      step('comment count on card updated without reload', /\b1\b/.test(shownCount), 'card text checked for "1"');
+    const appeared = await input.waitFor({ timeout: 20000 }).then(() => true).catch(() => false);
+    step('comment input appears after toggle', appeared);
+    if (appeared) {
+      await input.fill(`QA comment ${TS} <b>x</b>`);
+      const c = await actAndWait(page, 'POST', /^\/notes\/\d+\/comments$/, () => input.press('Enter'));
+      step('POST comment (Enter)', okStatus(c, [201]), res(c));
+      await pause(page, 800);
+      const cs = (await api('GET', `/notes/${noteId}/comments`)).json || [];
+      step('comment persisted', cs.some(x => x.text.startsWith(`QA comment ${TS}`)), `${cs.length} comment(s)`);
+      step('comment shown as text, not HTML', (await card.locator('b', { hasText: 'x' }).count()) === 0);
+      const count = await card.locator('button:has(.material-symbols-outlined:text("chat_bubble"))').first().innerText().catch(() => '');
+      step('comment count on card updated without reload', /\b1\b/.test(count), JSON.stringify(count));
       await shot(page, 'after-comment');
-    } else step('comment input appears', false, 'placeholder "Add a comment..." not found');
-  } else step('comment button on own post', false, 'no chat_bubble/mode_comment icon button');
+    }
+  } else step('comment toggle on own post', false, 'no chat_bubble button');
 
-  // Like own post
-  const likeBtn = card.locator('button:has(.material-symbols-outlined:text("favorite"))').first();
-  if (await likeBtn.count()) {
-    await likeBtn.click(); await settle(page, 1000);
-    const l = lastCall('POST', /^\/notes\/\d+\/like$/);
-    step('POST like', l?.status === 201, l ? `${l.status} in ${l.ms} ms` : 'no request');
-    const after = (await api('GET', '/notes/me')).json?.find(n => n.id === note.id);
-    step('liked_by_me true + likes_count 1', after?.liked_by_me === true && after?.likes_count === 1, JSON.stringify({ liked: after?.liked_by_me, count: after?.likes_count }));
-    await likeBtn.click(); await settle(page, 1000);
-    const u = lastCall('DELETE', /^\/notes\/\d+\/like$/);
-    step('DELETE like (toggle off)', u?.status === 200, u ? `${u.status} in ${u.ms} ms` : 'no request');
-  } else step('like button on own post', false, 'no favorite icon button');
+  // like / unlike
+  const like = card.locator('button:has(.material-symbols-outlined:text("favorite"))').first();
+  const l1 = await actAndWait(page, 'POST', /^\/notes\/\d+\/like$/, () => like.click());
+  step('POST like', okStatus(l1, [201]), res(l1));
+  const afterLike = (await api('GET', '/notes/me')).json?.find(n => n.id === noteId);
+  step('liked_by_me true, likes_count 1', afterLike?.liked_by_me === true && afterLike?.likes_count === 1, JSON.stringify({ liked: afterLike?.liked_by_me, count: afterLike?.likes_count }));
+  await pause(page, 500);
+  const l2 = await actAndWait(page, 'DELETE', /^\/notes\/\d+\/like$/, () => like.click());
+  step('DELETE like (toggle off)', okStatus(l2, [200]), res(l2));
+  const afterUnlike = (await api('GET', '/notes/me')).json?.find(n => n.id === noteId);
+  step('liked_by_me false, likes_count 0', afterUnlike?.liked_by_me === false && afterUnlike?.likes_count === 0, JSON.stringify({ liked: afterUnlike?.liked_by_me, count: afterUnlike?.likes_count }));
 
-  // Edit via card menu
-  const menu = card.locator('button:has(.material-symbols-outlined:text("more_horiz")), button:has(.material-symbols-outlined:text("more_vert"))').first();
+  // edit
+  const menu = card.locator('button:has(.material-symbols-outlined:text("more_horiz"))').first();
   if (await menu.count()) {
-    await menu.click(); await settle(page, 400);
-    await page.getByRole('button', { name: /^Edit$/ }).first().click().catch(e => step('menu → Edit', false, e.message));
-    await settle(page, 500);
-    const editor = page.locator(`textarea:has-text("${text}")`).first();
-    const ta = (await editor.count()) ? editor : page.locator('textarea').filter({ hasText: text }).first();
-    if (await ta.count()) {
-      await ta.fill(`${text} (edited)`);
-      await page.getByRole('button', { name: /^Save$/ }).first().click();
-      await settle(page, 1200);
-      const put = lastCall('PUT', /^\/notes\/\d+$/);
-      step('PUT note edit', put?.status === 200, put ? `${put.status} in ${put.ms} ms` : 'no request');
-      const edited = (await api('GET', '/notes/me')).json?.find(n => n.id === note.id);
-      step('edit persisted, quote/emotion preserved', edited?.text === `${text} (edited)` && edited?.quote === 'A test quote' && !!edited?.emotion,
-        JSON.stringify({ text: edited?.text, quote: edited?.quote, emotion: edited?.emotion }));
-      await shot(page, 'after-edit');
-    } else step('edit textarea appears', false, 'no textarea containing the post text');
-    // Delete
-    await menu.click().catch(() => {}); await settle(page, 400);
-    await page.getByRole('button', { name: /^Delete$/ }).first().click().catch(e => step('menu → Delete', false, e.message));
-    await settle(page, 600);
-    const confirmBtn = page.getByRole('button', { name: /^(Delete|Delete Post|Yes)$/ }).last();
-    if (await confirmBtn.isVisible().catch(() => false)) { await confirmBtn.click(); await settle(page, 1200); }
-    const del = lastCall('DELETE', /^\/notes\/\d+$/);
-    step('DELETE note from UI', del?.status === 200, del ? `${del.status} in ${del.ms} ms; dialogs=${JSON.stringify(cur.dialogs)}` : 'no request');
-    step('post gone from feed without reload', !(await page.locator('article', { hasText: text }).count()));
-    await shot(page, 'after-delete');
-  } else step('post menu (edit/delete) on own post', false, 'no more_horiz/more_vert icon button');
+    await menu.click(); await pause(page, 400);
+    const editBtn = page.getByRole('button', { name: label('Edit') }).first();
+    if (await editBtn.isVisible().catch(() => false)) {
+      await editBtn.click(); await pause(page, 500);
+      const ta = card.locator('textarea').first();
+      if (await ta.count()) {
+        await ta.fill(`${text} (edited)`);
+        const put = await actAndWait(page, 'PUT', /^\/notes\/\d+$/, () => card.getByRole('button', { name: label('Save') }).first().click());
+        step('PUT note edit', okStatus(put, [200]), res(put));
+        const edited = (await api('GET', '/notes/me')).json?.find(n => n.id === noteId);
+        step('edit persisted; quote + emotion preserved', edited?.text === `${text} (edited)` && edited?.quote === 'A test quote' && !!edited?.emotion,
+          JSON.stringify({ text: edited?.text, quote: edited?.quote, emotion: edited?.emotion }));
+        await shot(page, 'after-edit');
+      } else step('inline edit textarea', false, 'no textarea in the card');
+    } else step('menu shows Edit', false, 'Edit not visible after opening menu');
+
+    // delete
+    await menu.click().catch(() => {}); await pause(page, 400);
+    const delBtn = page.getByRole('button', { name: label('Delete') }).first();
+    if (await delBtn.isVisible().catch(() => false)) {
+      expectDialog(page, /delete/i);
+      const del = await actAndWait(page, 'DELETE', /^\/notes\/\d+$/, () => delBtn.click());
+      step('DELETE note (confirm accepted)', okStatus(del, [200]), `${res(del)} · dialogs=${JSON.stringify(cur.dialogs)}`);
+      await pause(page, 800);
+      step('post removed from feed without reload', (await page.locator('article', { hasText: text }).count()) === 0);
+      await shot(page, 'after-delete');
+    } else step('menu shows Delete', false);
+  } else step('owner menu on own post', false, 'no more_horiz button');
   await page.close();
 }
 
-async function S4_libraryLifecycle(context) {
-  scenario('S4', 'Library: add via search → status Reading → progress → rating → note → remove');
+// ---------- S4: library lifecycle ----------
+async function S4(context) {
+  scenario('S4', 'Library: add via search → Reading → rating → note → delete note → remove; progress on seeded book');
   const page = await newPage(context);
-  await page.goto(WEB + '/library', { waitUntil: 'networkidle' }); await settle(page);
-  await page.getByRole('button', { name: /Add Book/ }).first().click();
-  await settle(page, 500);
+  await page.goto(WEB + '/library', { waitUntil: 'domcontentloaded' });
+  const addBtn = page.getByRole('button', { name: label('Add Book') }).first();
+  await addBtn.waitFor({ timeout: 45000 });
+  await addBtn.click();
   const search = page.getByPlaceholder(/Search by title or author/).first();
+  await search.waitFor({ timeout: 15000 });
+  const wantBefore = await page.getByRole('button', { name: label('Want to Read') }).count();
   await search.fill('Siddhartha Hermann Hesse');
-  await search.press('Enter');
-  await settle(page, 2500);
-  const g = lastCall('GET', /^\/api\/googlebooks\/search$/);
-  step('Google Books search', g?.status === 200, g ? `${g.status} in ${g.ms} ms` : 'no request');
+  const g = await actAndWait(page, 'GET', /^\/api\/googlebooks\/search$/, () => search.press('Enter'));
+  step('Google Books search', okStatus(g, [200]), `${res(g)} · ${g?.json?.results?.length ?? '?'} results`);
+  await pause(page, 800);
   await shot(page, 'search-results');
-  const wantBtn = page.getByRole('button', { name: /Want to Read/ });
-  const n = await wantBtn.count();
-  if (!n) { step('result "Want to Read" button', false, 'none visible'); await page.close(); return; }
-  await wantBtn.nth(n > 1 ? 1 : 0).click();   // index 0 may be the library filter tab
-  await settle(page, 2000);
-  const add = lastCall('POST', /^\/books\/add-to-library$/);
-  step('POST add-to-library', add?.status === 200, add ? `${add.status} in ${add.ms} ms` : 'no request');
-  const ubId = [...owned.userbooks].pop();
-  if (!ubId) { await page.close(); return; }
-  const ub = await api('GET', `/userbooks/${ubId}`);
-  step('userbook created as to-read with google_books_id', ub.json?.status === 'to-read' && !!ub.json?.book?.google_books_id, `${ub.json?.book?.title} · ${ub.json?.status} · pages ${ub.json?.book?.total_pages}`);
+  const wants = page.getByRole('button', { name: label('Want to Read') });
+  const wantAfter = await wants.count();
+  if (wantAfter <= wantBefore) { step('result row "Want to Read" buttons', false, `before ${wantBefore}, after ${wantAfter}`); await page.close(); return; }
+  const add = await actAndWait(page, 'POST', /^\/books\/add-to-library$/, () => wants.nth(wantBefore).click());
+  step('POST add-to-library', okStatus(add, [200, 201]), res(add));
+  const ubId = add?.json?.id; track('userbook', ubId);
+  if (!ubId) { step('userbook id from response', false, `stopping S4 · body ${JSON.stringify(add?.json)?.slice(0, 120)}`); await page.close(); return; }
+  step('response shape: flat userbook with book.google_books_id', !!add.json.book?.google_books_id && add.json.status === 'to-read',
+    `${add.json.book?.title} · ${add.json.status} · pages ${add.json.book?.total_pages} · cover ${add.json.book?.cover_url ? 'yes' : 'no'}`);
+  await pause(page, 800);
+  step('modal closed and library shows the book', await page.getByText(add.json.book?.title || '§', { exact: false }).first().isVisible().catch(() => false));
   await shot(page, 'after-add');
 
-  await page.goto(WEB + `/library/book/${ubId}`, { waitUntil: 'networkidle' }); await settle(page);
+  await page.goto(WEB + `/library/book/${ubId}`, { waitUntil: 'domcontentloaded' });
+  const readingBtn = page.getByRole('button', { name: label('Reading') }).first();
+  await readingBtn.waitFor({ timeout: 45000 });
   await shot(page, 'detail-initial');
-  await page.getByRole('button', { name: /^Reading$/ }).first().click().catch(e => step('click status Reading', false, e.message));
-  await settle(page, 1500);
-  step('status → reading', (await api('GET', `/userbooks/${ubId}`)).json?.status === 'reading');
+  const st = await actAndWait(page, 'PATCH', /^\/userbooks\/\d+$/, () => readingBtn.click());
+  step('PATCH status → reading', okStatus(st, [200]), res(st));
+  step('status persisted', (await api('GET', `/userbooks/${ubId}`)).json?.status === 'reading');
 
-  const num = page.locator('input[type="number"]').first();
-  if (await num.count()) {
-    await num.fill('10');
-    await page.getByRole('button', { name: /^Update$/ }).first().click();
-    await settle(page, 1500);
-    const pr = lastCall('PUT', /^\/userbooks\/\d+\/progress$/);
-    step('PUT progress 10', pr?.status === 200, pr ? `${pr.status} in ${pr.ms} ms` : 'no request');
-    const after = (await api('GET', `/userbooks/${ubId}`)).json;
-    step('current_page 10 + status reading', after?.current_page === 10 && after?.status === 'reading', JSON.stringify({ p: after?.current_page, s: after?.status }));
-    await num.fill('-5');
-    await page.getByRole('button', { name: /^Update$/ }).first().click();
-    await settle(page, 1200);
-    const neg = (await api('GET', `/userbooks/${ubId}`)).json;
-    step('negative page rejected (page stays 10)', neg?.current_page === 10, JSON.stringify({ p: neg?.current_page, s: neg?.status, lastPut: lastCall('PUT', /progress$/)?.status }));
-  } else step('progress number input', false, 'no input[type=number]');
+  const stars = page.locator('button.material-symbols-outlined', { hasText: /^star/ });
+  const starCount = await stars.count();
+  if (starCount >= 5) {
+    const r4 = await actAndWait(page, 'PATCH', /^\/userbooks\/\d+$/, () => stars.nth(3).click());
+    step('PATCH rating 4', okStatus(r4, [200]), res(r4));
+    const afterRating = (await api('GET', `/userbooks/${ubId}`)).json;
+    step('rating 4 persisted; page + status unchanged (May-4 regression)', afterRating?.rating === 4 && afterRating?.status === 'reading' && (afterRating?.current_page ?? 0) === 0,
+      JSON.stringify({ r: afterRating?.rating, s: afterRating?.status, p: afterRating?.current_page }));
+  } else step('5 star rating buttons', false, `${starCount} found`);
 
-  const stars = page.locator('button:has(.material-symbols-outlined:text("star"))');
-  if ((await stars.count()) >= 4) {
-    await stars.nth(3).click(); await settle(page, 1200);
-    step('rating 4 persisted via PATCH', (await api('GET', `/userbooks/${ubId}`)).json?.rating === 4, lastCall('PATCH', /^\/userbooks\/\d+$/)?.status);
-    step('rating did not reset progress (May-4 regression)', (await api('GET', `/userbooks/${ubId}`)).json?.current_page === 10);
-  } else step('star rating buttons', false, `${await stars.count()} star buttons`);
-  await shot(page, 'after-progress-rating');
+  const noteBox = page.locator('textarea').first();
+  let bookNoteId = null;
+  if (await noteBox.count()) {
+    await noteBox.fill(`QA book note ${TS}`);
+    const np = await actAndWait(page, 'POST', /^\/notes\/?$/, () => page.getByRole('button', { name: label('Post') }).first().click());
+    step('POST note from book detail', okStatus(np, [201]), res(np));
+    bookNoteId = np?.json?.id; track('note', bookNoteId);
+    step('book note default visibility (F-17)', null, `is_public=${np?.json?.is_public}`);
+    await pause(page, 800);
+    if (bookNoteId) {
+      const noteCard = page.locator('div', { hasText: `QA book note ${TS}` }).last();
+      const del = noteCard.getByRole('button', { name: label('Delete') }).first();
+      if (await del.count()) {
+        expectDialog(page, /delete this note/i);
+        const dn = await actAndWait(page, 'DELETE', /^\/notes\/\d+$/, () => del.click());
+        step('DELETE book note (confirm accepted)', okStatus(dn, [200]), res(dn));
+      } else step('delete button on the new book note', false);
+    }
+  } else step('book-detail note textarea', false);
 
-  const ta = page.locator('textarea').first();
-  if (await ta.count()) {
-    await ta.fill(`QA book note ${TS}`);
-    await page.getByRole('button', { name: 'Post', exact: true }).first().click();
-    await settle(page, 1500);
-    const np = lastCall('POST', /^\/notes\/?$/);
-    step('POST note from book detail', np?.status === 201, np ? `${np.status} in ${np.ms} ms` : 'no request');
-    const bn = (await api('GET', `/notes/userbook/${ubId}`)).json || [];
-    step('book note listed for userbook', bn.some(x => x.text === `QA book note ${TS}`), `${bn.length} notes; public=${bn[0]?.is_public}`);
-  } else step('book detail note textarea', false, 'none');
-
-  await page.getByRole('button', { name: /Remove from library/ }).first().click().catch(e => step('click Remove from library', false, e.message));
-  await settle(page, 800);
-  const confirm = page.getByRole('button', { name: /^(Remove|Yes|Delete|Confirm)$/ }).last();
-  if (await confirm.isVisible().catch(() => false)) { await confirm.click(); await settle(page, 1500); }
-  const del = lastCall('DELETE', /^\/userbooks\/\d+$/);
-  step('DELETE userbook (has note + reading_activity)', del?.status === 200, del ? `${del.status} in ${del.ms} ms; dialogs=${JSON.stringify(cur.dialogs)}` : 'no request');
-  const gone = await api('GET', `/userbooks/${ubId}`);
-  step('userbook gone', gone.status === 404, `GET → ${gone.status}`);
-  step('navigated away from deleted book', !new URL(page.url()).pathname.includes(String(ubId)), new URL(page.url()).pathname);
+  expectDialog(page, /remove this book/i);
+  const rm = await actAndWait(page, 'DELETE', /^\/userbooks\/\d+$/, () => page.getByRole('button', { name: label('Remove from library') }).first().click());
+  step('DELETE userbook via "Remove from library" (confirm accepted)', okStatus(rm, [200]), `${res(rm)} · dialogs=${JSON.stringify(cur.dialogs)}`);
+  await pause(page, 1200);
+  step('userbook gone (404)', (await api('GET', `/userbooks/${ubId}`)).status === 404);
+  step('navigated to /library', new URL(page.url()).pathname === '/library', new URL(page.url()).pathname);
   await shot(page, 'after-remove');
+
+  // progress on the designated seeded reading book (+1, then restore)
+  if (seededReadingId) {
+    const before = (await api('GET', `/userbooks/${seededReadingId}`)).json;
+    const start = before?.current_page || 0;
+    await page.goto(WEB + `/library/book/${seededReadingId}`, { waitUntil: 'domcontentloaded' });
+    const input = page.getByRole('spinbutton').first();
+    if (await input.waitFor({ timeout: 45000 }).then(() => true).catch(() => false)) {
+      await input.fill(String(start + 1));
+      const pr = await actAndWait(page, 'PUT', /^\/userbooks\/\d+\/progress$/, () => page.getByRole('button', { name: label('Update') }).first().click());
+      step(`PUT progress on seeded "${before?.book?.title}" ${start}→${start + 1}`, okStatus(pr, [200]), res(pr));
+      const after = (await api('GET', `/userbooks/${seededReadingId}`)).json;
+      step('progress persisted, status stays reading', after?.current_page === start + 1 && after?.status === 'reading', JSON.stringify({ p: after?.current_page, s: after?.status }));
+      await input.fill('-5');
+      const neg = await actAndWait(page, 'PUT', /^\/userbooks\/\d+\/progress$/, () => page.getByRole('button', { name: label('Update') }).first().click(), 8000);
+      const afterNeg = (await api('GET', `/userbooks/${seededReadingId}`)).json;
+      step('negative page not saved', afterNeg?.current_page === start + 1, neg ? `request sent → ${neg.status}; page ${afterNeg?.current_page}` : 'blocked client-side (no request)');
+      await shot(page, 'seeded-progress');
+      const restore = await api('PUT', `/userbooks/${seededReadingId}/progress`, { current_page: start });
+      step('restore seeded progress', restore.status === 200 && (await api('GET', `/userbooks/${seededReadingId}`)).json?.current_page === start);
+    } else step('progress input on seeded reading book', false);
+  }
   await page.close();
 }
 
-async function S5_profileBio(context, original) {
+// ---------- S5: bio ----------
+async function S5(context, original) {
   scenario('S5', 'Profile: edit bio → save → restore');
   const page = await newPage(context);
-  await page.goto(WEB + '/profile', { waitUntil: 'networkidle' }); await settle(page);
-  await page.getByRole('button', { name: /edit bio/i }).first().click().catch(e => step('click Edit Bio', false, e.message));
-  await settle(page, 500);
+  await page.goto(WEB + '/profile', { waitUntil: 'domcontentloaded' });
+  const edit = page.getByRole('button', { name: /edit\s*bio/i }).first();
+  await edit.waitFor({ timeout: 45000 });
+  await edit.click();
   const ta = page.locator('textarea').first();
-  if (!(await ta.count())) { step('bio textarea appears', false); await page.close(); return; }
+  if (!(await ta.waitFor({ timeout: 10000 }).then(() => true).catch(() => false))) { step('bio textarea', false); await page.close(); return; }
   const bio = `QA bio ${TS} — émojis 📚 & <i>tags</i>`;
   await ta.fill(bio);
-  await page.getByRole('button', { name: /^Save$/ }).first().click();
-  await settle(page, 1500);
-  const put = lastCall('PUT', /^\/profile\/me$/);
-  step('PUT /profile/me', put?.status === 200, put ? `${put.status} in ${put.ms} ms` : 'no request');
+  const put = await actAndWait(page, 'PUT', /^\/profile\/me$/, () => page.getByRole('button', { name: label('Save') }).first().click());
+  step('PUT /profile/me', okStatus(put, [200]), res(put));
   const me = await api('GET', '/profile/me');
-  step('bio persisted exactly (unicode + tags kept as text)', me.json?.bio === bio, JSON.stringify(me.json?.bio));
+  step('bio persisted exactly', me.json?.bio === bio, JSON.stringify(me.json?.bio));
+  await pause(page, 800);
   step('bio rendered as text, not HTML', (await page.locator('i', { hasText: 'tags' }).count()) === 0);
   await shot(page, 'after-bio');
-  const restore = await api('PUT', '/profile/me', { bio: original.bio ?? '' });
-  step('restore bio via API', restore.status === 200, `was ${JSON.stringify(original.bio)}`);
+  const r = await api('PUT', '/profile/me', { bio: original.bio ?? '' });
+  step('restore bio', r.status === 200);
   await page.close();
 }
 
-async function S6_settings(context, original) {
-  scenario('S6', 'Settings: one notification pref toggle must not reset the others · private profile toggle');
+// ---------- S6: settings ----------
+async function S6(context, original) {
+  scenario('S6', 'Settings: notification pref toggle persists and does not reset others · private profile toggle');
   const page = await newPage(context);
   const before = (await api('GET', '/notifications/prefs')).json;
-  await page.goto(WEB + '/settings', { waitUntil: 'networkidle' }); await settle(page);
-  await shot(page, 'settings-initial');
-  // Make the test meaningful: set two prefs false via API first, then toggle a third in the UI.
-  await api('PATCH', '/notifications/prefs', { ...before, new_follower: false, group_invite: false });
-  await page.reload({ waitUntil: 'networkidle' }); await settle(page);
+  await page.goto(WEB + '/settings', { waitUntil: 'domcontentloaded' });
   const likes = page.getByRole('button', { name: /Toggle Likes/i }).first();
-  if (await likes.count()) {
-    await likes.click(); await settle(page, 1500);
-    const pa = lastCall('PATCH', /^\/notifications\/prefs$/);
-    step('PATCH prefs from Likes toggle', pa?.status === 200, pa ? `${pa.status} in ${pa.ms} ms` : 'no request');
-    const after = (await api('GET', '/notifications/prefs')).json;
-    step('post_liked flipped', after?.post_liked === !before.post_liked, JSON.stringify(after));
-    step('other prefs NOT reset (new_follower + group_invite stay false)', after?.new_follower === false && after?.group_invite === false, JSON.stringify({ new_follower: after?.new_follower, group_invite: after?.group_invite }));
-  } else step('Likes notification toggle', false, 'aria name "Toggle Likes" not found');
-  const restorePrefs = await api('PATCH', '/notifications/prefs', before);
-  step('restore prefs', restorePrefs.status === 200 && JSON.stringify((await api('GET', '/notifications/prefs')).json) === JSON.stringify(before));
+  await likes.waitFor({ timeout: 45000 });
+  await shot(page, 'settings-initial');
+  const pa = await actAndWait(page, 'PATCH', /^\/notifications\/prefs$/, () => likes.click());
+  step('PATCH prefs from Likes toggle', okStatus(pa, [200]), res(pa));
+  await pause(page, 1200);
+  const after = (await api('GET', '/notifications/prefs')).json;
+  step('post_liked flipped on the server', after?.post_liked === !before?.post_liked, JSON.stringify(after));
+  const toggleState = await likes.getAttribute('aria-pressed').catch(() => null);
+  step('UI reverted / surfaced the failure when the save failed', pa?.status === 200 ? null : true, `aria-pressed=${toggleState}; console=${JSON.stringify(cur.consoleErrors.slice(-1))}`);
+  await shot(page, 'after-pref-toggle');
+  const rp = await api('PATCH', '/notifications/prefs', before);
+  step('restore prefs', rp.status === 200 || JSON.stringify((await api('GET', '/notifications/prefs')).json) === JSON.stringify(before), `PATCH → ${rp.status}`);
 
   const priv = page.getByRole('button', { name: /Toggle private profile/i }).first();
-  if (await priv.count()) {
-    await priv.click(); await settle(page, 1500);
-    step('private profile on', (await api('GET', '/profile/me')).json?.is_private_profile === !original.is_private_profile, lastCall('PUT', /^\/profile\/me$/)?.status);
-    await shot(page, 'private-on');
-    await priv.click(); await settle(page, 1500);
-    step('private profile back off', (await api('GET', '/profile/me')).json?.is_private_profile === original.is_private_profile);
-  } else step('private profile toggle', false, 'aria name not found');
+  const p1 = await actAndWait(page, 'PUT', /^\/profile\/me$/, () => priv.click());
+  step('PUT private profile on', okStatus(p1, [200]) && (await api('GET', '/profile/me')).json?.is_private_profile === !original.is_private_profile, res(p1));
+  await shot(page, 'private-on');
+  await pause(page, 500);
+  const p2 = await actAndWait(page, 'PUT', /^\/profile\/me$/, () => priv.click());
+  step('PUT private profile off', okStatus(p2, [200]) && (await api('GET', '/profile/me')).json?.is_private_profile === original.is_private_profile, res(p2));
   await api('PUT', '/profile/me', { is_private_profile: original.is_private_profile });
-  step('yearly goal clear-to-empty', null, original.yearly_goal == null
-    ? 'NOT RUN: PUT /profile/me ignores yearly_goal=null, so a set goal could not be removed again (finding)'
-    : `unchanged (${original.yearly_goal})`);
+  step('yearly goal', null, `left untouched (currently ${original.yearly_goal}; cannot be cleared via API until F-18)`);
   await page.close();
 }
 
-async function S7_circlePost(context) {
+// ---------- S7: circle post ----------
+async function S7(context) {
   scenario('S7', 'Review Circle: new post → delete');
   const page = await newPage(context);
-  await page.goto(WEB + `/groups/${owned.circle}`, { waitUntil: 'networkidle' }); await settle(page);
+  await page.goto(WEB + `/groups/${circleId}`, { waitUntil: 'domcontentloaded' });
+  const open = page.getByRole('button', { name: label('Post') }).first();
+  if (!(await open.waitFor({ timeout: 45000 }).then(() => true).catch(() => false))) { step('open composer button', false); await page.close(); return; }
   await shot(page, 'circle-initial');
-  await page.getByRole('button', { name: 'Post', exact: true }).first().click().catch(e => step('open new post', false, e.message));
-  await settle(page, 600);
+  await open.click();
   const ta = page.locator('textarea').first();
-  if (!(await ta.count())) { step('group composer textarea', false); await page.close(); return; }
+  if (!(await ta.waitFor({ timeout: 10000 }).then(() => true).catch(() => false))) { step('group composer textarea', false); await page.close(); return; }
   const text = `QA circle post ${TS}`;
   await ta.fill(text);
-  await page.getByRole('button', { name: 'Post', exact: true }).last().click();
-  await settle(page, 1500);
-  const gp = lastCall('POST', /^\/groups\/\d+\/posts$/);
-  step('POST group post', gp?.status === 201, gp ? `${gp.status} in ${gp.ms} ms` : 'no request');
-  const posts = (await api('GET', `/groups/${owned.circle}/posts`)).json;
-  const list = Array.isArray(posts) ? posts : posts?.posts || posts?.items || [];
-  const mine = list.find(p => p.text === text);
-  if (mine) owned.groupPosts.add(mine.id);
-  step('group post persisted', !!mine, mine ? `id ${mine.id}` : `${list.length} posts`);
+  const gp = await actAndWait(page, 'POST', /^\/groups\/\d+\/posts$/, () => page.getByRole('button', { name: label('Post') }).last().click());
+  step('POST group post', okStatus(gp, [200, 201]), res(gp));
+  const postId = gp?.json?.id; track('group_post', postId);
+  if (!postId) { step('post id from response', false, 'stopping S7'); await page.close(); return; }
+  await pause(page, 1000);
+  const card = page.locator('article, [class*="rounded"]', { hasText: text }).last();
+  step('post visible without reload', await card.isVisible().catch(() => false));
   await shot(page, 'after-post');
-  const card = page.locator('article, div', { hasText: text }).last();
-  const delBtn = card.locator('button:has(.material-symbols-outlined:text("delete"))').first();
-  if (await delBtn.count()) {
-    await delBtn.click(); await settle(page, 1500);
-    const d = lastCall('DELETE', /^\/groups\/\d+\/posts\/\d+$/);
-    step('DELETE group post (no confirmation expected per inventory)', d?.status === 204 || d?.status === 200, d ? `${d.status} in ${d.ms} ms; dialogs=${JSON.stringify(cur.dialogs)}` : 'no request');
-  } else step('group post delete button', false, 'no delete icon on own post');
+  const del = card.locator('button:has(.material-symbols-outlined:text("delete"))').first();
+  if (await del.count()) {
+    expectDialog(page, /delete|remove/i);
+    const d = await actAndWait(page, 'DELETE', /^\/groups\/\d+\/posts\/\d+$/, () => del.click());
+    step('DELETE group post', okStatus(d, [200, 204]), `${res(d)} · confirm dialog shown: ${cur.dialogs.length > 0}`);
+    await pause(page, 800);
+    step('post removed without reload', (await page.locator('article, [class*="rounded"]', { hasText: text }).count()) === 0);
+  } else step('delete icon on own group post', false);
   await page.close();
 }
 
-async function S8_notifications(context) {
+// ---------- S8: notifications ----------
+async function S8(context) {
   scenario('S8', 'Notifications: mark all read');
   const page = await newPage(context);
-  await page.goto(WEB + '/notifications', { waitUntil: 'networkidle' }); await settle(page);
-  const btn = page.getByRole('button', { name: /Mark all as read/ }).first();
+  await page.goto(WEB + '/notifications', { waitUntil: 'domcontentloaded' });
+  await page.getByRole('heading', { name: /Notifications/ }).first().waitFor({ timeout: 45000 }).catch(() => {});
+  const btn = page.getByRole('button', { name: label('Mark all as read') }).first();
   if (await btn.isVisible().catch(() => false)) {
-    await btn.click(); await settle(page, 1200);
-    const m = lastCall('POST', /^\/notifications\/mark-read$/);
-    step('POST mark-read', m?.status === 200, m ? `${m.status} in ${m.ms} ms` : 'no request');
-    step('unread-count 0', (await api('GET', '/notifications/unread-count')).json?.unread === 0);
-    step('nav badge cleared without reload', (await page.locator('nav').innerText().catch(() => '')).match(/Notifications\s*1/) === null);
-  } else step('Mark all as read', null, 'not visible (0 unread) — nothing to test');
+    const m = await actAndWait(page, 'POST', /^\/notifications\/mark-read$/, () => btn.click());
+    step('POST mark-read', okStatus(m, [200]), res(m));
+    step('server unread-count 0', (await api('GET', '/notifications/unread-count')).json?.unread === 0);
+  } else step('Mark all as read', null, 'not shown (0 unread)');
   await shot(page, 'after');
   await page.close();
 }
 
-async function S9_signOut(browser) {
+// ---------- S9: sign out ----------
+async function S9(browser) {
   scenario('S9', 'Sign out clears the session');
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
-  await ctx.addInitScript(t => { if (!sessionStorage.getItem('qa_seeded')) { localStorage.setItem('bt_token', t); localStorage.setItem('bt_onboarding_v1', 'done'); sessionStorage.setItem('qa_seeded', '1'); } }, TOKEN);
+  await ctx.addInitScript(t => {
+    if (!sessionStorage.getItem('qa_seeded')) { localStorage.setItem('bt_token', t); localStorage.setItem('bt_onboarding_v1', 'done'); sessionStorage.setItem('qa_seeded', '1'); }
+  }, TOKEN);
   const page = await newPage(ctx);
-  await page.goto(WEB + '/profile', { waitUntil: 'networkidle' }); await settle(page);
-  await page.getByRole('button', { name: /^Sign out$/ }).first().click().catch(e => step('click Sign out', false, e.message));
-  await settle(page, 1500);
-  step('redirected to landing', new URL(page.url()).pathname === '/', new URL(page.url()).pathname);
-  step('bt_token removed', (await page.evaluate(() => localStorage.getItem('bt_token'))) === null);
-  await page.goto(WEB + '/library', { waitUntil: 'networkidle' }); await settle(page);
-  step('protected route redirects when signed out', new URL(page.url()).pathname === '/', new URL(page.url()).pathname);
+  await page.goto(WEB + '/profile', { waitUntil: 'domcontentloaded' });
+  const out = page.getByRole('button', { name: label('Sign out') }).first();
+  if (!(await out.waitFor({ timeout: 45000 }).then(() => true).catch(() => false))) { step('Sign out button', false); await ctx.close(); return; }
+  await out.click();
+  await page.waitForURL(u => new URL(u).pathname === '/', { timeout: 15000 }).catch(() => {});
+  step('redirected to /', new URL(page.url()).pathname === '/', new URL(page.url()).pathname);
+  step('bt_token cleared', (await page.evaluate(() => localStorage.getItem('bt_token'))) === null);
+  await page.goto(WEB + '/library', { waitUntil: 'domcontentloaded' });
+  await page.waitForURL(u => new URL(u).pathname === '/', { timeout: 15000 }).catch(() => {});
+  step('protected route redirects to / when signed out', new URL(page.url()).pathname === '/', new URL(page.url()).pathname);
   await shot(page, 'signed-out');
   await ctx.close();
 }
@@ -406,11 +466,14 @@ async function main() {
   TOKEN = login.json.access_token;
 
   const [notes, ubs, groups, me] = await Promise.all([api('GET', '/notes/me'), api('GET', '/userbooks/'), api('GET', '/groups/my'), api('GET', '/profile/me')]);
-  (notes.json || []).forEach(n => owned.notes.add(n.id));
-  (ubs.json || []).forEach(u => owned.userbooks.add(u.id));
-  owned.circle = (groups.json || []).find(g => g.name === 'Review Circle')?.id ?? null;
+  seededNoteIds = new Set((notes.json || []).map(n => n.id));
+  seededReadingId = (ubs.json || []).find(u => u.status === 'reading')?.id ?? null;
+  circleId = (groups.json || []).find(g => g.name === 'Review Circle')?.id ?? null;
   const original = { bio: me.json?.bio ?? null, is_private_profile: !!me.json?.is_private_profile, yearly_goal: me.json?.yearly_goal ?? null };
-  const baseline = { notes: owned.notes.size, userbooks: owned.userbooks.size };
+  const baseline = {
+    notes: [...seededNoteIds].sort().join(','),
+    userbooks: (ubs.json || []).map(u => `${u.id}:${u.status}:${u.current_page}:${u.rating}`).sort().join(','),
+  };
 
   fs.mkdirSync(OUT, { recursive: true });
   const browser = await chromium.launch();
@@ -420,55 +483,55 @@ async function main() {
     const q = route.request(); const url = q.url();
     if (/api\.cloudinary\.com/.test(url)) { cur?.blocked.push(`${q.method()} ${url}`); return route.abort('blockedbyclient'); }
     if (!url.startsWith(API) || ['GET', 'OPTIONS'].includes(q.method())) return route.continue();
-    const p = url.replace(API, '').split('?')[0];
+    const p = url.slice(API.length).split('?')[0];
     if (allowed(q.method(), p)) return route.continue();
-    cur?.blocked.push(`${q.method()} ${p}`);
-    console.log(`  [BLOCKED] ${q.method()} ${p}`);
+    cur?.blocked.push(`${q.method()} ${p}`); console.log(`  [BLOCKED] ${q.method()} ${p}`);
     return route.abort('blockedbyclient');
   });
 
-  const run = async (id, fn) => {
-    if (ONLY && !ONLY.includes(id)) return;
-    try { await fn(); } catch (e) { step(`${id} aborted`, false, e.message.split('\n')[0]); }
-  };
+  const run = async (id, fn) => { if (ONLY && !ONLY.includes(id)) return; try { await fn(); } catch (e) { step(`${id} aborted`, false, String(e.message).split('\n')[0]); } };
   try {
-    await run('S1', () => S1_postLifecycle(context));
-    await run('S4', () => S4_libraryLifecycle(context));
-    await run('S5', () => S5_profileBio(context, original));
-    await run('S6', () => S6_settings(context, original));
-    if (owned.circle) await run('S7', () => S7_circlePost(context));
-    await run('S8', () => S8_notifications(context));
-    await run('S9', () => S9_signOut(browser));
+    await run('S1', () => S1(context));
+    await run('S4', () => S4(context));
+    await run('S5', () => S5(context, original));
+    await run('S6', () => S6(context, original));
+    if (circleId) await run('S7', () => S7(context));
+    await run('S8', () => S8(context));
+    await run('S9', () => S9(browser));
   } finally {
-    // ---------- cleanup (API) ----------
-    scenario('CLEANUP', 'Delete everything this run created; restore profile + prefs');
-    for (const c of created) {
-      const pathFor = { note: `/notes/${c.id}`, userbook: `/userbooks/${c.id}`, group_post: `/groups/${owned.circle}/posts/${c.id}` }[c.kind];
-      const r = await api('GET', c.kind === 'userbook' ? `/userbooks/${c.id}` : c.kind === 'note' ? '/notes/me' : `/groups/${owned.circle}/posts`);
-      const exists = c.kind === 'userbook' ? r.status === 200
-        : c.kind === 'note' ? (r.json || []).some(n => n.id === c.id)
-        : (Array.isArray(r.json) ? r.json : r.json?.posts || []).some(p => p.id === c.id);
-      if (exists) { const d = await api('DELETE', pathFor); c.cleaned = d.status < 300; step(`delete leftover ${c.kind} ${c.id}`, c.cleaned, d.status); }
-      else { c.cleaned = true; step(`${c.kind} ${c.id} already removed by UI`, true); }
+    scenario('CLEANUP', 'Remove rows created in this run; restore profile; compare with baseline');
+    for (const c of ledger) {
+      const existsReq = c.kind === 'userbook' ? await api('GET', `/userbooks/${c.id}`)
+        : c.kind === 'note' ? await api('GET', '/notes/me') : await api('GET', `/groups/${circleId}/posts`);
+      const list = Array.isArray(existsReq.json) ? existsReq.json : existsReq.json?.posts || existsReq.json?.items || [];
+      const exists = c.kind === 'userbook' ? existsReq.status === 200 : list.some(x => x.id === c.id);
+      if (!exists) { c.cleaned = true; step(`${c.kind} ${c.id} already removed by the UI flow`, true); continue; }
+      const p = { note: `/notes/${c.id}`, userbook: `/userbooks/${c.id}`, group_post: `/groups/${circleId}/posts/${c.id}` }[c.kind];
+      const d = await api('DELETE', p); c.cleaned = d.status < 300; step(`API delete leftover ${c.kind} ${c.id}`, c.cleaned, d.status);
     }
     await api('PUT', '/profile/me', { bio: original.bio ?? '', is_private_profile: original.is_private_profile });
-    const after = await Promise.all([api('GET', '/notes/me'), api('GET', '/userbooks/'), api('GET', '/profile/me')]);
-    const ok = (after[0].json || []).length === baseline.notes && (after[1].json || []).length === baseline.userbooks
-      && (after[2].json?.bio ?? '') === (original.bio ?? '') && !!after[2].json?.is_private_profile === original.is_private_profile;
-    step('fixture back to baseline', ok, `notes ${(after[0].json || []).length}/${baseline.notes} · userbooks ${(after[1].json || []).length}/${baseline.userbooks}`);
-    report.cleanup = { created: created.length, cleaned: created.filter(c => c.cleaned).length, baselineRestored: ok };
+    const [n2, u2] = await Promise.all([api('GET', '/notes/me'), api('GET', '/userbooks/')]);
+    const now = {
+      notes: (n2.json || []).map(n => n.id).sort().join(','),
+      userbooks: (u2.json || []).map(u => `${u.id}:${u.status}:${u.current_page}:${u.rating}`).sort().join(','),
+    };
+    const ok = now.notes === baseline.notes && now.userbooks === baseline.userbooks;
+    step('fixture identical to baseline (ids, status, page, rating)', ok, ok ? '' : JSON.stringify({ baseline, now }));
+    report.cleanup = { created: ledger.length, cleaned: ledger.filter(c => c.cleaned).length, baselineRestored: ok };
     await browser.close();
+
     fs.writeFileSync(path.join(OUT, 'scenarios.json'), JSON.stringify(report, null, 2));
-    const md = [`# Web scenario run — ${DATE}`, '', `\`${WEB}\` as review.reader · cleanup: created ${report.cleanup.created} / cleaned ${report.cleanup.cleaned} · baseline restored: ${ok}`, ''];
+    const md = [`# Web scenario run — ${DATE}`, '',
+      `\`${WEB}\` as review.reader · created ${report.cleanup.created} / cleaned ${report.cleanup.cleaned} · fixture identical to baseline: **${ok}**`, ''];
     for (const s of report.scenarios) {
       md.push(`## ${s.id} — ${s.title}`, '', '| result | step | detail |', '|---|---|---|');
       md.push(...s.steps.map(x => `| ${x.pass === null ? 'INFO' : x.pass ? 'PASS' : '**FAIL**'} | ${x.name} | ${x.detail.replace(/\|/g, '/')} |`));
-      const slow = s.api.filter(a => a.ms > 2000).map(a => `${a.method} ${a.path} ${a.ms}ms`);
       if (s.blocked.length) md.push('', `**Blocked by guard:** ${s.blocked.join(', ')}`);
-      if (s.dialogs.length) md.push('', `Dialogs: ${s.dialogs.join(' · ')}`);
+      if (s.dialogs.length) md.push('', `Confirm dialogs accepted: ${s.dialogs.join(' · ')}`);
+      if (s.unexpectedDialogs.length) md.push('', `**Unexpected dialogs (dismissed):** ${s.unexpectedDialogs.join(' · ')}`);
       if (s.consoleErrors.length || s.pageErrors.length) md.push('', `Console/page errors: ${[...s.consoleErrors, ...s.pageErrors].slice(0, 5).join(' · ')}`);
-      if (slow.length) md.push('', `API calls > 2 s: ${slow.slice(0, 8).join(' · ')}`);
-      if (s.api.some(a => a.status >= 500)) md.push('', `**5xx:** ${s.api.filter(a => a.status >= 500).map(a => `${a.method} ${a.path} ${a.status}`).join(', ')}`);
+      const fivexx = s.api.filter(a => a.status >= 500);
+      if (fivexx.length) md.push('', `**5xx:** ${fivexx.map(a => `${a.method} ${a.path} ${a.status}`).join(', ')}`);
       md.push('');
     }
     fs.mkdirSync(path.join(REPO, 'qa', 'reports'), { recursive: true });

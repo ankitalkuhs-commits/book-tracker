@@ -43,13 +43,51 @@ function loadInventory() {
 
 const slug = s => String(s).replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').slice(0, 80);
 
+// Inventory locator names are often i18n keys with notes, e.g. "common.post (i18n, typically 'Post')",
+// "status.wantToRead|status.reading", "Delete comment (title attr, icon-only)". Normalise them into a RegExp
+// of the English strings the user actually sees (web en.json), or null when the name is a description only.
+const EN = JSON.parse(fs.readFileSync(path.join(REPO, 'book-tracker-frontend-stitch', 'src', 'i18n', 'locales', 'en.json'), 'utf8'));
+const i18n = key => key.split('.').reduce((o, k) => (o && typeof o === 'object' ? o[k] : undefined), EN);
+const esc = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+function nameMatcher(raw) {
+  if (!raw) return null;
+  if (/^matches |^\{|within a |per row|\(dynamic\)/i.test(raw)) return null;       // descriptive, not a label
+  const typical = raw.match(/typically '([^']+)'/);
+  if (typical) return new RegExp(`^\\s*${esc(typical[1])}\\s*$`, 'i');
+  const base = raw.replace(/\s*\(.*?\)\s*/g, ' ').replace(/\s+→$/, '').trim();
+  const alts = base.split(/\s*[|/]\s*/).map(s => s.trim()).filter(Boolean)
+    .map(s => (/^[a-z]+(\.[A-Za-z0-9_]+)+$/.test(s) ? i18n(s) : s))
+    .filter(s => typeof s === 'string' && s.length && !/[{}]/.test(s));
+  if (!alts.length) return null;
+  // Material Symbols render their ligature as text, so accessible names look like "add Add Book" or
+  // "arrow_back Back to library": allow up to two leading lowercase icon words.
+  return new RegExp(`^\\s*(?:[a-z_]+\\s+){0,2}(?:${alts.map(a => esc(a.replace(/[…]$/, ''))).join('|')})[…\\s]*$`, 'i');
+}
+function textOrKey(raw) {
+  if (!raw) return null;
+  const s = String(raw).replace(/\s*\(.*?\)\s*/g, '').trim();
+  return /^[a-z]+(\.[A-Za-z0-9_]+)+$/.test(s) ? (i18n(s) || s) : s;
+}
+
 function locate(page, loc = {}) {
   if (loc.testid) return page.getByTestId(loc.testid);
-  if (loc.role) return page.getByRole(loc.role, loc.name ? { name: loc.name, exact: false } : {});
-  if (loc.label || loc['aria-label']) return page.getByLabel(loc.label || loc['aria-label']);
-  if (loc.placeholder) return page.getByPlaceholder(loc.placeholder);
-  if (loc.text) return page.getByText(loc.text, { exact: false });
-  if (loc.css) return page.locator(loc.css);
+  if (loc.title) return page.locator(`[title="${String(loc.title).replace(/"/g, '\\"')}"]`);
+  if (loc.role) {
+    const nm = nameMatcher(loc.name);
+    if (loc.name && !nm) return null;
+    if (loc.role === 'textbox' && loc.placeholder) return page.getByPlaceholder(textOrKey(loc.placeholder));
+    return page.getByRole(loc.role, nm ? { name: nm } : {});
+  }
+  if (loc.label || loc['aria-label']) return page.getByLabel(textOrKey(loc.label || loc['aria-label']));
+  if (loc.placeholder) return page.getByPlaceholder(textOrKey(loc.placeholder));
+  if (loc.text) return page.getByText(textOrKey(loc.text), { exact: false });
+  if (loc.css) {
+    // Inventory CSS often carries prose: "main button.group (grid book card…)", "… within AvatarStep", "— author header".
+    let css = String(loc.css).replace(/\s*\((?![^)]*['"])[^)]*\)\s*$/g, '').replace(/\s+(within|—|–|per)\s.*$/i, '').trim();
+    css = css.replace(/:has-text\('([a-z]+(?:\.[A-Za-z0-9_]+)+)'\)/g, (_, k) => `:has-text('${String(i18n(k) || k).replace(/'/g, "\\'")}')`);
+    if (!css || /[{}<>]|ref=|sentinel|n\/a/i.test(css)) return null;
+    return page.locator(css);
+  }
   return null;
 }
 
@@ -161,7 +199,11 @@ async function main() {
 
       const t0 = Date.now();
       const trig = e.trigger || 'click';
-      if (['input', 'textarea'].includes(e.kind)) {
+      const inputType = await target.getAttribute('type').catch(() => null);
+      if (inputType === 'number' || loc0.role === 'spinbutton') {
+        await target.fill('3');
+        if (trig === 'enter' || trig === 'submit') await target.press('Enter');
+      } else if (['input', 'textarea'].includes(e.kind)) {
         await target.fill('qa audit 🔍 <b>x</b>');
         if (trig === 'enter' || trig === 'submit') await target.press('Enter');
       } else if (e.kind === 'select') {
