@@ -105,6 +105,20 @@ The correct key names (backend + frontend must match):
 
 ---
 
+## Recently Shipped (September 13, 2026 — Sprint 2)
+
+### Audit Bug Fixes (72/72 verdict PASS, pytest 213/0)
+
+**What changed:** Seven backend correctness fixes across feed, notes, insights, notifications, and profile. Friends feed reorders (mutuals first, then non-mutual within each group). Own notes show real like state instead of always-true. Private notes no longer appear in group activity feeds. Insights month chart fixed (no skipped Feb, no dups) and streak no longer resets to 0 if you haven't read today yet (anchors on yesterday when today empty). `/profile/me` stops logging user emails into Render logs. Nightly streak reminder and admin broadcast both now honour user preferences, web push, and notification history by routing through the dispatcher.
+
+**Where to find it:** `features/maintenance/sprint-2-audit-bugs/spec.md` → R1–R7; all shipped 2026-09-13.
+
+**Gotchas:** Admin broadcast now sends to every user with any push token (one at a time, not batched) — fine at current scale, will need batching past ~1,000 users. Streak reminder still cannot fire before 14:30 UTC (Render free tier sleeps). Pre-existing 00:00–05:30 IST window where daily cap can misjudge (not a blocker; tests avoid it with time control).
+
+**Next sprint:** Carried items: `/auth/signup|login` PM decision (keep or remove), `/api/googlebooks/*` auth decision, dead client calls (web + mobile build needed), DB repair for pre-May-4 rating bugs (needs PM approval).
+
+---
+
 ## Recently Shipped (September 12, 2026)
 
 ### Agent process installed (ported from School ERP)
@@ -281,20 +295,20 @@ The correct key names (backend + frontend must match):
 
 ## Known Issues / Next Priorities
 
-**HIGH:** None — closed by sprint-1-hardening:
-- ~~Anonymous `DELETE /books/{id}` + `GET /books/` + `POST /books/`~~ (R1)
-- ~~Mobile login overwrites web push row~~ (R3)
-- ~~12 stale test failures~~ (R4)
+**HIGH:** None — all critical/auth/security items closed.
 
-**MEDIUM:**
+**MEDIUM (Carried from sprints 1–2):**
 1. Web `/search` route still exists but removed from Nav — decide: keep or delete route
 2. Onboarding "Add a Book" step (mobile) — verify book search + add flow end-to-end after tour changes
-3. Users who rated books before May 4, 2026 may have had their book status reset to "to-read" — consider a DB repair script to restore finished status for affected userbooks
+3. **PM decisions pending:** Remove `/auth/signup|login` (unused, password-based)? Add auth to `/api/googlebooks/*` (landing page may want anonymous search)?
 
 **LOW:**
-4. `broadcast_push_notification` in admin_router.py uses old `send_push_to_many` — breaks for web push users on admin broadcasts
-5. `app/__pycache__/*.pyc` tracked in git despite `__pycache__/` in .gitignore (pre-existing; same class as venvs)
-6. `book_tracker.db`, `crash.txt`, loose `migrate_*.py`/`check_*.py` tracked in git (pre-existing; mentioned not fixed)
+4. Users who rated books before May 4, 2026 may have had their book status reset to "to-read" — consider a DB repair script to restore finished status for affected userbooks (needs PM approval)
+5. Dead client calls need removal + mobile build: web `demoLogin` in LoginPage, mobile `userAPI.getUser` in App.js
+6. Unused `send_push_notification_to_user` import in `likes_comments.py` (cleanup item; module still in use elsewhere, don't delete yet)
+7. `book_tracker.db`, `crash.txt`, loose `migrate_*.py`/`check_*.py` tracked in git (pre-existing junk; batch removal in future cleanup pass)
+8. Missing `og-image.png` at web root (referenced but not committed)
+9. Vercel `build:ssg` unverified (web build script may not run correctly)
 
 ---
 

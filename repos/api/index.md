@@ -4,7 +4,7 @@ path: app/
 purpose: FastAPI backend — both clients consume this
 tech: FastAPI 0.95, SQLModel 0.0.8, SQLAlchemy 1.4, PostgreSQL (Supabase) / SQLite (dev)
 deploy: Render free tier → https://book-tracker-stitch.onrender.com, auto-deploys from master
-last_verified: 2026-09-13
+last_verified: 2026-09-13 (sprint-2-audit-bugs: R1–R7 shipped, 72/72 verdict PASS, pytest 213/0)
 ---
 
 ## Entry Points
@@ -28,9 +28,10 @@ last_verified: 2026-09-13
 ## Called By
 - web (`book-tracker-frontend-stitch/src/services/api.js`) · mobile (`book-tracker-mobile-stitch/src/services/api.js`)
 
-## Health (2026-09-13)
-- pytest: 150 passed, 0 failed (was 103 pass / 12 fail; sprint-1-hardening +37 new tests, +12 fixed stale call sites)
-- Venvs untracked from git (12,313 files removed from index; both .venv/ and venv/ remain on disk)
+## Health (2026-09-13 — sprint 2)
+- pytest: 213 passed, 0 failed (was 150; sprint-2-audit-bugs +63 new tests)
+- Venvs + `.pyc` files untracked from git; `book_tracker.db` untracked (12,313 files removed from index; both .venv/ and venv/ remain on disk)
 - No CI on backend (workflows only build the Android app)
-- Render free tier sleeps → 14:30 UTC scheduler job rarely fires
-- See dependency-map.md and the Sept 2026 audit memory for open findings (friends-feed sort, /notes/me hardcode, scheduler bypass, insights bugs, note_posted fires for private, profile logging, admin broadcast using old push path, dead client calls, /auth/signup|login decision, /api/googlebooks/* auth decision, tracked .pyc + book_tracker.db, missing og-image.png, Vercel build:ssg unverified)
+- Render free tier sleeps → 14:30 UTC; scheduler fires but is queued inefficiently (all users per-recipient sequentially)
+- Seven audit bugs fixed: friends-feed reorder (mutuals first), own-note likes (real state), private-note privacy (group activity), insights months/streak (calendar math), profile PII logging, streak reminder through dispatcher, admin broadcast on both channels
+- Carried open items: `/auth/signup|login` PM decision, `/api/googlebooks/*` auth PM decision, dead client calls (web `demoLogin`, mobile `userAPI.getUser`), DB repair for pre-May-4 rating bugs, unused `send_push_notification_to_user` import, missing `og-image.png`, Vercel `build:ssg` unverified

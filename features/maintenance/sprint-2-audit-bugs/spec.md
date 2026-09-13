@@ -2,7 +2,7 @@
 screen: sprint-2-audit-bugs
 feature: maintenance
 repo: api (+ repo root for git hygiene)
-status: in-progress
+status: tested
 last_verified: 2026-09-13
 approved_by: PM ("Next sprint", 2026-09-13) — scope chosen from retros/doc-sync-2026-09-13.md carried items
 ---
