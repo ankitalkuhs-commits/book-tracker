@@ -5,18 +5,18 @@ status: architecture-complete
 spec_status: in-progress (PM — Android build 2.2.2 approved 2026-09-13; audit triage 4B list)
 architect_verified: 2026-09-13
 code_baseline: master @ 8c44198 (mobile app.json 2.2.1 / versionCode 60)
-4a_handoff_status: re-checked 2026-09-13 after the PM answers. `features/maintenance/sprint-4a-platform-audit/` now contains spec.md only, which requires the 4A architecture to define "Contracts for 4B" (F-07, F-15, F-23, F-03). No architecture.md exists yet, so those four stay PENDING-4A-CONTRACT.
+4a_handoff_status: RESOLVED 2026-09-13. `features/maintenance/sprint-4a-platform-audit/architecture.md` → "Contracts for 4B" confirms F-07 (§1), F-15 (§2, /goal unchanged), F-23 (§3, route added) and F-03 (§4, token reassignment) exactly as assumed. No PENDING-4A-CONTRACT remains. tests.md contract conflicts K1–K8 are resolved in "Contract conflicts K1–K8".
 pm_decisions: 2026-09-13 — Gate 2 approved; Play rollout 100% after the PM device check (hard gate before the AAB); rollback is a hotfix build; composer remembers the last Public/Private choice (`bt_note_visibility`); "Saved privately" message confirmed; SearchScreen/OnboardingScreen deleted in a later build
 ---
 
 ## Risk Summary (for PM)
 
-- **What changes:** one Android update (2.2.2) with 20 fixes. Circles: Disband, Invite Friends, reading goals, a Reject confirm and the Curator badge all work. The tour search finds books, an expired login returns to sign-in, and Insights/Profile show real numbers. Every note composer gets a Public/Private switch: Private until the user picks, then the choice is remembered. Join notifications open something, push follows the signed-in account, TalkBack reads icon buttons, and the build refuses a stale version number.
+- **What changes:** one Android update (2.2.2) with 20 fixes. Circles: Disband, Invite Friends, reading goals, a Reject confirm and the Curator badge all work. The tour search finds books, an expired login returns to sign-in, and Insights/Profile show real numbers. Every note composer gets a Public/Private switch: Private until the user picks, then the choice is remembered. Join notifications open something, push follows the signed-in account, TalkBack reads icon buttons, and the build refuses a stale version number. Books with no Google cover show a book icon instead of a blank tile.
 - **What 2.2.1 users keep until they update:** dead Disband and Invite search, an empty tour search, a blank app after a 30-day login expiry, no circle goal or Curator badge, no confirm on Reject, and join-approval taps that do nothing. 4A's backend fixes their Insights/Profile numbers and makes book-page reflections private, but 2.2.1 has no switch and its Home and Profile posts stay public.
 - **What could break:** sign-out and "session expired" share one code path, so a bug there could sign people out unexpectedly. A user who never touches the switch posts privately and may think the post vanished; the app says "Saved privately — find it on your Profile". The faster feed list can drop the keyboard while typing.
 - **The rollout is 100% (approved), so there is no partial-rollout safety net.** A bad 2.2.2 reaches everyone, and the only rollback is a hotfix build (2.2.3). That makes your device check of the test APK a hard gate: no AAB is built until it passes.
 - **On the phone you must check** (there is no emulator here): sign-out and an expired session, push on a shared phone, the Home post Public/Private flow and its message, Disband, Invite search, and the keyboard staying open while typing in the feed list.
-- **Waiting on 4A:** duplicate-book prevention, marking one notification read on the server, the circle-goal shape, and the server moving a push token to the new account. 4A has a spec but no architecture yet. If 4A skips mark-read, a tap still only marks it read on the phone.
+- **Depends on 4A being live:** 4A has confirmed, as assumed, duplicate-book prevention, marking one notification read, the circle-goal shape and moving a push token to the new account. One gap is escalated to 4A: its tests don't yet prove the duplicate-book matching, and the Android build waits for them. One residual is accepted: after an offline sign-out, the old account's notifications keep reaching that phone until someone else signs in on it.
 - **Decisions:** all answered on 2026-09-13. The two unreachable screens (Search, Onboarding) are deleted in a later build, not 2.2.2.
 - **Recommendation:** build the test APK only after 4A is live, then your device check, then the AAB, then your final go and a 100% Play release.
 
@@ -55,7 +55,7 @@ No new endpoints and no response-shape changes. This is a client-only sprint tha
 - `app/notifications/router.py :: GET /history` `:125-155`: `data` is a JSON dict (`models.py:159`) carrying `group_id` for group events.
 - `app/notifications/config.py`: `group_join_approved` `:95`, `group_join_rejected` `:102`, `admin_broadcast` `:129`.
 - `GET /version` (meta_router): unauthenticated, no DB, used as the warm-up ping.
-- **Sprint 4A (PENDING-4A-CONTRACT):** see the Contract dependency table.
+- **Sprint 4A "Contracts for 4B"** (committed; CONFIRMED for F-07, F-15, F-23, F-03): see the Contract dependency table.
 
 ## depended_by
 - `App.js :: preloadData()` → PreloadContext keys `profile, library, feed, insights, activity, notes, groups, pendingGroups` seed every tab. F-11 and F-31 change how failures there behave, not the keys.
@@ -74,9 +74,9 @@ No new endpoints and no response-shape changes. This is a client-only sprint tha
 | GET | /users/search | `searchUsers` | `userAPI.searchUsers` | invite search | fixed import |
 | GET | /reading-activity/insights | `getReadingInsights` | `activityAPI.getInsights` | Insights/Profile | canonical field names |
 | GET | /api/googlebooks/search | `searchGoogleBooks` | `booksAPI.search` | AppTour book step | reads `results` |
-| POST | /books/add-to-library | `addToLibrary` | `booksAPI.addToLibrary` | BookPreview add | + `book_id`, `isbn` (PENDING) |
+| POST | /books/add-to-library | `addToLibrary` | `booksAPI.addToLibrary` | BookPreview add | + `book_id`, `isbn` (4A §1) |
 | POST / PUT | /notes/, /notes/{id} | `createNote`/`updateNote` | `notesAPI.createNote`/`updateNote` | composers | explicit `is_public` |
-| POST | /notifications/{id}/read | (4A) | `notificationsAPI.markRead` (new, PENDING) | mark one read | new consumer |
+| POST | /notifications/{id}/read | (4A web) | `notificationsAPI.markRead` (new) | mark one read | new consumer (4A §3) |
 | GET | /notifications/unread-count | `getUnreadCount` | `notificationsAPI.getUnreadCount` | bell badge | also called after mark-read |
 
 ## DB Tables Touched
@@ -107,7 +107,7 @@ No schema change and no migration, so nothing is appended to `context/supabase_m
 ### 0. Ground rules for all Builders
 - **Android only.** Do not touch `app/`, `book-tracker-frontend-stitch/`, `dependency-map.md`, `context/supabase_migration.sql`, or anything under `features/maintenance/sprint-4a-platform-audit/`.
 - **Merge order A → B → C, one EAS build.** Packages B and C call `api.js` functions and i18n keys that Package A adds (the cross-package contract is listed in Work packages). No package ships alone.
-- **PENDING-4A-CONTRACT gate.** Before the build, open `features/maintenance/sprint-4a-platform-audit/architecture.md` → "Contracts for 4B". If a contract differs from the assumption stated here, follow 4A's contract and note it in `code-map.md`. If 4A's section doesn't exist yet, stop and ask the orchestrator rather than guessing.
+- **4A contract gate (resolved 2026-09-13).** `features/maintenance/sprint-4a-platform-audit/architecture.md` → "Contracts for 4B" confirms every former PENDING-4A-CONTRACT item as assumed. Build against it. If any detail in this brief differs from that section, follow 4A and note it in `code-map.md`. The build itself still waits for the 4A backend to be live (Build step 1).
 - **Line numbers** are at `8c44198`. Re-locate by the quoted code if they drift.
 - **Style:** match the file. New user-visible and TalkBack strings go through `t()` / `i18n.t()`; do not hardcode English.
 - **No `adjustsFontSizeToFit`, no `Alert.prompt`, `react-native-svg` stays 15.15.4** (LOAD_ME_FIRST gotchas).
@@ -233,10 +233,11 @@ Counts in labels are passed through `accessibilityValue={{ text: String(n) }}`, 
   - Remove `authAPI` from `:12`; `:288` and `:297` are its only uses.
   - Deregister runs **before** delete, because after deletion the token returns 401 "User not found". The server also deletes the rows (`auth_router.py` delete_own_account), so this call is mainly the guard reset.
 
-**Residual risk, closed by 4A (PENDING-4A-CONTRACT):** a sign-out while offline, or a session expiry (the token is already invalid), cannot remove A's server row. 4A's register-reassigns-token change moves the row to B on B's next registration.
+**Residual risk (K7, accepted):** a sign-out while offline, or a session expiry (the token is already invalid), cannot remove A's server row. 4A §4 (confirmed) deletes that row when the next account registers the same device token. Until then it stays, and it stays indefinitely if nobody signs in or the next account denies notification permission (no registration happens).
 
 ### T-03 · F-11 — Expired session returns to Login  (Package A)
 **`src/services/api.js`**
+- Add `import { isAuthExpiredError, isRetryableRequest } from './httpPolicy';` (T-22). Both interceptor rules below call these helpers; neither condition is written inline in `api.js`.
 - Above the response interceptor (`:24`):
   ```js
   let authExpiredHandler = null;
@@ -245,8 +246,7 @@ Counts in labels are passed through `accessibilityValue={{ text: String(n) }}`, 
   ```
 - In the response error handler (`:25-31`, after the T-15 retry block):
   ```js
-  const cfg = error.config || {};
-  if (error.response?.status === 401 && cfg.headers?.Authorization && !cfg.skipAuthExpired) {
+  if (isAuthExpiredError(error)) {   // src/services/httpPolicy.js (T-22)
     await AsyncStorage.removeItem('bt_token');
     if (!authExpiredNotified) { authExpiredNotified = true; authExpiredHandler?.(); }
   }
@@ -254,6 +254,7 @@ Counts in labels are passed through `accessibilityValue={{ text: String(n) }}`, 
   ```
   - The `Authorization` check means a 401 from `POST /auth/google` on the Login screen (no token yet) stays a login error.
   - `authExpiredNotified` collapses the 9 parallel preload 401s into one event.
+  - **K6 (4A F-29):** `GET /api/googlebooks/search` treats an invalid Bearer token as anonymous: two searches may succeed, then it returns `401 {"detail": {"code": "login_required", …}}`. That request carried `Authorization`, so this handler shows "Session expired". That is correct, because the token is invalid. No special case.
 - `authAPI.saveToken` (`:39`): set `authExpiredNotified = false;` before saving.
 
 **`App.js`**
@@ -323,7 +324,7 @@ All in `src/screens/InsightsScreen.js`:
 
 `projected_finish` is `date.isoformat()` (`YYYY-MM-DD`). `shortDate` (`:28`) and `daysLeft` (`:34`) take any `new Date()`-parseable string, so no helper change is needed.
 
-### T-09 · F-15 (mobile) — Circle reading goal  (A: api.js · B: screens) — PENDING-4A-CONTRACT
+### T-09 · F-15 (mobile) — Circle reading goal  (A: api.js · B: screens) — 4A §2 confirmed
 - **A** `src/services/api.js` groupsAPI: add `getGroupGoal: async (id) => (await api.get(`/groups/${id}/goal`)).data,`.
 - **B** `src/screens/GroupsScreen.js:93-94`:
   ```js
@@ -340,9 +341,12 @@ All in `src/screens/InsightsScreen.js`:
     - "of" line `goal.goal_pages.toLocaleString()`
     - bar width and percent `Math.min(100, goal.pct ?? 0)`
     - Keep the existing label keys; the monthly/yearly label is under Later.
-- **Assumed shape (today's code, `groups_router.py:961-1000`):** `{goal_pages:int|null, goal_period?:str, pages_read:int, pct:int}`. 4A's triage plan only adds a `reading_goal` alias on create and fields on `GET /groups/{id}`. If 4A's handoff changes `/goal`, follow the handoff.
+- **Confirmed shape (4A "Contracts for 4B" §2, unchanged from `groups_router.py:961-1000`):**
+  - with a goal: `{goal_pages, goal_period, pages_read, pct}`
+  - without one: `{goal_pages: null, pages_read: 0, pct: 0}` with **no** `goal_period` key. The card must not read `goal_period`.
+- **K4:** 4A also returns `reading_goal` and `pages_read_total` on `GET /groups/{id}`, for 2.2.1 only. Android 2.2.2 must **never** read either, and never send `reading_goal`. `grep -rnE "reading_goal|pages_read_total" src` must be empty (tests.md S36).
 
-### T-10 · F-07 (mobile) — Send the local book id  (Package C) — PENDING-4A-CONTRACT
+### T-10 · F-07 (mobile) — Send the local book id  (Package C) — 4A §1 confirmed
 - `src/screens/BookPreviewScreen.js`, after `:37`:
   ```js
   // book_id only for a real Book object — never a userbook's id
@@ -351,12 +355,16 @@ All in `src/screens/InsightsScreen.js`:
 - `handleAdd` payload `:66-73`: add `book_id: localBookId ?? null,` and `isbn: book.isbn || null,`.
 - **Why the guard:** `UserProfileScreen.js:415,465` navigate with `ub.book || ub`, so a userbook without a nested book would pass a *userbook* id. Every other caller passes a Book: `FeedScreen.js:497,538,605` and `GroupDetailScreen.js:731`.
 - Safe before 4A: `AddBookFromGooglePayload` is a default `BaseModel` and ignores unknown keys.
-- **Assumption:** 4A adds `book_id: Optional[int]` matched first, then `google_books_id`, then `isbn`. The sub-shapes (recommendations, friends-reading `.book`, note card `.book`, `current_book`) gain `google_books_id`/`isbn`/`total_pages`. The two never-opened shelf modals (`FeedScreen.js:321-339`, `UserProfileScreen.js:139-157`; `setShelfModal` is only ever called with `null`) are dead code (F-40) and are **not** changed.
+- **Confirmed (4A §1):**
+  - `book_id` (a Book id) is matched first. An unknown id is ignored and falls through to `google_books_id`, then `isbn`.
+  - 4A states this userbook guard is correct.
+  - The sub-shapes (recommendations, friends-reading `.book`, note card `.book`, `current_book`) carry `google_books_id`/`isbn`/`total_pages`. Pytest proof of the match order is Escalation E1.
+  - The two never-opened shelf modals (`FeedScreen.js:321-339`, `UserProfileScreen.js:139-157`; `setShelfModal` is only ever called with `null`) are dead code (F-40) and are **not** changed.
 
 ### T-11 · F-17 (mobile) — Public/Private switch that remembers the last choice  (Package C; key constant + sign-out clear in Package A)
 **PM decision 2026-09-13:** the switch remembers the user's last choice, shared by all note composers. A user who has never chosen starts on Private. This replaces the earlier reset-to-Private-after-every-post design.
 
-- **Storage contract:** AsyncStorage key `bt_note_visibility`, value `'private'` or `'public'`. A missing key, a read error or any other value means Private. Web uses the same key name in localStorage (4A's concern; Android never reads web storage).
+- **Storage contract:** AsyncStorage key `bt_note_visibility`, value `'private'` or `'public'`. A missing key, a read error or any other value means Private. The parse/serialize rule lives in `src/utils/noteVisibility.js` (T-22). Web uses the same key name in localStorage (4A's concern; Android never reads web storage).
 - **A** `src/services/api.js`: `export const NOTE_VISIBILITY_KEY = 'bt_note_visibility';`, next to the `bt_token` handling. Every reader and writer uses this constant; the literal appears once.
 - **A** clear on sign-out (Security Review): `App.js handleLogout` (T-02) and `handleSessionExpired` (T-03) call `AsyncStorage.removeItem(NOTE_VISIBILITY_KEY)`. Without this, one account's Public choice becomes the next account's default on a shared phone.
 - **C new `src/components/VisibilityToggle.js`** exports two things:
@@ -368,12 +376,12 @@ All in `src/screens/InsightsScreen.js`:
        useEffect(() => {
          if (!isFocused) return;
          AsyncStorage.getItem(NOTE_VISIBILITY_KEY)
-           .then(v => setIsPublicState(v === 'public'))
+           .then(v => setIsPublicState(parseStoredVisibility(v)))
            .catch(() => setIsPublicState(false));
        }, [isFocused]);
        const setIsPublic = (next) => {
          setIsPublicState(next);
-         AsyncStorage.setItem(NOTE_VISIBILITY_KEY, next ? 'public' : 'private').catch(() => {});
+         AsyncStorage.setItem(NOTE_VISIBILITY_KEY, serializeVisibility(next)).catch(() => {});
        };
        return [isPublic, setIsPublic];
      }
@@ -381,7 +389,7 @@ All in `src/screens/InsightsScreen.js`:
      - The key is written when the switch changes, not when a post is sent.
      - The hook re-reads on screen focus. The Feed composer stays mounted in its tab, so a choice made in BookDetail or Profile shows there when the user returns.
      - A post sent before the first read resolves goes out Private, which is the safe direction.
-     - Imports: `useIsFocused` from `@react-navigation/native`, `AsyncStorage`, and `NOTE_VISIBILITY_KEY` from `../services/api`.
+     - Imports: `useIsFocused` from `@react-navigation/native`, `AsyncStorage`, and `NOTE_VISIBILITY_KEY` from `../services/api`, plus `parseStoredVisibility` and `serializeVisibility` from `../utils/noteVisibility` (T-22).
   2. The default export `VisibilityToggle` (presentational, ~35 lines):
      - Props `{ isPublic, onChange, disabled }`; `onPress={() => onChange(!isPublic)}`.
      - A `TouchableOpacity` pill: `Ionicons` `lock-closed-outline` / `earth-outline` + `Text` `t('common.private')` / `t('common.public')`.
@@ -414,15 +422,15 @@ All in `src/screens/InsightsScreen.js`:
 - **Why rejected goes to the list:** `GET /groups/{id}` is 403 for a private circle the user isn't in (`groups_router.py:430-432`). GroupDetail would render an empty hero with a misleading Join button.
 - `data.group_id` is present in `log.data` for both group events (dispatcher `data = {type, actor_id, **extra}`).
 
-### T-13 · F-23 — Mark one notification read  (A: api.js + context · C: screen) — PENDING-4A-CONTRACT
+### T-13 · F-23 — Mark one notification read  (A: api.js + context · C: screen) — 4A §3 confirmed
 - **A** `src/context/NotificationContext.js`: default value `{ unreadCount: 0, refreshUnread: () => {} }`. `App.js:233`: `value={{ unreadCount, refreshUnread: fetchUnread }}`. This part does not depend on 4A.
-- **A** `src/services/api.js` notificationsAPI (`:111-117`), **only if 4A's handoff confirms the route**: `markRead: async (id) => (await api.post(`/notifications/${id}/read`)).data,`.
+- **A** `src/services/api.js` notificationsAPI (`:111-117`), route confirmed by 4A §3: `markRead: async (id) => (await api.post(`/notifications/${id}/read`)).data,`.
 - **C** `src/screens/NotificationsScreen.js`:
   - `const { refreshUnread } = useContext(NotificationContext);`
   - `handleNotifPress` `:98`, after the optimistic update: `if (!item.is_read) notificationsAPI.markRead(item.id).then(() => refreshUnread()).catch(() => {});`
   - `handleMarkAllRead` `:90`, after success: `refreshUnread();`. Mark All Read works today; this only makes the badge drop immediately.
 - **Assumed contract:** `POST /notifications/{id}/read`, owner-checked (404 otherwise), response `{id, is_read: true}`, which Android ignores.
-- **If 4A does not add it:** neither package adds `markRead` or the per-row call. The row stays local-only, and the Builder records "F-23 deferred — no endpoint in 4A" in `code-map.md`. `refreshUnread` still ships.
+- **Confirmed (4A §3):** `POST /notifications/{id}/read` → `200 {id, is_read: true}` for the caller's row, and also 200 when it's already read. It returns `404 {"detail": "Notification not found"}` for any other id. The earlier local-only fallback is withdrawn. If the backend at build time lacks the route, 4A is not live and the build stops at step 1.
 
 ### T-14 · F-25 (mobile) — Confirm before Reject  (Package B)
 - `src/screens/GroupDetailScreen.js:422-425`:
@@ -456,10 +464,8 @@ const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 - Response success handler `:25-26`: `(response) => { coldStart = false; return response; }`.
 - Response error handler, first block, before the 401 logic:
   ```js
-  const cfg = error.config;
-  const method = (cfg?.method || 'get').toLowerCase();
-  const transient = error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT' || error.code === 'ERR_NETWORK' || !error.response;
-  if (cfg && method === 'get' && transient && !cfg.__retried) {
+  if (isRetryableRequest(error)) {   // src/services/httpPolicy.js (T-22)
+    const cfg = error.config;
     cfg.__retried = true;
     cfg.timeout = DEFAULT_TIMEOUT;
     await sleep(2000);
@@ -565,30 +571,121 @@ const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 ### T-20 · Version bump  (Package A, last commit before dispatch)
 - `book-tracker-mobile-stitch/app.json:4`: `"version": "2.2.2"`; `:35`: `"versionCode": 61`.
 
+### T-21 · K1 / 4A F-19 — Cover fallback for imageless Google results  (Package B + Package C)
+4A now returns `cover_url: null` when Google has no image (4A F-19; tests.md C14). Before 4A these rows showed Google's grey placeholder; after 4A they would be blank boxes. Reuse the in-file fallback pattern already at `GroupDetailScreen.js:219-225`:
+```jsx
+{item.cover_url ? (
+  <Image source={{ uri: item.cover_url }} style={styles.resultCover} resizeMode="cover" />
+) : (
+  <View style={[styles.resultCover, { backgroundColor: colors.surfaceContainerHigh, justifyContent: 'center', alignItems: 'center' }]}>
+    <Ionicons name="book-outline" size={24} color={colors.outline} />
+  </View>
+)}
+```
+- **B** `src/screens/GroupDetailScreen.js:186-192`: the SetGroupBookModal result tile (`styles.resultCover`). The selected hero `:219-225` already falls back.
+- **C** `src/screens/LibraryScreen.js`:
+  - `:339-345`: the AddBookModal result tile (`styles.resultCover`)
+  - `:374-378`: the selected hero (`styles.selectedCoverLarge`, icon size 32)
+- Already safe, no change: AppTour `:429-435`, BookPreviewScreen `:98-104`, FeedScreen recommendations `:499-502`. The dead `SearchScreen`/`OnboardingScreen` stay untouched.
+- No payload change, no new strings. These are images, not touchables, so no F-38 rows.
+
+### T-22 · Testability helpers and static test infrastructure  (Package A + Package C; approved 2026-09-13, tests.md Preconditions §1)
+Two **zero-import** ESM modules let Node's built-in `node:test` exercise the auth, retry and visibility rules without React Native. Metro resolves them like any other file. Neither may import anything.
+
+**A — new `src/services/httpPolicy.js`:**
+```js
+const TRANSIENT_CODES = ['ECONNABORTED', 'ETIMEDOUT', 'ERR_NETWORK'];
+
+export function isAuthExpiredError(error) {
+  const config = error?.config;
+  if (!config) return false;
+  return error?.response?.status === 401 && !!config.headers?.Authorization && !config.skipAuthExpired;
+}
+
+export function isRetryableRequest(error) {
+  const config = error?.config;
+  if (!config || config.__retried) return false;
+  const method = (config.method || 'get').toLowerCase();
+  const transient = TRANSIENT_CODES.includes(error?.code) || !error?.response;
+  return method === 'get' && transient;
+}
+```
+- `api.js` imports both and calls them in the response error handler: `isRetryableRequest` first (T-15), then `isAuthExpiredError` (T-03). It must not re-implement either condition inline.
+- A GET that received an HTTP error response (e.g. 500, code `ERR_BAD_RESPONSE`) is not retryable.
+
+**C — new `src/utils/noteVisibility.js`:**
+```js
+export function parseStoredVisibility(value) { return value === 'public'; }
+export function serializeVisibility(isPublic) { return isPublic ? 'public' : 'private'; }
+```
+- No imports and no key literal. `NOTE_VISIBILITY_KEY` stays in `api.js` (T-11). `useNoteVisibility` calls both functions.
+
+**Test infrastructure:** `node:test`, no new dependency, Node ≥ 22.7. Do **not** add `"type": "module"` to `package.json`.
+- **A owns:**
+  - `__tests__/_ast.mjs`, the shared loader for `@babel/parser` and `js-yaml` via `createRequire`
+  - `versionGuard.test.mjs`, `httpPolicy.test.mjs`, `i18nParity.test.mjs`, `apiContract.test.mjs`, `sourceRules.test.mjs`, `workflows.test.mjs`
+  - optionally the `"test"` script in `package.json` (A already owns that file; the lockfile is unaffected)
+- **C owns** `noteVisibility.test.mjs`, `notificationEvents.test.mjs` and `a11yTouchables.test.mjs`. They import A's `./_ast.mjs`; the A → C merge order already holds.
+- **B owns no test file.** B's assertions live in A's `sourceRules.test.mjs` and `apiContract.test.mjs`, e.g. `disband_gated_on_created_by`, `groups_focus_effect_reloads_mine`, `group_detail_load_arity_matches`, `reject_requires_confirm_with_cancel_first`, `goal_card_reads_goal_endpoint_fields`.
+- **No-overlap rule:**
+  - A package creates and edits only the test files that tests.md's "Node test files" table assigns to it.
+  - A failure caused by another package's source is reported to that package's Builder. Nobody edits another package's test file to make it pass.
+  - If a case must change, Senior QA edits tests.md and names the owning package.
+- **When each runs:**
+  - Each Builder runs its own test files during its package.
+  - Assertions about other packages' files (A's `sourceRules`/`apiContract` rows for B/C, and C's `a11yTouchables`) are expected to fail until all three packages merge.
+  - Required gate: `node --test "__tests__/*.test.mjs"` ends `# fail 0` on the merged A+B+C tree (Build step 5).
+
 ---
 
 ## Contract dependency table
 
-Re-checked 2026-09-13 after the PM answers. `features/maintenance/sprint-4a-platform-audit/` contains only `spec.md`, which requires its architecture to define "Contracts for 4B" for F-07, F-15, F-23 and F-03. There is no architecture.md yet, so the four PENDING rows are unchanged.
+Resolved 2026-09-13: `features/maintenance/sprint-4a-platform-audit/architecture.md` → "Contracts for 4B" confirms all four former PENDING-4A-CONTRACT items exactly as assumed (F-07 §1; F-15 §2 with `/goal` unchanged; F-23 §3, route added; F-03 §4, reassignment). The build still waits for that backend to be live (Build & release plan, step 1).
 | Item | 4A contract needed | Status |
 |---|---|---|
 | F-32 build prep | none | ready |
-| F-03 (mobile) push per account | Server reassigns an Expo token already owned by another user on `POST /push-tokens/` (triage F-03 api). Android's deregister and guard reset work without it; the offline-logout and session-expiry leak closes only with it | **PENDING-4A-CONTRACT** (Android half ships regardless) |
+| F-03 (mobile) push per account | `POST /push-tokens/` first deletes another user's `expo` row holding the same token (4A §4) | ready: 4A §4 confirmed. Residual accepted (K7): closed when the next account registers |
 | F-04 Disband | `DELETE /groups/{id}` → 204, creator-only (exists, `groups_router.py:466`) | ready |
 | F-05 Invite search | `GET /users/search` → list (exists) | ready |
 | F-11 expired session | `get_current_user` 401 semantics (exists) | ready |
 | F-12 tour search | `GET /api/googlebooks/search` → `{results:[{google_id, authors, isbn_13, isbn_10, total_pages, cover_url…}]}` (exists). 4A F-29 anonymous quota does not affect a logged-in tour (token sent) | ready |
 | F-13 / F-14 insights | canonical `completed`, `avg_rating`, `finished_this_year`, `projected_finish`, `total_finished` (exist today). 4A's aliases are only for ≤2.2.1 | ready |
-| F-15 circle goal | `POST /groups/` `goal_pages` (exists); `GET /groups/{id}/goal` → `{goal_pages, goal_period, pages_read, pct}` (exists; confirm 4A leaves it unchanged) | **PENDING-4A-CONTRACT** |
-| F-07 book id | `AddBookFromGooglePayload.book_id` matched first; sub-shapes carry `google_books_id`/`isbn`/`total_pages` | **PENDING-4A-CONTRACT** |
+| F-15 circle goal | `POST /groups/` takes `goal_pages` (canonical; the `reading_goal` alias is for 2.2.1 only). `GET /groups/{id}/goal` → `{goal_pages, goal_period, pages_read, pct}`, or `{goal_pages: null, pages_read: 0, pct: 0}` with no `goal_period` (4A §2) | ready: 4A §2 confirmed |
+| F-07 book id | `book_id` matched first, an unknown id falls through; sub-shapes carry `google_books_id`/`isbn`/`total_pages` (4A §1) | ready: 4A §1 confirmed. Pytest proof is Escalation E1 |
 | F-17 visibility toggle | none (Android sends `is_public` explicitly). 4A's default flip protects 2.2.1 | ready |
 | F-22 notification routing | `extra.group_id` on join approved/rejected (exists) | ready |
-| F-23 mark one read | `POST /notifications/{id}/read`, owner-checked 404 | **PENDING-4A-CONTRACT** (local-only if absent) |
+| F-23 mark one read | `POST /notifications/{id}/read` → `200 {id, is_read: true}` (idempotent), 404 for any other id (4A §3) | ready: 4A §3 confirmed |
+| T-21 cover fallback (K1) | `GoogleBookResult.cover_url` may be `null` (4A F-19) | ready |
 | F-25 reject confirm | none | ready |
 | F-31 cold start | `GET /version` stays unauthenticated and DB-free (exists) | ready |
 | F-34 curator badge | `membership_role` (exists) | ready |
 | F-38 accessibility | none | ready |
 | `__DEV__` gating, FlatList, version | none | ready |
+
+---
+
+## Contract conflicts K1–K8 (tests.md) — resolutions
+Checked on 2026-09-13 against `features/maintenance/sprint-4a-platform-audit/architecture.md` → "Contracts for 4B" (committed; live before the 4B build) and the current backend code.
+
+| K# | Which side is right | Resolution | Changed section |
+|---|---|---|---|
+| K1 | **4A.** `cover_url: null` for imageless Google results is F-19's intent | 4B was incomplete. Add a cover fallback in LibraryScreen (C) and the GroupDetailScreen SetGroupBookModal (B) | spec R21; T-21; Work packages B and C; Contract dependency table; Device "Also check" 15; Risk Summary "What changes" |
+| K2 | **Neither is a contract break.** The stored value (`'private'`/`'public'`) and key `bt_note_visibility` match | Android keeps the PM's 4B wording "Private" (`common.private`). Web's "Only me" is an accepted wording difference | Assumption 11 |
+| K3 | **4B.** It covers Feed, BookDetail and Profile (new and edit), remembered and cleared on sign-out, which matches the PM decision 4A itself records | No Android change. 4A's F-17 handoff row is stale wording (Doc Sync). Sign-out parity for web is Escalation E2 | Dependency-map updates 13; Escalations E2 |
+| K4 | **Both agree.** 4A's `GET /groups/{id}` aliases serve 2.2.1 only | T-09 now forbids reading `reading_goal`/`pages_read_total`; tests.md S36 guards it | T-09 |
+| K5 | **tests.md and the code.** review.friend is already a Review Circle member, and `handleInviteSearch` filters members out | The 4B acceptance criterion was wrong. Use a throwaway private circle with no other members; Review Circle not listing review.friend is correct | spec R4; Device hard gate 5 |
+| K6 | **4A.** An invalid token counts as anonymous: 2 calls, then `401 login_required` | No change. The interceptor treating that 401 (Authorization sent) as expiry is correct, because the token is invalid | T-03 (K6 note) |
+| K7 | **4A's contract is sufficient.** The residual is inherent: no valid token to deregister with, and no registration happens if nobody signs in or permission is denied | Residual accepted and documented. It closes when the next account registers | T-02 residual; Security Review; Risk Summary |
+| K8 | **4A's contract is correct but unproven by pytest** | Escalation E1. Build step 1 requires those tests green | Build & release plan step 1; Escalations E1 |
+
+### Escalations to 4A (do not edit 4A files from 4B)
+- **E1 (blocks the 4B build at step 1).** Add these to `tests/test_books.py` (4A package A2) and pass them on the deployed commit:
+  - `test_add_by_book_id_reuses_catalogue_row`: an existing Book not in the caller's library; POST with its `book_id` plus a different `google_books_id` → 200, the response `book_id` equals that Book, and the Book row count is unchanged.
+  - `test_unknown_book_id_falls_through_to_google_books_id`: `book_id: 999999` plus an existing `google_books_id` → 200, matched by Google id, with no 404 and no new Book.
+  - `test_book_id_wins_over_google_books_id`: `book_id` of Book X with the `google_books_id` of Book Y → matched to X.
+  - `test_recommendations_items_have_dedup_keys`: every `GET /books/recommendations` item has the `google_books_id`, `isbn` and `total_pages` keys.
+  - `test_friends_reading_book_has_dedup_keys_and_user_profile_picture`: `GET /userbooks/friends/currently-reading` `[i].book` has those three keys, and `[i].user` has `profile_picture`.
+- **E2 (parity recommendation; does not block 4B).** Web `logout()` (4A package B1, `src/context/AuthContext.jsx`) should also call `localStorage.removeItem('bt_note_visibility')`. That matches Android's clear on sign-out, so on a shared browser the next account starts on "Only me", as the PM decision intends. If 4A declines, record the parity difference in 4A's decisions; Android is unchanged either way.
 
 ---
 
@@ -600,11 +697,14 @@ Re-checked 2026-09-13 after the PM answers. `features/maintenance/sprint-4a-plat
 Ordered checklist:
 1. **Gate: 4A backend is live.**
    - `curl -s https://book-tracker-stitch.onrender.com/version` → `commit` equals the 4A merge SHA.
-   - 4A's architecture has its "Contracts for 4B" section, resolving F-07, F-15, F-23 and F-03.
-2. Builder A merges: T-01…T-03, T-06, T-11 (A part), T-13 (A part), T-15, T-17 (A row), T-18, the api.js additions for T-04/T-09/T-13, and the i18n keys. **Do not** bump the version yet.
-3. Builder B merges: T-04 (B), T-05, T-09 (B), T-14, T-16, T-17 (B rows).
-4. Builder C merges: T-02 call sites, T-07, T-08, T-10, T-11, T-12, T-13 (C), T-17 (C rows), T-19.
-5. Senior QA static checks pass (Test plan hooks), including a Metro bundle via `npx expo export --platform android`.
+   - 4A's "Contracts for 4B" is committed (confirmed 2026-09-13), and the Escalation E1 pytest cases pass on the deployed commit: `pytest tests/test_books.py -q -k "book_id or dedup_keys"` → `5 passed`.
+2. Builder A merges: T-01…T-03, T-06, T-11 (A part), T-13 (A part), T-15, T-17 (A row), T-18, T-22 (A: `httpPolicy.js`, `_ast.mjs`, A's test files), the api.js additions for T-04/T-09/T-13, and the i18n keys. **Do not** bump the version yet.
+3. Builder B merges: T-04 (B), T-05, T-09 (B), T-14, T-16, T-17 (B rows), T-21 (B).
+4. Builder C merges: T-02 call sites, T-07, T-08, T-10, T-11, T-12, T-13 (C), T-17 (C rows), T-19, T-21 (C), T-22 (C: `noteVisibility.js`, C's test files).
+5. Senior QA static checks pass per `tests.md`:
+   - `node --test "__tests__/*.test.mjs"` ends `# fail 0` on the merged A+B+C tree
+   - the grep and AST checks
+   - a Metro bundle via `npx expo export --platform android` (record SKIP with the error text if it needs the network)
 6. Package A commit: T-20 (`app.json` → 2.2.2 / 61). Push to master.
 7. Dispatch **`Build Stitch APK (Preview)`** (`.github/workflows/build-stitch-apk.yml`). In the log confirm:
    - "Check version bump" prints 61 > 60 with no warning
@@ -634,22 +734,23 @@ Ordered checklist:
 ## Test plan hooks for Senior QA
 
 ### Static (no device)
+Senior QA's executable plan is `features/android/sprint-4b-android-audit/tests.md`: node:test files under `book-tracker-mobile-stitch/__tests__/`, owned per T-22. This table is the brief-level summary.
 | Item | Check |
 |---|---|
 | F-32 | • `grep -n '"react-native-svg": "15.15.4"' book-tracker-mobile-stitch/package.json` → 1 hit<br>• `npm install --package-lock-only --ignore-scripts` then `git diff --exit-code package-lock.json` (in sync)<br>• `grep -c "run: npm ci" .github/workflows/build-stitch-{apk,aab}.yml` → 1 each, `npm install` → 0<br>• `test ! -e .github/workflows/build-android.yml`<br>• `node scripts/check-version-bump.js --strict` exits 1 against a temp `app.json` copy at 60 / 2.2.1 and 0 at 61 / 2.2.2; without `--strict` it exits 0 and prints `::warning::` |
 | F-03 | • `grep -nE "fetch\(|API_BASE_URL" src/services/NotificationService.js` → empty<br>• `grep -rn "authAPI.logout" src/screens` → empty<br>• `grep -n "deregisterPushToken" App.js src/screens/SettingsScreen.js` → App.js handleLogout + SettingsScreen delete, the latter before `deleteAccount` |
 | F-04 | • `grep -n "deleteGroup" src/services/api.js` → 1<br>• Disband gated on `created_by` (read `GroupDetailScreen.js` near the old `:828`)<br>• `GroupsScreen` focus effect calls `loadMine` |
 | F-05 | `grep -rn "usersAPI" App.js src` → empty |
-| F-11 | • `grep -n "setAuthExpiredHandler" App.js src/services/api.js` → both<br>• two `isLoggedIn()` re-checks after `preloadData()` in App.js<br>• interceptor checks `headers?.Authorization` and `skipAuthExpired` |
+| F-11 | • `grep -n "setAuthExpiredHandler" App.js src/services/api.js` → both<br>• two `isLoggedIn()` re-checks after `preloadData()` in App.js<br>• the interceptor calls `isAuthExpiredError` from `src/services/httpPolicy.js`, with no inline 401 / `Authorization` / `skipAuthExpired` condition (`httpPolicy.test.mjs` covers the rule) |
 | F-12 | `grep -n "res.books" src/components/AppTour.js` → empty; `results` + `google_id` mapping present |
 | F-13/F-14 | `grep -nE "yearGoal\.finished|average_rating|books_this_year|books_finished_this_year|projected_finish_date|finished_books" src/screens/InsightsScreen.js src/screens/ProfileScreen.js` → empty |
 | F-15 | `grep -rn "reading_goal" src` → empty; `grep -n "getGroupGoal" src/screens/GroupDetailScreen.js src/services/api.js` → both |
 | F-07 | `grep -n "book_id" src/screens/BookPreviewScreen.js` → present, with the userbook guard |
-| F-17 | • `grep -rn "is_public: true" src` → empty<br>• `is_public:` appears in FeedScreen (2), BookDetailScreen (1), ProfileScreen (2)<br>• `grep -rn "bt_note_visibility" App.js src` → exactly 1 hit, the `NOTE_VISIBILITY_KEY` export in `api.js`; everything else uses the constant<br>• `VisibilityToggle.js`: initial state `false`; the read maps only `'public'` to true; `setItem(NOTE_VISIBILITY_KEY, next ? 'public' : 'private')` inside the setter; the re-read keys on `useIsFocused`<br>• `useNoteVisibility` used by FeedScreen, BookDetailScreen and ProfileScreen; `grep -nE "setIsPublic\(false\)|setNoteIsPublic\(false\)|setRememberedPublic\(false\)" src/screens` → empty (no reset after posting)<br>• ProfileScreen edit path binds to local `editPublic`, not the hook<br>• `grep -n "NOTE_VISIBILITY_KEY" App.js` → `removeItem` in both `handleLogout` and `handleSessionExpired`<br>• `notes.savedPrivately` used on both FeedScreen create paths and present in all 6 locale files |
+| F-17 | • `grep -rn "is_public: true" src` → empty<br>• `is_public:` appears in FeedScreen (2), BookDetailScreen (1), ProfileScreen (2)<br>• `grep -rn "bt_note_visibility" App.js src` → exactly 1 hit, the `NOTE_VISIBILITY_KEY` export in `api.js`; `src/utils/noteVisibility.js` has no key literal and no imports<br>• `useNoteVisibility`: initial state `false`; the read goes through `parseStoredVisibility`, the write through `serializeVisibility` inside the setter; the re-read keys on `useIsFocused` (`noteVisibility.test.mjs` covers parse and serialize)<br>• `useNoteVisibility` used by FeedScreen, BookDetailScreen and ProfileScreen; `grep -nE "setIsPublic\(false\)\|setNoteIsPublic\(false\)\|setRememberedPublic\(false\)" src/screens` → empty (no reset after posting)<br>• ProfileScreen edit path binds to local `editPublic`, not the hook<br>• `grep -n "NOTE_VISIBILITY_KEY" App.js` → `removeItem` in both `handleLogout` and `handleSessionExpired`<br>• `notes.savedPrivately` used on both FeedScreen create paths and present in all 6 locale files |
 | F-22 | `grep -nE "group_join_approved|group_join_rejected|admin_broadcast|'circles'" src/screens/NotificationsScreen.js` → all present |
 | F-23 | `markRead` present in api.js + NotificationsScreen **iff** 4A ships the route; `refreshUnread` in NotificationContext, App.js and NotificationsScreen |
 | F-25 | `handleReject` wraps `Alert.alert` with a cancel option |
-| F-31 | `grep -nE "COLD_START_TIMEOUT|__retried|ECONNABORTED|warmUp" src/services/api.js src/screens/LoginScreen.js`; the retry is conditioned on `method === 'get'` |
+| F-31 | • `grep -nE "COLD_START_TIMEOUT\|warmUp" src/services/api.js src/screens/LoginScreen.js`<br>• the retry block calls `isRetryableRequest` from `httpPolicy.js` and sits before the 401 block, with no inline method or error-code condition in `api.js` (`httpPolicy.test.mjs` covers GET-only, the transient codes and no double retry) |
 | F-34 | `grep -rn "user_role" src` → empty |
 | F-38 | **AST sweep:**<br>• Scope: `App.js` + `src/**/*.js` with `@babel/parser` (present at `book-tracker-mobile-stitch/node_modules/@babel/parser`).<br>• Report every `TouchableOpacity`/`Pressable`/`TouchableHighlight`/`TouchableWithoutFeedback` JSX element with no `accessibilityLabel` attribute and no `<Text>` descendant.<br>• Expected result: only `SearchScreen.js:266,283`, `FeedScreen.js` shelf backdrop, `UserProfileScreen.js` shelf backdrop.<br>• Plus: every row in the T-17 table carries `accessibilityLabel`, and `UserProfileScreen` pills are `View`. |
 | `__DEV__` | `grep -rn "console\." App.js src | grep -v __DEV__` → empty |
@@ -673,7 +774,7 @@ Follow `qa/RULES_OF_ENGAGEMENT.md`. Create throwaway data only and delete it aft
    - Sign out and sign back in: the composers are back on **Private**.
    - Delete every test note.
 4. **Disband (F-04).** As the creator, make a private throwaway circle and Disband it: it disappears from My Circles without pull-to-refresh. On a circle where you are a curator but not the creator, there is no Disband button.
-5. **Invite search (F-05).** In Review Circle as review.reader, type "review" in Invite Friends: review.friend is listed. Don't tap Invite.
+5. **Invite search (F-05).** As review.reader, in a private throwaway circle with no other members (Gate 4's circle, **before** disbanding it), type "review" in Invite Friends: review.friend is listed. Don't tap Invite. In Review Circle the same search correctly does **not** list review.friend, because existing members are filtered out (K5).
 6. **Keyboard in the feed list (T-19).** Scroll a full Home feed smoothly. Type 20+ characters in the composer, then in an expanded comment box: the keyboard stays open and no characters are lost. The ··· menu and comment expand still work. If this fails and can't be fixed quickly, revert T-19 alone and re-run this item.
 
 **Also check on the same APK.** Report findings to the orchestrator; the PM decides whether each one blocks the AAB.
@@ -685,6 +786,7 @@ Follow `qa/RULES_OF_ENGAGEMENT.md`. Create throwaway data only and delete it aft
 12. **Duplicate book (F-07):** open a book you already own from a friend's currently-reading card → "Already in library".
 13. **TalkBack (F-38):** on Profile, Settings, GroupDetail and Feed, every icon button announces a name, and the Public/Private switch announces as a switch with its state. The UserProfile stat pills are not announced as buttons.
 14. Settings footer shows the new build number.
+15. **Missing covers (K1 / T-21):** in Library → Add Book, and in a circle's Set Group Book, search a title whose Google result has no image: a book icon shows, never a blank box or a crash.
 
 ---
 
@@ -692,7 +794,7 @@ Follow `qa/RULES_OF_ENGAGEMENT.md`. Create throwaway data only and delete it aft
 All three packages are disjoint by file (confirmed below). Merge order is **A → B → C**, then one build.
 
 ### Package A — Core: build, auth, push, networking, tour, i18n
-Items: T-01 (F-32), T-02 core (F-03), T-03 (F-11), T-04/T-09/T-13 api.js additions, T-06 (F-12), T-11 key constant + sign-out clear, T-13 context, T-15 (F-31), T-17 AppTour row, T-18, T-20, all i18n keys (including the PM-confirmed `notes.savedPrivately` in all 6 locales).
+Items: T-01 (F-32), T-02 core (F-03), T-03 (F-11), T-04/T-09/T-13 api.js additions, T-06 (F-12), T-11 key constant + sign-out clear, T-13 context, T-15 (F-31), T-17 AppTour row, T-18, T-20, T-22 (A), all i18n keys (including the PM-confirmed `notes.savedPrivately` in all 6 locales).
 - `.github/workflows/build-stitch-apk.yml`
 - `.github/workflows/build-stitch-aab.yml`
 - `.github/workflows/build-android.yml` (delete)
@@ -708,24 +810,28 @@ Items: T-01 (F-32), T-02 core (F-03), T-03 (F-11), T-04/T-09/T-13 api.js additio
 - `book-tracker-mobile-stitch/src/screens/LoginScreen.js`
 - `book-tracker-mobile-stitch/src/components/AppTour.js`
 - `book-tracker-mobile-stitch/src/i18n/locales/en.json`, `de.json`, `es.json`, `fr.json`, `pt.json`, `ru.json`
+- `book-tracker-mobile-stitch/src/services/httpPolicy.js` (new, T-22)
+- `book-tracker-mobile-stitch/__tests__/_ast.mjs` (new, T-22)
+- `book-tracker-mobile-stitch/__tests__/versionGuard.test.mjs`, `httpPolicy.test.mjs`, `i18nParity.test.mjs`, `apiContract.test.mjs`, `sourceRules.test.mjs`, `workflows.test.mjs` (new, T-22)
 
 **Contract A provides to B and C:**
 - `groupsAPI.deleteGroup(id)`, `groupsAPI.getGroupGoal(id)`
 - `userAPI.deregisterPushToken()`
-- `notificationsAPI.markRead(id)` (only if 4A ships the route)
+- `notificationsAPI.markRead(id)` (4A §3 confirmed)
 - `NotificationService.deregisterPushToken()` / `resetPushRegistration()`, both without arguments
 - `App.js handleLogout({ alreadyDeregistered })` via `onLogout`
 - `NotificationContext` `refreshUnread`
 - `NOTE_VISIBILITY_KEY` (`'bt_note_visibility'`), exported from `api.js`
 - every key in §0.1
+- `__tests__/_ast.mjs` (imported by C's test files) and the `node --test` convention (T-22)
 
 ### Package B — Circles
-Items: T-04 screens (F-04), T-05 (F-05), T-09 screens (F-15), T-14 (F-25), T-16 (F-34), T-17 B rows.
+Items: T-04 screens (F-04), T-05 (F-05), T-09 screens (F-15), T-14 (F-25), T-16 (F-34), T-17 B rows, T-21 (GroupDetail search-result cover fallback).
 - `book-tracker-mobile-stitch/src/screens/GroupsScreen.js`
 - `book-tracker-mobile-stitch/src/screens/GroupDetailScreen.js`
 
 ### Package C — Feed, library, book, profile, settings, notifications, insights
-Items: T-02 call sites, T-07 (F-13), T-08 (F-14), T-10 (F-07), T-11 (F-17, including the `useNoteVisibility` hook in `VisibilityToggle.js`), T-12 (F-22), T-13 screen (F-23), T-17 C rows (F-38), T-19 (FlatList).
+Items: T-02 call sites, T-07 (F-13), T-08 (F-14), T-10 (F-07), T-11 (F-17, including the `useNoteVisibility` hook in `VisibilityToggle.js`), T-12 (F-22), T-13 screen (F-23), T-17 C rows (F-38), T-19 (FlatList), T-21 (Library cover fallback), T-22 (C).
 - `book-tracker-mobile-stitch/src/components/AppHeader.js`
 - `book-tracker-mobile-stitch/src/components/VisibilityToggle.js` (new)
 - `book-tracker-mobile-stitch/src/screens/FeedScreen.js`
@@ -737,9 +843,12 @@ Items: T-02 call sites, T-07 (F-13), T-08 (F-14), T-10 (F-07), T-11 (F-17, inclu
 - `book-tracker-mobile-stitch/src/screens/SettingsScreen.js`
 - `book-tracker-mobile-stitch/src/screens/NotificationsScreen.js`
 - `book-tracker-mobile-stitch/src/screens/InsightsScreen.js`
+- `book-tracker-mobile-stitch/src/utils/noteVisibility.js` (new, T-22)
+- `book-tracker-mobile-stitch/__tests__/noteVisibility.test.mjs`, `notificationEvents.test.mjs`, `a11yTouchables.test.mjs` (new, T-22)
 
 **Overlap check:**
-- A has 20 paths (19 edited or new plus 1 deletion), B has 2 and C has 11.
+- A has 28 paths (27 edited or new plus 1 deletion), B has 2 and C has 15. Re-counted 2026-09-13 after adding the T-22 helpers and test files; T-21 adds no file.
+- Test files are owned exactly as tests.md's "Node test files" table assigns them: A has `_ast.mjs` plus 6 files, C has 3 files, B has none. See T-22 for the no-overlap rule.
 - The intersection of every pair is empty.
 - `AppNavigator.js`, `SearchScreen.js`, `OnboardingScreen.js`, `theme.js`, `buildInfo.js`, `eas.json` and `google-services.json` are in no package.
 
@@ -762,7 +871,7 @@ Items: T-02 call sites, T-07 (F-13), T-08 (F-14), T-10 (F-07), T-11 (F-17, inclu
   - F-07's `book_id` can at worst add an existing catalog book to the caller's *own* library. The guard excludes userbook ids.
 - **Session handling (F-11):** a 401 clears `bt_token` and nothing is logged. The handler fires only when a token was sent, so a failed Google login can't masquerade as expiry. The re-check after preload prevents rendering tabs without a token.
 - **Push (F-03):** deregistration runs while the token is valid, before `bt_token` is cleared. The guard reset plus epoch prevents a stale in-flight registration from suppressing the next account's registration.
-  - **Residual:** offline sign-out or a session expiry leaves the old row on the server. This is closed only by 4A's reassignment (PENDING-4A-CONTRACT) and is listed in the Risk Summary.
+  - **Residual (K7, accepted):** offline sign-out or a session expiry leaves the old row on the server until the next account registers the same device token; 4A §4 then deletes it. It stays if nobody signs in or that account denies notification permission.
 - **Retries (F-31):** only GETs are retried, and only once. No POST (`/auth/google`, likes, posts, joins, deletes) is ever replayed, so no duplicate writes. The warm-up hits `/version`, which returns no user data.
 - **Unauthenticated reach:** nothing new; `/version` was already public.
 - **Logging:** all `console.*` gated with `__DEV__`, so release logcat carries no push status codes. No token or PII was logged before, and none is added.
@@ -772,7 +881,7 @@ Items: T-02 call sites, T-07 (F-13), T-08 (F-14), T-10 (F-07), T-11 (F-17, inclu
 
 ## Assumptions
 1. **2.2.1 / versionCode 60 is the highest code Play Console has accepted** (LOAD_ME_FIRST.md:17). If wrong, use the next free code and seed `last-released.json` with the real last value; T-20 and the guard change accordingly.
-2. **4A contracts** as stated in the Contract dependency table. If 4A's handoff differs, the Builder follows 4A and records it in `code-map.md`; only T-02 (residual), T-09, T-10 and T-13 are affected.
+2. **The live backend serves 4A's "Contracts for 4B" at build time.** Confirmed on paper on 2026-09-13; Build step 1 verifies the deploy and E1's tests. If a detail differs, the Builder follows 4A and records it in `code-map.md`. Only T-02 (residual), T-09, T-10, T-13 and T-21 are affected.
 3. **The preview APK may be signed differently from the Play AAB.** If so, the PM must test on a device without the Play install (or uninstall first, losing local data). The device checklist changes only in setup.
 4. **axios ^1.15 reports timeouts as `ECONNABORTED` (or `ETIMEDOUT`) and connection failures as `ERR_NETWORK` or no `response`.** If wrong, the retry never fires and cold start behaves like today with a 45 s ceiling.
 5. **The en.json `common.private` / `common.public` keys exist in all six locales.** Verified in en; the Builder confirms the other five before relying on them.
@@ -781,6 +890,7 @@ Items: T-02 call sites, T-07 (F-13), T-08 (F-14), T-10 (F-07), T-11 (F-17, inclu
 8. **`BookPreviewScreen` is never handed a Google search result.** Verified: all 6 `navigate('BookPreview')` call sites pass local Books or userbooks. If a future caller passes a Google result, `rawBook.id` is undefined and `book_id` becomes null, which is safe.
 9. **Editing an existing note does not change the remembered choice**; the switch shows that note's own visibility. If the PM wants edits to update the remembered choice, bind the edit toggle to `useNoteVisibility` as well.
 10. **The remembered choice is forgotten at sign-out and session expiry** (Security Review). This keeps "never chosen → Private" true per account on a shared phone. If the PM wants the choice kept across sign-out, delete the two `removeItem` lines. 4A's web should make the same call for localStorage.
+11. **Label wording (K2).** Android labels the private option "Private" (`common.private`), the PM's 4B wording; 4A web says "Only me". The stored value and key are identical, so this is wording only. If the PM wants parity, change that one label key in `VisibilityToggle.js`.
 
 ## Open Questions (product only)
 None open. The PM answered on 2026-09-13:
@@ -825,3 +935,7 @@ Curated section only. Then run `python scripts/gen_dependency_map.py`.
     - Expect `userAPI.registerPushToken` to drop off.
     - New mobile functions: `groupsAPI.deleteGroup`, `groupsAPI.getGroupGoal`, `userAPI.deregisterPushToken`, `notificationsAPI.markRead`, `warmUp`.
 12. **UI actions → API (android):** after 2.2.2, the contract column clears for AppTour search, the GroupDetail Disband / Invite search / Reading Goal rows, the GroupsScreen Curator badge and Create Group rows, the InsightsScreen and ProfileScreen refresh rows, the BookDetailScreen composer row and the NotificationsScreen row tap. That update belongs to the inventory regeneration, not a hand edit.
+13. **4A "Sprint 4B handoff" rows superseded by the 4B brief (K3, K1):**
+    - F-17 is on Feed, BookDetail and Profile (new and edit), remembered in `bt_note_visibility` and cleared on sign-out, not book-detail only.
+    - F-19's Android cover fallback is T-21: `LibraryScreen.js` result tile and selected hero, and the `GroupDetailScreen.js` SetGroupBookModal result tile.
+    - Record Android that way in the curated map. The 4A file itself is not edited from 4B.
