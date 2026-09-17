@@ -7,7 +7,7 @@ This version matches your existing DB which uses `password_hash`.
 from typing import Optional, List
 from datetime import datetime
 from sqlmodel import Field, Relationship, SQLModel
-from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, JSON
+from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, JSON, UniqueConstraint
 from sqlalchemy.sql import func
 from .database import Base
 
@@ -69,6 +69,8 @@ class Book(SQLModel, table=True):
 
 class UserBook(SQLModel, table=True):
     """Join table connecting users to books with reading status and progress."""
+    __table_args__ = (UniqueConstraint("user_id", "book_id", name="uq_userbook_user_book"),)
+
     id: Optional[int] = Field(default=None, primary_key=True)
     user_id: int = Field(foreign_key="user.id", index=True)
     book_id: int = Field(foreign_key="book.id", index=True)
@@ -114,6 +116,8 @@ class Note(SQLModel, table=True):
 
 class Follow(SQLModel, table=True):
     """Follow relationship: follower -> followed (both users)."""
+    __table_args__ = (UniqueConstraint("follower_id", "followed_id", name="uq_follow_pair"),)
+
     id: Optional[int] = Field(default=None, primary_key=True)
     follower_id: int = Field(foreign_key="user.id", index=True)
     followed_id: int = Field(foreign_key="user.id", index=True)
@@ -122,6 +126,8 @@ class Follow(SQLModel, table=True):
 
 class Like(SQLModel, table=True):
     """Like on a note/post."""
+    __table_args__ = (UniqueConstraint("note_id", "user_id", name="uq_like_note_user"),)
+
     id: Optional[int] = Field(default=None, primary_key=True)
     note_id: int = Field(foreign_key="note.id", index=True)
     user_id: int = Field(foreign_key="user.id", index=True)

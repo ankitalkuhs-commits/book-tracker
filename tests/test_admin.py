@@ -71,6 +71,80 @@ class TestAdminAccess:
         r = client.delete("/admin/content/note/999999", headers=admin_headers)
         assert r.status_code == 404
 
+    # ── F-26 support: push_subscribed_users (T-A2-43) ───────────────────────
+
+    def test_stats_has_push_subscribed_users_distinct_count(self, client, db, admin_headers):
+        a = _make_user(db, email="f26_stats_a@example.com")
+        b = _make_user(db, email="f26_stats_b@example.com")
+        _give_token(db, a, token_type="expo")
+        _give_token(db, a, token_type="web", token='{"endpoint": "https://fcm.googleapis.com/fcm/send/f26a", "keys": {}}')
+        _give_token(db, b, token_type="web", token='{"endpoint": "https://fcm.googleapis.com/fcm/send/f26b", "keys": {}}')
+        expected = len(_distinct_token_user_ids(db))
+        r = client.get("/admin/stats", headers=admin_headers)
+        assert r.status_code == 200
+        data = r.json()
+        assert set(data.keys()) == {
+            "books_being_read", "books_completed", "books_wishlist", "new_users_this_month",
+            "new_users_this_week", "total_books", "total_comments", "total_follows",
+            "total_journals", "total_likes", "total_notes", "total_userbooks", "total_users",
+            "push_subscribed_users",
+        }
+        assert data["push_subscribed_users"] == expected
+
+    # ── F-51: bounded admin list limits (T-A2-44) ────────────────────────────
+
+    def test_admin_list_limit_bounds_422(self, client, alice_headers, admin_headers):
+        for path in ["/admin/users", "/admin/books", "/admin/follows", "/admin/content/notes", "/admin/content/comments"]:
+            for limit, expected in [(0, 422), (-1, 422), (201, 422), (200, 200)]:
+                r = client.get(f"{path}?limit={limit}", headers=admin_headers)
+                assert r.status_code == expected, f"{path}?limit={limit}"
+            assert client.get(path, headers=alice_headers).status_code == 403
+
+
+# ── F-26: Make Admin (T-A2-45..49) ───────────────────────────────────────────
+
+class TestSetAdmin:
+    def test_set_admin_allowlisted_email_200(self, client, db, admin_headers):
+        target = _make_user(db, email="ankitalkuhs@gmail.com", name="Allowlisted")
+        r = client.post(f"/admin/set-admin/{target.id}?is_admin=true", headers=admin_headers)
+        assert r.status_code == 200
+        assert r.json() == {
+            "message": "Admin status granted for user ankitalkuhs@gmail.com",
+            "user_id": target.id, "is_admin": True,
+        }
+        db.expire_all()
+        assert db.get(models.User, target.id).is_admin is True
+        # teardown: revoke so this fixture user doesn't leak admin access to other tests
+        r2 = client.post(f"/admin/set-admin/{target.id}?is_admin=false", headers=admin_headers)
+        assert r2.status_code == 200
+
+    def test_set_admin_non_allowlisted_email_403(self, client, db, admin_headers):
+        target = _make_user(db, email="f26_not_allowed@example.com")
+        r = client.post(f"/admin/set-admin/{target.id}?is_admin=true", headers=admin_headers)
+        assert r.status_code == 403
+        assert r.json() == {"detail": "This account is not permitted to hold admin access"}
+        db.expire_all()
+        assert db.get(models.User, target.id).is_admin is False
+
+    def test_set_admin_missing_is_admin_query_422(self, client, db, admin_headers):
+        target = _make_user(db, email="f26_missing_query@example.com")
+        r = client.post(f"/admin/set-admin/{target.id}", headers=admin_headers)
+        assert r.status_code == 422
+        db.expire_all()
+        assert db.get(models.User, target.id).is_admin is False
+
+    def test_set_admin_non_admin_caller_403(self, client, db, alice_headers):
+        target = _make_user(db, email="ankitalkuhs2@gmail.com")
+        r = client.post(f"/admin/set-admin/{target.id}?is_admin=true", headers=alice_headers)
+        assert r.status_code == 403
+        assert r.json() == {"detail": "Admin access required"}
+
+    def test_revoke_admin_allowed_200(self, client, db, admin_headers):
+        target = _make_user(db, email="f26_revoke@example.com", is_admin=True)
+        r = client.post(f"/admin/set-admin/{target.id}?is_admin=false", headers=admin_headers)
+        assert r.status_code == 200
+        assert r.json()["is_admin"] is False
+
 
 class TestAdminBroadcast:
     """R7 — POST /admin/push/broadcast reaches every channel, per-user NotificationLog."""

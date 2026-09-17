@@ -1,5 +1,5 @@
 # app/routers/reading_activity_router.py
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlmodel import Session, select, func
 from ..deps import get_db, get_current_user
 from ..models import ReadingActivity, UserBook, Book, User, Follow
@@ -11,7 +11,7 @@ router = APIRouter(prefix="/reading-activity", tags=["reading-activity"])
 
 @router.get("/daily")
 def get_daily_reading_stats(
-    days: int = 30,
+    days: int = Query(30, ge=1, le=200),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -83,6 +83,7 @@ def get_reading_insights(
             "completed": len(finished_this_year),
             "pct": round(min(100, len(finished_this_year) / yearly_goal * 100)),
             "on_track": len(finished_this_year) >= round(yearly_goal * day_of_year / 365),
+            "finished": len(finished_this_year),  # alias of completed for Android ≤2.2.1
         }
 
     # ── Total pages read — batch fetch books ─────────────────────────────────
@@ -173,6 +174,7 @@ def get_reading_insights(
                     "pages_left": pages_left,
                     "days_left": days_left,
                     "projected_finish": finish_date.isoformat(),
+                    "projected_finish_date": finish_date.isoformat(),  # alias of projected_finish for Android ≤2.2.1
                 })
 
     # ── Average rating ────────────────────────────────────────────────────────
@@ -192,13 +194,15 @@ def get_reading_insights(
         "yearly_goal": goal_progress,
         "monthly_pages": monthly_list,
         "projected_finishes": projected,
+        "average_rating": avg_rating,  # alias for Android ≤2.2.1
+        "books_this_year": len(finished_this_year),  # alias for Android ≤2.2.1
     }
 
 
 @router.get("/user/{user_id}/daily")
 def get_user_daily_reading_stats(
     user_id: int,
-    days: int = 30,
+    days: int = Query(30, ge=1, le=200),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
