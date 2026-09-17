@@ -379,7 +379,9 @@ test('reject_requires_confirm_with_cancel_first', () => {
   assert.ok(handleReject, 'handleReject not found');
   let alertCall = null;
   walk(handleReject.init, (n) => {
-    if (n.type === 'CallExpression' && n.callee.type === 'MemberExpression' && n.callee.object.name === 'Alert' && n.callee.property.name === 'alert') alertCall = n;
+    // The confirm dialog is the 3-arg Alert.alert; handleReject also has a 2-arg error Alert
+    // inside the onPress catch (architecture T-14 specimen), which must not be the one inspected.
+    if (!alertCall && n.type === 'CallExpression' && n.callee.type === 'MemberExpression' && n.callee.object.name === 'Alert' && n.callee.property.name === 'alert' && n.arguments.length === 3) alertCall = n;
   });
   assert.ok(alertCall, 'Alert.alert(...) not found in handleReject');
   const buttons = alertCall.arguments[2];
