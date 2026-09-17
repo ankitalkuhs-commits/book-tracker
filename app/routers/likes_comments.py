@@ -1,6 +1,7 @@
 # app/routers/likes_comments.py
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from pydantic import BaseModel
+from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, select
 from ..deps import get_db, get_current_user
 from .. import models
@@ -10,9 +11,27 @@ from ..notifications.dispatcher import fire_event
 router = APIRouter(prefix="/notes", tags=["likes-comments"])
 
 
+def _assert_can_view_note(db: Session, note: models.Note, user: models.User) -> None:
+    """Same rule as the feeds: owner always; otherwise the note must be public and a
+    private-profile author must be followed. 404 hides a private note's existence."""
+    if note.user_id == user.id:
+        return
+    if not note.is_public:
+        raise HTTPException(status_code=404, detail="Note not found")
+    author = db.get(models.User, note.user_id)
+    if author and getattr(author, "is_private_profile", False):
+        follows = db.exec(select(models.Follow).where(
+            models.Follow.follower_id == user.id,
+            models.Follow.followed_id == note.user_id,
+        )).first()
+        if not follows:
+            raise HTTPException(status_code=403, detail="This profile is private")
+
+
 @router.post("/{note_id}/like", status_code=status.HTTP_201_CREATED)
 def like_note(
     note_id: int,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
@@ -21,26 +40,35 @@ def like_note(
     note = db.get(models.Note, note_id)
     if not note:
         raise HTTPException(status_code=404, detail="Note not found")
-    
+
+    # Visibility: strangers cannot like a private note or a private profile's note (F-02)
+    _assert_can_view_note(db, note, current_user)
+
     # Check if already liked
     existing_like = db.exec(
         select(models.Like)
         .where(models.Like.note_id == note_id)
         .where(models.Like.user_id == current_user.id)
     ).first()
-    
+
     if existing_like:
         return {"message": "Already liked", "liked": True}
-    
+
     # Create like
     like = models.Like(note_id=note_id, user_id=current_user.id)
     db.add(like)
-    db.commit()
-    
-    # Send push notification to note owner (skip if liking own post)
+    try:
+        db.commit()
+    except IntegrityError:
+        # A concurrent request beat us to it (F-53) — same contract as the sequential check.
+        db.rollback()
+        return {"message": "Already liked", "liked": True}
+
+    # Send push notification to note owner (skip if liking own post) — after the response (F-59)
     if note.user_id != current_user.id:
         liker_name = current_user.name or current_user.username or "Someone"
-        fire_event(
+        background_tasks.add_task(
+            fire_event,
             db=db,
             event_type="post_liked",
             actor_id=current_user.id,
@@ -48,7 +76,7 @@ def like_note(
             recipient_ids=[note.user_id],
             extra={"note_id": note_id},
         )
-    
+
     return {"message": "Liked", "liked": True}
 
 
@@ -65,13 +93,13 @@ def unlike_note(
         .where(models.Like.note_id == note_id)
         .where(models.Like.user_id == current_user.id)
     ).first()
-    
+
     if not like:
         return {"message": "Not liked", "liked": False}
-    
+
     db.delete(like)
     db.commit()
-    
+
     return {"message": "Unliked", "liked": False}
 
 
@@ -87,6 +115,7 @@ class CommentCreate(BaseModel):
 def create_comment(
     note_id: int,
     payload: CommentCreate,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
@@ -98,17 +127,21 @@ def create_comment(
     note = db.get(models.Note, note_id)
     if not note:
         raise HTTPException(status_code=404, detail="Note not found")
-    
+
+    # Visibility: strangers cannot comment on a private note or a private profile's note (F-02)
+    _assert_can_view_note(db, note, current_user)
+
     # Create comment
     comment = models.Comment(note_id=note_id, user_id=current_user.id, text=payload.text)
     db.add(comment)
     db.commit()
     db.refresh(comment)
 
-    # Notify post owner via dispatcher (writes to NotificationLog + sends push)
+    # Notify post owner via dispatcher (writes to NotificationLog + sends push) — after the response (F-59)
     if note.user_id != current_user.id:
         commenter_name = current_user.name or current_user.username or "Someone"
-        fire_event(
+        background_tasks.add_task(
+            fire_event,
             db=db,
             event_type="post_commented",
             actor_id=current_user.id,
@@ -136,25 +169,15 @@ def get_comments(
     if not note:
         raise HTTPException(status_code=404, detail="Note not found")
 
-    # Enforce private profile — non-followers cannot read comments on private users' notes
-    if note.user_id != current_user.id:
-        author = db.get(models.User, note.user_id)
-        if author and getattr(author, "is_private_profile", False):
-            is_following = bool(db.exec(
-                select(models.Follow).where(
-                    models.Follow.follower_id == current_user.id,
-                    models.Follow.followed_id == note.user_id,
-                )
-            ).first())
-            if not is_following:
-                raise HTTPException(status_code=403, detail="This profile is private")
+    # Visibility: strangers cannot read comments on a private note or a private profile's note (F-02)
+    _assert_can_view_note(db, note, current_user)
 
     comments = db.exec(
         select(models.Comment)
         .where(models.Comment.note_id == note_id)
         .order_by(models.Comment.created_at.asc())
     ).all()
-    
+
     if not comments:
         return []
     user_ids = list({c.user_id for c in comments})

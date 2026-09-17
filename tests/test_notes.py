@@ -1,10 +1,24 @@
 """Tests for /notes/* — feed, CRUD, likes, comments."""
+import asyncio
+import json as _json
+
 import pytest
-from tests.conftest import _make_user, _auth
+from sqlalchemy import event
+from sqlmodel import select
+
+from app import models
+from app.main import app as _app
+from tests.conftest import _make_user, _auth, engine
 
 
 def _create_note(client, headers, text="Test note", is_public=True):
     return client.post("/notes/", json={"text": text, "is_public": is_public}, headers=headers)
+
+
+def _priv_note(client, headers, text="F02 private"):
+    r = client.post("/notes/", json={"text": text, "is_public": False}, headers=headers)
+    assert r.status_code == 201
+    return r.json()["id"]
 
 
 def _backdate(db, note_id, minutes):
@@ -13,6 +27,17 @@ def _backdate(db, note_id, minutes):
     from datetime import datetime, timedelta
     n = db.get(models.Note, note_id)
     n.created_at = datetime.utcnow() - timedelta(minutes=minutes)
+    db.add(n); db.commit(); db.expire_all()
+
+
+def _forward_date(db, note_id):
+    """Push a note's created_at far into the future so it outranks every other note in the
+    shared DB — including the F-08 query-count tests' own far-future seed notes — in the
+    created_at-desc feeds this module's shape/dedup-key tests read from."""
+    from app import models
+    from datetime import datetime, timedelta
+    n = db.get(models.Note, note_id)
+    n.created_at = datetime.utcnow() + timedelta(days=3650)
     db.add(n); db.commit(); db.expire_all()
 
 
@@ -25,6 +50,95 @@ def _note_posted_events(client, headers, gid):
     r = client.get(f"/groups/{gid}/activity", headers=headers)
     assert r.status_code == 200
     return [e for e in r.json() if e["event_type"] == "note_posted"]
+
+
+# ── F-59 ordering helper — a raw ASGI call so we can see "response sent" vs
+#    "background task ran" separately. TestClient waits for background tasks before
+#    returning, so it cannot show ordering; a direct call can. ──────────────────────
+
+def _asgi_order(method, path, headers, body, events):
+    raw = _json.dumps(body).encode() if body is not None else b""
+    scope = {"type": "http", "asgi": {"version": "3.0"}, "http_version": "1.1", "method": method,
+             "scheme": "http", "path": path, "raw_path": path.encode(), "query_string": b"", "root_path": "",
+             "headers": [(k.lower().encode(), v.encode()) for k, v in headers.items()]
+                        + [(b"content-type", b"application/json"), (b"host", b"testserver")],
+             "client": ("testclient", 50000), "server": ("testserver", 80)}
+    state = {"sent": False, "status": None}
+
+    async def receive():
+        if not state["sent"]:
+            state["sent"] = True
+            return {"type": "http.request", "body": raw, "more_body": False}
+        return {"type": "http.disconnect"}
+
+    async def send(msg):
+        if msg["type"] == "http.response.start":
+            events.append("response.start")
+            state["status"] = msg["status"]
+
+    asyncio.run(_app(scope, receive, send))
+    return state["status"]
+
+
+# ── F-08 query-count helpers ─────────────────────────────────────────────────────
+
+@pytest.fixture()
+def query_counter():
+    counter = {"n": 0}
+
+    def _count(conn, cursor, statement, parameters, context, executemany):
+        counter["n"] += 1
+
+    event.listen(engine, "before_cursor_execute", _count)
+    yield counter
+    event.remove(engine, "before_cursor_execute", _count)
+
+
+def _queries_for(client, counter, url, headers):
+    assert client.get(url, headers=headers).status_code == 200   # warm-up: absorbs the daily last_active write
+    counter["n"] = 0
+    r = client.get(url, headers=headers)
+    assert r.status_code == 200
+    return counter["n"], r.json()
+
+
+def _seed_public_notes(db, n, tag, *, owner=None, userbook=None):
+    """n public notes, created_at in the future so they lead the shared feed.
+
+    - owner=None, userbook=None: each note gets its own DISTINCT author with its own
+      Book + UserBook — the N+1 worst case (used by /feed and /friends-feed).
+    - owner given, userbook=None: same author, a fresh Book + UserBook per note
+      (used by /me and /user/{id}).
+    - owner and userbook both given: every note shares the one userbook (/userbook/{id}).
+    Commits, then expires the session so the caller's next read is fresh.
+    """
+    from datetime import datetime, timedelta
+    future = datetime.utcnow() + timedelta(days=365)
+    created = []
+    for i in range(n):
+        user = owner if owner is not None else _make_user(
+            db, email=f"{tag}_author_{i}@example.com", name=f"{tag} Author {i}"
+        )
+        if userbook is not None:
+            ub = userbook
+        else:
+            book = models.Book(title=f"{tag} book {i}", author="QA")
+            db.add(book)
+            db.commit()
+            db.refresh(book)
+            ub = models.UserBook(user_id=user.id, book_id=book.id, status="reading")
+            db.add(ub)
+            db.commit()
+            db.refresh(ub)
+        note = models.Note(
+            user_id=user.id, userbook_id=ub.id, text=f"{tag} note {i}",
+            is_public=True, created_at=future - timedelta(seconds=i),
+        )
+        db.add(note)
+        created.append(note)
+    db.commit()
+    db.expire_all()
+    return created
 
 
 class TestNotesCRUD:
@@ -80,6 +194,63 @@ class TestNotesCRUD:
     def test_requires_auth(self, client):
         r = client.post("/notes/", json={"text": "x", "is_public": True})
         assert r.status_code == 401
+
+    # ── F-17 — notes private by default ──────────────────────────────────────
+
+    def test_create_without_is_public_is_private(self, client, db):
+        author = _make_user(db, email="f17_default_author@example.com")
+        r = client.post("/notes/", json={"text": "F17 default"}, headers=_auth(author))
+        assert r.status_code == 201
+        assert r.json()["is_public"] is False
+        rows = client.get("/notes/me", headers=_auth(author)).json()
+        row = next(n for n in rows if n["text"] == "F17 default")
+        assert row["is_public"] is False
+
+    def test_explicit_public_still_in_feed(self, client, db):
+        author = _make_user(db, email="f17_explicit_author@example.com")
+        viewer = _make_user(db, email="f17_explicit_viewer@example.com")
+        r = client.post("/notes/", json={"text": "F17 public", "is_public": True}, headers=_auth(author))
+        assert r.status_code == 201
+        assert r.json()["is_public"] is True
+        note_id = r.json()["id"]
+        feed = client.get("/notes/feed?limit=200", headers=_auth(viewer)).json()
+        assert any(n["id"] == note_id for n in feed)
+
+    def test_update_without_is_public_keeps_private(self, client, db):
+        author = _make_user(db, email="f17_keepspriv_author@example.com")
+        h = _auth(author)
+        note_id = client.post("/notes/", json={"text": "F17 keep priv", "is_public": False}, headers=h).json()["id"]
+        r = client.put(f"/notes/{note_id}", json={"text": "edited"}, headers=h)
+        assert r.status_code == 200
+        assert r.json()["is_public"] is False
+        assert r.json()["text"] == "edited"
+        feed = client.get("/notes/feed?limit=200", headers=h).json()
+        assert not any(n["id"] == note_id for n in feed)
+
+    def test_update_without_is_public_keeps_public(self, client, db):
+        author = _make_user(db, email="f17_keepspub_author@example.com")
+        h = _auth(author)
+        note_id = client.post("/notes/", json={"text": "F17 keep pub", "is_public": True}, headers=h).json()["id"]
+        r = client.put(f"/notes/{note_id}", json={"text": "edited", "quote": "q"}, headers=h)
+        assert r.status_code == 200
+        assert r.json()["is_public"] is True
+        feed = client.get("/notes/feed?limit=200", headers=h).json()
+        assert any(n["id"] == note_id for n in feed)
+
+    def test_default_private_note_absent_from_all_feeds_and_group_activity(self, client, db):
+        author = _make_user(db, email="f17_neverpub_author@example.com")
+        viewer = _make_user(db, email="f17_neverpub_viewer@example.com")
+        client.post(f"/follow/{author.id}", headers=_auth(viewer))
+        gid = _create_group(client, _auth(author), name="F17 Circle").json()["id"]
+        note_id = client.post("/notes/", json={"text": "F17 never public"}, headers=_auth(author)).json()["id"]
+
+        feed = client.get("/notes/feed?limit=200", headers=_auth(viewer)).json()
+        ff = client.get("/notes/friends-feed?limit=200", headers=_auth(viewer)).json()
+        user_notes = client.get(f"/notes/user/{author.id}", headers=_auth(viewer)).json()
+        assert not any(n["id"] == note_id for n in feed)
+        assert not any(n["id"] == note_id for n in ff)
+        assert not any(n["id"] == note_id for n in user_notes)
+        assert _note_posted_events(client, _auth(author), gid) == []
 
 
 class TestFeed:
@@ -220,6 +391,186 @@ class TestLikesComments:
             .where(models.NotificationLog.event_type == "post_liked")
         ).all())
         assert after == before
+
+    # ── F-02 — visibility on likes and comments ──────────────────────────────
+
+    def test_like_private_note_404(self, client, db):
+        owner = _make_user(db, email="f02_like_owner@example.com")
+        stranger = _make_user(db, email="f02_like_stranger@example.com")
+        priv = _priv_note(client, _auth(owner))
+        r = client.post(f"/notes/{priv}/like", headers=_auth(stranger))
+        assert r.status_code == 404
+        assert r.json() == {"detail": "Note not found"}
+        db.expire_all()
+        assert db.exec(select(models.Like).where(models.Like.note_id == priv)).all() == []
+        assert db.exec(
+            select(models.NotificationLog)
+            .where(models.NotificationLog.user_id == owner.id)
+            .where(models.NotificationLog.event_type == "post_liked")
+            .where(models.NotificationLog.actor_id == stranger.id)
+        ).all() == []
+
+    def test_comment_private_note_404(self, client, db):
+        owner = _make_user(db, email="f02_comment_owner@example.com")
+        stranger = _make_user(db, email="f02_comment_stranger@example.com")
+        priv = _priv_note(client, _auth(owner))
+        r = client.post(f"/notes/{priv}/comments", json={"text": "F02 sneaky"}, headers=_auth(stranger))
+        assert r.status_code == 404
+        assert r.json() == {"detail": "Note not found"}
+        db.expire_all()
+        assert db.exec(select(models.Comment).where(models.Comment.note_id == priv)).all() == []
+
+    def test_get_comments_private_note_404(self, client, db):
+        owner = _make_user(db, email="f02_getc_owner@example.com")
+        stranger = _make_user(db, email="f02_getc_stranger@example.com")
+        priv = _priv_note(client, _auth(owner))
+        r_own = client.post(f"/notes/{priv}/comments", json={"text": "owner only"}, headers=_auth(owner))
+        assert r_own.status_code == 201
+        r = client.get(f"/notes/{priv}/comments", headers=_auth(stranger))
+        assert r.status_code == 404
+        assert "owner only" not in r.text
+
+    def test_follower_cannot_like_or_comment_private_note_404(self, client, db):
+        owner = _make_user(db, email="f02_follower_owner@example.com")
+        stranger = _make_user(db, email="f02_follower_stranger@example.com")
+        priv = _priv_note(client, _auth(owner))
+        client.post(f"/follow/{owner.id}", headers=_auth(stranger))
+        assert client.post(f"/notes/{priv}/like", headers=_auth(stranger)).status_code == 404
+        assert client.post(f"/notes/{priv}/comments", json={"text": "x"}, headers=_auth(stranger)).status_code == 404
+        assert client.get(f"/notes/{priv}/comments", headers=_auth(stranger)).status_code == 404
+
+    def test_comment_private_profile_non_follower_403(self, client, db):
+        owner = _make_user(db, email="f02_privprof_owner@example.com")
+        stranger = _make_user(db, email="f02_privprof_stranger@example.com")
+        client.put("/profile/me", json={"is_private_profile": True}, headers=_auth(owner))
+        pub = client.post("/notes/", json={"text": "F02 pub", "is_public": True}, headers=_auth(owner)).json()["id"]
+
+        r1 = client.post(f"/notes/{pub}/like", headers=_auth(stranger))
+        r2 = client.post(f"/notes/{pub}/comments", json={"text": "x"}, headers=_auth(stranger))
+        r3 = client.get(f"/notes/{pub}/comments", headers=_auth(stranger))
+        assert r1.status_code == 403
+        assert r1.json() == {"detail": "This profile is private"}
+        assert r2.status_code == 403
+        assert r3.status_code == 403
+
+        db.expire_all()
+        assert db.exec(select(models.Like).where(models.Like.note_id == pub)).all() == []
+        assert db.exec(select(models.Comment).where(models.Comment.note_id == pub)).all() == []
+
+    def test_refused_comment_writes_no_notificationlog(self, client, db):
+        owner = _make_user(db, email="f02_refc_owner@example.com")
+        stranger = _make_user(db, email="f02_refc_stranger@example.com")
+        priv = _priv_note(client, _auth(owner))
+        client.put("/profile/me", json={"is_private_profile": True}, headers=_auth(owner))
+        pub = client.post("/notes/", json={"text": "F02 refc pub", "is_public": True}, headers=_auth(owner)).json()["id"]
+
+        def _count():
+            db.expire_all()
+            return len(db.exec(select(models.NotificationLog).where(models.NotificationLog.user_id == owner.id)).all())
+
+        n0 = _count()
+        client.post(f"/notes/{priv}/comments", json={"text": "F02 sneaky"}, headers=_auth(stranger))
+        client.post(f"/notes/{pub}/comments", json={"text": "F02 sneaky2"}, headers=_auth(stranger))
+        assert _count() == n0
+
+    def test_refused_like_writes_no_notificationlog(self, client, db):
+        owner = _make_user(db, email="f02_refl_owner@example.com")
+        stranger = _make_user(db, email="f02_refl_stranger@example.com")
+        priv = _priv_note(client, _auth(owner))
+        client.put("/profile/me", json={"is_private_profile": True}, headers=_auth(owner))
+        pub = client.post("/notes/", json={"text": "F02 refl pub", "is_public": True}, headers=_auth(owner)).json()["id"]
+
+        def _count():
+            db.expire_all()
+            return len(db.exec(select(models.NotificationLog).where(models.NotificationLog.user_id == owner.id)).all())
+
+        n0 = _count()
+        client.post(f"/notes/{priv}/like", headers=_auth(stranger))
+        client.post(f"/notes/{pub}/like", headers=_auth(stranger))
+        assert _count() == n0
+
+    def test_follower_can_like_and_comment_private_profile_public_note(self, client, db):
+        owner = _make_user(db, email="f02_follow_ok_owner@example.com")
+        follower = _make_user(db, email="f02_follow_ok_follower@example.com")
+        client.post(f"/follow/{owner.id}", headers=_auth(follower))
+        client.put("/profile/me", json={"is_private_profile": True}, headers=_auth(owner))
+        pub = client.post("/notes/", json={"text": "F02 follower pub", "is_public": True}, headers=_auth(owner)).json()["id"]
+
+        r1 = client.post(f"/notes/{pub}/like", headers=_auth(follower))
+        assert r1.status_code == 201
+        assert r1.json() == {"message": "Liked", "liked": True}
+
+        r2 = client.post(f"/notes/{pub}/comments", json={"text": "F02 follower"}, headers=_auth(follower))
+        assert r2.status_code == 201
+        assert set(r2.json().keys()) == {"created_at", "id", "text", "user"}
+
+        r3 = client.get(f"/notes/{pub}/comments", headers=_auth(follower))
+        assert r3.status_code == 200
+        assert any(c["text"] == "F02 follower" for c in r3.json())
+
+        db.expire_all()
+        liked_rows = db.exec(
+            select(models.NotificationLog)
+            .where(models.NotificationLog.user_id == owner.id)
+            .where(models.NotificationLog.event_type == "post_liked")
+            .where(models.NotificationLog.actor_id == follower.id)
+        ).all()
+        commented_rows = db.exec(
+            select(models.NotificationLog)
+            .where(models.NotificationLog.user_id == owner.id)
+            .where(models.NotificationLog.event_type == "post_commented")
+            .where(models.NotificationLog.actor_id == follower.id)
+        ).all()
+        assert len(liked_rows) == 1
+        assert len(commented_rows) == 1
+
+    def test_owner_can_like_and_comment_own_private_note(self, client, db):
+        owner = _make_user(db, email="f02_owner_self@example.com")
+        priv = _priv_note(client, _auth(owner))
+        r1 = client.post(f"/notes/{priv}/like", headers=_auth(owner))
+        assert r1.status_code == 201
+        r2 = client.post(f"/notes/{priv}/comments", json={"text": "note to self"}, headers=_auth(owner))
+        assert r2.status_code == 201
+        r3 = client.get(f"/notes/{priv}/comments", headers=_auth(owner))
+        assert r3.status_code == 200
+        assert len(r3.json()) == 1
+
+        db.expire_all()
+        rows = db.exec(
+            select(models.NotificationLog)
+            .where(models.NotificationLog.user_id == owner.id)
+            .where(models.NotificationLog.actor_id == owner.id)
+        ).all()
+        assert rows == []
+
+    # ── F-51 — bounded list parameters ────────────────────────────────────────
+
+    def test_feed_limit_bounds_422(self, client, alice_headers):
+        for bad in (0, -1, 201):
+            r = client.get(f"/notes/feed?limit={bad}", headers=alice_headers)
+            assert r.status_code == 422
+            assert r.json()["detail"][0]["loc"] == ["query", "limit"]
+        assert client.get("/notes/feed?limit=200", headers=alice_headers).status_code == 200
+        r_ok = client.get("/notes/feed?limit=1", headers=alice_headers)
+        assert r_ok.status_code == 200
+        assert len(r_ok.json()) <= 1
+
+    def test_my_notes_limit_bounds_422(self, client, alice_headers):
+        for bad in (0, -1, 201):
+            r = client.get(f"/notes/me?limit={bad}", headers=alice_headers)
+            assert r.status_code == 422
+            assert r.json()["detail"][0]["loc"] == ["query", "limit"]
+        assert client.get("/notes/me?limit=200", headers=alice_headers).status_code == 200
+        r_ok = client.get("/notes/me?limit=1", headers=alice_headers)
+        assert r_ok.status_code == 200
+        assert len(r_ok.json()) <= 1
+
+    def test_friends_feed_limit_bounds_422(self, client, alice_headers):
+        for bad in (0, -1, 201):
+            r = client.get(f"/notes/friends-feed?limit={bad}", headers=alice_headers)
+            assert r.status_code == 422
+            assert r.json()["detail"][0]["loc"] == ["query", "limit"]
+        assert client.get("/notes/friends-feed?limit=200", headers=alice_headers).status_code == 200
 
 
 class TestFriendsFeedOrder:
@@ -541,3 +892,304 @@ class TestPrivateNotesAndGroupActivity:
         r = client.get(f"/groups/{gid}/activity", headers=_auth(x))
         assert r.status_code == 200
         assert any(e["event_type"] == "member_joined" for e in r.json())
+
+
+class TestUploads:
+    """F-55 — bad uploads return 400 instead of 500."""
+
+    def _configure_cloudinary(self, monkeypatch):
+        monkeypatch.setenv("CLOUDINARY_CLOUD_NAME", "test-cloud")
+        monkeypatch.setenv("CLOUDINARY_API_KEY", "test-key")
+        monkeypatch.setenv("CLOUDINARY_API_SECRET", "test-secret")
+
+    def test_rejected_image_400(self, client, db, monkeypatch):
+        import cloudinary.exceptions
+        self._configure_cloudinary(monkeypatch)
+        user = _make_user(db, email="f55_rejected@example.com")
+
+        def _raise(*a, **k):
+            raise cloudinary.exceptions.BadRequest("Invalid image file")
+
+        monkeypatch.setattr("cloudinary.uploader.upload", _raise)
+        r = client.post(
+            "/notes/upload-image",
+            files={"file": ("evil.png", b"plain text", "image/png")},
+            headers=_auth(user),
+        )
+        assert r.status_code == 400
+        assert r.json() == {"detail": "Invalid image file"}
+
+    def test_empty_file_400(self, client, db, monkeypatch):
+        calls = []
+        self._configure_cloudinary(monkeypatch)
+        user = _make_user(db, email="f55_empty@example.com")
+        monkeypatch.setattr("cloudinary.uploader.upload", lambda *a, **k: calls.append(1))
+        r = client.post(
+            "/notes/upload-image",
+            files={"file": ("empty.png", b"", "image/png")},
+            headers=_auth(user),
+        )
+        assert r.status_code == 400
+        assert r.json() == {"detail": "File is empty"}
+        assert calls == []
+
+    def test_upload_other_error_still_500(self, client, db, monkeypatch):
+        self._configure_cloudinary(monkeypatch)
+        user = _make_user(db, email="f55_other@example.com")
+
+        def _raise(*a, **k):
+            raise RuntimeError("network down")
+
+        monkeypatch.setattr("cloudinary.uploader.upload", _raise)
+        r = client.post(
+            "/notes/upload-image",
+            files={"file": ("x.png", b"some bytes", "image/png")},
+            headers=_auth(user),
+        )
+        assert r.status_code == 500
+
+
+class TestNoteQueryCount:
+    """F-08 + F-07 note card — the query count stays constant as note count grows, and
+    book objects on note cards carry google_books_id/isbn/total_pages."""
+
+    def test_feed_query_count_constant(self, client, db, query_counter):
+        viewer = _make_user(db, email="f08_feed_viewer@example.com")
+        h = _auth(viewer)
+        _seed_public_notes(db, 50, "f08feed")
+
+        n_a, items_a = _queries_for(client, query_counter, "/notes/feed?limit=5", h)
+        assert len(items_a) == 5
+        n_b, items_b = _queries_for(client, query_counter, "/notes/feed?limit=50", h)
+        assert len(items_b) >= 5
+
+        assert n_a == n_b
+        assert n_b <= 8
+
+    def test_friends_feed_query_count_constant(self, client, db, query_counter):
+        viewer = _make_user(db, email="f08_ff_viewer@example.com")
+        h = _auth(viewer)
+        first5 = _seed_public_notes(db, 5, "f08ff")
+        for note in first5:
+            client.post(f"/follow/{note.user_id}", headers=h)
+
+        n_a, items_a = _queries_for(client, query_counter, "/notes/friends-feed?limit=50", h)
+        assert len(items_a) == 5
+
+        rest = _seed_public_notes(db, 45, "f08ff2")
+        for note in rest:
+            client.post(f"/follow/{note.user_id}", headers=h)
+
+        n_b, items_b = _queries_for(client, query_counter, "/notes/friends-feed?limit=50", h)
+        assert len(items_b) == 50
+
+        assert n_a == n_b
+        assert n_b <= 10
+
+    def test_my_notes_query_count_constant(self, client, db, query_counter):
+        owner = _make_user(db, email="f08_me_owner@example.com")
+        h = _auth(owner)
+        _seed_public_notes(db, 5, "f08me", owner=owner)
+
+        n_a, items_a = _queries_for(client, query_counter, "/notes/me?limit=50", h)
+        assert len(items_a) == 5
+
+        _seed_public_notes(db, 45, "f08me2", owner=owner)
+        n_b, items_b = _queries_for(client, query_counter, "/notes/me?limit=50", h)
+        assert len(items_b) == 50
+
+        assert n_a == n_b
+        assert n_b <= 8
+
+    def test_user_notes_query_count_constant(self, client, db, query_counter):
+        author = _make_user(db, email="f08_user_author@example.com")
+        viewer = _make_user(db, email="f08_user_viewer@example.com")
+        h = _auth(viewer)
+        _seed_public_notes(db, 5, "f08user", owner=author)
+
+        n_a, items_a = _queries_for(client, query_counter, f"/notes/user/{author.id}", h)
+        assert len(items_a) == 5
+
+        _seed_public_notes(db, 45, "f08user2", owner=author)
+        n_b, items_b = _queries_for(client, query_counter, f"/notes/user/{author.id}", h)
+        assert len(items_b) == 20  # route cap
+
+        assert n_a == n_b
+        assert n_b <= 9
+
+    def test_userbook_notes_query_count_constant(self, client, db, query_counter):
+        owner = _make_user(db, email="f08_ub_owner@example.com")
+        h = _auth(owner)
+        book = models.Book(title="F08 UB Book", author="QA")
+        db.add(book); db.commit(); db.refresh(book)
+        ub = models.UserBook(user_id=owner.id, book_id=book.id, status="reading")
+        db.add(ub); db.commit(); db.refresh(ub)
+
+        _seed_public_notes(db, 5, "f08ub", owner=owner, userbook=ub)
+        n_a, items_a = _queries_for(client, query_counter, f"/notes/userbook/{ub.id}", h)
+        assert len(items_a) == 5
+
+        _seed_public_notes(db, 45, "f08ub2", owner=owner, userbook=ub)
+        n_b, items_b = _queries_for(client, query_counter, f"/notes/userbook/{ub.id}", h)
+        assert len(items_b) == 50
+
+        assert n_a == n_b
+        assert n_b <= 6
+
+    def test_note_card_book_has_dedup_keys(self, client, db):
+        author = _make_user(db, email="f07_card_author@example.com")
+        viewer = _make_user(db, email="f07_card_viewer@example.com")
+        ha, hv = _auth(author), _auth(viewer)
+        add = client.post("/books/add-to-library", json={
+            "title": "F07 Card", "google_books_id": "f07-card-gid",
+            "isbn": "f07-card-isbn", "total_pages": 321, "status": "reading",
+        }, headers=ha)
+        ub = add.json()["id"]
+        note_id = client.post("/notes/", json={
+            "text": "F07 card note", "userbook_id": ub, "is_public": True,
+        }, headers=ha).json()["id"]
+        client.post(f"/follow/{author.id}", headers=hv)
+        _forward_date(db, note_id)  # outrank the shared DB's other notes, incl. the F-08 seeds above
+
+        expected_book_keys = {"id", "title", "author", "cover_url", "google_books_id", "isbn", "total_pages"}
+        for url, headers in (
+            ("/notes/feed?limit=200", hv),
+            ("/notes/friends-feed?limit=200", hv),
+            ("/notes/me?limit=200", ha),
+            (f"/notes/user/{author.id}", hv),
+        ):
+            rows = client.get(url, headers=headers).json()
+            row = next(n for n in rows if n["id"] == note_id)
+            assert set(row["book"].keys()) == expected_book_keys
+            assert row["book"]["google_books_id"] == "f07-card-gid"
+            assert row["book"]["isbn"] == "f07-card-isbn"
+            assert row["book"]["total_pages"] == 321
+
+        ub_rows = client.get(f"/notes/userbook/{ub}", headers=ha).json()
+        ub_row = next(n for n in ub_rows if n["id"] == note_id)
+        assert set(ub_row["book"].keys()) == {"id", "title", "author"}
+
+    def test_note_list_outputs_unchanged_apart_from_book_keys(self, client, db):
+        """`response_model=List[NoteOutSchema]` normalizes every response to the model's full
+        field set (defaulting anything the handler dict omits), so the top-level key set is
+        the same across all five endpoints regardless of what each handler builds. Only the
+        nested `user` dict — a plain `dict` field, not schema-validated — varies per endpoint."""
+        author = _make_user(db, email="f07_shape_author@example.com")
+        viewer = _make_user(db, email="f07_shape_viewer@example.com")
+        ha, hv = _auth(author), _auth(viewer)
+        add = client.post("/books/add-to-library", json={
+            "title": "F07 Shape", "total_pages": 200, "status": "reading",
+        }, headers=ha)
+        ub = add.json()["id"]
+        note_id = client.post("/notes/", json={
+            "text": "F07 shape note", "userbook_id": ub, "is_public": True,
+        }, headers=ha).json()["id"]
+        client.post(f"/follow/{author.id}", headers=hv)
+        client.post(f"/notes/{note_id}/like", headers=hv)
+        client.post(f"/notes/{note_id}/comments", json={"text": "nice"}, headers=hv)
+        _forward_date(db, note_id)  # outrank the shared DB's other notes, incl. the F-08 seeds above
+
+        top_keys = {"book", "chapter", "comments_count", "created_at", "emotion", "id",
+                    "image_url", "is_public", "liked_by_me", "likes_count", "page_number",
+                    "quote", "text", "updated_at", "user", "user_has_liked", "user_id"}
+
+        feed = next(n for n in client.get("/notes/feed?limit=200", headers=hv).json() if n["id"] == note_id)
+        ff = next(n for n in client.get("/notes/friends-feed?limit=200", headers=hv).json() if n["id"] == note_id)
+        me = next(n for n in client.get("/notes/me?limit=200", headers=ha).json() if n["id"] == note_id)
+        by_user = next(n for n in client.get(f"/notes/user/{author.id}", headers=hv).json() if n["id"] == note_id)
+        by_ub = next(n for n in client.get(f"/notes/userbook/{ub}", headers=ha).json() if n["id"] == note_id)
+
+        for row in (feed, ff, me, by_user, by_ub):
+            assert set(row.keys()) == top_keys
+
+        assert feed["created_at"].endswith("Z")
+        assert set(feed["user"].keys()) == {"id", "name", "profile_picture", "username"}
+        assert set(me["user"].keys()) == {"id", "name", "profile_picture", "username"}
+        assert set(ff["user"].keys()) == {"id", "is_mutual", "name", "profile_picture", "username"}
+        assert set(by_user["user"].keys()) == {"id", "name"}
+        assert set(by_ub["user"].keys()) == {"id", "name"}
+
+        assert feed["liked_by_me"] == feed["user_has_liked"] is True
+        assert feed["likes_count"] == 1
+        assert feed["comments_count"] == 1
+        assert by_user["likes_count"] == 1
+        assert by_user["comments_count"] == 1
+
+
+class TestPushAfterResponse:
+    """F-59 — like/comment/follow/public-note push and group-activity delivery happens
+    after the response is sent, via BackgroundTasks."""
+
+    def test_like_returns_before_push_delivery(self, client, db, monkeypatch):
+        import app.notifications.dispatcher as dispatcher
+        events = []
+        monkeypatch.setattr(dispatcher, "send_expo_push", lambda *a, **k: events.append("push.expo"))
+        monkeypatch.setattr(dispatcher, "send_web_push", lambda *a, **k: events.append("push.web"))
+
+        owner = _make_user(db, email="f59_like_owner@example.com")
+        liker = _make_user(db, email="f59_like_liker@example.com")
+        note_id = _create_note(client, _auth(owner)).json()["id"]
+
+        status = _asgi_order("POST", f"/notes/{note_id}/like", _auth(liker), None, events)
+        assert status == 201
+        assert events.index("response.start") < events.index("push.expo")
+        assert events.index("response.start") < events.index("push.web")
+
+        db.expire_all()
+        rows = db.exec(
+            select(models.NotificationLog)
+            .where(models.NotificationLog.user_id == owner.id)
+            .where(models.NotificationLog.event_type == "post_liked")
+            .where(models.NotificationLog.actor_id == liker.id)
+        ).all()
+        assert len(rows) == 1
+
+    def test_comment_returns_before_push_delivery(self, client, db, monkeypatch):
+        import app.notifications.dispatcher as dispatcher
+        events = []
+        monkeypatch.setattr(dispatcher, "send_expo_push", lambda *a, **k: events.append("push.expo"))
+        monkeypatch.setattr(dispatcher, "send_web_push", lambda *a, **k: events.append("push.web"))
+
+        owner = _make_user(db, email="f59_comment_owner@example.com")
+        commenter = _make_user(db, email="f59_comment_commenter@example.com")
+        note_id = _create_note(client, _auth(owner)).json()["id"]
+
+        status = _asgi_order("POST", f"/notes/{note_id}/comments", _auth(commenter), {"text": "F59"}, events)
+        assert status == 201
+        assert events.index("response.start") < events.index("push.expo")
+        assert events.index("response.start") < events.index("push.web")
+
+        db.expire_all()
+        rows = db.exec(
+            select(models.NotificationLog)
+            .where(models.NotificationLog.user_id == owner.id)
+            .where(models.NotificationLog.event_type == "post_commented")
+            .where(models.NotificationLog.actor_id == commenter.id)
+        ).all()
+        assert len(rows) == 1
+
+    def test_public_note_group_activity_written_after_response(self, client, db, monkeypatch):
+        import app.routers.notes_router as notes_router
+        real_fire = notes_router.fire_group_activity_for_user
+        events = []
+
+        def _spy(*a, **k):
+            result = real_fire(*a, **k)
+            events.append("activity")
+            return result
+
+        monkeypatch.setattr(notes_router, "fire_group_activity_for_user", _spy)
+
+        author = _make_user(db, email="f59_group_author@example.com")
+        h = _auth(author)
+        gid = _create_group(client, h, name="F59 Circle").json()["id"]
+
+        status = _asgi_order("POST", "/notes/", h, {"text": "F59 pub", "is_public": True}, events)
+        assert status == 201
+        assert events.index("response.start") < events.index("activity")
+        assert len(_note_posted_events(client, h, gid)) == 1
+
+        events2 = []
+        status2 = _asgi_order("POST", "/notes/", h, {"text": "F59 priv", "is_public": False}, events2)
+        assert status2 == 201
+        assert "activity" not in events2

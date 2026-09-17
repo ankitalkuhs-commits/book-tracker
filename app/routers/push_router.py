@@ -36,6 +36,15 @@ def register_push_token(
             "message": "Invalid token format — must start with ExponentPushToken or ExpoPushToken"
         }
 
+    # A device token belongs to exactly one account: the one that registered it last.
+    # Without this, a shared phone keeps delivering account A's pushes after B logs in.
+    for row in db.exec(select(models.PushToken).where(
+        models.PushToken.token == payload.token,
+        models.PushToken.token_type == "expo",
+        models.PushToken.user_id != current_user.id,
+    )).all():
+        db.delete(row)
+
     existing = db.exec(
         select(models.PushToken).where(
             models.PushToken.user_id == current_user.id,

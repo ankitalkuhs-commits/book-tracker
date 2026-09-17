@@ -1,5 +1,6 @@
 # app/routers/follow_router.py
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+from sqlalchemy.exc import IntegrityError
 from sqlmodel import select
 from sqlmodel import Session
 from ..database import get_session
@@ -10,7 +11,7 @@ from ..notifications.dispatcher import fire_event
 router = APIRouter(prefix="/follow", tags=["follow"])
 
 @router.post("/{followed_id}")
-def follow_user(followed_id: int, db: Session = Depends(get_session), user = Depends(get_current_user)):
+def follow_user(followed_id: int, background_tasks: BackgroundTasks, db: Session = Depends(get_session), user = Depends(get_current_user)):
     if followed_id == user.id:
         raise HTTPException(status_code=400, detail="Cannot follow yourself")
     target = db.exec(select(models.User).where(models.User.id == followed_id)).first()
@@ -24,7 +25,7 @@ def follow_user(followed_id: int, db: Session = Depends(get_session), user = Dep
     ).first()
     if existing:
         raise HTTPException(status_code=400, detail="Already following")
-    
+
     # Check if they follow you (for mutual status)
     follows_you = db.exec(
         select(models.Follow).where(
@@ -32,20 +33,27 @@ def follow_user(followed_id: int, db: Session = Depends(get_session), user = Dep
             models.Follow.followed_id == user.id
         )
     ).first()
-    
+
     follow = models.Follow(follower_id=user.id, followed_id=followed_id)
-    db.add(follow); db.commit()
-    
-    # Send push notification to the followed user
+    db.add(follow)
+    try:
+        db.commit()
+    except IntegrityError:
+        # A concurrent request beat us to it (F-53) — same contract as the sequential check.
+        db.rollback()
+        raise HTTPException(status_code=400, detail="Already following")
+
+    # Send push notification to the followed user — after the response (F-59)
     follower_name = user.name or user.username or "Someone"
-    fire_event(
+    background_tasks.add_task(
+        fire_event,
         db=db,
         event_type="new_follower",
         actor_id=user.id,
         actor_name=follower_name,
         recipient_ids=[followed_id],
     )
-    
+
     return {
         "detail": "followed",
         "is_following": True,

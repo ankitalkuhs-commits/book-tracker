@@ -1,8 +1,41 @@
 """Tests for /follow/*, /profile/*, /users/* endpoints."""
+import asyncio
+import json as _json
 import logging
 
 import pytest
+from sqlmodel import select
+
+from app import models
+from app.main import app as _app
 from tests.conftest import _make_user, _auth
+
+
+# ── F-59 ordering helper — see tests/test_notes.py for why a raw ASGI call is needed
+#    instead of the TestClient fixture (it waits for background tasks before returning). ──
+
+def _asgi_order(method, path, headers, body, events):
+    raw = _json.dumps(body).encode() if body is not None else b""
+    scope = {"type": "http", "asgi": {"version": "3.0"}, "http_version": "1.1", "method": method,
+             "scheme": "http", "path": path, "raw_path": path.encode(), "query_string": b"", "root_path": "",
+             "headers": [(k.lower().encode(), v.encode()) for k, v in headers.items()]
+                        + [(b"content-type", b"application/json"), (b"host", b"testserver")],
+             "client": ("testclient", 50000), "server": ("testserver", 80)}
+    state = {"sent": False, "status": None}
+
+    async def receive():
+        if not state["sent"]:
+            state["sent"] = True
+            return {"type": "http.request", "body": raw, "more_body": False}
+        return {"type": "http.disconnect"}
+
+    async def send(msg):
+        if msg["type"] == "http.response.start":
+            events.append("response.start")
+            state["status"] = msg["status"]
+
+    asyncio.run(_app(scope, receive, send))
+    return state["status"]
 
 
 class TestFollow:
@@ -117,6 +150,89 @@ class TestProfile:
         assert stats["finished"] >= 1
         assert stats["reading"] >= 1
 
+    # ── F-18 — a yearly goal can be cleared ──────────────────────────────────
+
+    def test_put_yearly_goal_null_clears(self, client, db):
+        user = _make_user(db, email="f18_null_clears@example.com")
+        h = _auth(user)
+        r1 = client.put("/profile/me", json={"yearly_goal": 24}, headers=h)
+        assert r1.status_code == 200
+        assert r1.json()["yearly_goal"] == 24
+        r2 = client.put("/profile/me", json={"yearly_goal": None}, headers=h)
+        assert r2.status_code == 200
+        assert r2.json()["yearly_goal"] is None
+        assert client.get("/profile/me", headers=h).json()["yearly_goal"] is None
+
+    def test_put_yearly_goal_zero_clears(self, client, db):
+        user = _make_user(db, email="f18_zero_clears@example.com")
+        h = _auth(user)
+        client.put("/profile/me", json={"yearly_goal": 24}, headers=h)
+        r = client.put("/profile/me", json={"yearly_goal": 0}, headers=h)
+        assert r.status_code == 200
+        assert r.json()["yearly_goal"] is None
+
+    def test_put_without_yearly_goal_keeps_it(self, client, db):
+        user = _make_user(db, email="f18_keeps_it@example.com")
+        h = _auth(user)
+        client.put("/profile/me", json={"yearly_goal": 24}, headers=h)
+        for body in ({"bio": "F18 bio"}, {"name": "F18", "bio": "b"}, {"is_private_profile": False}):
+            r = client.put("/profile/me", json=body, headers=h)
+            assert r.status_code == 200
+            assert r.json()["yearly_goal"] == 24
+
+    def test_insights_goal_null_after_clear(self, client, db):
+        user = _make_user(db, email="f18_insights_null@example.com")
+        h = _auth(user)
+        client.put("/profile/me", json={"yearly_goal": 12}, headers=h)
+        insights = client.get("/reading-activity/insights", headers=h).json()
+        assert isinstance(insights["yearly_goal"], dict)
+        client.put("/profile/me", json={"yearly_goal": None}, headers=h)
+        insights2 = client.get("/reading-activity/insights", headers=h).json()
+        assert insights2["yearly_goal"] is None
+
+    # ── F-55 — bad avatar uploads return 400 ─────────────────────────────────
+
+    def _configure_cloudinary(self, monkeypatch):
+        monkeypatch.setenv("CLOUDINARY_CLOUD_NAME", "test-cloud")
+        monkeypatch.setenv("CLOUDINARY_API_KEY", "test-key")
+        monkeypatch.setenv("CLOUDINARY_API_SECRET", "test-secret")
+
+    def test_avatar_rejected_image_400(self, client, db, monkeypatch):
+        import cloudinary.exceptions
+        self._configure_cloudinary(monkeypatch)
+        user = _make_user(db, email="f55_avatar_rejected@example.com")
+
+        def _raise(*a, **k):
+            raise cloudinary.exceptions.BadRequest("Invalid image file")
+
+        monkeypatch.setattr("cloudinary.uploader.upload", _raise)
+        r = client.post(
+            "/profile/me/picture",
+            files={"file": ("evil.png", b"plain text", "image/png")},
+            headers=_auth(user),
+        )
+        assert r.status_code == 400
+        assert r.json() == {"detail": "Invalid image file"}
+
+        db.expire_all()
+        from app import crud
+        row = crud.get_user_by_email(db, "f55_avatar_rejected@example.com")
+        assert not row.profile_picture
+
+    def test_avatar_empty_file_400(self, client, db, monkeypatch):
+        calls = []
+        self._configure_cloudinary(monkeypatch)
+        user = _make_user(db, email="f55_avatar_empty@example.com")
+        monkeypatch.setattr("cloudinary.uploader.upload", lambda *a, **k: calls.append(1))
+        r = client.post(
+            "/profile/me/picture",
+            files={"file": ("empty.png", b"", "image/png")},
+            headers=_auth(user),
+        )
+        assert r.status_code == 400
+        assert r.json() == {"detail": "File is empty"}
+        assert calls == []
+
 
 class TestUserSearch:
     def test_search_finds_user(self, client, db):
@@ -205,3 +321,30 @@ class TestProfileMeNoPII:
             .where(models.NotificationLog.event_type == "new_follower")
         ).all()
         assert any(r.actor_id == a.id for r in rows)
+
+
+class TestPushAfterResponse:
+    """F-59 — a follow returns before push delivery, via BackgroundTasks."""
+
+    def test_follow_returns_before_push_delivery(self, client, db, monkeypatch):
+        import app.notifications.dispatcher as dispatcher
+        events = []
+        monkeypatch.setattr(dispatcher, "send_expo_push", lambda *a, **k: events.append("push.expo"))
+        monkeypatch.setattr(dispatcher, "send_web_push", lambda *a, **k: events.append("push.web"))
+
+        a = _make_user(db, email="f59_follow_a@example.com")
+        b = _make_user(db, email="f59_follow_b@example.com")
+
+        status = _asgi_order("POST", f"/follow/{b.id}", _auth(a), None, events)
+        assert status == 200
+        assert events.index("response.start") < events.index("push.expo")
+        assert events.index("response.start") < events.index("push.web")
+
+        db.expire_all()
+        rows = db.exec(
+            select(models.NotificationLog)
+            .where(models.NotificationLog.user_id == b.id)
+            .where(models.NotificationLog.event_type == "new_follower")
+            .where(models.NotificationLog.actor_id == a.id)
+        ).all()
+        assert len(rows) == 1

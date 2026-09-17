@@ -1,4 +1,5 @@
-"""Tests for POST /auth/signup and POST /auth/login."""
+"""Tests for /auth/* — the surviving routes (Google, review-login, delete-account) and
+proof that the legacy password signup/login routes (F-01) are gone."""
 import os
 from datetime import date
 
@@ -9,41 +10,7 @@ from app import auth, crud, models
 from tests.conftest import _make_user, _auth
 
 
-class TestSignup:
-    def test_signup_success(self, client):
-        r = client.post("/auth/signup", json={"name": "Carol", "email": "carol@example.com", "password": "strongpass1"})
-        assert r.status_code == 200
-        data = r.json()
-        assert "access_token" in data
-        assert data["user"]["email"] == "carol@example.com"
-
-    def test_signup_duplicate_email(self, client, db):
-        _make_user(db, email="dup@example.com")
-        r = client.post("/auth/signup", json={"name": "Dup", "email": "dup@example.com", "password": "strongpass1"})
-        assert r.status_code == 400
-        assert "already registered" in r.json()["detail"]
-
-    def test_signup_short_password(self, client):
-        r = client.post("/auth/signup", json={"name": "Short", "email": "short@example.com", "password": "abc"})
-        assert r.status_code == 422  # validation error
-
-
-class TestLogin:
-    def test_login_success(self, client, db):
-        _make_user(db, email="login_ok@example.com", password="mypassword")
-        r = client.post("/auth/login", json={"email": "login_ok@example.com", "password": "mypassword"})
-        assert r.status_code == 200
-        assert "access_token" in r.json()
-
-    def test_login_wrong_password(self, client, db):
-        _make_user(db, email="login_bad@example.com", password="correct")
-        r = client.post("/auth/login", json={"email": "login_bad@example.com", "password": "wrong"})
-        assert r.status_code == 401
-
-    def test_login_unknown_email(self, client):
-        r = client.post("/auth/login", json={"email": "nobody@example.com", "password": "whatever"})
-        assert r.status_code == 401
-
+class TestTokenValidation:
     def test_no_token_on_protected_endpoint(self, client):
         r = client.get("/userbooks/")
         assert r.status_code == 401
@@ -51,6 +18,76 @@ class TestLogin:
     def test_invalid_token_rejected(self, client):
         r = client.get("/userbooks/", headers={"Authorization": "Bearer notarealtoken"})
         assert r.status_code == 401
+
+
+class TestLegacyPasswordRoutesRemoved:
+    """F-01 — /auth/signup and /auth/login are gone; every other auth route is unchanged."""
+
+    def test_signup_404(self, client, db):
+        r = client.post("/auth/signup", json={"email": "f01_signup@example.com", "password": "password123", "name": "X"})
+        assert r.status_code in (404, 405)
+        db.expire_all()
+        assert crud.get_user_by_email(db, "f01_signup@example.com") is None
+
+    def test_login_404(self, client):
+        r = client.post("/auth/login", json={"email": "alice_f@example.com", "password": "password123"})
+        assert r.status_code in (404, 405)
+        assert "access_token" not in r.text
+
+    def test_legacy_routes_absent_from_openapi(self, client):
+        paths = client.get("/openapi.json").json()["paths"]
+        assert "/auth/signup" not in paths
+        assert "/auth/login" not in paths
+        assert "/auth/google" in paths
+        assert "/auth/delete-account" in paths
+        assert "/auth/delete-account/me" in paths
+
+    def test_no_test_or_fixture_calls_legacy_routes(self):
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        search_dirs = [
+            os.path.join(root, "tests"),
+            os.path.join(root, "qa"),
+            os.path.join(root, "scripts"),
+            os.path.join(root, "book-tracker-frontend-stitch", "src"),
+            os.path.join(root, "book-tracker-mobile-stitch", "src"),
+        ]
+        offenders = []
+        this_file = os.path.abspath(__file__)
+        for base in search_dirs:
+            if not os.path.isdir(base):
+                continue
+            for dirpath, _dirnames, filenames in os.walk(base):
+                for fname in filenames:
+                    if not fname.endswith((".py", ".mjs", ".js", ".jsx", ".ts", ".tsx")):
+                        continue
+                    fpath = os.path.join(dirpath, fname)
+                    if os.path.abspath(fpath) == this_file:
+                        continue
+                    try:
+                        with open(fpath, "r", encoding="utf-8", errors="ignore") as fh:
+                            text = fh.read()
+                    except OSError:
+                        continue
+                    if "/auth/signup" in text or "/auth/login" in text:
+                        offenders.append(fpath)
+        assert offenders == []
+
+    def test_google_and_account_routes_still_registered(self, client):
+        # google_auth is unchanged by F-01 (out of scope here). A malformed token fails
+        # locally in the Google client library with a ValueError, which google_auth's own
+        # `except Exception` re-wraps as 500 instead of the 401 it raises internally — a
+        # pre-existing bug (not touched, not introduced by this change; see build notes).
+        # The invariant F-01 cares about is that the route is still registered, i.e. never
+        # 404/405 (which would mean the route was removed or the method rejected).
+        r_a = client.post("/auth/google", json={"token": "not-a-real-token"})
+        assert r_a.status_code not in (404, 405)
+
+        r_b = client.post("/auth/delete-account/me")
+        assert r_b.status_code == 401
+
+        r_c = client.post("/auth/delete-account", json={"email": "nobody-f01@example.com"})
+        assert r_c.status_code == 200
+        assert r_c.json() == {"message": "Account deletion request received"}
 
 
 class TestPublicDeleteAccountForm:
@@ -70,6 +107,111 @@ class TestPublicDeleteAccountForm:
         r = client.post("/auth/delete-account", json={"email": "nobody-xyz@example.com"})
         assert r.status_code == 200
         assert r.json() == {"message": "Account deletion request received"}
+
+
+class TestDeleteAccountCleansDependents:
+    """F-50 (account half) — POST /auth/delete-account/me leaves no FK-orphaning rows behind."""
+
+    def _fixture(self, client, db):
+        from app import models as m
+
+        u = _make_user(db, email="f50_victim@example.com", name="F50 Victim")
+        w = _make_user(db, email="f50_w@example.com", name="F50 W")
+        v = _make_user(db, email="f50_v@example.com", name="F50 V")
+        x = _make_user(db, email="f50_x@example.com", name="F50 X")
+        hu, hw, hv = _auth(u), _auth(w), _auth(v)
+
+        g1 = client.post("/groups/", json={"name": "F50 U circle", "is_private": False}, headers=hu).json()["id"]
+        r = client.post(f"/groups/{g1}/join", headers=hv)
+        assert r.status_code == 201
+
+        g2 = client.post("/groups/", json={"name": "F50 W circle", "is_private": False}, headers=hw).json()["id"]
+        r = client.post(f"/groups/{g2}/join", headers=hu)
+        assert r.status_code == 201
+
+        db.add(m.GroupMember(group_id=g2, user_id=v.id, role="member", status="pending", invited_by=u.id))
+        db.add(m.GroupMember(group_id=g2, user_id=x.id, role="member", status="active", invited_by=u.id))
+        db.commit()
+
+        add = client.post("/books/add-to-library", json={"title": "F50 acct", "total_pages": 100, "status": "reading"}, headers=hu)
+        ub = add.json()["id"]
+        r = client.put(f"/userbooks/{ub}/progress", json={"current_page": 10}, headers=hu)
+        assert r.status_code == 200
+
+        gp = m.GroupPost(group_id=g2, user_id=w.id, text="F50 W post", userbook_id=ub)
+        db.add(gp)
+        db.commit()
+        db.refresh(gp)
+
+        return u, w, v, x, g1, g2, ub, gp.id
+
+    def test_delete_account_leaves_no_fk_orphans(self, client, db):
+        from app import models as m
+
+        u, w, v, x, g1, g2, ub, gp_id = self._fixture(client, db)
+        # Capture plain ids before the delete: `u` is already identity-mapped in this
+        # session (from _make_user), so touching u.<attr> after its row is gone re-triggers
+        # an expired-attribute reload and raises ObjectDeletedError instead of just working.
+        u_id, w_id, v_id, x_id = u.id, w.id, v.id, x.id
+        auth_u = _auth(u)
+
+        r = client.post("/auth/delete-account/me", headers=auth_u)
+        assert r.status_code == 200
+        assert r.json() == {"message": "Account deleted"}
+
+        db.expire_all()
+        assert db.exec(select(m.User).where(m.User.id == u_id)).first() is None
+        assert db.exec(select(m.GroupActivity).where(m.GroupActivity.user_id == u_id)).all() == []
+        assert db.exec(select(m.GroupActivity).where(m.GroupActivity.group_id == g1)).all() == []
+        assert db.get(m.ReadingGroup, g1) is None
+
+        assert db.exec(select(m.GroupMember).where(m.GroupMember.invited_by == u_id)).all() == []
+        v_row = db.exec(select(m.GroupMember).where(
+            m.GroupMember.group_id == g2, m.GroupMember.user_id == v_id
+        )).first()
+        assert v_row is None
+        x_row = db.exec(select(m.GroupMember).where(
+            m.GroupMember.group_id == g2, m.GroupMember.user_id == x_id
+        )).first()
+        assert x_row is not None
+        assert x_row.status == "active"
+        assert x_row.invited_by is None
+
+        gp = db.get(m.GroupPost, gp_id)
+        assert gp is not None
+        assert gp.userbook_id is None
+
+        assert db.exec(select(m.ReadingActivity).where(m.ReadingActivity.user_id == u_id)).all() == []
+        assert db.exec(select(m.UserBook).where(m.UserBook.user_id == u_id)).all() == []
+
+    def test_delete_account_keeps_other_users_rows(self, client, db):
+        from app import models as m
+
+        u, w, v, x, g1, g2, ub, gp_id = self._fixture(client, db)
+        w_id, x_id = w.id, x.id
+        auth_u, auth_w = _auth(u), _auth(w)
+
+        client.post("/auth/delete-account/me", headers=auth_u)
+        db.expire_all()
+
+        assert db.get(m.ReadingGroup, g2) is not None
+        w_row = db.exec(select(m.GroupMember).where(
+            m.GroupMember.group_id == g2, m.GroupMember.user_id == w_id
+        )).first()
+        assert w_row is not None
+        assert w_row.role == "curator"
+        x_row = db.exec(select(m.GroupMember).where(
+            m.GroupMember.group_id == g2, m.GroupMember.user_id == x_id
+        )).first()
+        assert x_row is not None
+        assert x_row.status == "active"
+
+        r = client.get(f"/groups/{g2}/posts", headers=auth_w)
+        assert r.status_code == 200
+        assert any(p["id"] == gp_id for p in r.json())
+
+        r2 = client.get("/profile/me", headers=_auth(w))
+        assert r2.status_code == 200
 
 
 REVIEW_SECRET = "test-review-secret-value"
