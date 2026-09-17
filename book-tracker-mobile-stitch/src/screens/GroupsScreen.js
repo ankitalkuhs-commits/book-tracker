@@ -30,7 +30,7 @@ function GroupCover({ preset = 'teal', size = 80 }) {
 
 function GroupCard({ group, onPress }) {
   const { t } = useTranslation();
-  const isCurator = group.user_role === 'curator';
+  const isCurator = group.membership_role === 'curator';
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.75}>
       <GroupCover preset={group.cover_preset} size={80} />
@@ -90,8 +90,8 @@ function CreateGroupModal({ visible, onClose, onCreated }) {
         description: desc.trim(),
         is_private: isPrivate,
         cover_preset: preset,
-        reading_goal: readingGoal ? parseInt(readingGoal) : null,
-        goal_period: goalPeriod,
+        goal_pages: readingGoal ? parseInt(readingGoal, 10) : null,
+        goal_period: readingGoal ? goalPeriod : null,
       });
       onCreated(g);
       setName(''); setDesc(''); setIsPrivate(false); setPreset('teal');
@@ -119,6 +119,9 @@ function CreateGroupModal({ visible, onClose, onCreated }) {
               onPress={() => setPreset(p.key)}
               style={[styles.coverTile, { backgroundColor: p.bg }, preset === p.key && styles.coverTileSelected]}
               activeOpacity={0.8}
+              accessibilityRole="button"
+              accessibilityLabel={t('a11y.coverPreset', { name: p.key })}
+              accessibilityState={{ selected: preset === p.key }}
             >
               <Ionicons name={p.icon} size={22} color="#fff" />
             </TouchableOpacity>
@@ -317,8 +320,9 @@ export default function GroupsScreen({ navigation }) {
 
   useFocusEffect(
     useCallback(() => {
+      loadMine();
       loadPending();
-    }, [loadPending])
+    }, [loadMine, loadPending])
   );
 
   if (loading) return <View style={styles.center}><ActivityIndicator size="large" color={colors.primary} /></View>;
