@@ -1,8 +1,9 @@
 # app/main.py
+import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.security import OAuth2PasswordBearer
 from fastapi.staticfiles import StaticFiles
+from starlette.responses import JSONResponse
 from pathlib import Path
 from .database import init_db
 from .routers import auth_router, books_router, userbooks_router, notes_router, follow_router, profile_router, googlebooks_router, likes_comments, users_router, admin_router, reading_activity_router, push_router, groups_router, import_router, meta_router
@@ -16,7 +17,7 @@ app = FastAPI(
     description="A simple API for tracking and sharing book reading progress.",
     version="1.0.0",
     openapi_tags=[
-        {"name": "auth", "description": "Signup and login"},
+        {"name": "auth", "description": "Google sign-in and account deletion"},
         {"name": "books", "description": "Book library and details"},
         {"name": "userbooks", "description": "Track user's reading status"},
         {"name": "notes", "description": "User notes and highlights"},
@@ -24,8 +25,64 @@ app = FastAPI(
     ],
 )
 
-# Step 2: Enable Swagger's Authorize button for JWT
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
+_error_log = logging.getLogger("app.errors")
+
+
+class CatchUnhandledErrorsMiddleware:
+    """F-58: turn an unhandled exception into a JSON 500 *inside* CORSMiddleware, so the browser
+    can read it. Starlette's ServerErrorMiddleware sits outside CORS and strips the allow headers."""
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http":
+            return await self.app(scope, receive, send)
+        response_started = False
+
+        async def send_tracking(message):
+            nonlocal response_started
+            if message["type"] == "http.response.start":
+                response_started = True
+            await send(message)
+
+        try:
+            await self.app(scope, receive, send_tracking)
+        except Exception:
+            _error_log.exception("Unhandled error on %s %s", scope.get("method"), scope.get("path"))   # path only, no query string
+            if response_started:
+                raise   # headers already sent (e.g. a background task failed after the response) — nothing to rewrite
+            await JSONResponse({"detail": "Internal Server Error"}, status_code=500)(scope, receive, send)
+
+
+_SECURITY_HEADERS = (
+    (b"x-content-type-options", b"nosniff"),
+    (b"referrer-policy", b"strict-origin-when-cross-origin"),
+    (b"x-frame-options", b"DENY"),
+    (b"strict-transport-security", b"max-age=31536000; includeSubDomains"),
+)
+
+
+class SecurityHeadersMiddleware:
+    """F-56: baseline security headers on every HTTP response. A JSON API needs no CSP."""
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http":
+            return await self.app(scope, receive, send)
+
+        async def send_with_headers(message):
+            if message["type"] == "http.response.start":
+                headers = list(message.get("headers", []))
+                present = {k.lower() for k, _ in headers}
+                headers.extend(h for h in _SECURITY_HEADERS if h[0] not in present)
+                message["headers"] = headers
+            await send(message)
+
+        await self.app(scope, receive, send_with_headers)
+
+
+app.add_middleware(CatchUnhandledErrorsMiddleware)   # 1st → innermost: exceptions become responses inside CORS
 
 # ---------------------
 # Step 3: Allow CORS (so frontends can talk to it)
@@ -63,6 +120,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.add_middleware(SecurityHeadersMiddleware)        # 3rd → outermost: every response, preflights included
 
 # ---------------------
 # Step 4: Register all routers

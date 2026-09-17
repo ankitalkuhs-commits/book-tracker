@@ -90,6 +90,20 @@ class TestDailyStats:
         assert r7.status_code == 200
         assert len(r7.json()["data"]) == 7
 
+    # ── F-51: bounded `days` (T-A2-42) ───────────────────────────────────────
+
+    def test_days_bounds_422(self, client, db):
+        user = _make_user(db, email="f51_days_bounds@example.com")
+        h = _auth(user)
+        for days, expected in [(0, 422), (-1, 422), (201, 422), (200, 200), (1, 200)]:
+            r = client.get(f"/reading-activity/daily?days={days}", headers=h)
+            assert r.status_code == expected, f"days={days}"
+
+        public_user = _make_user(db, email="f51_days_public@example.com")
+        for days, expected in [(0, 422), (201, 422), (200, 200)]:
+            r = client.get(f"/reading-activity/user/{public_user.id}/daily?days={days}", headers=h)
+            assert r.status_code == expected, f"days={days}"
+
 
 class TestInsights:
     def test_insights_requires_auth(self, client):
@@ -172,6 +186,40 @@ class TestInsights:
         client.patch(f"/userbooks/{ub_id}", json={"rating": 4}, headers=h)
         r = client.get("/reading-activity/insights", headers=h)
         assert r.json()["avg_rating"] == 4.0
+
+    # ── F-13 + F-14: Android <=2.2.1 aliases (T-A2-40, T-A2-41) ──────────────
+
+    def test_yearly_goal_has_completed_and_finished_alias(self, client, db):
+        user = _make_user(db, email="f13_yearly_goal@example.com")
+        h = _auth(user)
+        client.put("/profile/me", json={"yearly_goal": 12}, headers=h)
+        _add_book(client, h, title="F13 Finished Book", pages=100, status="finished")
+        r = client.get("/reading-activity/insights", headers=h)
+        goal = r.json()["yearly_goal"]
+        assert set(goal.keys()) == {"goal", "completed", "pct", "on_track", "finished"}
+        assert goal["finished"] == goal["completed"] == 1
+
+    def test_mobile_alias_keys_present(self, client, db):
+        user = _make_user(db, email="f14_mobile_alias@example.com")
+        h = _auth(user)
+        finished = _add_book(client, h, title="F14 Finished", pages=100, status="finished")
+        ub_id = finished.json()["id"]
+        client.patch(f"/userbooks/{ub_id}", json={"rating": 4}, headers=h)
+        reading = _add_book(client, h, title="F14 Reading", pages=300, status="reading")
+        r_ub_id = reading.json()["id"]
+        client.put(f"/userbooks/{r_ub_id}/progress", json={"current_page": 30}, headers=h)
+        r = client.get("/reading-activity/insights", headers=h)
+        data = r.json()
+        assert set(data.keys()) == {
+            "avg_pages_per_day", "avg_rating", "current_streak", "finished_this_year",
+            "longest_streak", "monthly_pages", "projected_finishes", "total_books",
+            "total_finished", "total_pages_read", "total_reading", "yearly_goal",
+            "average_rating", "books_this_year",
+        }
+        assert data["average_rating"] == data["avg_rating"]
+        assert data["books_this_year"] == data["finished_this_year"]
+        for p in data["projected_finishes"]:
+            assert p["projected_finish_date"] == p["projected_finish"]
 
 
 class TestPublicUserDaily:

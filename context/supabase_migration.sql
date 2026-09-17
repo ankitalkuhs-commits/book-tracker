@@ -148,3 +148,137 @@ ALTER TABLE group_post ADD COLUMN IF NOT EXISTS image_url TEXT;
 
 -- ── Done ──────────────────────────────────────────────────
 SELECT 'Migration complete' AS status;
+
+-- ════════════════════════════════════════════════════════════════════════════
+-- Sprint 4A · F-53 · unique (user_id, book_id), (note_id, user_id), (follower_id, followed_id)
+-- Run STEP 1, read the numbers, then STEP 2, then STEP 3 — each on its own — BEFORE deploying
+-- the 4A backend. Re-running any step is harmless. Rollback at the end.
+-- ════════════════════════════════════════════════════════════════════════════
+
+-- STEP 1 — READ-ONLY: duplicate groups and surplus rows per table
+SELECT 'userbook' AS tbl, COUNT(*) AS dup_groups, COALESCE(SUM(n - 1), 0) AS surplus_rows
+  FROM (SELECT user_id, book_id, COUNT(*) AS n FROM userbook GROUP BY user_id, book_id HAVING COUNT(*) > 1) d
+UNION ALL
+SELECT 'like', COUNT(*), COALESCE(SUM(n - 1), 0)
+  FROM (SELECT note_id, user_id, COUNT(*) AS n FROM "like" GROUP BY note_id, user_id HAVING COUNT(*) > 1) d
+UNION ALL
+SELECT 'follow', COUNT(*), COALESCE(SUM(n - 1), 0)
+  FROM (SELECT follower_id, followed_id, COUNT(*) AS n FROM follow GROUP BY follower_id, followed_id HAVING COUNT(*) > 1) d;
+
+-- STEP 1b — READ-ONLY preview: duplicate library entries side by side (keeper = lowest id)
+SELECT ub.user_id, ub.book_id, ub.id, MIN(ub.id) OVER (PARTITION BY ub.user_id, ub.book_id) AS keeper_id,
+       ub.status, ub.current_page, ub.rating, ub.created_at, ub.updated_at
+  FROM userbook ub
+ WHERE (ub.user_id, ub.book_id) IN (SELECT user_id, book_id FROM userbook GROUP BY 1, 2 HAVING COUNT(*) > 1)
+ ORDER BY ub.user_id, ub.book_id, ub.id;
+
+-- STEP 2 — DEDUPE (one transaction). Keeper = the oldest row (lowest id). Backups kept for rollback.
+BEGIN;
+
+-- 2a. surplus userbooks (not the keeper), with the keeper each folds into
+CREATE TABLE IF NOT EXISTS dedupe_20260913_userbook AS
+  SELECT ub.*, k.keeper_id
+    FROM userbook ub
+    JOIN (SELECT user_id, book_id, MIN(id) AS keeper_id FROM userbook GROUP BY 1, 2 HAVING COUNT(*) > 1) k
+      ON k.user_id = ub.user_id AND k.book_id = ub.book_id
+   WHERE ub.id <> k.keeper_id;
+
+-- 2b. keepers as they are now (to undo 2c)
+CREATE TABLE IF NOT EXISTS dedupe_20260913_userbook_keeper AS
+  SELECT * FROM userbook WHERE id IN (SELECT DISTINCT keeper_id FROM dedupe_20260913_userbook);
+
+-- 2c. the kept (oldest) row absorbs its duplicates' progress and status
+--     (resolved, orchestrator default 2026-09-13):
+--       current_page = the highest across the keeper and its duplicates
+--       status       = the most advanced: finished > reading > to-read
+--       rating       = the keeper's if non-null (and not 0), else the most recently updated
+--                      duplicate's non-null rating
+--       updated_at   = the latest across the group
+--     Nothing else on the keeper changes. The EXISTS guard applies this only while the
+--     duplicates still exist, so re-running STEP 2 after 2f cannot overwrite later user edits.
+UPDATE userbook k
+   SET current_page = GREATEST(k.current_page, agg.max_page),          -- GREATEST ignores NULLs
+       status = CASE GREATEST(CASE k.status WHEN 'finished' THEN 3 WHEN 'reading' THEN 2 ELSE 1 END, agg.max_rank)
+                  WHEN 3 THEN 'finished' WHEN 2 THEN 'reading' ELSE 'to-read' END,
+       rating = COALESCE(NULLIF(k.rating, 0), agg.dup_rating, k.rating),
+       updated_at = GREATEST(k.updated_at, agg.max_updated)
+  FROM (
+    SELECT keeper_id,
+           MAX(current_page) AS max_page,
+           MAX(CASE status WHEN 'finished' THEN 3 WHEN 'reading' THEN 2 ELSE 1 END) AS max_rank,
+           (ARRAY_AGG(rating ORDER BY updated_at DESC NULLS LAST, id DESC)
+              FILTER (WHERE rating IS NOT NULL AND rating <> 0))[1] AS dup_rating,
+           MAX(updated_at) AS max_updated
+      FROM dedupe_20260913_userbook
+     GROUP BY keeper_id
+  ) agg
+ WHERE k.id = agg.keeper_id
+   AND EXISTS (SELECT 1 FROM userbook s JOIN dedupe_20260913_userbook d ON d.id = s.id
+                WHERE d.keeper_id = k.id);
+
+-- 2d. remember every dependent row we repoint (to undo 2e)
+CREATE TABLE IF NOT EXISTS dedupe_20260913_repoint AS
+  SELECT 'note'::text AS tbl, n.id AS row_id, n.userbook_id AS old_userbook_id
+    FROM note n JOIN dedupe_20260913_userbook d ON n.userbook_id = d.id
+  UNION ALL
+  SELECT 'reading_activity', r.id, r.userbook_id
+    FROM reading_activity r JOIN dedupe_20260913_userbook d ON r.userbook_id = d.id
+  UNION ALL
+  SELECT 'group_post', g.id, g.userbook_id
+    FROM group_post g JOIN dedupe_20260913_userbook d ON g.userbook_id = d.id;
+
+-- 2e. repoint dependents from the surplus row to its keeper
+UPDATE note n             SET userbook_id = d.keeper_id FROM dedupe_20260913_userbook d WHERE n.userbook_id = d.id;
+UPDATE reading_activity r SET userbook_id = d.keeper_id FROM dedupe_20260913_userbook d WHERE r.userbook_id = d.id;
+UPDATE group_post g       SET userbook_id = d.keeper_id FROM dedupe_20260913_userbook d WHERE g.userbook_id = d.id;
+DO $$ BEGIN
+  IF to_regclass('public.journal') IS NOT NULL THEN
+    INSERT INTO dedupe_20260913_repoint
+      SELECT 'journal', j.id, j.entry_id FROM journal j JOIN dedupe_20260913_userbook d ON j.entry_id = d.id;
+    UPDATE journal j SET entry_id = d.keeper_id FROM dedupe_20260913_userbook d WHERE j.entry_id = d.id;
+  END IF;
+END $$;
+
+-- 2f. drop the surplus userbooks
+DELETE FROM userbook WHERE id IN (SELECT id FROM dedupe_20260913_userbook);
+
+-- 2g. likes and follows have no dependents: back up and delete surplus rows
+CREATE TABLE IF NOT EXISTS dedupe_20260913_like AS
+  SELECT l.* FROM "like" l
+    JOIN (SELECT note_id, user_id, MIN(id) AS keeper_id FROM "like" GROUP BY 1, 2 HAVING COUNT(*) > 1) k
+      ON k.note_id = l.note_id AND k.user_id = l.user_id
+   WHERE l.id <> k.keeper_id;
+DELETE FROM "like" WHERE id IN (SELECT id FROM dedupe_20260913_like);
+
+CREATE TABLE IF NOT EXISTS dedupe_20260913_follow AS
+  SELECT f.* FROM follow f
+    JOIN (SELECT follower_id, followed_id, MIN(id) AS keeper_id FROM follow GROUP BY 1, 2 HAVING COUNT(*) > 1) k
+      ON k.follower_id = f.follower_id AND k.followed_id = f.followed_id
+   WHERE f.id <> k.keeper_id;
+DELETE FROM follow WHERE id IN (SELECT id FROM dedupe_20260913_follow);
+
+COMMIT;
+
+-- STEP 3 — unique indexes (fails loudly if any duplicate survived STEP 2), then verify
+CREATE UNIQUE INDEX IF NOT EXISTS uq_userbook_user_book ON userbook (user_id, book_id);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_like_note_user     ON "like" (note_id, user_id);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_follow_pair        ON follow (follower_id, followed_id);
+SELECT indexname FROM pg_indexes WHERE indexname IN ('uq_userbook_user_book', 'uq_like_note_user', 'uq_follow_pair');
+
+-- ROLLBACK (only if needed; indexes first, data second):
+-- DROP INDEX IF EXISTS uq_userbook_user_book; DROP INDEX IF EXISTS uq_like_note_user; DROP INDEX IF EXISTS uq_follow_pair;
+-- INSERT INTO userbook (id, user_id, book_id, status, current_page, rating, private_notes, format, ownership_status,
+--                       borrowed_from, loaned_to, created_at, updated_at)
+--   SELECT id, user_id, book_id, status, current_page, rating, private_notes, format, ownership_status,
+--          borrowed_from, loaned_to, created_at, updated_at FROM dedupe_20260913_userbook;
+-- UPDATE note n             SET userbook_id = r.old_userbook_id FROM dedupe_20260913_repoint r WHERE r.tbl = 'note'             AND n.id = r.row_id;
+-- UPDATE reading_activity a SET userbook_id = r.old_userbook_id FROM dedupe_20260913_repoint r WHERE r.tbl = 'reading_activity' AND a.id = r.row_id;
+-- UPDATE group_post g       SET userbook_id = r.old_userbook_id FROM dedupe_20260913_repoint r WHERE r.tbl = 'group_post'       AND g.id = r.row_id;
+-- UPDATE journal j          SET entry_id    = r.old_userbook_id FROM dedupe_20260913_repoint r WHERE r.tbl = 'journal'          AND j.id = r.row_id;
+-- -- undo 2c: restore exactly the four fields 2c changes, from the pre-2c keeper backup (2b)
+-- UPDATE userbook k SET status = b.status, current_page = b.current_page, rating = b.rating,
+--        updated_at = b.updated_at FROM dedupe_20260913_userbook_keeper b WHERE k.id = b.id;
+-- Order for a full undo: DROP INDEX → re-INSERT the surplus userbooks → repoint dependents back → undo 2c → re-INSERT likes/follows.
+-- INSERT INTO "like" SELECT * FROM dedupe_20260913_like;
+-- INSERT INTO follow SELECT * FROM dedupe_20260913_follow;
+-- Backup tables can be dropped by the PM after a successful release (not before 2026-10-13).

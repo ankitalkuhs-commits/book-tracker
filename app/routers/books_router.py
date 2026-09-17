@@ -1,6 +1,7 @@
 # app/routers/books_router.py
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks
 from sqlmodel import select, Session
+from sqlalchemy.exc import IntegrityError
 from app.models import Book, UserBook, User
 from app.database import get_db
 from app.deps import get_current_user, get_admin_user
@@ -18,6 +19,8 @@ class AddBookFromGooglePayload(BaseModel):
     author: Optional[str] = None
     isbn: Optional[str] = None
     google_books_id: Optional[str] = None
+    book_id: Optional[int] = None  # F-07: an existing catalogue row (e.g. from recommendations, friends-reading,
+                                    # a note card, or a circle's current book) wins over gid/isbn matching
     cover_url: Optional[str] = None
     description: Optional[str] = None
     total_pages: Optional[int] = None
@@ -31,23 +34,37 @@ class AddBookFromGooglePayload(BaseModel):
     loaned_to: Optional[str] = None  # Person's name if loaned
 
 
+def _already_in_library(existing: UserBook) -> HTTPException:
+    """F-53: the same 400 used for both the sequential duplicate check and a race caught by the DB constraint."""
+    status_map = {
+        "to-read": "Want to Read",
+        "reading": "Currently Reading",
+        "finished": "Finished",
+    }
+    tab_name = status_map.get(existing.status, existing.status)
+    return HTTPException(
+        status_code=400,
+        detail=f"This book is already in your library in the '{tab_name}' tab."
+    )
+
+
 # --- POST: Add book from Google Books to user's library ---
 @router.post("/add-to-library")
 def add_book_to_library(
     payload: AddBookFromGooglePayload,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     """
     Add a book from Google Books API to the user's library.
-    - Checks if book exists in Book table by ISBN (avoids duplicates)
+    - Checks if book exists in Book table by book_id, then google_books_id, then ISBN (avoids duplicates)
     - Creates UserBook entry linking user to the book
     - Returns error if book already in user's library
     """
-    book = None
-
-    # Step 1: Check if book already exists by google_books_id, then isbn
-    if payload.google_books_id:
+    # Step 1: Check if book already exists — book_id (an existing catalogue row) wins, then google_books_id, then isbn
+    book = db.get(Book, payload.book_id) if payload.book_id else None   # an unknown book_id falls through, no 404
+    if not book and payload.google_books_id:
         book = db.exec(select(Book).where(Book.google_books_id == payload.google_books_id)).first()
     if not book and payload.isbn:
         book = db.exec(select(Book).where(Book.isbn == payload.isbn)).first()
@@ -79,19 +96,8 @@ def add_book_to_library(
     ).first()
     
     if existing_userbook:
-        # Map status to tab name for user-friendly message
-        status_map = {
-            "to-read": "Want to Read",
-            "reading": "Currently Reading",
-            "finished": "Finished"
-        }
-        tab_name = status_map.get(existing_userbook.status, existing_userbook.status)
-        
-        raise HTTPException(
-            status_code=400,
-            detail=f"This book is already in your library in the '{tab_name}' tab."
-        )
-    
+        raise _already_in_library(existing_userbook)
+
     # Step 4: Create UserBook entry
     userbook = UserBook(
         user_id=current_user.id,
@@ -106,13 +112,26 @@ def add_book_to_library(
         updated_at=datetime.utcnow(),
     )
     db.add(userbook)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        # F-53: a concurrent request won the race on (user_id, book_id) between our check and our commit.
+        db.rollback()
+        winner = db.exec(
+            select(UserBook).where(
+                UserBook.user_id == current_user.id,
+                UserBook.book_id == book.id
+            )
+        ).first()
+        raise _already_in_library(winner)
     db.refresh(userbook)
 
-    # Notify followers that this user added a book
+    # Notify followers that this user added a book (F-59: after the response — the recipient
+    # list is fixed now, before the background task runs)
     follower_ids = get_follower_ids(db, current_user.id)
     actor_name = current_user.name or getattr(current_user, 'username', None) or "Someone"
-    fire_event(
+    background_tasks.add_task(
+        fire_event,
         db=db,
         event_type="book_added",
         actor_id=current_user.id,
@@ -204,7 +223,7 @@ def add_book(book_data: dict, db: Session = Depends(get_db), _=Depends(get_curre
 
 # --- GET a single book by ID ---
 @router.get("/recommendations")
-def get_recommendations(limit: int = 12, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def get_recommendations(limit: int = Query(12, ge=1, le=200), db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """
     Returns book recommendations for the current user.
     Strategy (in order of priority):
@@ -305,13 +324,15 @@ def get_recommendations(limit: int = 12, db: Session = Depends(get_db), current_
             "description": r["book"].description,
             "reason": r["reason"],
             "friend_name": r.get("friend_name"),
+            "google_books_id": r["book"].google_books_id,
+            "isbn": r["book"].isbn,
         }
         for r in sorted_recs
     ]
 
 
 @router.get("/search")
-def search_books(q: str, limit: int = 20, db: Session = Depends(get_db), _=Depends(get_current_user)):
+def search_books(q: str, limit: int = Query(20, ge=1, le=200), db: Session = Depends(get_db), _=Depends(get_current_user)):
     """Search the local book catalog by title or author."""
     from sqlalchemy import or_
     results = db.exec(

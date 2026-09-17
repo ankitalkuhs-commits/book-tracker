@@ -2,7 +2,7 @@
 Groups (Literary Circles) router.
 Handles: CRUD, membership, invites, posts, leaderboard, group book, goals.
 """
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks, Query
 from sqlmodel import Session, select, func
 from typing import List, Optional
 from datetime import datetime, timedelta
@@ -45,6 +45,29 @@ def _group_or_404(db, group_id: int) -> models.ReadingGroup:
         raise HTTPException(status_code=404, detail="Group not found")
     return g
 
+def _goal_pages_read(db, g: models.ReadingGroup) -> int:
+    """Pages read by the group's active members toward its goal (same window logic as /goal)."""
+    members = db.exec(
+        select(models.GroupMember).where(
+            models.GroupMember.group_id == g.id,
+            models.GroupMember.status == "active",
+        )
+    ).all()
+    user_ids = [m.user_id for m in members]
+
+    since = g.goal_start_date
+    if g.goal_period == "monthly" and since:
+        now = datetime.utcnow()
+        since = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+
+    ra_q = select(func.sum(models.ReadingActivity.pages_read)).where(
+        models.ReadingActivity.user_id.in_(user_ids)
+    )
+    if since:
+        ra_q = ra_q.where(models.ReadingActivity.date >= since)
+    total_pages = db.exec(ra_q).one() or 0
+    return int(total_pages)
+
 def _serialize_group(db, g: models.ReadingGroup, user_id: int) -> dict:
     membership = _is_member(db, g.id, user_id, require_active=False)
     book = db.get(models.Book, g.current_book_id) if g.current_book_id else None
@@ -64,6 +87,8 @@ def _serialize_group(db, g: models.ReadingGroup, user_id: int) -> dict:
         "current_book": {
             "id": book.id, "title": book.title,
             "author": book.author, "cover_url": book.cover_url,
+            "google_books_id": book.google_books_id, "isbn": book.isbn,
+            "total_pages": book.total_pages,
         } if book else None,
         "member_count": _member_count(db, g.id),
         "membership_status": membership.status if membership else None,
@@ -81,6 +106,7 @@ class CreateGroupBody(BaseModel):
     cover_preset: str = "teal"
     goal_pages: Optional[int] = None
     goal_period: Optional[str] = None   # 'monthly' | 'yearly'
+    reading_goal: Optional[int] = None  # alias of goal_pages sent by Android ≤2.2.1 (GroupsScreen.js:93); remove once 2.2.2 is the minimum
     invite_user_ids: List[int] = []
 
 class UpdateGroupBody(BaseModel):
@@ -385,13 +411,15 @@ def create_group(
     if body.goal_period:
         goal_start = datetime.utcnow().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
 
+    goal_pages = body.goal_pages if body.goal_pages is not None else body.reading_goal
+
     g = models.ReadingGroup(
         name=body.name.strip(),
         description=body.description,
         is_private=body.is_private,
         cover_preset=body.cover_preset,
         created_by=me.id,
-        goal_pages=body.goal_pages,
+        goal_pages=goal_pages,
         goal_period=body.goal_period,
         goal_start_date=goal_start,
     )
@@ -429,7 +457,10 @@ def get_group(
     # Private groups: only members can view
     if g.is_private and not _is_member(db, group_id, me.id):
         raise HTTPException(status_code=403, detail="This is a private group")
-    return _serialize_group(db, g, me.id)
+    out = _serialize_group(db, g, me.id)
+    out["reading_goal"] = g.goal_pages                                  # Android ≤2.2.1 alias
+    out["pages_read_total"] = _goal_pages_read(db, g) if g.goal_pages else 0
+    return out
 
 
 # ─── Update ───────────────────────────────────────────────────────────────────
@@ -472,8 +503,10 @@ def delete_group(
     g = _group_or_404(db, group_id)
     if g.created_by != me.id:
         raise HTTPException(status_code=403, detail="Only the group creator can delete it")
-    # Delete members, posts, then group
-    db.exec(select(models.GroupMember).where(models.GroupMember.group_id == group_id))
+    # F-50: delete activity, members, posts, then the group. Prod ON DELETE CASCADE exists only if
+    # the migration file created the table; create_all may not have, so this is explicit.
+    for a in db.exec(select(models.GroupActivity).where(models.GroupActivity.group_id == group_id)).all():
+        db.delete(a)
     for m in db.exec(select(models.GroupMember).where(models.GroupMember.group_id == group_id)).all():
         db.delete(m)
     for p in db.exec(select(models.GroupPost).where(models.GroupPost.group_id == group_id)).all():
@@ -487,6 +520,7 @@ def delete_group(
 @router.post("/{group_id}/join", status_code=201)
 def join_group(
     group_id: int,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     me: models.User = Depends(get_current_user),
 ):
@@ -499,7 +533,7 @@ def join_group(
     db.add(models.GroupMember(group_id=group_id, user_id=me.id, role="member", status=member_status))
     db.commit()
     if member_status == "active":
-        fire_group_activity(db, group_id, me.id, "member_joined")
+        background_tasks.add_task(fire_group_activity, db, group_id, me.id, "member_joined")
     elif member_status == "pending":
         # Notify all curators that someone wants to join
         curators = db.exec(
@@ -511,7 +545,8 @@ def join_group(
         ).all()
         curator_ids = [c.user_id for c in curators]
         if curator_ids:
-            fire_event(
+            background_tasks.add_task(
+                fire_event,
                 db=db,
                 event_type="group_join_request",
                 actor_id=me.id,
@@ -612,6 +647,7 @@ def get_pending(
 @router.post("/{group_id}/approve/{user_id}", status_code=200)
 def approve_member(
     group_id: int, user_id: int,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     me: models.User = Depends(get_current_user),
 ):
@@ -623,9 +659,10 @@ def approve_member(
     m.status = "active"
     db.add(m)
     db.commit()
-    fire_group_activity(db, group_id, user_id, "member_joined")
     g = _group_or_404(db, group_id)
-    fire_event(
+    background_tasks.add_task(fire_group_activity, db, group_id, user_id, "member_joined")
+    background_tasks.add_task(
+        fire_event,
         db=db,
         event_type="group_join_approved",
         actor_id=me.id,
@@ -639,6 +676,7 @@ def approve_member(
 @router.post("/{group_id}/reject/{user_id}", status_code=204)
 def reject_member(
     group_id: int, user_id: int,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     me: models.User = Depends(get_current_user),
 ):
@@ -647,15 +685,17 @@ def reject_member(
     m = _is_member(db, group_id, user_id, require_active=False)
     if m:
         g = _group_or_404(db, group_id)
+        group_name = g.name   # captured before the delete
         db.delete(m)
         db.commit()
-        fire_event(
+        background_tasks.add_task(
+            fire_event,
             db=db,
             event_type="group_join_rejected",
             actor_id=me.id,
             actor_name=me.name or me.username or "The curator",
             recipient_ids=[user_id],
-            extra={"group_name": g.name, "group_id": group_id},
+            extra={"group_name": group_name, "group_id": group_id},
         )
 
 
@@ -676,6 +716,7 @@ def remove_member(
 @router.post("/{group_id}/invite/{user_id}", status_code=201)
 def invite_user(
     group_id: int, user_id: int,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     me: models.User = Depends(get_current_user),
 ):
@@ -694,7 +735,8 @@ def invite_user(
     ))
     db.commit()
     # Notify the invited user
-    fire_event(
+    background_tasks.add_task(
+        fire_event,
         db=db,
         event_type="group_invite",
         actor_id=me.id,
@@ -731,6 +773,7 @@ def join_by_invite_code(
 @router.post("/{group_id}/accept", status_code=200)
 def accept_invite(
     group_id: int,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     me: models.User = Depends(get_current_user),
 ):
@@ -741,7 +784,7 @@ def accept_invite(
     m.status = "active"
     db.add(m)
     db.commit()
-    fire_group_activity(db, group_id, me.id, "member_joined")
+    background_tasks.add_task(fire_group_activity, db, group_id, me.id, "member_joined")
     return {"ok": True}
 
 
@@ -970,25 +1013,7 @@ def get_goal_progress(
     if not g.goal_pages:
         return {"goal_pages": None, "pages_read": 0, "pct": 0}
 
-    members = db.exec(
-        select(models.GroupMember).where(
-            models.GroupMember.group_id == group_id,
-            models.GroupMember.status == "active",
-        )
-    ).all()
-    user_ids = [m.user_id for m in members]
-
-    since = g.goal_start_date
-    if g.goal_period == "monthly" and since:
-        now = datetime.utcnow()
-        since = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-
-    ra_q = select(func.sum(models.ReadingActivity.pages_read)).where(
-        models.ReadingActivity.user_id.in_(user_ids)
-    )
-    if since:
-        ra_q = ra_q.where(models.ReadingActivity.date >= since)
-    total_pages = db.exec(ra_q).one() or 0
+    total_pages = _goal_pages_read(db, g)
 
     pct = min(100, round((total_pages / g.goal_pages) * 100)) if g.goal_pages else 0
     return {
@@ -1005,6 +1030,7 @@ def get_goal_progress(
 def set_group_book(
     group_id: int,
     body: SetBookBody,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     me: models.User = Depends(get_current_user),
 ):
@@ -1044,8 +1070,11 @@ def set_group_book(
     g.current_book_id = book.id
     db.add(g)
     db.commit()
-    fire_group_activity(db, group_id, me.id, "group_book_changed", {"book_title": book.title})
-    return {"id": book.id, "title": book.title, "author": book.author, "cover_url": book.cover_url}
+    background_tasks.add_task(fire_group_activity, db, group_id, me.id, "group_book_changed", {"book_title": book.title})
+    return {
+        "id": book.id, "title": book.title, "author": book.author, "cover_url": book.cover_url,
+        "google_books_id": book.google_books_id, "isbn": book.isbn, "total_pages": book.total_pages,
+    }
 
 
 @router.delete("/{group_id}/book", status_code=204)
@@ -1067,7 +1096,7 @@ def clear_group_book(
 @router.get("/{group_id}/activity")
 def get_group_activity(
     group_id: int,
-    limit: int = 50,
+    limit: int = Query(50, ge=1, le=200),
     db: Session = Depends(get_db),
     me: models.User = Depends(get_current_user),
 ):
