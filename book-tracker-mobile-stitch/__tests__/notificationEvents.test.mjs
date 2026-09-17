@@ -10,7 +10,13 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { parseSource, readSource, MOBILE_ROOT, REPO_ROOT } from './_ast.mjs';
+import { parseMobileFile, readMobile, readRepo } from './_ast.mjs';
+// Package A owns _ast.mjs and its export names are the frozen contract (architecture T-22).
+// This file was written against a provisional API; these two aliases adapt the calls below
+// rather than renaming _ast.mjs, which every other test file already imports correctly.
+const parseSource = (rel) => parseMobileFile(rel);
+const readSource = (rel, fromRepoRoot) => (fromRepoRoot ? readRepo(rel) : readMobile(rel));
+const REPO_ROOT = true;   // only ever passed as readSource(..., REPO_ROOT)
 
 const SCREEN_REL = 'src/screens/NotificationsScreen.js';
 
