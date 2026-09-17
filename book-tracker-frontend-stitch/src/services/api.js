@@ -52,6 +52,14 @@ async function apiFetchRaw(path, options = {}) {
   const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
 
   if (res.status === 401) {
+    const body = await res.json().catch(() => ({}));
+    // Anonymous Google Books quota (F-29): a logged-out visitor must not be bounced to "/".
+    if (!token && body?.detail?.code === 'login_required') {
+      const e = new Error(body.detail.message || 'Log in to keep searching');
+      e.status = 401;
+      e.code = 'login_required';
+      throw e;
+    }
     clearToken();
     window.location.href = '/';
     return;
@@ -59,7 +67,11 @@ async function apiFetchRaw(path, options = {}) {
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: 'Request failed' }));
-    throw new Error(err.detail || 'Request failed');
+    const d = err.detail;
+    const e = new Error(typeof d === 'string' ? d : (d?.message || 'Request failed'));
+    e.status = res.status;
+    if (d && typeof d === 'object' && d.code) e.code = d.code;
+    throw e;
   }
 
   if (res.status === 204) return null;
@@ -77,6 +89,9 @@ export const demoLogin = () =>
 function invalidateUserBooks() { cacheClear('/userbooks'); cacheClear('/notes'); }
 function invalidateFeed() { cacheClear('/notes'); }
 function invalidateProfile() { cacheClear('/profile'); }
+function invalidateGroups() { cacheClear('/groups'); }
+function invalidateNotifications() { cacheClear('/notifications'); }
+function invalidateSocial() { cacheClear('/follow'); cacheClear('/users'); cacheClear('/profile'); cacheClear('/notes'); cacheClear('/userbooks/friends'); cacheClear('/books/recommendations'); }
 
 // Profile
 export const getMyProfile = () => apiFetch('/profile/me');
@@ -93,6 +108,7 @@ export const uploadProfilePicture = async (file) => {
     body: form,
   });
   if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.detail || 'Upload failed'); }
+  invalidateProfile();
   return res.json();
 };
 export const getPublicProfile = (userId) => apiFetch(`/profile/${userId}`);
@@ -178,18 +194,23 @@ export const deleteNote = (noteId) =>
 
 // Likes & Comments
 export const likeNote = (noteId) =>
-  apiFetch(`/notes/${noteId}/like`, { method: 'POST' });
+  apiFetch(`/notes/${noteId}/like`, { method: 'POST' })
+    .then(r => { invalidateFeed(); return r; });
 export const unlikeNote = (noteId) =>
-  apiFetch(`/notes/${noteId}/like`, { method: 'DELETE' });
+  apiFetch(`/notes/${noteId}/like`, { method: 'DELETE' })
+    .then(r => { invalidateFeed(); return r; });
 export const getComments = (noteId) => apiFetch(`/notes/${noteId}/comments`);
 export const addComment = (noteId, text) =>
-  apiFetch(`/notes/${noteId}/comments`, { method: 'POST', body: JSON.stringify({ text }) });
+  apiFetch(`/notes/${noteId}/comments`, { method: 'POST', body: JSON.stringify({ text }) })
+    .then(r => { invalidateFeed(); return r; });
 
 // Follow
 export const followUser = (userId) =>
-  apiFetch(`/follow/${userId}`, { method: 'POST' });
+  apiFetch(`/follow/${userId}`, { method: 'POST' })
+    .then(r => { invalidateSocial(); return r; });
 export const unfollowUser = (userId) =>
-  apiFetch(`/follow/${userId}`, { method: 'DELETE' });
+  apiFetch(`/follow/${userId}`, { method: 'DELETE' })
+    .then(r => { invalidateSocial(); return r; });
 export const getFollowers = () => apiFetch('/follow/followers');
 // /users/following returns full user objects (id, name, username…); /follow/following only returns ids
 export const getFollowing = () => apiFetch('/users/following');
@@ -209,38 +230,65 @@ export const getReadingInsights = () => apiFetch('/reading-activity/insights');
 export const getUnreadCount = () => apiFetch('/notifications/unread-count');
 export const getNotifications = () => apiFetch('/notifications/history');
 export const markAllNotificationsRead = () =>
-  apiFetch('/notifications/mark-read', { method: 'POST' });
+  apiFetch('/notifications/mark-read', { method: 'POST' })
+    .then(r => { invalidateNotifications(); return r; });
+// F-23
+export const markNotificationRead = (id) =>
+  apiFetch(`/notifications/${id}/read`, { method: 'POST' })
+    .then(r => { invalidateNotifications(); return r; });
 export const getVapidPublicKey = () => apiFetch('/notifications/vapid-public-key');
 export const webSubscribe = (subscription, deviceInfo = 'Chrome/Web') =>
   apiFetch('/notifications/web-subscribe', {
     method: 'POST',
     body: JSON.stringify({ subscription, device_info: deviceInfo }),
   });
+// F-03: called during logout with the token captured *before* clearToken(), so the request is still authenticated.
+export const webUnsubscribe = (subscription, token) =>
+  apiFetch('/notifications/web-unsubscribe', {
+    method: 'DELETE',
+    body: JSON.stringify({ subscription }),
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
 export const getNotificationPrefs = () => apiFetch('/notifications/prefs');
 export const updateNotificationPrefs = (prefs) =>
-  apiFetch('/notifications/prefs', { method: 'PATCH', body: JSON.stringify(prefs) });
+  apiFetch('/notifications/prefs', { method: 'PATCH', body: JSON.stringify(prefs) })
+    .then(r => { cacheClear('/notifications/prefs'); return r; });
 
 // Groups
 export const getMyGroups = () => apiFetch('/groups/my');
 export const discoverGroups = (q = '') => apiFetch(`/groups/discover${q ? `?q=${encodeURIComponent(q)}` : ''}`);
 export const getGroup = (id) => apiFetch(`/groups/${id}`);
-export const createGroup = (data) => apiFetch('/groups/', { method: 'POST', body: JSON.stringify(data) });
-export const updateGroup = (id, data) => apiFetch(`/groups/${id}`, { method: 'PUT', body: JSON.stringify(data) });
-export const deleteGroup = (id) => apiFetch(`/groups/${id}`, { method: 'DELETE' });
-export const joinGroup = (id) => apiFetch(`/groups/${id}/join`, { method: 'POST' });
-export const leaveGroup = (id) => apiFetch(`/groups/${id}/leave`, { method: 'DELETE' });
+export const createGroup = (data) => apiFetch('/groups/', { method: 'POST', body: JSON.stringify(data) })
+  .then(r => { invalidateGroups(); return r; });
+export const updateGroup = (id, data) => apiFetch(`/groups/${id}`, { method: 'PUT', body: JSON.stringify(data) })
+  .then(r => { invalidateGroups(); return r; });
+export const deleteGroup = (id) => apiFetch(`/groups/${id}`, { method: 'DELETE' })
+  .then(r => { invalidateGroups(); return r; });
+export const joinGroup = (id) => apiFetch(`/groups/${id}/join`, { method: 'POST' })
+  .then(r => { invalidateGroups(); return r; });
+export const leaveGroup = (id) => apiFetch(`/groups/${id}/leave`, { method: 'DELETE' })
+  .then(r => { invalidateGroups(); return r; });
 export const getGroupMembers = (id) => apiFetch(`/groups/${id}/members`);
 export const getPendingMembers = (id) => apiFetch(`/groups/${id}/pending`);
-export const approveGroupMember = (id, userId) => apiFetch(`/groups/${id}/approve/${userId}`, { method: 'POST' });
-export const rejectGroupMember = (id, userId) => apiFetch(`/groups/${id}/reject/${userId}`, { method: 'POST' });
-export const removeGroupMember = (id, userId) => apiFetch(`/groups/${id}/remove/${userId}`, { method: 'DELETE' });
-export const inviteToGroup = (id, userId) => apiFetch(`/groups/${id}/invite/${userId}`, { method: 'POST' });
-export const joinByInviteCode = (code) => apiFetch(`/groups/join/${code}`, { method: 'POST' });
-export const acceptGroupInvite = (id) => apiFetch(`/groups/${id}/accept`, { method: 'POST' });
-export const declineGroupInvite = (id) => apiFetch(`/groups/${id}/decline`, { method: 'DELETE' });
+export const approveGroupMember = (id, userId) => apiFetch(`/groups/${id}/approve/${userId}`, { method: 'POST' })
+  .then(r => { invalidateGroups(); return r; });
+export const rejectGroupMember = (id, userId) => apiFetch(`/groups/${id}/reject/${userId}`, { method: 'POST' })
+  .then(r => { invalidateGroups(); return r; });
+export const removeGroupMember = (id, userId) => apiFetch(`/groups/${id}/remove/${userId}`, { method: 'DELETE' })
+  .then(r => { invalidateGroups(); return r; });
+export const inviteToGroup = (id, userId) => apiFetch(`/groups/${id}/invite/${userId}`, { method: 'POST' })
+  .then(r => { invalidateGroups(); return r; });
+export const joinByInviteCode = (code) => apiFetch(`/groups/join/${code}`, { method: 'POST' })
+  .then(r => { invalidateGroups(); return r; });
+export const acceptGroupInvite = (id) => apiFetch(`/groups/${id}/accept`, { method: 'POST' })
+  .then(r => { invalidateGroups(); return r; });
+export const declineGroupInvite = (id) => apiFetch(`/groups/${id}/decline`, { method: 'DELETE' })
+  .then(r => { invalidateGroups(); return r; });
 export const getGroupPosts = (id) => apiFetch(`/groups/${id}/posts`);
-export const createGroupPost = (id, data) => apiFetch(`/groups/${id}/posts`, { method: 'POST', body: JSON.stringify(data) });
-export const deleteGroupPost = (id, postId) => apiFetch(`/groups/${id}/posts/${postId}`, { method: 'DELETE' });
+export const createGroupPost = (id, data) => apiFetch(`/groups/${id}/posts`, { method: 'POST', body: JSON.stringify(data) })
+  .then(r => { invalidateGroups(); return r; });
+export const deleteGroupPost = (id, postId) => apiFetch(`/groups/${id}/posts/${postId}`, { method: 'DELETE' })
+  .then(r => { invalidateGroups(); return r; });
 export const getGroupLeaderboard = (id, period = 'monthly') => apiFetch(`/groups/${id}/leaderboard?period=${period}`);
 export const getGroupGoal = (id) => apiFetch(`/groups/${id}/goal`);
 export const setGroupBook = (id, book) => apiFetch(`/groups/${id}/book`, {
@@ -259,8 +307,9 @@ export const setGroupBook = (id, book) => apiFetch(`/groups/${id}/book`, {
           description: book.description || null,
         }
   ),
-});
-export const clearGroupBook = (id) => apiFetch(`/groups/${id}/book`, { method: 'DELETE' });
+}).then(r => { invalidateGroups(); return r; });
+export const clearGroupBook = (id) => apiFetch(`/groups/${id}/book`, { method: 'DELETE' })
+  .then(r => { invalidateGroups(); return r; });
 export const getMyGroupInvites = () => apiFetch('/groups/invites/pending');
 export const getMyPendingGroups = () => apiFetch('/groups/my/pending');
 export const searchUsersForInvite = (q) => apiFetch(`/users/search?q=${encodeURIComponent(q)}`);
@@ -287,19 +336,24 @@ export const getCoversStatus = () => apiFetch('/import/covers-status');
 export const fixCoversBatch = (book_ids) => apiFetch('/import/fix-covers-batch', {
   method: 'POST',
   body: JSON.stringify({ book_ids }),
-});
+}).then(r => { cacheClear('/userbooks'); cacheClear('/import'); invalidateFeed(); return r; });
 
 // Admin
 export const getAdminStats = () => apiFetch('/admin/stats');
 export const getAdminUsers = () => apiFetch('/admin/users');
+// F-26: the route requires the is_admin query (admin_router.py:321); web never sent it, so this has 422'd into an empty catch.
 export const setAdminRole = (userId) =>
-  apiFetch(`/admin/set-admin/${userId}`, { method: 'POST' });
+  apiFetch(`/admin/set-admin/${userId}?is_admin=true`, { method: 'POST' })
+    .then(r => { cacheClear('/admin'); return r; });
 export const sendTestPush = (userId) =>
   apiFetch(`/admin/push/test/${userId}`, { method: 'POST' });
 export const broadcastPush = (data) =>
   apiFetch('/admin/push/broadcast', { method: 'POST', body: JSON.stringify(data) });
-export const triggerBot = () => apiFetch('/admin/bot/trigger', { method: 'POST' });
+export const triggerBot = () => apiFetch('/admin/bot/trigger', { method: 'POST' })
+  .then(r => { invalidateFeed(); return r; });
 export const getAdminNotes = (limit = 50) => apiFetch(`/admin/content/notes?limit=${limit}`);
 export const getAdminComments = (limit = 100) => apiFetch(`/admin/content/comments?limit=${limit}`);
-export const adminDeleteNote = (id) => apiFetch(`/admin/content/note/${id}`, { method: 'DELETE' });
-export const adminDeleteComment = (id) => apiFetch(`/admin/content/comment/${id}`, { method: 'DELETE' });
+export const adminDeleteNote = (id) => apiFetch(`/admin/content/note/${id}`, { method: 'DELETE' })
+  .then(r => { cacheClear('/admin'); invalidateFeed(); return r; });
+export const adminDeleteComment = (id) => apiFetch(`/admin/content/comment/${id}`, { method: 'DELETE' })
+  .then(r => { cacheClear('/admin'); invalidateFeed(); return r; });

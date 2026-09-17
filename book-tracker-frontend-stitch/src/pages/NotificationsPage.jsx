@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { getNotifications, markAllNotificationsRead, getVapidPublicKey, webSubscribe } from '../services/api'
+import { getNotifications, markAllNotificationsRead, markNotificationRead, getVapidPublicKey, webSubscribe } from '../services/api'
 
 function timeAgo(dateStr) {
   if (!dateStr) return ''
@@ -39,7 +39,12 @@ function getDestination(n) {
       return '/insights'
     case 'group_invite':
     case 'group_join_request':
+    case 'group_join_approved':
       return data.group_id ? `/groups/${data.group_id}` : '/groups'
+    case 'group_join_rejected':
+      return '/groups'
+    case 'admin_broadcast':
+      return null
     default:
       return actorId ? `/profile/${actorId}` : null
   }
@@ -189,6 +194,7 @@ export default function NotificationsPage() {
                 onClick={() => {
                   if (!n.is_read) {
                     setNotifications(prev => prev.map(x => x.id === n.id ? { ...x, is_read: true } : x))
+                    markNotificationRead(n.id).catch(() => {})
                   }
                   if (dest) navigate(dest)
                 }}
@@ -215,10 +221,10 @@ export default function NotificationsPage() {
                       {n.title}
                     </p>
                   )}
-                  <p className={`text-sm leading-relaxed ${n.is_read ? 'text-on-surface-variant/70' : 'text-on-surface'}`}>
+                  <p className={`text-sm leading-relaxed ${n.is_read ? 'text-on-surface-muted' : 'text-on-surface'}`}>
                     {n.body}
                   </p>
-                  <p className="text-xs text-on-surface-variant/60">{timeAgo(n.sent_at)}</p>
+                  <p className="text-xs text-on-surface-muted">{timeAgo(n.sent_at)}</p>
                 </div>
 
                 {/* Unread dot / nav arrow */}

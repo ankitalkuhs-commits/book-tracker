@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { getAdminStats, getAdminUsers, sendTestPush, broadcastPush, setAdminRole, triggerBot, getAdminNotes, getAdminComments, adminDeleteNote, adminDeleteComment } from '../services/api'
+import { useToast } from '../components/Toast'
 
 function StatCard({ label, value, sub }) {
   return (
@@ -12,6 +13,7 @@ function StatCard({ label, value, sub }) {
 }
 
 export default function AdminPage() {
+  const toast = useToast()
   const [stats, setStats] = useState(null)
   const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(true)
@@ -61,6 +63,8 @@ export default function AdminPage() {
   const handleBroadcast = async (e) => {
     e.preventDefault()
     if (!bTitle.trim() || !bBody.trim()) return
+    const n = stats?.push_subscribed_users
+    if (!window.confirm(`Send this push to ${n ?? 'every'} user(s) with notifications on?\n\n${bTitle.trim()}\n${bBody.trim()}`)) return
     setBroadcasting(true)
     setBroadcastResult(null)
     try {
@@ -74,12 +78,16 @@ export default function AdminPage() {
     setBroadcasting(false)
   }
 
-  const handleMakeAdmin = async (userId) => {
-    setMakingAdmin(userId)
+  const handleMakeAdmin = async (u) => {
+    if (!window.confirm(`Give admin access to ${u.name || u.email}?`)) return
+    setMakingAdmin(u.id)
     try {
-      await setAdminRole(userId)
-      setUsers(prev => prev.map(u => u.id === userId ? { ...u, is_admin: true } : u))
-    } catch { }
+      await setAdminRole(u.id)
+      setUsers(prev => prev.map(x => x.id === u.id ? { ...x, is_admin: true } : x))
+      toast('Admin access granted', 'success')
+    } catch (e) {
+      toast(e.message || 'Could not grant admin', 'error')
+    }
     setMakingAdmin(null)
   }
 
@@ -160,7 +168,7 @@ export default function AdminPage() {
             className={`pb-3 px-4 text-sm font-sans capitalize transition-colors ${
               activeTab === tab
                 ? 'text-primary font-bold border-b-2 border-primary'
-                : 'text-on-surface-variant/60 hover:text-on-surface'
+                : 'text-on-surface-muted hover:text-on-surface'
             }`}
           >
             {tab}
@@ -285,7 +293,7 @@ export default function AdminPage() {
                         {u.is_admin ? (
                           <span className="text-xs font-bold px-2 py-0.5 bg-primary/10 text-primary rounded-full">Admin</span>
                         ) : (
-                          <span className="text-xs text-on-surface-variant/40">—</span>
+                          <span className="text-xs text-on-surface-faint">—</span>
                         )}
                       </td>
                       <td className="px-5 py-3 text-on-surface-variant text-xs">
@@ -294,7 +302,7 @@ export default function AdminPage() {
                       <td className="px-5 py-3">
                         {!u.is_admin && (
                           <button
-                            onClick={() => handleMakeAdmin(u.id)}
+                            onClick={() => handleMakeAdmin(u)}
                             disabled={makingAdmin === u.id}
                             className="text-xs font-bold text-primary hover:text-primary/70 transition-colors whitespace-nowrap"
                           >
@@ -362,8 +370,8 @@ export default function AdminPage() {
                           {!n.is_public && (
                             <span className="text-xs px-2 py-0.5 rounded-full bg-surface-container-high text-on-surface-variant">private</span>
                           )}
-                          <span className="text-xs text-on-surface-variant/50">{new Date(n.created_at).toLocaleDateString()}</span>
-                          <span className="text-xs text-on-surface-variant/40">♥ {n.likes_count} · 💬 {n.comments_count}</span>
+                          <span className="text-xs text-on-surface-faint">{new Date(n.created_at).toLocaleDateString()}</span>
+                          <span className="text-xs text-on-surface-faint">♥ {n.likes_count} · 💬 {n.comments_count}</span>
                         </div>
                         {n.quote && (
                           <p className="text-xs italic text-on-surface-variant mt-0.5 truncate">"{n.quote}"</p>
@@ -375,7 +383,7 @@ export default function AdminPage() {
                       <button
                         onClick={() => handleDeleteNote(n.id)}
                         disabled={deletingNote === n.id}
-                        className="shrink-0 flex items-center gap-1 text-xs font-medium text-error/70 hover:text-error transition-colors disabled:opacity-40 px-2 py-1 rounded-lg hover:bg-error/5"
+                        className="shrink-0 flex items-center gap-1 text-xs font-medium text-error hover:text-error transition-colors disabled:opacity-40 px-2 py-1 rounded-lg hover:bg-error/5"
                       >
                         <span className="material-symbols-outlined text-base">delete</span>
                         {deletingNote === n.id ? '…' : 'Delete'}
@@ -409,15 +417,15 @@ export default function AdminPage() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-xs font-bold text-on-surface">{c.user_name || `User #${c.user_id}`}</span>
-                          <span className="text-xs text-on-surface-variant/40">on post #{c.note_id}</span>
-                          <span className="text-xs text-on-surface-variant/50">{new Date(c.created_at).toLocaleDateString()}</span>
+                          <span className="text-xs text-on-surface-faint">on post #{c.note_id}</span>
+                          <span className="text-xs text-on-surface-faint">{new Date(c.created_at).toLocaleDateString()}</span>
                         </div>
                         <p className="text-sm text-on-surface mt-0.5 line-clamp-2">{c.text}</p>
                       </div>
                       <button
                         onClick={() => handleDeleteComment(c.id)}
                         disabled={deletingComment === c.id}
-                        className="shrink-0 flex items-center gap-1 text-xs font-medium text-error/70 hover:text-error transition-colors disabled:opacity-40 px-2 py-1 rounded-lg hover:bg-error/5"
+                        className="shrink-0 flex items-center gap-1 text-xs font-medium text-error hover:text-error transition-colors disabled:opacity-40 px-2 py-1 rounded-lg hover:bg-error/5"
                       >
                         <span className="material-symbols-outlined text-base">delete</span>
                         {deletingComment === c.id ? '…' : 'Delete'}

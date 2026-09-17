@@ -13,6 +13,7 @@
 import { useState, useEffect, useLayoutEffect, useCallback, useRef } from 'react'
 import { ONBOARDING_KEY } from '../pages/OnboardingPage'
 import { updateMyProfile, uploadProfilePicture, searchGoogleBooks, addToLibrary } from '../services/api'
+import { useToast } from './Toast'
 
 const PAD = 8
 
@@ -50,6 +51,7 @@ function getRect(selector) {
 
 // ── Avatar step ───────────────────────────────────────────────────────────────
 function AvatarStep({ onSave }) {
+  const toast = useToast()
   const [selected, setSelected]   = useState(null)
   const [saving,   setSaving]     = useState(false)
   const [uploading,setUploading]  = useState(false)
@@ -64,7 +66,9 @@ function AvatarStep({ onSave }) {
     try {
       const { profile_picture } = await uploadProfilePicture(file)
       setSelected({ type: 'upload', url: profile_picture })
-    } catch { /* ignore */ }
+    } catch {
+      toast('Could not upload that photo — try another', 'error')
+    }
     setUploading(false)
   }
 
@@ -76,7 +80,11 @@ function AvatarStep({ onSave }) {
         await updateMyProfile({ profile_picture: selected.url })
       }
       // 'upload' type already saved via uploadProfilePicture
-    } catch { /* non-fatal */ }
+    } catch (e) {
+      toast(e.message || 'Could not save your avatar', 'error')
+      setSaving(false)
+      return
+    }
     setSaving(false)
     onSave(selected.url)
   }
@@ -143,6 +151,7 @@ function AvatarStep({ onSave }) {
 
 // ── Goal step ─────────────────────────────────────────────────────────────────
 function GoalStep({ onSave }) {
+  const toast = useToast()
   const [goal,      setGoal]      = useState(12)
   const [useCustom, setUseCustom] = useState(false)
   const [custom,    setCustom]    = useState('')
@@ -152,7 +161,13 @@ function GoalStep({ onSave }) {
     const finalGoal = useCustom ? parseInt(custom, 10) : goal
     if (finalGoal > 0) {
       setSaving(true)
-      try { await updateMyProfile({ yearly_goal: finalGoal }) } catch { /* non-fatal */ }
+      try {
+        await updateMyProfile({ yearly_goal: finalGoal })
+      } catch (e) {
+        toast(e.message || 'Could not save your goal', 'error')
+        setSaving(false)
+        return
+      }
       setSaving(false)
     }
     onSave(finalGoal || null)
@@ -224,6 +239,7 @@ function GoalStep({ onSave }) {
 
 // ── Add Book step ─────────────────────────────────────────────────────────────
 function AddBookStep({ onSave }) {
+  const toast = useToast()
   const [query,   setQuery]   = useState('')
   const [results, setResults] = useState([])
   const [loading, setLoading] = useState(false)
@@ -261,7 +277,9 @@ function AddBookStep({ onSave }) {
       })
       setAdded(book)
       setResults([])
-    } catch { /* non-fatal */ }
+    } catch (e) {
+      toast(e.message || 'Could not add that book', 'error')
+    }
     setAdding(null)
   }
 

@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom'
+import { goBackOrHome } from '../utils/navigation'
 
 export default function TermsPage() {
   const navigate = useNavigate()
@@ -6,7 +7,7 @@ export default function TermsPage() {
   return (
     <main className="min-h-screen bg-surface px-4 py-8 max-w-2xl mx-auto">
       <button
-        onClick={() => navigate(-1)}
+        onClick={() => goBackOrHome(navigate)}
         className="flex items-center gap-2 text-sm text-on-surface-variant mb-6 hover:text-on-surface transition-colors"
       >
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
