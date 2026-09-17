@@ -48,7 +48,13 @@ export default function OnboardingPage() {
       const finalGoal = useCustom ? parseInt(customGoal, 10) : goal
       if (finalGoal > 0) {
         setSavingGoal(true)
-        try { await updateMyProfile({ yearly_goal: finalGoal }) } catch { /* non-fatal */ }
+        try {
+          await updateMyProfile({ yearly_goal: finalGoal })
+        } catch (e) {
+          toast(e.message || 'Could not save your goal', 'error')
+          setSavingGoal(false)
+          return
+        }
         setSavingGoal(false)
       }
     }
