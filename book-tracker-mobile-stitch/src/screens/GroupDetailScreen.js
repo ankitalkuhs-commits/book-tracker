@@ -8,7 +8,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
-import { groupsAPI, booksAPI, usersAPI, userAPI, userbooksAPI } from '../services/api';
+import { groupsAPI, booksAPI, userAPI, userbooksAPI } from '../services/api';
 import { colors, radius, shadow, type } from '../theme';
 
 const WEB_APP_URL = 'https://www.trackmyread.com';
@@ -156,7 +156,13 @@ function SetGroupBookModal({ visible, onClose, onSet }) {
                   returnKeyType="search"
                   autoFocus
                 />
-                <TouchableOpacity style={styles.searchBtn} onPress={search} disabled={searching}>
+                <TouchableOpacity
+                  style={styles.searchBtn}
+                  onPress={search}
+                  disabled={searching}
+                  accessibilityRole="button"
+                  accessibilityLabel={t('a11y.searchBooks')}
+                >
                   {searching
                     ? <ActivityIndicator size="small" color={colors.onPrimary} />
                     : <Ionicons name="search" size={20} color={colors.onPrimary} />
@@ -184,11 +190,17 @@ function SetGroupBookModal({ visible, onClose, onSet }) {
                       activeOpacity={0.8}
                     >
                       <View style={styles.resultCoverWrap}>
-                        <Image
-                          source={{ uri: item.cover_url }}
-                          style={styles.resultCover}
-                          resizeMode="cover"
-                        />
+                        {item.cover_url ? (
+                          <Image
+                            source={{ uri: item.cover_url }}
+                            style={styles.resultCover}
+                            resizeMode="cover"
+                          />
+                        ) : (
+                          <View style={[styles.resultCover, { backgroundColor: colors.surfaceContainerHigh, justifyContent: 'center', alignItems: 'center' }]}>
+                            <Ionicons name="book-outline" size={24} color={colors.outline} />
+                          </View>
+                        )}
                       </View>
                       <View style={styles.resultInfo}>
                         <Text style={styles.resultTitle} numberOfLines={2}>{item.title}</Text>
@@ -262,6 +274,7 @@ export default function GroupDetailScreen({ route, navigation }) {
   const { groupId } = route.params;
   const insets = useSafeAreaInsets();
   const [group,       setGroup]       = useState(null);
+  const [goal,        setGoal]        = useState(null);
   const [posts,       setPosts]       = useState([]);
   const [activity,    setActivity]    = useState([]);
   const [members,     setMembers]     = useState([]);
@@ -302,7 +315,7 @@ export default function GroupDetailScreen({ route, navigation }) {
   const load = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
     try {
-      const [g, p, act, m, lbMonthly, lbAlltime, pend] = await Promise.all([
+      const [g, p, act, m, lbMonthly, lbAlltime, pend, gl] = await Promise.all([
         safe(groupsAPI.getGroup(groupId), 'getGroup'),
         safe(groupsAPI.getGroupPosts(groupId), 'getPosts'),
         safe(groupsAPI.getGroupActivity(groupId), 'getActivity'),
@@ -310,6 +323,7 @@ export default function GroupDetailScreen({ route, navigation }) {
         safe(groupsAPI.getLeaderboard(groupId, 'monthly'), 'leaderboard-monthly'),
         safe(groupsAPI.getLeaderboard(groupId, 'alltime'), 'leaderboard-alltime'),
         safe(groupsAPI.getPendingMembers(groupId).catch(() => []), 'getPending'),
+        safe(groupsAPI.getGroupGoal(groupId), 'getGoal'),
       ]);
       if (g) setGroup(g);
       setPosts(Array.isArray(p) ? p : []);
@@ -320,6 +334,7 @@ export default function GroupDetailScreen({ route, navigation }) {
         alltime: Array.isArray(lbAlltime) ? lbAlltime : [],
       });
       setPending(Array.isArray(pend) ? pend : []);
+      setGoal(gl || null);
     } catch {
       Alert.alert(t('common.error'), 'Could not load group');
       navigation.goBack();
@@ -355,7 +370,7 @@ export default function GroupDetailScreen({ route, navigation }) {
     setInviteQuery(q);
     if (q.trim().length < 2) { setInviteResults([]); return; }
     try {
-      const res = await usersAPI.searchUsers(q.trim());
+      const res = await userAPI.searchUsers(q.trim());
       const memberIds = new Set(members.map(m => m.user_id));
       setInviteResults((res || []).filter(u => !memberIds.has(u.id)));
     } catch { setInviteResults([]); }
@@ -419,10 +434,13 @@ export default function GroupDetailScreen({ route, navigation }) {
     catch { Alert.alert('Error', 'Could not approve member'); }
   };
 
-  const handleReject = async (userId) => {
-    try { await groupsAPI.rejectGroupMember(groupId, userId); setPending(prev => prev.filter(m => m.user_id !== userId)); }
-    catch { Alert.alert('Error', 'Could not reject member'); }
-  };
+  const handleReject = (member) => Alert.alert(t('groups.rejectRequestTitle'), t('groups.rejectRequestConfirm', { name: member.name }), [
+    { text: t('common.cancel'), style: 'cancel' },
+    { text: t('common.reject'), style: 'destructive', onPress: async () => {
+      try { await groupsAPI.rejectGroupMember(groupId, member.user_id); setPending(prev => prev.filter(m => m.user_id !== member.user_id)); }
+      catch { Alert.alert(t('common.error'), 'Could not reject member'); }
+    }},
+  ]);
 
   const handleRemoveMember = (entry) => Alert.alert(`Remove ${entry.name}?`, 'They will be removed from the circle.', [
     { text: 'Cancel', style: 'cancel' },
@@ -517,7 +535,12 @@ export default function GroupDetailScreen({ route, navigation }) {
       >
         {/* ── Hero card ── */}
         <View style={styles.hero}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+          <TouchableOpacity
+            onPress={() => navigation.goBack()}
+            style={styles.backBtn}
+            accessibilityRole="button"
+            accessibilityLabel={t('a11y.back')}
+          >
             <Ionicons name="arrow-back" size={20} color={colors.onPrimary} />
           </TouchableOpacity>
           <Text style={styles.heroEyebrow}>{group?.is_private ? t('groups.privateCircle') : t('groups.publicCircle')}</Text>
@@ -575,7 +598,7 @@ export default function GroupDetailScreen({ route, navigation }) {
                 <TouchableOpacity style={styles.approveBtn} onPress={() => handleApprove(m.user_id)}>
                   <Text style={styles.approveBtnText}>{t('common.approve')}</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.rejectBtn} onPress={() => handleReject(m.user_id)}>
+                <TouchableOpacity style={styles.rejectBtn} onPress={() => handleReject(m)}>
                   <Text style={styles.rejectBtnText}>{t('common.reject')}</Text>
                 </TouchableOpacity>
               </View>
@@ -689,7 +712,12 @@ export default function GroupDetailScreen({ route, navigation }) {
             posts.slice(0, 20).map(post => (
               <View key={post.id} style={styles.postCard}>
                 <View style={styles.postHeader}>
-                  <TouchableOpacity activeOpacity={0.7} onPress={() => post.user?.id && navigation.navigate('UserProfile', { userId: post.user.id })}>
+                  <TouchableOpacity
+                    activeOpacity={0.7}
+                    onPress={() => post.user?.id && navigation.navigate('UserProfile', { userId: post.user.id })}
+                    accessibilityRole="button"
+                    accessibilityLabel={t('a11y.openUserProfile', { name: post.user?.name })}
+                  >
                     <Avatar name={post.user?.name} size={36} />
                   </TouchableOpacity>
                   <View style={styles.postMeta}>
@@ -697,7 +725,12 @@ export default function GroupDetailScreen({ route, navigation }) {
                     <Text style={styles.postTime}>{timeAgo(post.created_at)}</Text>
                   </View>
                   {isCurator && (
-                    <TouchableOpacity onPress={() => handleDeletePost(post.id)} style={styles.deleteBtn}>
+                    <TouchableOpacity
+                      onPress={() => handleDeletePost(post.id)}
+                      style={styles.deleteBtn}
+                      accessibilityRole="button"
+                      accessibilityLabel={t('a11y.deletePost')}
+                    >
                       <Ionicons name="trash-outline" size={16} color={colors.error} />
                     </TouchableOpacity>
                   )}
@@ -761,16 +794,16 @@ export default function GroupDetailScreen({ route, navigation }) {
         </View>
 
         {/* ── Reading Goal ── */}
-        {group?.reading_goal > 0 && (
+        {goal?.goal_pages > 0 && (
           <View style={styles.section}>
             <Text style={styles.sectionLabel}>{t('groups.readingGoal')}</Text>
             <Text style={styles.sectionTitle}>{t('groups.yearlyProgress')}</Text>
-            <Text style={styles.goalPages}>{group.pages_read_total ?? 0}</Text>
-            <Text style={styles.goalOf}>{t('groups.ofGoalPages', { goal: group.reading_goal.toLocaleString() })}</Text>
+            <Text style={styles.goalPages}>{goal.pages_read ?? 0}</Text>
+            <Text style={styles.goalOf}>{t('groups.ofGoalPages', { goal: goal.goal_pages.toLocaleString() })}</Text>
             <View style={styles.goalTrack}>
-              <View style={[styles.goalFill, { width: `${Math.min(100, Math.round(((group.pages_read_total ?? 0) / group.reading_goal) * 100))}%` }]} />
+              <View style={[styles.goalFill, { width: `${Math.min(100, goal.pct ?? 0)}%` }]} />
             </View>
-            <Text style={styles.goalPct}>{t('groups.percentComplete', { pct: Math.min(100, Math.round(((group.pages_read_total ?? 0) / group.reading_goal) * 100)) })}</Text>
+            <Text style={styles.goalPct}>{t('groups.percentComplete', { pct: Math.min(100, goal.pct ?? 0) })}</Text>
           </View>
         )}
 
@@ -824,8 +857,8 @@ export default function GroupDetailScreen({ route, navigation }) {
           </View>
         )}
 
-        {/* ── Disband (curator only) ── */}
-        {isCurator && (
+        {/* ── Disband (creator only) ── */}
+        {group?.created_by != null && group.created_by === currentUser?.id && (
           <TouchableOpacity style={styles.disbandBtn} onPress={handleDisband}>
             <Text style={styles.disbandText}>{t('groups.disbandGroup')}</Text>
           </TouchableOpacity>
@@ -886,7 +919,11 @@ export default function GroupDetailScreen({ route, navigation }) {
                       {postBook ? postBook.book?.title : t('feed.tagBookOptional')}
                     </Text>
                     {postBook && (
-                      <TouchableOpacity onPress={() => setPostBook(null)}>
+                      <TouchableOpacity
+                        onPress={() => setPostBook(null)}
+                        accessibilityRole="button"
+                        accessibilityLabel={t('a11y.removeTaggedBook')}
+                      >
                         <Ionicons name="close-circle" size={15} color={colors.onSurfaceVariant} />
                       </TouchableOpacity>
                     )}
@@ -955,6 +992,8 @@ export default function GroupDetailScreen({ route, navigation }) {
                     <TouchableOpacity
                       onPress={() => setPostImageUri(null)}
                       style={{ position: 'absolute', top: -6, right: -6, backgroundColor: colors.error, borderRadius: 10, width: 20, height: 20, alignItems: 'center', justifyContent: 'center' }}
+                      accessibilityRole="button"
+                      accessibilityLabel={t('a11y.removePhoto')}
                     >
                       <Ionicons name="close" size={12} color="#fff" />
                     </TouchableOpacity>
