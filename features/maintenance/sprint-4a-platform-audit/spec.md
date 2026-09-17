@@ -197,6 +197,7 @@ Each item names the triage id, the verified defect, and the acceptance criterion
     - The switch remembers the last choice in `localStorage.bt_note_visibility`, written on change and shared by all three composers. A user who has never chosen sees Only me, and clearing storage returns to Only me.
     - After a private post from the Home composer, a toast reads "Saved privately — find it on your Profile" (a new key in all 6 locales), and the post is not inserted into the Community or Friends list.
     - Private notes stay owner-only everywhere.
+    - Logout removes the key, so the next account on a shared browser starts at Only me. (Added 2026-09-17 accepting tests.md K-16 / Sprint 4B escalation E2: without it, one account's Public choice becomes the next account's default. Android mirrors it in AsyncStorage in 4B.)
 - [ ] **R-F51 Bounded list parameters.**
   - **Defect:** unbounded `limit`; a negative value returns 500, and 100000 is uncapped.
   - **Accept:** every `limit` and `days` query parameter is 1..200, and out-of-range values return 422. Endpoints:
