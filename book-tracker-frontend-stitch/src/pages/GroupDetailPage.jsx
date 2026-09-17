@@ -91,7 +91,7 @@ function ActivityRow({ event }) {
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-sm text-on-surface leading-snug">{activityLabel(event)}</p>
-        <p className="text-xs text-on-surface-variant/50 mt-0.5">{timeAgo(event.created_at)}</p>
+        <p className="text-xs text-on-surface-faint mt-0.5">{timeAgo(event.created_at)}</p>
       </div>
     </div>
   )
@@ -109,7 +109,7 @@ function PostCard({ post, isCurator, isOwn, onDelete, onUserClick }) {
         <div className="flex-1 min-w-0">
           <div className="flex items-baseline gap-2 flex-wrap">
             <button onClick={() => post.user?.id && onUserClick?.(post.user.id)} className="font-bold text-sm text-on-surface hover:text-primary transition-colors">{post.user?.name}</button>
-            <span className="text-[11px] text-on-surface-variant/50">{timeAgo(post.created_at)}</span>
+            <span className="text-xs text-on-surface-faint">{timeAgo(post.created_at)}</span>
           </div>
           {post.quote && (
             <blockquote className="font-serif italic text-primary/80 text-sm border-l-2 border-secondary/40 pl-3 my-2 leading-relaxed">
@@ -118,7 +118,7 @@ function PostCard({ post, isCurator, isOwn, onDelete, onUserClick }) {
           )}
           <p className="text-sm text-on-surface leading-relaxed">{post.text}</p>
           {post.book && (
-            <span className="inline-flex items-center gap-1 mt-2 text-[11px] font-bold uppercase tracking-wider text-secondary bg-secondary/10 px-2 py-1 rounded-full">
+            <span className="inline-flex items-center gap-1 mt-2 text-xs font-bold uppercase tracking-wider text-secondary bg-secondary/10 px-2 py-1 rounded-full">
               <span className="material-symbols-outlined text-xs">menu_book</span>
               {post.book.title}
             </span>
@@ -175,7 +175,7 @@ function SetBookModal({ onClose, onSet }) {
             className="w-full bg-surface-container-low rounded-xl pl-9 pr-4 py-2.5 text-sm border-none focus:outline-none focus:ring-2 focus:ring-primary/20"
           />
         </div>
-        {searching && <p className="text-xs text-on-surface-variant/60 text-center">{t('common.loading')}</p>}
+        {searching && <p className="text-xs text-on-surface-muted text-center">{t('common.loading')}</p>}
         {results.length > 0 && (
           <div className="space-y-2 max-h-72 overflow-y-auto">
             {results.slice(0, 8).map(b => (
@@ -513,6 +513,7 @@ export default function GroupDetailPage() {
   const [showSetBook, setShowSetBook] = useState(false)
   const [showEdit, setShowEdit] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [confirm, setConfirm] = useState(null)   // { title, body, confirmLabel, onConfirm }
 
   // Invite link copied
   const [linkCopied, setLinkCopied] = useState(false)
@@ -609,7 +610,7 @@ export default function GroupDetailPage() {
     setActionUsers(s => { const n = new Set(s); n.delete(userId); return n })
   }
 
-  const handleRemoveMember = async (userId) => {
+  const doRemoveMember = async (userId) => {
     setActionUsers(s => new Set(s).add(userId))
     try {
       await removeGroupMember(parseInt(groupId), userId)
@@ -619,12 +620,31 @@ export default function GroupDetailPage() {
     setActionUsers(s => { const n = new Set(s); n.delete(userId); return n })
   }
 
-  const handleLeave = async () => {
+  const handleRemoveMember = (userId) => {
+    const m = members.find(x => x.user_id === userId)
+    setConfirm({
+      title: t('groups.removeMemberTitle'),
+      body: t('groups.removeMemberConfirm', { name: m?.name || m?.username || '' }),
+      confirmLabel: t('groups.remove'),
+      onConfirm: () => doRemoveMember(userId),
+    })
+  }
+
+  const doLeave = async () => {
     try {
       await leaveGroup(parseInt(groupId))
       toast('You left the group', 'info')
       navigate('/groups')
     } catch (e) { toast(e.message || 'Failed to leave', 'error') }
+  }
+
+  const handleLeave = () => {
+    setConfirm({
+      title: t('groups.leaveCircle') + '?',
+      body: t('groups.leaveConfirm', { name: group.name }),
+      confirmLabel: t('groups.leave'),
+      onConfirm: doLeave,
+    })
   }
 
   const handleDeleteGroup = async () => {
@@ -640,9 +660,23 @@ export default function GroupDetailPage() {
     setPosts(prev => [p, ...prev])
   }
 
-  const handleDeletePost = async (postId) => {
-    await deleteGroupPost(parseInt(groupId), postId)
-    setPosts(prev => prev.filter(p => p.id !== postId))
+  const doDeletePost = async (postId) => {
+    try {
+      await deleteGroupPost(parseInt(groupId), postId)
+      setPosts(prev => prev.filter(p => p.id !== postId))
+      toast('Post deleted', 'info')
+    } catch (e) {
+      toast(e.message || 'Could not delete post', 'error')
+    }
+  }
+
+  const handleDeletePost = (postId) => {
+    setConfirm({
+      title: t('groups.deletePostTitle'),
+      body: t('groups.deletePostConfirm'),
+      confirmLabel: t('groups.delete'),
+      onConfirm: () => doDeletePost(postId),
+    })
   }
 
   const handleSetBook = async (book) => {
@@ -704,7 +738,7 @@ export default function GroupDetailPage() {
         <GroupCover preset={group.cover_preset} className="w-full h-48 md:h-56" />
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
         <div className="absolute inset-0 flex flex-col justify-end p-6 md:p-8">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-white/60 mb-1">
+          <p className="text-xs font-bold uppercase tracking-widest text-white/60 mb-1">
             {group.is_private ? t('groups.privateCircle') : t('groups.publicCircle')}
           </p>
           <h1 className="font-serif text-3xl md:text-5xl font-bold text-white leading-tight">
@@ -713,7 +747,7 @@ export default function GroupDetailPage() {
           {group.description && (
             <p className="text-white/70 text-sm mt-2 max-w-lg line-clamp-2">{group.description}</p>
           )}
-          <div className="flex items-center gap-4 mt-3 text-[11px] font-bold text-white/60 uppercase tracking-wider">
+          <div className="flex items-center gap-4 mt-3 text-xs font-bold text-white/60 uppercase tracking-wider">
             <span className="flex items-center gap-1">
               <span className="material-symbols-outlined text-sm">group</span>
               {t('groups.memberCount_one', { count: group.member_count })}
@@ -763,7 +797,7 @@ export default function GroupDetailPage() {
           <div className="bg-surface-container-lowest rounded-3xl p-6 space-y-5">
             <div className="flex items-center justify-between flex-wrap gap-3">
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-secondary">{t('groups.rankings')}</p>
+                <p className="text-xs font-bold uppercase tracking-widest text-secondary">{t('groups.rankings')}</p>
                 <h2 className="font-serif text-xl font-bold text-on-surface">{t('groups.leaderboard')}</h2>
               </div>
               <div className="flex bg-surface-container rounded-xl p-1">
@@ -799,7 +833,7 @@ export default function GroupDetailPage() {
                 ))}
               </div>
             ) : leaderboard.length === 0 ? (
-              <div className="text-center py-8 text-on-surface-variant/50">
+              <div className="text-center py-8 text-on-surface-faint">
                 <span className="material-symbols-outlined text-4xl block mb-2">emoji_events</span>
                 <p className="text-sm">{t('groups.noLeaderboardData')}</p>
               </div>
@@ -819,18 +853,18 @@ export default function GroupDetailPage() {
                       <div className="flex items-baseline gap-2">
                         <p className="font-bold text-sm text-on-surface">{row.name}</p>
                         {row.user_id === user?.id && (
-                          <span className="text-[10px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded-full">You</span>
+                          <span className="text-xs font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded-full">You</span>
                         )}
                       </div>
                       {row.current_book && (
-                        <p className="text-xs text-on-surface-variant/60 truncate">
+                        <p className="text-xs text-on-surface-muted truncate">
                           {t('library.statusReading')}: <span className="italic">{row.current_book}</span>
                         </p>
                       )}
                     </div>
                     <div className="text-right shrink-0 space-y-0.5">
                       <p className="text-sm font-bold text-on-surface">{row.pages_read.toLocaleString()} <span className="text-xs font-normal text-on-surface-variant">{t('book.pages')}</span></p>
-                      <p className="text-[11px] text-on-surface-variant/60">{t('groups.memberCount', { count: row.books_finished })} {t('status.finished').toLowerCase()}</p>
+                      <p className="text-xs text-on-surface-muted">{t('groups.memberCount', { count: row.books_finished })} {t('status.finished').toLowerCase()}</p>
                     </div>
                   </button>
                 ))}
@@ -841,11 +875,11 @@ export default function GroupDetailPage() {
           {/* ── Member Activity Feed ── */}
           <div className="bg-surface-container-lowest rounded-3xl p-6 space-y-4">
             <div>
-              <p className="text-[10px] font-bold uppercase tracking-widest text-secondary">{t('groups.memberActivity')}</p>
+              <p className="text-xs font-bold uppercase tracking-widest text-secondary">{t('groups.memberActivity')}</p>
               <h2 className="font-serif text-xl font-bold text-primary">{t('groups.memberActivityTitle')}</h2>
             </div>
             {activity.length === 0 ? (
-              <div className="text-center py-8 text-on-surface-variant/50">
+              <div className="text-center py-8 text-on-surface-faint">
                 <span className="material-symbols-outlined text-4xl block mb-2">timeline</span>
                 <p className="text-sm">{t('groups.noActivityYet')}</p>
               </div>
@@ -870,7 +904,7 @@ export default function GroupDetailPage() {
           <div className="bg-surface-container-lowest rounded-3xl p-6 space-y-5">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-secondary">{t('groups.discussions')}</p>
+                <p className="text-xs font-bold uppercase tracking-widest text-secondary">{t('groups.discussions')}</p>
                 <h2 className="font-serif text-xl font-bold text-on-surface">{t('groups.groupPosts')}</h2>
               </div>
               {isMember && (
@@ -885,7 +919,7 @@ export default function GroupDetailPage() {
             </div>
 
             {posts.length === 0 ? (
-              <div className="text-center py-10 text-on-surface-variant/50">
+              <div className="text-center py-10 text-on-surface-faint">
                 <span className="material-symbols-outlined text-4xl block mb-2">forum</span>
                 <p className="text-sm font-serif">{t('groups.noPostsYet')}</p>
                 {isMember && <p className="text-xs mt-1">{t('groups.shareWithCircle')}</p>}
@@ -917,7 +951,7 @@ export default function GroupDetailPage() {
           {/* Members list */}
           <div className="bg-surface-container-lowest rounded-3xl p-6 space-y-4">
             <h2 className="font-serif text-xl font-bold text-on-surface">
-              Members <span className="text-on-surface-variant/40 text-sm font-sans font-normal">{group.member_count}</span>
+              Members <span className="text-on-surface-faint text-sm font-sans font-normal">{group.member_count}</span>
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {members.map(m => (
@@ -929,10 +963,10 @@ export default function GroupDetailPage() {
                     <div className="flex items-center gap-1.5">
                       <p className="text-sm font-bold text-on-surface truncate">{m.name}</p>
                       {m.role === 'curator' && (
-                        <span className="text-[9px] font-bold uppercase tracking-wider text-secondary bg-secondary/10 px-1.5 py-0.5 rounded-full shrink-0">{t('groups.curatorBadge')}</span>
+                        <span className="text-xs font-bold uppercase tracking-wider text-secondary bg-secondary/10 px-1.5 py-0.5 rounded-full shrink-0">{t('groups.curatorBadge')}</span>
                       )}
                     </div>
-                    <p className="text-xs text-on-surface-variant/60">@{m.username || m.name}</p>
+                    <p className="text-xs text-on-surface-muted">@{m.username || m.name}</p>
                   </div>
                   {isCurator && m.user_id !== user?.id && m.role !== 'curator' && (
                     <button
@@ -960,7 +994,7 @@ export default function GroupDetailPage() {
           <div className="bg-surface-container-lowest rounded-3xl p-6 space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-secondary">{t('groups.currentlyReading')}</p>
+                <p className="text-xs font-bold uppercase tracking-widest text-secondary">{t('groups.currentlyReading')}</p>
                 <h3 className="font-serif text-base font-bold text-on-surface">{t('groups.groupBook')}</h3>
               </div>
               {isCurator && (
@@ -999,7 +1033,7 @@ export default function GroupDetailPage() {
                   {isCurator && (
                     <button
                       onClick={handleClearBook}
-                      className="text-[11px] text-error/60 hover:text-error transition-colors"
+                      className="text-xs text-error hover:text-error transition-colors"
                     >
                       {t('common.remove')}
                     </button>
@@ -1007,7 +1041,7 @@ export default function GroupDetailPage() {
                 </div>
               </div>
             ) : (
-              <div className="text-center py-6 text-on-surface-variant/40">
+              <div className="text-center py-6 text-on-surface-faint">
                 <span className="material-symbols-outlined text-3xl block mb-1">auto_stories</span>
                 <p className="text-xs">{t('groups.noGroupBookSelected')}</p>
               </div>
@@ -1018,7 +1052,7 @@ export default function GroupDetailPage() {
           {goal?.goal_pages && (
             <div className="bg-surface-container-lowest rounded-3xl p-6 space-y-3">
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-secondary">{t('groups.readingGoal')}</p>
+                <p className="text-xs font-bold uppercase tracking-widest text-secondary">{t('groups.readingGoal')}</p>
                 <h3 className="font-serif text-base font-bold text-on-surface capitalize">{goal.goal_period || ''} Progress</h3>
               </div>
               <div>
@@ -1035,7 +1069,7 @@ export default function GroupDetailPage() {
                     }}
                   />
                 </div>
-                <p className="text-xs text-on-surface-variant/60 mt-1.5 text-right">{t('groups.percentComplete', { pct: goal.pct })}</p>
+                <p className="text-xs text-on-surface-muted mt-1.5 text-right">{t('groups.percentComplete', { pct: goal.pct })}</p>
               </div>
             </div>
           )}
@@ -1053,7 +1087,7 @@ export default function GroupDetailPage() {
                     <Avatar user={p} size={8} />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-bold text-on-surface truncate">{p.name}</p>
-                      <p className="text-[11px] text-on-surface-variant/60">@{p.username || p.name}</p>
+                      <p className="text-xs text-on-surface-muted">@{p.username || p.name}</p>
                     </div>
                     <div className="flex gap-1.5 shrink-0">
                       <button
@@ -1089,15 +1123,15 @@ export default function GroupDetailPage() {
           {isMember && (
             <div className="bg-surface-container-lowest rounded-3xl p-6 space-y-4">
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-secondary">{t('groups.expandTheCircle')}</p>
+                <p className="text-xs font-bold uppercase tracking-widest text-secondary">{t('groups.expandTheCircle')}</p>
                 <h3 className="font-serif text-base font-bold text-on-surface">{t('groups.inviteFriends')}</h3>
               </div>
 
               {/* Invite link */}
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/50 mb-1.5">{t('groups.inviteFriends')}</p>
+                <p className="text-xs font-bold uppercase tracking-widest text-on-surface-faint mb-1.5">{t('groups.inviteFriends')}</p>
                 <div className="flex items-center gap-2">
-                  <div className="flex-1 bg-surface-container rounded-xl px-3 py-2 text-xs text-on-surface-variant/60 font-mono truncate">
+                  <div className="flex-1 bg-surface-container rounded-xl px-3 py-2 text-xs text-on-surface-muted font-mono truncate">
                     {`/join/${group.invite_code}`}
                   </div>
                   <button
@@ -1114,7 +1148,7 @@ export default function GroupDetailPage() {
               {/* Username search (curator only) */}
               {isCurator && (
                 <div className="relative">
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/50 mb-1.5">Search & Invite</p>
+                  <p className="text-xs font-bold uppercase tracking-widest text-on-surface-faint mb-1.5">Search & Invite</p>
                   <div className="relative">
                     <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline/60 text-sm">search</span>
                     <input
@@ -1133,8 +1167,8 @@ export default function GroupDetailPage() {
                             className="w-full text-left px-4 py-2.5 text-sm hover:bg-surface-container transition-colors flex items-center gap-2"
                           >
                             <span className="font-bold text-on-surface">{u.name}</span>
-                            <span className="text-on-surface-variant/60 flex-1">@{u.username}</span>
-                            <span className="text-[11px] font-bold text-primary shrink-0">
+                            <span className="text-on-surface-muted flex-1">@{u.username}</span>
+                            <span className="text-xs font-bold text-primary shrink-0">
                               {inviting === u.id ? '...' : t('common.invite')}
                             </span>
                           </button>
@@ -1199,6 +1233,31 @@ export default function GroupDetailPage() {
                 className="flex-1 py-2.5 text-sm font-bold bg-error text-on-error rounded-xl hover:bg-error/90 transition-colors"
               >
                 {t('groups.disband')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {confirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+          <div className="bg-surface-container-lowest rounded-3xl p-6 w-full max-w-sm shadow-float space-y-4 text-center">
+            <span className="material-symbols-outlined text-4xl text-error block">warning</span>
+            <h3 className="font-serif text-xl font-bold text-on-surface">{confirm.title}</h3>
+            <p className="text-sm text-on-surface-variant">
+              {confirm.body}
+            </p>
+            <div className="flex gap-3 pt-2">
+              <button
+                onClick={() => setConfirm(null)}
+                className="flex-1 py-2.5 text-sm font-bold border border-outline-variant rounded-xl hover:bg-surface-container transition-colors"
+              >
+                {t('common.cancel')}
+              </button>
+              <button
+                onClick={async () => { const fn = confirm.onConfirm; setConfirm(null); await fn() }}
+                className="flex-1 py-2.5 text-sm font-bold bg-error text-on-error rounded-xl hover:bg-error/90 transition-colors"
+              >
+                {confirm.confirmLabel}
               </button>
             </div>
           </div>

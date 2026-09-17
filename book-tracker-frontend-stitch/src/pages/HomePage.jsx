@@ -1,9 +1,11 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../components/Toast'
 import { useTranslation } from 'react-i18next'
 import BookPreviewModal from '../components/BookPreviewModal'
+import VisibilityToggle from '../components/VisibilityToggle'
+import { readNoteVisibility } from '../utils/noteVisibility'
 import {
   getCommunityFeed, getFriendsFeed, createNote, uploadNoteImage,
   likeNote, unlikeNote, getComments, addComment,
@@ -132,7 +134,7 @@ function PostCard({ post, currentUserId, isAdmin, onLikeToggle, onDelete, onEdit
     <article className="bg-surface-container-lowest rounded-3xl p-5 md:p-8 flex flex-row gap-4 md:gap-8 transition-all hover:shadow-[0_20px_50px_-20px_rgba(0,70,74,0.1)]">
       {/* Book cover — small thumbnail */}
       {book && (() => {
-        const COVER_COLORS = ['#00695c','#2e7d32','#e65100','#880e4f','#283593','#6a1b9a','#1565c0','#bf360c']
+        const COVER_COLORS = ['#00695c','#256b29','#a84300','#880e4f','#283593','#6a1b9a','#1565c0','#a52f0a']
         const spineColor = COVER_COLORS[(book.id || 0) % COVER_COLORS.length]
         return (
           <div className="shrink-0 w-12 md:w-20" style={{ alignSelf: 'flex-start' }}>
@@ -148,7 +150,7 @@ function PostCard({ post, currentUserId, isAdmin, onLikeToggle, onDelete, onEdit
                 <div className="w-full h-full flex flex-col items-center justify-center p-1.5 gap-1"
                   style={{ backgroundColor: spineColor + '28' }}>
                   <span className="material-symbols-outlined text-sm" style={{ color: spineColor }}>menu_book</span>
-                  <p className="text-[7px] font-bold text-center leading-tight line-clamp-4"
+                  <p className="hidden md:line-clamp-4 text-xs font-bold text-center leading-tight"
                     style={{ color: spineColor }}>{book.title}</p>
                 </div>
               )}
@@ -168,7 +170,7 @@ function PostCard({ post, currentUserId, isAdmin, onLikeToggle, onDelete, onEdit
             <Avatar user={post.user} size={10} />
             <div className="text-left">
               <h4 className="font-bold text-on-surface text-sm">{post.user?.name || 'User'}</h4>
-              <p className="text-xs text-on-surface-variant/60">
+              <p className="text-xs text-on-surface-muted">
                 {timeAgo(post.created_at)}
                 {isEdited && <span className="ml-1 italic">· Edited</span>}
               </p>
@@ -350,6 +352,7 @@ function PostComposer({ user, onPost }) {
   const [imageFile, setImageFile] = useState(null)
   const [imagePreview, setImagePreview] = useState(null)
   const [uploadingImage, setUploadingImage] = useState(false)
+  const [visibility, setVisibility] = useState(readNoteVisibility)
 
   useEffect(() => {
     getMyBooks().then(data => setMyBooks(data || [])).catch(() => {})
@@ -378,22 +381,27 @@ function PostComposer({ user, onPost }) {
         image_url = result.image_url
         setUploadingImage(false)
       }
+      const isPublic = visibility === 'public'
       const note = await createNote({
         text,
         quote: quote || null,
         emotion: emotion || null,
         image_url,
-        is_public: true,
+        is_public: isPublic,
         userbook_id: selectedBook?.id || null,
       })
-      onPost({ ...note, book: selectedBook?.book || null })
+      if (isPublic) {
+        onPost({ ...note, book: selectedBook?.book || null })
+        toast('Reflection posted!', 'success')
+      } else {
+        toast(t('feed.savedPrivately'), 'success')
+      }
       setText('')
       setQuote('')
       setEmotion('')
       setSelectedBook(null)
       setImageFile(null)
       setImagePreview(prev => { if (prev) URL.revokeObjectURL(prev); return null })
-      toast('Reflection posted!', 'success')
     } catch (e) {
       setUploadingImage(false)
       toast(e.message || 'Failed to post', 'error')
@@ -507,13 +515,16 @@ function PostComposer({ user, onPost }) {
               <span>{t('groups.photo')}</span>
               <input type="file" accept="image/*" className="hidden" onChange={handleImageSelect} />
             </label>
-            <button
-              onClick={handleSubmit}
-              disabled={submitting || !text.trim()}
-              className="btn-primary px-7 py-2.5 text-sm font-bold rounded-xl disabled:opacity-50"
-            >
-              {uploadingImage ? t('common.loading') : submitting ? t('common.loading') : t('common.post')}
-            </button>
+            <div className="flex items-center gap-3">
+              <VisibilityToggle value={visibility} onChange={setVisibility} />
+              <button
+                onClick={handleSubmit}
+                disabled={submitting || !text.trim()}
+                className="btn-primary px-7 py-2.5 text-sm font-bold rounded-xl disabled:opacity-50"
+              >
+                {uploadingImage ? t('common.loading') : submitting ? t('common.loading') : t('common.post')}
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -550,7 +561,7 @@ function RecommendationsShelf() {
       <section className="space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="font-serif text-xl font-bold text-on-surface">{t('feed.forYou')}</h2>
-          <span className="text-xs text-on-surface-variant/50 font-medium">{t('feed.basedOnNetwork')}</span>
+          <span className="text-xs text-on-surface-faint font-medium">{t('feed.basedOnNetwork')}</span>
         </div>
         <div className="flex gap-4 overflow-x-auto pb-2 -mx-1 px-1 scrollbar-hide">
           {recs.slice(0, 8).map(book => (
@@ -565,7 +576,7 @@ function RecommendationsShelf() {
                 )}
               </div>
               <p className="text-xs font-bold text-on-surface line-clamp-2 leading-snug">{book.title}</p>
-              <p className="text-[10px] text-secondary font-medium">{getReasonLabel(book)}</p>
+              <p className="text-xs text-secondary font-medium">{getReasonLabel(book)}</p>
             </button>
           ))}
         </div>
@@ -687,7 +698,7 @@ function Sidebar() {
                   )}
                 </div>
                 <p className="text-xs font-bold truncate">{item.book?.title}</p>
-                <p className="text-[10px] text-on-surface-variant/60">{item.user?.name}</p>
+                <p className="text-xs text-on-surface-muted">{item.user?.name}</p>
               </button>
             ))}
           </div>
@@ -709,16 +720,28 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
+  const requestSeq = useRef(0)            // id of the newest fetchFeed call
+  const activeTabRef = useRef(activeTab)  // tab the newest call was for
+  const localPosts = useRef([])           // [{ post, tab }] created this page session, not yet seen in a response
+
   const fetchFeed = async (tab) => {
+    const seq = ++requestSeq.current
+    activeTabRef.current = tab
     setLoading(true)
     setError(null)
     try {
       const data = tab === 'community' ? await getCommunityFeed() : await getFriendsFeed()
-      setPosts(data || [])
+      if (seq !== requestSeq.current || tab !== activeTabRef.current) return   // a newer request or tab owns the list
+      const fresh = data || []
+      const seen = new Set(fresh.map(p => p.id))
+      localPosts.current = localPosts.current.filter(l => !seen.has(l.post.id))   // the server has it now: stop carrying it
+      const carried = localPosts.current.filter(l => l.tab === tab).map(l => l.post)
+      setPosts([...carried, ...fresh])
     } catch {
+      if (seq !== requestSeq.current) return
       setError('Failed to load feed.')
     }
-    setLoading(false)
+    if (seq === requestSeq.current) setLoading(false)
   }
 
   useEffect(() => { fetchFeed(activeTab) }, [activeTab])
@@ -739,14 +762,18 @@ export default function HomePage() {
   }
 
   const handleNewPost = (note) => {
-    setPosts(prev => [{ ...note, user, likes_count: 0, comments_count: 0, liked_by_me: false }, ...prev])
+    const post = { ...note, user, likes_count: 0, comments_count: 0, liked_by_me: false }
+    localPosts.current = [{ post, tab: activeTabRef.current }, ...localPosts.current]
+    setPosts(prev => [post, ...prev.filter(p => p.id !== post.id)])
   }
 
   const handleDeletePost = (postId) => {
+    localPosts.current = localPosts.current.filter(l => l.post.id !== postId)
     setPosts(prev => prev.filter(p => p.id !== postId))
   }
 
   const handleEditPost = (postId, updated) => {
+    localPosts.current = localPosts.current.map(l => l.post.id === postId ? { ...l, post: { ...l.post, ...updated } } : l)
     setPosts(prev => prev.map(p => p.id === postId ? { ...p, ...updated } : p))
   }
 
@@ -770,7 +797,7 @@ export default function HomePage() {
               className={`pb-4 text-base font-sans transition-colors capitalize ${
                 activeTab === tab
                   ? 'text-primary font-bold border-b-2 border-primary'
-                  : 'text-on-surface-variant/60 font-medium hover:text-on-surface'
+                  : 'text-on-surface-muted font-medium hover:text-on-surface'
               }`}
             >
               {tab === 'community' ? t('feed.community') : t('feed.friends')}
