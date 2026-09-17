@@ -382,7 +382,7 @@ export default function SettingsPage() {
           <div className="space-y-1.5">
             <label className="block text-sm font-medium text-on-surface-variant">
               {t('settings.yearlyReadingGoal')}
-              <span className="text-xs text-on-surface-variant/50 ml-2">{t('settings.booksPerYear')}</span>
+              <span className="text-xs text-on-surface-faint ml-2">{t('settings.booksPerYear')}</span>
             </label>
             <input
               type="number"
@@ -791,7 +791,7 @@ export default function SettingsPage() {
             </button>
             <button
               onClick={() => setShowDeleteConfirm(true)}
-              className="flex items-center gap-2 text-sm text-error/60 hover:text-error transition-colors"
+              className="flex items-center gap-2 text-sm text-error hover:text-error transition-colors"
             >
               <span className="material-symbols-outlined text-base">delete_forever</span>
               {t('settings.deleteAccount')}

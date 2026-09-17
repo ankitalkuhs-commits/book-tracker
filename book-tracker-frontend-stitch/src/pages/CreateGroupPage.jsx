@@ -201,7 +201,7 @@ export default function CreateGroupPage() {
                   min="1"
                   className="w-full bg-surface-container-low rounded-xl px-4 py-2.5 text-sm border-none focus:outline-none focus:ring-2 focus:ring-primary/20"
                 />
-                <p className="text-xs text-on-surface-variant/60 mt-1 ml-1">{t('groups.goalPlaceholder')}</p>
+                <p className="text-xs text-on-surface-muted mt-1 ml-1">{t('groups.goalPlaceholder')}</p>
               </div>
               <div className="flex bg-surface-container rounded-xl p-1 shrink-0">
                 {['monthly', 'yearly'].map(p => (
@@ -247,7 +247,7 @@ export default function CreateGroupPage() {
                       className="w-full text-left px-4 py-2.5 text-sm hover:bg-surface-container transition-colors flex items-center gap-2"
                     >
                       <span className="font-bold text-on-surface">{u.name}</span>
-                      <span className="text-on-surface-variant/60">@{u.username}</span>
+                      <span className="text-on-surface-muted">@{u.username}</span>
                     </button>
                   ))}
                 </div>
@@ -270,8 +270,8 @@ export default function CreateGroupPage() {
 
             {/* Share links (shown after creation — placeholder) */}
             <div className="border-t border-outline-variant/15 pt-4 space-y-2">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/50">Or Share Access Link</p>
-              <div className="bg-surface-container rounded-xl px-4 py-3 flex items-center gap-3 text-sm text-on-surface-variant/60 italic">
+              <p className="text-xs font-bold uppercase tracking-widest text-on-surface-faint">Or Share Access Link</p>
+              <div className="bg-surface-container rounded-xl px-4 py-3 flex items-center gap-3 text-sm text-on-surface-muted italic">
                 <span className="material-symbols-outlined text-base">link</span>
                 {t('groups.joinByInviteCode')}
               </div>
