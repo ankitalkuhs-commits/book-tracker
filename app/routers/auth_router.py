@@ -16,25 +16,6 @@ from pydantic import BaseModel
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
-from pydantic import Field, validator
-
-class SignupIn(BaseModel):
-    name: str
-    email: str
-    password: str = Field(..., min_length=8, max_length=128)
-
-    @validator("password")
-    def password_must_be_str_and_not_too_long(cls, v):
-        if not isinstance(v, str):
-            raise ValueError("Password must be a string.")
-        if len(v.encode("utf-8")) > 256:
-            raise ValueError("Password must be less than 256 bytes.")
-        return v
-
-class LoginIn(BaseModel):
-    email: str
-    password: str
-
 class GoogleAuthIn(BaseModel):
     token: str
 
@@ -46,35 +27,6 @@ class AccountDeletionRequest(BaseModel):
     email: str
     reason: str = None
 
-
-@router.post("/signup")
-def signup(payload: SignupIn, db: Session = Depends(get_session)):
-    existing = crud.get_user_by_email(db, payload.email)
-    if existing:
-        raise HTTPException(status_code=400, detail="Email already registered")
-    hashed = auth.hash_password(payload.password)
-    user = crud.create_user(db, name=payload.name, email=payload.email, password_hash=hashed)
-    token = auth.create_access_token({"sub": user.email})
-    return {"access_token": token, "user": {"id": user.id, "name": user.name, "email": user.email}}
-
-@router.post("/login")
-def login(payload: LoginIn, db: Session = Depends(get_session)):
-    from datetime import datetime, date
-    
-    user = crud.get_user_by_email(db, payload.email)
-    if not user or not auth.verify_password(payload.password, user.password_hash):
-        raise HTTPException(status_code=401, detail="Invalid credentials")
-    
-    # Update last_active only if date has changed
-    today = date.today()
-    if user.last_active is None or user.last_active.date() != today:
-        user.last_active = datetime.utcnow()
-        db.add(user)
-        db.commit()
-        db.refresh(user)
-    
-    token = auth.create_access_token({"sub": user.email})
-    return {"access_token": token, "user": {"id": user.id, "name": user.name, "email": user.email}}
 
 @router.post("/google")
 def google_auth(payload: GoogleAuthIn, db: Session = Depends(get_session)):
@@ -249,6 +201,34 @@ def delete_own_account(
     """
     uid = current_user.id
 
+    # F-50: group activity rows this user triggered, in any group (delete before the
+    # created-groups loop, which handles activity scoped to groups this user created).
+    for row in db.exec(select(models.GroupActivity).where(models.GroupActivity.user_id == uid)).all():
+        db.delete(row)
+
+    # Groups created by this user — delete activity, members + posts first, then the group
+    created_groups = db.exec(
+        select(models.ReadingGroup).where(models.ReadingGroup.created_by == uid)
+    ).all()
+    for g in created_groups:
+        for row in db.exec(select(models.GroupActivity).where(models.GroupActivity.group_id == g.id)).all():
+            db.delete(row)
+        for m in db.exec(select(models.GroupMember).where(models.GroupMember.group_id == g.id)).all():
+            db.delete(m)
+        for p in db.exec(select(models.GroupPost).where(models.GroupPost.group_id == g.id)).all():
+            db.delete(p)
+        db.delete(g)
+
+    # F-50: before deleting the user's own GroupMember rows — pending invites this user sent
+    # (in any group) are removed; accepted/active ones keep the row, just lose the inviter.
+    for row in db.exec(select(models.GroupMember).where(
+        models.GroupMember.invited_by == uid, models.GroupMember.status == "pending"
+    )).all():
+        db.delete(row)
+    for row in db.exec(select(models.GroupMember).where(models.GroupMember.invited_by == uid)).all():
+        row.invited_by = None
+        db.add(row)
+
     # Delete in dependency order to avoid FK violations
     for model_cls, col in [
         (models.NotificationLog, models.NotificationLog.user_id),
@@ -257,17 +237,6 @@ def delete_own_account(
     ]:
         for row in db.exec(select(model_cls).where(col == uid)).all():
             db.delete(row)
-
-    # Groups created by this user — delete members + posts first, then the group
-    created_groups = db.exec(
-        select(models.ReadingGroup).where(models.ReadingGroup.created_by == uid)
-    ).all()
-    for g in created_groups:
-        for m in db.exec(select(models.GroupMember).where(models.GroupMember.group_id == g.id)).all():
-            db.delete(m)
-        for p in db.exec(select(models.GroupPost).where(models.GroupPost.group_id == g.id)).all():
-            db.delete(p)
-        db.delete(g)
 
     # Push tokens
     for row in db.exec(select(models.PushToken).where(models.PushToken.user_id == uid)).all():
@@ -294,8 +263,20 @@ def delete_own_account(
     for row in db.exec(select(models.Comment).where(models.Comment.user_id == uid)).all():
         db.delete(row)
 
+    # F-50: before the userbook delete — group posts referencing this user's userbooks are
+    # detached, not deleted (a group post is another user's content too).
+    userbook_ids = [ub.id for ub in db.exec(select(models.UserBook).where(models.UserBook.user_id == uid)).all()]
+    if userbook_ids:
+        for row in db.exec(select(models.GroupPost).where(models.GroupPost.userbook_id.in_(userbook_ids))).all():
+            row.userbook_id = None
+            db.add(row)
+
     # Reading activity + userbooks
     for row in db.exec(select(models.ReadingActivity).where(models.ReadingActivity.user_id == uid)).all():
+        db.delete(row)
+    # Journal entries reference a userbook (entry_id) and this user (user_id); they must go
+    # before the userbook delete below.
+    for row in db.exec(select(models.Journal).where(models.Journal.user_id == uid)).all():
         db.delete(row)
     for row in db.exec(select(models.UserBook).where(models.UserBook.user_id == uid)).all():
         db.delete(row)

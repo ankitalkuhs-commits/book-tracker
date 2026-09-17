@@ -5,6 +5,7 @@ import os
 import uuid
 
 import cloudinary
+import cloudinary.exceptions
 import cloudinary.uploader
 
 from ..models import User, UserBook, Follow, Book
@@ -107,8 +108,8 @@ def update_profile(payload: ProfileUpdate, db: Session = Depends(get_db), curren
         user.name = payload.name
     if payload.bio is not None:
         user.bio = payload.bio
-    if payload.yearly_goal is not None:
-        user.yearly_goal = payload.yearly_goal
+    if "yearly_goal" in payload.__fields_set__:           # Pydantic v1: key sent → apply it
+        user.yearly_goal = payload.yearly_goal or None     # null or 0 clears the goal
     if payload.profile_picture is not None:
         user.profile_picture = payload.profile_picture
     if payload.is_private_profile is not None:
@@ -167,8 +168,11 @@ async def upload_profile_picture(
     if not all([os.getenv("CLOUDINARY_CLOUD_NAME"), os.getenv("CLOUDINARY_API_KEY"), os.getenv("CLOUDINARY_API_SECRET")]):
         raise HTTPException(status_code=500, detail="Cloudinary not configured")
 
+    contents = await file.read()
+    if not contents:
+        raise HTTPException(status_code=400, detail="File is empty")
+
     try:
-        contents = await file.read()
         result = cloudinary.uploader.upload(
             contents,
             folder="book_tracker/avatars",
@@ -179,6 +183,8 @@ async def upload_profile_picture(
         url = result.get("secure_url")
         if not url:
             raise Exception("No URL returned from Cloudinary")
+    except cloudinary.exceptions.BadRequest:
+        raise HTTPException(status_code=400, detail="Invalid image file")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Upload failed: {e}")
 

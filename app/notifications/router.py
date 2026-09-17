@@ -10,7 +10,7 @@ import os
 from datetime import datetime
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
 from sqlmodel import Session, select
 
@@ -50,28 +50,49 @@ def get_vapid_public_key():
     return {"public_key": key}
 
 
+def _web_rows_for_endpoint(db: Session, endpoint: str, user_id: Optional[int] = None):
+    """Match a web-push row by its subscription's `endpoint`, not by the raw JSON string:
+    key order and `expirationTime` can vary between calls, so a string-equality match (as
+    used to) would register duplicate rows for the same browser (F-03)."""
+    q = select(models.PushToken).where(
+        models.PushToken.token_type == "web",
+        models.PushToken.token.contains(endpoint, autoescape=True),   # coarse LIKE '%…%', escaped
+    )
+    if user_id is not None:
+        q = q.where(models.PushToken.user_id == user_id)
+    rows = []
+    for row in db.exec(q).all():
+        try:
+            if json.loads(row.token).get("endpoint") == endpoint:   # exact check
+                rows.append(row)
+        except (ValueError, TypeError, AttributeError):
+            continue
+    return rows
+
+
 @router.post("/web-subscribe", status_code=status.HTTP_200_OK)
 def web_subscribe(
     payload: WebPushSubscription,
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Register a PWA (browser) push subscription for the current user."""
-    token_str = json.dumps(payload.subscription)
+    """Register a PWA (browser) push subscription for the current user.
 
-    # Remove all existing web tokens for this user (replace, don't duplicate)
-    existing_tokens = db.exec(
-        select(models.PushToken).where(
-            models.PushToken.user_id == current_user.id,
-            models.PushToken.token_type == "web",
-        )
-    ).all()
-    for t in existing_tokens:
-        db.delete(t)
+    A browser endpoint belongs to exactly one account: whoever registered it last. Without
+    this, a shared browser keeps delivering account A's pushes after B logs in on it (F-03).
+    """
+    endpoint = payload.subscription.get("endpoint")
+    if not endpoint:
+        raise HTTPException(status_code=400, detail="subscription.endpoint is required")
+
+    # Remove this endpoint from every account (including the caller's other rows for it),
+    # then insert one fresh row. The caller's rows for *other* endpoints are left alone.
+    for row in _web_rows_for_endpoint(db, endpoint):
+        db.delete(row)
 
     db.add(models.PushToken(
         user_id=current_user.id,
-        token=token_str,
+        token=json.dumps(payload.subscription),
         token_type="web",
         device_info=payload.device_info,
     ))
@@ -87,19 +108,12 @@ def web_unsubscribe(
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Remove a PWA push subscription (called when user denies permission or logs out)."""
-    token_str = json.dumps(payload.subscription)
-
-    existing = db.exec(
-        select(models.PushToken).where(
-            models.PushToken.user_id == current_user.id,
-            models.PushToken.token == token_str,
-            models.PushToken.token_type == "web",
-        )
-    ).first()
-
-    if existing:
-        db.delete(existing)
+    """Remove a PWA push subscription (called when user denies permission or logs out).
+    Matches by endpoint and only removes the caller's own row (F-03)."""
+    endpoint = payload.subscription.get("endpoint")
+    if endpoint:
+        for row in _web_rows_for_endpoint(db, endpoint, user_id=current_user.id):
+            db.delete(row)
         db.commit()
 
     return {"message": "Web push subscription removed"}
@@ -124,7 +138,7 @@ def unread_count(
 
 @router.get("/history")
 def notification_history(
-    limit: int = 50,
+    limit: int = Query(50, ge=1, le=200),
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -176,6 +190,23 @@ def mark_all_read(
     return {"message": f"Marked {len(unread)} notifications as read"}
 
 
+@router.post("/{notification_id}/read", status_code=status.HTTP_200_OK)
+def mark_one_read(
+    notification_id: int,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Mark one notification read. Idempotent. 404 for rows that are not the caller's."""
+    log = db.get(models.NotificationLog, notification_id)
+    if not log or log.user_id != current_user.id:
+        raise HTTPException(status_code=404, detail="Notification not found")
+    if not log.is_read:
+        log.is_read = True
+        db.add(log)
+        db.commit()
+    return {"id": log.id, "is_read": True}
+
+
 # ── Per-user notification preferences ────────────────────────────────────────
 
 # The preference keys exposed to users (subset of all event types)
@@ -214,19 +245,26 @@ def update_prefs(
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Update the current user's notification preferences."""
+    """Update the current user's notification preferences. Merges into the stored JSON so a
+    partial body (e.g. one toggle) never resets the keys the client did not send (F-06/F-49).
+    Pydantic v1 stack — use `.dict(exclude_unset=True)`, not the Pydantic v2 dump method."""
     user = db.get(models.User, current_user.id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    # book_added follows the same pref as book_completed
-    pref_dict = prefs.model_dump()
-    pref_dict["book_added"] = pref_dict["book_completed"]
-
-    user.notification_prefs = json.dumps(pref_dict)
+    try:
+        stored = json.loads(user.notification_prefs) if user.notification_prefs else {}
+    except (json.JSONDecodeError, TypeError):
+        stored = {}
+    if not isinstance(stored, dict):
+        stored = {}
+    merged = {k: stored.get(k, True) for k in USER_PREF_KEYS}
+    merged.update(prefs.dict(exclude_unset=True))    # Pydantic v1: only the keys the client sent
+    merged["book_added"] = merged["book_completed"]   # book_added follows book_completed
+    user.notification_prefs = json.dumps(merged)
     db.add(user)
     db.commit()
-    return {k: pref_dict.get(k, True) for k in USER_PREF_KEYS}
+    return {k: merged[k] for k in USER_PREF_KEYS}
 
 
 # ── Admin: manage event configs ───────────────────────────────────────────────
