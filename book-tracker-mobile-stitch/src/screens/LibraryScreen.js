@@ -308,7 +308,13 @@ function AddBookModal({ visible, onClose, onAdded }) {
                   returnKeyType="search"
                   autoFocus
                 />
-                <TouchableOpacity style={styles.searchBtn} onPress={searchBooks} disabled={searching}>
+                <TouchableOpacity
+                  style={styles.searchBtn}
+                  onPress={searchBooks}
+                  disabled={searching}
+                  accessibilityRole="button"
+                  accessibilityLabel={t('a11y.searchBooks')}
+                >
                   {searching
                     ? <ActivityIndicator size="small" color={colors.onPrimary} />
                     : <Ionicons name="search" size={20} color={colors.onPrimary} />
@@ -337,11 +343,17 @@ function AddBookModal({ visible, onClose, onAdded }) {
                     >
                       {/* Cover — overflows above the card */}
                       <View style={styles.resultCoverWrap}>
-                        <Image
-                          source={{ uri: item.cover_url }}
-                          style={styles.resultCover}
-                          resizeMode="cover"
-                        />
+                        {item.cover_url ? (
+                          <Image
+                            source={{ uri: item.cover_url }}
+                            style={styles.resultCover}
+                            resizeMode="cover"
+                          />
+                        ) : (
+                          <View style={[styles.resultCover, { backgroundColor: colors.surfaceContainerHigh, justifyContent: 'center', alignItems: 'center' }]}>
+                            <Ionicons name="book-outline" size={24} color={colors.outline} />
+                          </View>
+                        )}
                       </View>
                       <View style={styles.resultInfo}>
                         <Text style={styles.resultTitle} numberOfLines={2}>{item.title}</Text>
@@ -371,11 +383,17 @@ function AddBookModal({ visible, onClose, onAdded }) {
 
               {/* Hero: large cover + meta */}
               <View style={styles.selectedHero}>
-                <Image
-                  source={{ uri: selectedBook.cover_url }}
-                  style={styles.selectedCoverLarge}
-                  resizeMode="cover"
-                />
+                {selectedBook.cover_url ? (
+                  <Image
+                    source={{ uri: selectedBook.cover_url }}
+                    style={styles.selectedCoverLarge}
+                    resizeMode="cover"
+                  />
+                ) : (
+                  <View style={[styles.selectedCoverLarge, { backgroundColor: colors.surfaceContainerHigh, justifyContent: 'center', alignItems: 'center' }]}>
+                    <Ionicons name="book-outline" size={32} color={colors.outline} />
+                  </View>
+                )}
                 <View style={styles.selectedMeta}>
                   <Text style={styles.selectedTitle} numberOfLines={3}>{selectedBook.title}</Text>
                   <Text style={styles.selectedAuthor}>
@@ -565,7 +583,11 @@ export default function LibraryScreen({ navigation }) {
           clearButtonMode="while-editing"
         />
         {searchQuery.length > 0 && (
-          <TouchableOpacity onPress={() => setSearchQuery('')}>
+          <TouchableOpacity
+            onPress={() => setSearchQuery('')}
+            accessibilityRole="button"
+            accessibilityLabel={t('a11y.clearSearch')}
+          >
             <Ionicons name="close-circle" size={16} color={colors.outline} />
           </TouchableOpacity>
         )}

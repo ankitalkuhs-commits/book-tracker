@@ -7,6 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { userbooksAPI, notesAPI, booksAPI } from '../services/api';
+import VisibilityToggle, { useNoteVisibility } from '../components/VisibilityToggle';
 import { colors, radius, shadow, type } from '../theme';
 
 const AMAZON_TAG_IN  = 'trackmyread-21';
@@ -38,10 +39,18 @@ function formatNoteDate(ts) {
 }
 
 function StarRating({ value = 0, onChange }) {
+  const { t } = useTranslation();
   return (
     <View style={{ flexDirection: 'row', gap: 6, marginTop: 8 }}>
       {[1, 2, 3, 4, 5].map(star => (
-        <TouchableOpacity key={star} onPress={() => onChange(star)} activeOpacity={0.7}>
+        <TouchableOpacity
+          key={star}
+          onPress={() => onChange(star)}
+          activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel={t('a11y.rateStars', { count: star })}
+          accessibilityState={{ selected: star <= value }}
+        >
           <Ionicons
             name={star <= value ? 'star' : 'star-outline'}
             size={24}
@@ -69,6 +78,7 @@ export default function BookDetailScreen({ route, navigation }) {
   const [noteText,        setNoteText]        = useState('');
   const [noteQuote,       setNoteQuote]       = useState('');
   const [savingNote,      setSavingNote]      = useState(false);
+  const [noteIsPublic,    setNoteIsPublic]    = useNoteVisibility();
   const [rating,          setRating]          = useState(ub.rating || 0);
   // Modal for asking total pages when user finishes a book with no total_pages metadata
   const [totalPagesModal, setTotalPagesModal] = useState(false);
@@ -169,7 +179,7 @@ export default function BookDetailScreen({ route, navigation }) {
     if (!noteText.trim() && !noteQuote.trim()) return;
     setSavingNote(true);
     try {
-      const n = await notesAPI.createNote({ userbook_id: ub.id, text: noteText.trim(), quote: noteQuote.trim() });
+      const n = await notesAPI.createNote({ userbook_id: ub.id, text: noteText.trim(), quote: noteQuote.trim(), is_public: noteIsPublic });
       setNotes(prev => [n, ...prev]);
       setNoteText(''); setNoteQuote('');
     } catch (e) { Alert.alert('Error', e?.response?.data?.detail || 'Could not save note'); }
@@ -226,7 +236,12 @@ export default function BookDetailScreen({ route, navigation }) {
 
       {/* Top bar */}
       <View style={[styles.topBar, { paddingTop: insets.top + 10 }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={styles.backBtn}
+          accessibilityRole="button"
+          accessibilityLabel={t('a11y.back')}
+        >
           <Ionicons name="arrow-back" size={22} color={colors.onSurface} />
         </TouchableOpacity>
         <Text style={styles.topBarTitle} numberOfLines={1}>{book.title || 'Book'}</Text>
@@ -373,6 +388,7 @@ export default function BookDetailScreen({ route, navigation }) {
                 placeholder={t('book.addQuoteOptional')}
                 placeholderTextColor={colors.outline}
               />
+              <VisibilityToggle isPublic={noteIsPublic} onChange={setNoteIsPublic} disabled={savingNote} />
               <TouchableOpacity
                 style={[styles.postBtn, (!noteText.trim() && !noteQuote.trim()) && { opacity: 0.4 }]}
                 onPress={handleAddNote}
@@ -402,7 +418,11 @@ export default function BookDetailScreen({ route, navigation }) {
                 ) : null}
                 <View style={styles.noteFooter}>
                   <Text style={styles.noteTime}>{formatNoteDate(n.created_at)}</Text>
-                  <TouchableOpacity onPress={() => handleDeleteNote(n.id)}>
+                  <TouchableOpacity
+                    onPress={() => handleDeleteNote(n.id)}
+                    accessibilityRole="button"
+                    accessibilityLabel={t('a11y.deleteNote')}
+                  >
                     <Ionicons name="trash-outline" size={15} color={colors.outline} />
                   </TouchableOpacity>
                 </View>

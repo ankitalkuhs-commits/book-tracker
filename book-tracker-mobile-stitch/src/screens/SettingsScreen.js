@@ -9,7 +9,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { changeLanguage, SUPPORTED_LANGUAGES } from '../i18n';
-import { profileAPI, notificationsAPI, authAPI, importAPI } from '../services/api';
+import { profileAPI, notificationsAPI, importAPI } from '../services/api';
+import { deregisterPushToken } from '../services/NotificationService';
 import { PreloadContext } from '../../App';
 import { colors, radius, shadow, type } from '../theme';
 import { BUILD_NUMBER, BUILD_DATE } from '../buildInfo';
@@ -71,7 +72,12 @@ function AvatarPickerModal({ visible, onClose, onSelect }) {
           {/* Header */}
           <View style={styles.pickerHeader}>
             <Text style={styles.pickerTitle}>{t('settings.chooseAvatarTitle')}</Text>
-            <TouchableOpacity onPress={onClose} style={styles.pickerClose}>
+            <TouchableOpacity
+              onPress={onClose}
+              style={styles.pickerClose}
+              accessibilityRole="button"
+              accessibilityLabel={t('a11y.close')}
+            >
               <Ionicons name="close" size={22} color={colors.onSurface} />
             </TouchableOpacity>
           </View>
@@ -87,6 +93,9 @@ function AvatarPickerModal({ visible, onClose, onSelect }) {
                 style={[styles.avatarTile, { backgroundColor: item.bg }, selected?.id === item.id && styles.avatarTileSelected]}
                 onPress={() => setSelected(item)}
                 activeOpacity={0.8}
+                accessibilityRole="button"
+                accessibilityLabel={t('a11y.chooseAvatar', { name: item.id })}
+                accessibilityState={{ selected: selected?.id === item.id }}
               >
                 <Image source={{ uri: item.url }} style={styles.avatarTileImg} />
                 {selected?.id === item.id && (
@@ -285,7 +294,7 @@ export default function SettingsScreen({ navigation, onLogout }) {
 
   const handleLogout = () => Alert.alert(t('settings.signOut'), t('common.areYouSure'), [
     { text: t('common.cancel'), style: 'cancel' },
-    { text: t('settings.signOut'), style: 'destructive', onPress: async () => { await authAPI.logout(); onLogout?.(); } },
+    { text: t('settings.signOut'), style: 'destructive', onPress: () => onLogout?.() },
   ]);
 
   const handleDeleteAccount = () => Alert.alert(
@@ -294,7 +303,7 @@ export default function SettingsScreen({ navigation, onLogout }) {
     [
       { text: t('common.cancel'), style: 'cancel' },
       { text: t('common.delete'), style: 'destructive', onPress: async () => {
-        try { await profileAPI.deleteAccount(); await authAPI.logout(); onLogout?.(); }
+        try { await deregisterPushToken(); await profileAPI.deleteAccount(); await onLogout?.({ alreadyDeregistered: true }); }
         catch (e) { Alert.alert(t('common.error'), e?.response?.data?.detail || t('settings.couldNotSaveProfile')); }
       }},
     ]
@@ -308,7 +317,12 @@ export default function SettingsScreen({ navigation, onLogout }) {
     <View style={styles.container}>
       {/* ── Header with back button ── */}
       <View style={[styles.topBar, { paddingTop: insets.top + 10 }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={styles.backBtn}
+          accessibilityRole="button"
+          accessibilityLabel={t('a11y.back')}
+        >
           <Ionicons name="arrow-back" size={22} color={colors.onSurface} />
         </TouchableOpacity>
         <Text style={styles.topBarTitle}>{t('settings.title')}</Text>

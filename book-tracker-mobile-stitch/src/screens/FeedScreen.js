@@ -3,12 +3,14 @@ import { useFocusEffect } from '@react-navigation/native';
 import {
   View, Text, ScrollView, StyleSheet, RefreshControl, TouchableOpacity,
   Image, ActivityIndicator, Alert, TextInput, KeyboardAvoidingView, Platform, Modal,
+  FlatList, ToastAndroid,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { notesAPI, userbooksAPI, userAPI, booksAPI } from '../services/api';
 import AppHeader from '../components/AppHeader';
+import VisibilityToggle, { useNoteVisibility } from '../components/VisibilityToggle';
 import { PreloadContext } from '../../App';
 import { formatTimeAgo } from '../utils/bookUtils';
 import { colors, radius, shadow, type } from '../theme';
@@ -65,6 +67,7 @@ const FeedScreen = ({ navigation }) => {
   const [selectedUserBook, setSelectedUserBook] = useState(null);
   const [showBookPicker, setShowBookPicker] = useState(false);
   const [posting, setPosting] = useState(false);
+  const [isPublic, setIsPublic] = useNoteVisibility();
 
   // Image picker
   const [selectedImage, setSelectedImage] = useState(null);
@@ -197,6 +200,7 @@ const FeedScreen = ({ navigation }) => {
   const handleCreatePost = async () => {
     if (!postText.trim()) { Alert.alert(t('common.error'), t('feed.pleaseAddSomeText')); return; }
     setPosting(true);
+    const postedPublic = isPublic;
     try {
       let imageUrl = null;
       if (selectedImage) {
@@ -211,7 +215,8 @@ const FeedScreen = ({ navigation }) => {
               { text: t('common.cancel'), style: 'cancel', onPress: () => setPosting(false) },
               { text: t('feed.postWithoutImage'), onPress: async () => {
                 try {
-                  await notesAPI.createNote({ text: postText.trim(), quote: postQuote.trim() || null, emotion: emotion.trim() || null, is_public: true, image_url: null, userbook_id: selectedUserBook?.id || null });
+                  await notesAPI.createNote({ text: postText.trim(), quote: postQuote.trim() || null, emotion: emotion.trim() || null, is_public: postedPublic, image_url: null, userbook_id: selectedUserBook?.id || null });
+                  if (!postedPublic) { if (Platform.OS === 'android') ToastAndroid.show(t('notes.savedPrivately'), ToastAndroid.SHORT); }
                   setPostText(''); setPostQuote(''); setEmotion(''); setSelectedUserBook(null); setSelectedImage(null);
                   loadFeed();
                 } catch { Alert.alert(t('common.error'), t('feed.failedToPostReflection')); }
@@ -226,10 +231,11 @@ const FeedScreen = ({ navigation }) => {
         text: postText.trim(),
         quote: postQuote.trim() || null,
         emotion: emotion.trim() || null,
-        is_public: true,
+        is_public: postedPublic,
         image_url: imageUrl,
         userbook_id: selectedUserBook?.id || null,
       });
+      if (!postedPublic) { if (Platform.OS === 'android') ToastAndroid.show(t('notes.savedPrivately'), ToastAndroid.SHORT); }
       setPostText(''); setPostQuote(''); setEmotion(''); setSelectedUserBook(null); setSelectedImage(null);
       loadFeed();
     } catch { Alert.alert(t('common.error'), t('feed.failedToPostReflection')); }
@@ -356,7 +362,12 @@ const FeedScreen = ({ navigation }) => {
     <View style={styles.composerCard}>
       <View style={styles.composerRow}>
         {/* Avatar */}
-        <TouchableOpacity style={styles.composerAvatar} onPress={() => navigation.navigate('Profile')}>
+        <TouchableOpacity
+          style={styles.composerAvatar}
+          onPress={() => navigation.navigate('Profile')}
+          accessibilityRole="button"
+          accessibilityLabel={t('a11y.openProfile')}
+        >
           {currentUser?.profile_picture
             ? <Image source={{ uri: currentUser.profile_picture }} style={{ width: 38, height: 38, borderRadius: 19 }} />
             : <Text style={styles.composerAvatarText}>{getInitials(currentUser?.name || currentUser?.email || '')}</Text>
@@ -384,7 +395,12 @@ const FeedScreen = ({ navigation }) => {
                   {selectedUserBook ? selectedUserBook.book?.title : t('feed.tagBookOptional')}
                 </Text>
                 {selectedUserBook && (
-                  <TouchableOpacity onPress={() => setSelectedUserBook(null)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                  <TouchableOpacity
+                    onPress={() => setSelectedUserBook(null)}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    accessibilityRole="button"
+                    accessibilityLabel={t('a11y.removeTaggedBook')}
+                  >
                     <Ionicons name="close" size={14} color={colors.onSurfaceVariant} />
                   </TouchableOpacity>
                 )}
@@ -456,7 +472,12 @@ const FeedScreen = ({ navigation }) => {
           {selectedImage && (
             <View style={styles.imagePreviewContainer}>
               <Image source={{ uri: selectedImage }} style={styles.imagePreview} />
-              <TouchableOpacity style={styles.removeImageButton} onPress={() => setSelectedImage(null)}>
+              <TouchableOpacity
+                style={styles.removeImageButton}
+                onPress={() => setSelectedImage(null)}
+                accessibilityRole="button"
+                accessibilityLabel={t('a11y.removePhoto')}
+              >
                 <Ionicons name="close" size={14} color="#fff" />
               </TouchableOpacity>
             </View>
@@ -464,9 +485,15 @@ const FeedScreen = ({ navigation }) => {
 
           {/* Actions row */}
           <View style={styles.composerActions}>
-            <TouchableOpacity style={styles.composerActionBtn} onPress={pickImage}>
+            <TouchableOpacity
+              style={styles.composerActionBtn}
+              onPress={pickImage}
+              accessibilityRole="button"
+              accessibilityLabel={t('a11y.addPhoto')}
+            >
               <Ionicons name="image-outline" size={18} color={colors.onSurfaceVariant} />
             </TouchableOpacity>
+            <VisibilityToggle isPublic={isPublic} onChange={setIsPublic} disabled={posting} />
             <TouchableOpacity
               style={[styles.postReflectionBtn, (!postText.trim() || posting) && styles.postReflectionBtnDisabled]}
               onPress={handleCreatePost}
@@ -595,7 +622,7 @@ const FeedScreen = ({ navigation }) => {
     const showMenu = menuPostId === post.id;
 
     return (
-      <View key={post.id || Math.random().toString()} style={styles.postCard}>
+      <View key={post.id} style={styles.postCard}>
         <View style={styles.postHeader}>
           {/* Book cover thumbnail — shown when post has a tagged book */}
           {post.book && (() => {
@@ -636,12 +663,22 @@ const FeedScreen = ({ navigation }) => {
           </TouchableOpacity>
           {(isOwnPost || isAdmin) && (
             <View>
-              <TouchableOpacity onPress={() => setMenuPostId(showMenu ? null : post.id)} style={styles.menuButton}>
+              <TouchableOpacity
+                onPress={() => setMenuPostId(showMenu ? null : post.id)}
+                style={styles.menuButton}
+                accessibilityRole="button"
+                accessibilityLabel={t('a11y.postOptions')}
+              >
                 <Text style={styles.menuDots}>···</Text>
               </TouchableOpacity>
               {showMenu && (
                 <View style={styles.menuDropdown}>
-                  <TouchableOpacity style={styles.menuItem} onPress={() => handleDeletePost(post)}>
+                  <TouchableOpacity
+                    style={styles.menuItem}
+                    onPress={() => handleDeletePost(post)}
+                    accessibilityRole="button"
+                    accessibilityLabel={t('a11y.deletePost')}
+                  >
                     <Ionicons name="trash-outline" size={14} color={colors.error} />
                     <Text style={styles.menuItemTextDanger}>{t('common.delete')}</Text>
                   </TouchableOpacity>
@@ -669,7 +706,14 @@ const FeedScreen = ({ navigation }) => {
         <PostImage uri={post.image_url} style={styles.noteImage} />
         {post.quote && <View style={styles.quoteContainer}><Text style={styles.quoteText}>"{post.quote}"</Text></View>}
         <View style={styles.actionsRow}>
-          <TouchableOpacity style={styles.actionButton} onPress={() => handleLike(post.id, post.user_has_liked)}>
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => handleLike(post.id, post.user_has_liked)}
+            accessibilityRole="button"
+            accessibilityLabel={t('a11y.like')}
+            accessibilityState={{ selected: !!post.user_has_liked }}
+            accessibilityValue={{ text: String(post.likes_count || 0) }}
+          >
             <Ionicons
               name={post.user_has_liked ? 'heart' : 'heart-outline'}
               size={18}
@@ -677,7 +721,13 @@ const FeedScreen = ({ navigation }) => {
             />
             <Text style={styles.actionCount}>{post.likes_count || 0}</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.actionButton} onPress={() => toggleComments(post.id)}>
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => toggleComments(post.id)}
+            accessibilityRole="button"
+            accessibilityLabel={t('a11y.comments')}
+            accessibilityValue={{ text: String(post.comments_count || 0) }}
+          >
             <Ionicons name={expandedComments[post.id] ? 'chatbubble' : 'chatbubble-outline'} size={17}
               color={expandedComments[post.id] ? colors.primary : colors.onSurfaceVariant} />
             <Text style={[styles.actionCount, expandedComments[post.id] && { color: colors.primary }]}>
@@ -702,7 +752,12 @@ const FeedScreen = ({ navigation }) => {
                     <Text style={styles.commentText}>{c.text}</Text>
                   </View>
                   {isAdmin && c.id && (
-                    <TouchableOpacity onPress={() => handleDeleteComment(post.id, c.id)} style={{ padding: 6, marginLeft: 4 }}>
+                    <TouchableOpacity
+                      onPress={() => handleDeleteComment(post.id, c.id)}
+                      style={{ padding: 6, marginLeft: 4 }}
+                      accessibilityRole="button"
+                      accessibilityLabel={t('a11y.deleteComment')}
+                    >
                       <Ionicons name="trash-outline" size={14} color={colors.error} />
                     </TouchableOpacity>
                   )}
@@ -802,20 +857,25 @@ const FeedScreen = ({ navigation }) => {
         </View>
       </View>
 
-      <ScrollView
-        style={styles.scrollView}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-        keyboardShouldPersistTaps="handled"
-      >
-        {activeTab === 'community' ? (
-          <>
-            {renderComposer()}
-            {renderRecommendations()}
-            {posts.length === 0 ? (
-              <View style={styles.emptyState}><Text style={styles.emptyIcon}>📚</Text><Text style={styles.emptyText}>{t('feed.noPostsYet')}</Text></View>
-            ) : posts.filter(p => p != null).map(post => renderPost(post))}
-          </>
-        ) : (
+      {activeTab === 'community' ? (
+        <FlatList
+          style={styles.scrollView}
+          data={posts.filter(p => p != null)}
+          keyExtractor={(p) => String(p.id)}
+          renderItem={({ item }) => renderPost(item)}
+          ListHeaderComponent={<>{renderComposer()}{renderRecommendations()}</>}
+          ListEmptyComponent={<View style={styles.emptyState}><Text style={styles.emptyIcon}>📚</Text><Text style={styles.emptyText}>{t('feed.noPostsYet')}</Text></View>}
+          extraData={{ expandedComments, menuPostId, currentUser, likingTick: posts }}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+          keyboardShouldPersistTaps="handled"
+          removeClippedSubviews={false}
+        />
+      ) : (
+        <ScrollView
+          style={styles.scrollView}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+          keyboardShouldPersistTaps="handled"
+        >
           <View style={styles.followingContainer}>
             <View style={styles.searchSection}>
               <Text style={styles.sectionTitle}>{t('feed.findFriends')}</Text>
@@ -831,8 +891,8 @@ const FeedScreen = ({ navigation }) => {
               ) : friendsReading.map(renderFriendReading)}
             </View>
           </View>
-        )}
-      </ScrollView>
+        </ScrollView>
+      )}
     </View>
   );
 };

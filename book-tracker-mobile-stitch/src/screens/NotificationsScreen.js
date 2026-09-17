@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useContext } from 'react';
 import {
   View, Text, FlatList, StyleSheet, TouchableOpacity,
   ActivityIndicator, RefreshControl, StatusBar,
@@ -8,6 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { notificationsAPI } from '../services/api';
+import { NotificationContext } from '../context/NotificationContext';
 import { colors, radius, shadow, type } from '../theme';
 
 function timeAgo(dateStr) {
@@ -32,6 +33,9 @@ const EVENT_CONFIG = {
   reading_streak_reminder: { icon: 'flame',            color: colors.onSecondaryContainer, bgColor: colors.secondaryContainer,   navTarget: 'insights' },
   group_invite:            { icon: 'people',           color: colors.primaryContainer,  bgColor: colors.primaryContainer + '22', navTarget: 'group' },
   group_join_request:      { icon: 'person-add',       color: colors.primaryContainer,  bgColor: colors.primaryContainer + '22', navTarget: 'group' },
+  group_join_approved:     { icon: 'checkmark-circle', color: colors.primaryContainer,  bgColor: colors.primaryContainer + '22', navTarget: 'group' },
+  group_join_rejected:     { icon: 'close-circle',     color: colors.onSurfaceVariant,  bgColor: colors.surfaceContainerHigh,    navTarget: 'circles' },
+  admin_broadcast:         { icon: 'megaphone',        color: colors.primary,           bgColor: colors.primary + '15',          navTarget: null },
   milestone:               { icon: 'flag',             color: colors.onSecondaryContainer, bgColor: colors.secondaryContainer,   navTarget: null },
   default:                 { icon: 'notifications',    color: colors.onSurfaceVariant,  bgColor: colors.surfaceContainerHigh,    navTarget: null },
 };
@@ -67,6 +71,7 @@ function NotifRow({ item, onPress }) {
 export default function NotificationsScreen({ navigation }) {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
+  const { refreshUnread } = useContext(NotificationContext);
   const [notifs,      setNotifs]      = useState([]);
   const [loading,     setLoading]     = useState(true);
   const [refreshing,  setRefreshing]  = useState(false);
@@ -89,6 +94,7 @@ export default function NotificationsScreen({ navigation }) {
     try {
       await notificationsAPI.markAllRead();
       setNotifs(prev => prev.map(n => ({ ...n, is_read: true })));
+      refreshUnread();
     } catch { /* ignore */ }
     setMarkingRead(false);
   };
@@ -96,6 +102,7 @@ export default function NotificationsScreen({ navigation }) {
   const handleNotifPress = (item) => {
     // Mark this one as read optimistically
     setNotifs(prev => prev.map(n => n.id === item.id ? { ...n, is_read: true } : n));
+    if (!item.is_read) notificationsAPI.markRead(item.id).then(() => refreshUnread()).catch(() => {});
 
     const cfg = EVENT_CONFIG[item.event_type] || EVENT_CONFIG.default;
     const data = item.data || {};
@@ -122,6 +129,9 @@ export default function NotificationsScreen({ navigation }) {
           navigation?.navigate('Tabs', { screen: 'CircTab' });
         }
         break;
+      case 'circles':
+        navigation?.navigate('Tabs', { screen: 'CircTab' });
+        break;
       default:
         break;
     }
@@ -138,7 +148,12 @@ export default function NotificationsScreen({ navigation }) {
       <StatusBar barStyle="dark-content" backgroundColor={colors.surface} />
       <View style={{ height: insets.top, backgroundColor: colors.surface }} />
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={styles.backBtn}
+          accessibilityRole="button"
+          accessibilityLabel={t('a11y.back')}
+        >
           <Ionicons name="arrow-back" size={22} color={colors.onSurface} />
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
