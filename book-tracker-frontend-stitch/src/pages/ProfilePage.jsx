@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../components/Toast'
+import VisibilityToggle from '../components/VisibilityToggle'
+import { readNoteVisibility } from '../utils/noteVisibility'
 import {
   getMyProfile, getMyNotes, getMyActivity, getUserBooks,
   createNote, deleteNote, updateNote, updateMyProfile, getMyBooks,
@@ -45,7 +47,7 @@ function pct(current, total) {
 function ActivityChart({ data, insights }) {
   const { t } = useTranslation()
   if (!data || data.length === 0) return (
-    <div className="h-32 flex items-center justify-center text-sm text-on-surface-variant/50">
+    <div className="h-32 flex items-center justify-center text-sm text-on-surface-faint">
       {t('profile.noReadingActivity')}
     </div>
   )
@@ -65,13 +67,13 @@ function ActivityChart({ data, insights }) {
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           {currentStreak > 0 && (
-            <span className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider px-3 py-1.5 rounded-full" style={{ background: 'rgba(115,92,0,0.12)', color: '#735c00' }}>
+            <span className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider px-3 py-1.5 rounded-full" style={{ background: 'rgba(115,92,0,0.12)', color: '#735c00' }}>
               <span className="material-symbols-outlined text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>local_fire_department</span>
               {currentStreak} {currentStreak === 1 ? 'Day' : 'Days'}
             </span>
           )}
           {longestStreak > 0 && longestStreak !== currentStreak && (
-            <span className="text-[10px] text-on-surface-variant/50 font-medium">
+            <span className="text-xs text-on-surface-faint font-medium">
               Best: {longestStreak}d
             </span>
           )}
@@ -103,7 +105,7 @@ function ActivityChart({ data, insights }) {
       </div>
 
       {/* Axis labels */}
-      <div className="flex justify-between text-[10px] font-bold uppercase tracking-wider text-on-surface-variant/50">
+      <div className="flex justify-between text-xs font-bold uppercase tracking-wider text-on-surface-faint">
         <span>{t('profile.thirtyDaysAgo')}</span>
         <span>{t('common.today')}</span>
       </div>
@@ -135,6 +137,7 @@ function NewNoteModal({ onClose, onPosted }) {
   const [quote, setQuote] = useState('')
   const [userbookId, setUserbookId] = useState('')
   const [posting, setPosting] = useState(false)
+  const [visibility, setVisibility] = useState(readNoteVisibility)
 
   useEffect(() => {
     getMyBooks('reading').then(b => setBooks(b || [])).catch(() => {})
@@ -144,7 +147,7 @@ function NewNoteModal({ onClose, onPosted }) {
     if (!text.trim()) return
     setPosting(true)
     try {
-      await createNote({ text: text.trim(), quote: quote.trim() || null, userbook_id: userbookId || null })
+      await createNote({ text: text.trim(), quote: quote.trim() || null, userbook_id: userbookId || null, is_public: visibility === 'public' })
       toast('Note posted!', 'success')
       onPosted()
       onClose()
@@ -199,17 +202,20 @@ function NewNoteModal({ onClose, onPosted }) {
               className="w-full bg-surface-container-low rounded-xl px-4 py-2.5 text-sm border-none focus:outline-none focus:ring-2 focus:ring-primary/20"
             />
           </div>
-          <div className="flex justify-end gap-3 pt-1">
-            <button onClick={onClose} className="px-5 py-2.5 text-sm text-on-surface-variant hover:text-on-surface transition-colors">
-              {t('common.cancel')}
-            </button>
-            <button
-              onClick={handlePost}
-              disabled={posting || !text.trim()}
-              className="btn-primary px-6 py-2.5 text-sm rounded-xl disabled:opacity-50"
-            >
-              {posting ? t('common.loading') : t('common.post')}
-            </button>
+          <div className="flex items-center justify-between gap-3 pt-1">
+            <VisibilityToggle value={visibility} onChange={setVisibility} />
+            <div className="flex gap-3">
+              <button onClick={onClose} className="px-5 py-2.5 text-sm text-on-surface-variant hover:text-on-surface transition-colors">
+                {t('common.cancel')}
+              </button>
+              <button
+                onClick={handlePost}
+                disabled={posting || !text.trim()}
+                className="btn-primary px-6 py-2.5 text-sm rounded-xl disabled:opacity-50"
+              >
+                {posting ? t('common.loading') : t('common.post')}
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -418,15 +424,15 @@ function NoteCard({ note, onDelete, onEdit }) {
 
       {/* Footer: hearts + comments */}
       <div className="flex items-center gap-5 pt-1 border-t border-outline-variant/10">
-        <span className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-on-surface-variant/50">
+        <span className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-on-surface-faint">
           <span className="material-symbols-outlined text-sm text-error/50">favorite</span>
           {note.likes_count || 0} Hearts
         </span>
-        <span className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-on-surface-variant/50">
+        <span className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-on-surface-faint">
           <span className="material-symbols-outlined text-sm">chat_bubble</span>
           {note.comments_count || 0} Comments
         </span>
-        <span className="ml-auto text-xs text-on-surface-variant/40">{timeAgo(note.created_at)}</span>
+        <span className="ml-auto text-xs text-on-surface-faint">{timeAgo(note.created_at)}</span>
       </div>
     </article>
   )
@@ -578,7 +584,7 @@ export default function ProfilePage() {
             {!profile?.bio && !user?.bio && (
               <button
                 onClick={() => setShowEditBio(true)}
-                className="text-sm text-on-surface-variant/50 italic hover:text-on-surface-variant transition-colors"
+                className="text-sm text-on-surface-faint italic hover:text-on-surface-variant transition-colors"
               >
                 {t('profile.addBioPrompt')}
               </button>
@@ -593,7 +599,7 @@ export default function ProfilePage() {
               ].map(({ value, label }) => (
                 <div key={label} className="text-center">
                   <p className="font-serif text-2xl font-bold text-on-surface leading-none">{value?.toLocaleString()}</p>
-                  <p className="text-[11px] font-bold uppercase tracking-widest text-on-surface-variant/60 mt-0.5">{label}</p>
+                  <p className="text-xs font-bold uppercase tracking-widest text-on-surface-muted mt-0.5">{label}</p>
                 </div>
               ))}
             </div>
@@ -614,7 +620,7 @@ export default function ProfilePage() {
             <div className="space-y-3">
               <div className="bg-surface-container-lowest rounded-2xl p-4 flex items-center justify-between">
                 <div>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/60">{t('profile.totalBooks')}</p>
+                  <p className="text-xs font-bold uppercase tracking-widest text-on-surface-muted">{t('profile.totalBooks')}</p>
                   <p className="font-serif text-3xl font-bold text-on-surface mt-0.5">{stats?.total_books ?? books.length}</p>
                 </div>
                 <span className="material-symbols-outlined text-3xl text-on-surface-variant/20">auto_stories</span>
@@ -622,7 +628,7 @@ export default function ProfilePage() {
 
               <div className="bg-surface-container-lowest rounded-2xl p-4 flex items-center justify-between">
                 <div>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/60">{t('profile.pagesRead')}</p>
+                  <p className="text-xs font-bold uppercase tracking-widest text-on-surface-muted">{t('profile.pagesRead')}</p>
                   <p className="font-serif text-3xl font-bold text-on-surface mt-0.5">
                     {(stats?.total_pages_read || 0).toLocaleString()}
                   </p>
@@ -635,14 +641,14 @@ export default function ProfilePage() {
             {insights?.current_streak > 0 && (
               <div className="bg-surface-container-lowest rounded-2xl p-4 flex items-center justify-between">
                 <div>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/60">{t('profile.dayStreak')}</p>
+                  <p className="text-xs font-bold uppercase tracking-widest text-on-surface-muted">{t('profile.dayStreak')}</p>
                   <div className="flex items-center gap-1 mt-0.5">
                     <span className="material-symbols-outlined text-secondary" style={{ fontVariationSettings: "'FILL' 1", fontSize: '20px' }}>local_fire_department</span>
                     <p className="font-serif text-3xl font-bold text-on-surface">{insights.current_streak}</p>
-                    <p className="text-sm text-on-surface-variant/60 self-end pb-1">days</p>
+                    <p className="text-sm text-on-surface-muted self-end pb-1">days</p>
                   </div>
                   {insights.longest_streak > insights.current_streak && (
-                    <p className="text-[10px] text-on-surface-variant/40 mt-0.5">Best: {insights.longest_streak} days</p>
+                    <p className="text-xs text-on-surface-faint mt-0.5">Best: {insights.longest_streak} days</p>
                   )}
                 </div>
                 <span className="material-symbols-outlined text-3xl text-on-surface-variant/20">calendar_today</span>
@@ -652,7 +658,7 @@ export default function ProfilePage() {
             {/* Yearly goal mini-ring */}
             {insights?.yearly_goal && (
               <div className="bg-surface-container-lowest rounded-2xl p-4">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/60 mb-3">
+                <p className="text-xs font-bold uppercase tracking-widest text-on-surface-muted mb-3">
                   {new Date().getFullYear()} Goal
                 </p>
                 <div className="flex items-center gap-4">
@@ -675,8 +681,8 @@ export default function ProfilePage() {
                   </div>
                   <div>
                     <p className="font-bold text-on-surface">{insights.yearly_goal.completed} / {insights.yearly_goal.goal}</p>
-                    <p className="text-xs text-on-surface-variant/60">{t('insights.booksFinishedInYear', { year: new Date().getFullYear() })}</p>
-                    <p className={`text-[10px] font-bold mt-1 ${insights.yearly_goal.on_track ? 'text-primary' : 'text-secondary'}`}>
+                    <p className="text-xs text-on-surface-muted">{t('insights.booksFinishedInYear', { year: new Date().getFullYear() })}</p>
+                    <p className={`text-xs font-bold mt-1 ${insights.yearly_goal.on_track ? 'text-primary' : 'text-secondary'}`}>
                       {insights.yearly_goal.on_track ? t('insights.onTrack') : t('insights.behindPace')}
                     </p>
                   </div>
@@ -727,7 +733,7 @@ export default function ProfilePage() {
                                 style={{ width: `${progress}%` }}
                               />
                             </div>
-                            <p className="text-[10px] font-bold text-secondary uppercase tracking-wider">{progress}% Completed</p>
+                            <p className="text-xs font-bold text-secondary uppercase tracking-wider">{progress}% Completed</p>
                           </div>
                         )}
                       </div>

@@ -54,7 +54,9 @@ export default function BookPreviewModal({ book: rawBook, onClose }) {
     setAdding(true)
     try {
       const result = await addToLibrary({
+        book_id: book.id || null,
         google_books_id: book.google_books_id || book.google_id || null,
+        isbn:        book.isbn || null,
         title:       book.title,
         author:      book.author || '',
         cover_url:   book.cover_url || null,
@@ -123,7 +125,7 @@ export default function BookPreviewModal({ book: rawBook, onClose }) {
             <span className="material-symbols-outlined text-base" style={{ fontVariationSettings: "'FILL' 1" }}>shopping_cart</span>
             {t('book.buyOnAmazon')}
           </a>
-          <p className="text-center text-xs text-on-surface-variant/40 -mt-3">{t('book.affiliateDisclaimer')}</p>
+          <p className="text-center text-xs text-on-surface-faint -mt-3">{t('book.affiliateDisclaimer')}</p>
 
           {/* Library actions */}
           {loading ? (

@@ -115,7 +115,11 @@
     "failedToDeleteComment": "Error al eliminar el comentario",
     "couldNotPostComment": "No se pudo publicar el comentario",
     "happyReading": "¡Feliz lectura!",
-    "addedToWantToRead": "Añadido a tu lista «Quiero leer»."
+    "addedToWantToRead": "Añadido a tu lista «Quiero leer».",
+    "visibilityLabel": "Quién puede ver esto",
+    "visibilityPublic": "Público",
+    "visibilityPrivate": "Solo yo",
+    "savedPrivately": "Guardado en privado — encuéntralo en tu perfil"
   },
   "library": {
     "eyebrow": "TU VIAJE LECTOR",
@@ -252,7 +256,15 @@
     "searchByUsername": "Buscar por nombre de usuario...",
     "disbandGroup": "Disolver el círculo",
     "disbandConfirm": "¿Eliminar permanentemente «{{name}}»? Esto no se puede deshacer.",
-    "disband": "Disolver"
+    "disband": "Disolver",
+    "leaveConfirm": "Dejarás de ver las publicaciones y la actividad de {{name}}. Para volver a unirte a un círculo privado necesitarás una nueva invitación.",
+    "leave": "Salir",
+    "removeMemberTitle": "¿Eliminar miembro?",
+    "removeMemberConfirm": "¿Eliminar a {{name}} de este círculo?",
+    "remove": "Eliminar",
+    "deletePostTitle": "¿Eliminar publicación?",
+    "deletePostConfirm": "Esta publicación se eliminará para todos. Esta acción no se puede deshacer.",
+    "delete": "Eliminar"
   },
   "insights": {
     "eyebrow": "TU VIDA LECTORA",

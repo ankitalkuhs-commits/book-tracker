@@ -117,7 +117,11 @@
     "failedToDeleteComment": "Failed to delete comment",
     "couldNotPostComment": "Could not post comment",
     "happyReading": "Happy reading!",
-    "addedToWantToRead": "Added to your Want to Read list."
+    "addedToWantToRead": "Added to your Want to Read list.",
+    "visibilityLabel": "Who can see this",
+    "visibilityPublic": "Public",
+    "visibilityPrivate": "Only me",
+    "savedPrivately": "Saved privately — find it on your Profile"
   },
   "library": {
     "eyebrow": "YOUR READING JOURNEY",
@@ -272,7 +276,15 @@
     "disband": "Disband",
     "pendingInvites": "Pending Invites",
     "invitedBy": "Invited by {{name}}",
-    "curator": "curator"
+    "curator": "curator",
+    "leaveConfirm": "You'll stop seeing {{name}}'s posts and activity. Rejoining a private circle needs a new invite.",
+    "leave": "Leave",
+    "removeMemberTitle": "Remove member?",
+    "removeMemberConfirm": "Remove {{name}} from this circle?",
+    "remove": "Remove",
+    "deletePostTitle": "Delete post?",
+    "deletePostConfirm": "This post will be deleted for everyone. This cannot be undone.",
+    "delete": "Delete"
   },
   "insights": {
     "eyebrow": "YOUR READING LIFE",

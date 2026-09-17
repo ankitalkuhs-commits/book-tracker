@@ -115,7 +115,11 @@
     "failedToDeleteComment": "Échec de la suppression du commentaire",
     "couldNotPostComment": "Impossible de poster le commentaire",
     "happyReading": "Bonne lecture !",
-    "addedToWantToRead": "Ajouté à votre liste «À lire»."
+    "addedToWantToRead": "Ajouté à votre liste «À lire».",
+    "visibilityLabel": "Qui peut voir ceci",
+    "visibilityPublic": "Public",
+    "visibilityPrivate": "Seulement moi",
+    "savedPrivately": "Enregistré en privé — retrouvez-le sur votre profil"
   },
   "library": {
     "eyebrow": "VOTRE PARCOURS DE LECTURE",
@@ -252,7 +256,15 @@
     "searchByUsername": "Rechercher par nom d'utilisateur...",
     "disbandGroup": "Dissoudre le cercle",
     "disbandConfirm": "Supprimer définitivement «{{name}}» ? Cette action est irréversible.",
-    "disband": "Dissoudre"
+    "disband": "Dissoudre",
+    "leaveConfirm": "Vous ne verrez plus les publications et l'activité de {{name}}. Rejoindre à nouveau un cercle privé nécessitera une nouvelle invitation.",
+    "leave": "Quitter",
+    "removeMemberTitle": "Retirer ce membre ?",
+    "removeMemberConfirm": "Retirer {{name}} de ce cercle ?",
+    "remove": "Retirer",
+    "deletePostTitle": "Supprimer la publication ?",
+    "deletePostConfirm": "Cette publication sera supprimée pour tout le monde. Cette action est irréversible.",
+    "delete": "Supprimer"
   },
   "insights": {
     "eyebrow": "VOTRE VIE DE LECTEUR",

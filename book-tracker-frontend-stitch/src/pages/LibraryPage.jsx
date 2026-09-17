@@ -97,7 +97,7 @@ function WeeklyPulseChart({ data }) {
 
   return (
     <div className="space-y-2">
-      <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/60">Weekly Pulse</p>
+      <p className="text-xs font-bold uppercase tracking-widest text-on-surface-muted">Weekly Pulse</p>
       <div className="flex items-end gap-1 h-20 relative">
         {week.map((d, i) => {
           const h = ((d.pages_read || 0) / max) * 100
@@ -106,7 +106,7 @@ function WeeklyPulseChart({ data }) {
           return (
             <div key={i} className="flex-1 flex flex-col items-center gap-1 h-full justify-end">
               {isActive && (
-                <span className={`text-[9px] font-bold ${isToday ? 'text-secondary' : 'text-primary/60'}`}>{d.pages_read}m</span>
+                <span className={`text-xs font-bold ${isToday ? 'text-secondary' : 'text-primary'}`}>{d.pages_read}m</span>
               )}
               <div
                 className={`w-full rounded-sm transition-all ${
@@ -120,7 +120,7 @@ function WeeklyPulseChart({ data }) {
       </div>
       <div className="flex gap-1">
         {DAY_LABELS.slice(0, week.length).map((l, i) => (
-          <div key={i} className="flex-1 text-center text-[10px] text-on-surface-variant/50 font-medium">{l}</div>
+          <div key={i} className="flex-1 text-center text-xs text-on-surface-faint font-medium">{l}</div>
         ))}
       </div>
     </div>
@@ -190,6 +190,7 @@ function AddBookModal({ onClose, onAdded }) {
     setAdding(book.google_books_id || book.isbn || book.title)
     try {
       await addToLibrary({
+        google_books_id: book.google_books_id || null,
         title: book.title,
         author: book.author,
         isbn: book.isbn,
@@ -262,7 +263,7 @@ function AddBookModal({ onClose, onAdded }) {
                   <p className="font-bold text-sm text-on-surface truncate">{book.title}</p>
                   <p className="text-xs text-on-surface-variant mt-0.5">{book.author}</p>
                   {book.published_date && (
-                    <p className="text-xs text-on-surface-variant/60 mt-0.5">{book.published_date?.slice(0, 4)}</p>
+                    <p className="text-xs text-on-surface-muted mt-0.5">{book.published_date?.slice(0, 4)}</p>
                   )}
                 </div>
                 <div className="flex flex-col gap-2 shrink-0">
@@ -292,7 +293,7 @@ function AddBookModal({ onClose, onAdded }) {
             )
           })}
           {/* Infinite scroll sentinel */}
-          {hasMore && <div ref={sentinelRef} className="py-2 text-center text-xs text-on-surface-variant/50">
+          {hasMore && <div ref={sentinelRef} className="py-2 text-center text-xs text-on-surface-faint">
             {loadingMore ? t('common.loading') : ''}
           </div>}
         </div>
@@ -526,7 +527,7 @@ function BookDetailPanel({ userbook, onClose, onUpdate, onRemove }) {
                 placeholder="Currently on page… (optional)"
                 className="w-56 bg-surface-container-low rounded-xl px-3 py-2 text-sm border-none focus:outline-none focus:ring-2 focus:ring-primary/20"
               />
-              <p className="text-xs text-on-surface-variant/60">Used when switching to Reading</p>
+              <p className="text-xs text-on-surface-muted">Used when switching to Reading</p>
             </div>
           )}
 
@@ -565,7 +566,7 @@ function BookDetailPanel({ userbook, onClose, onUpdate, onRemove }) {
             {/* Note list */}
             {loadingNotes && <p className="text-xs text-on-surface-variant">{t('book.loadingNotes')}</p>}
             {!loadingNotes && notes.length === 0 && (
-              <p className="text-sm text-on-surface-variant/60 italic">{t('book.noNotesYet')}</p>
+              <p className="text-sm text-on-surface-muted italic">{t('book.noNotesYet')}</p>
             )}
             {notes.map(note => (
               <div key={note.id} className="bg-surface-container-low rounded-2xl p-4 space-y-2">
@@ -574,10 +575,10 @@ function BookDetailPanel({ userbook, onClose, onUpdate, onRemove }) {
                   <p className="text-sm italic text-on-surface-variant border-l-4 border-secondary/30 pl-3">"{note.quote}"</p>
                 )}
                 <div className="flex justify-between items-center">
-                  <span className="text-xs text-on-surface-variant/50">{timeAgo(note.created_at)}</span>
+                  <span className="text-xs text-on-surface-faint">{timeAgo(note.created_at)}</span>
                   <button
                     onClick={() => removeNote(note.id)}
-                    className="text-xs text-error/60 hover:text-error transition-colors"
+                    className="text-xs text-error hover:text-error transition-colors"
                   >
                     {t('common.delete')}
                   </button>
@@ -591,7 +592,7 @@ function BookDetailPanel({ userbook, onClose, onUpdate, onRemove }) {
             <button
               onClick={remove}
               disabled={removing}
-              className="text-sm text-error/70 hover:text-error transition-colors flex items-center gap-1 disabled:opacity-50"
+              className="text-sm text-error hover:text-error transition-colors flex items-center gap-1 disabled:opacity-50"
             >
               <span className="material-symbols-outlined text-base">{removing ? 'progress_activity' : 'delete'}</span>
               {removing ? t('common.loading') : t('book.removeFromLibrary')}
@@ -674,7 +675,7 @@ function BookCard({ userbook, onClick }) {
             ) : (
               <div className="w-full h-full flex flex-col items-center justify-center gap-2 bg-surface-container-high px-3 text-center">
                 <span className="material-symbols-outlined text-3xl text-outline/40">menu_book</span>
-                <p className="text-[10px] font-bold text-on-surface-variant/60 line-clamp-3">{book?.title}</p>
+                <p className="text-xs font-bold text-on-surface-muted line-clamp-3">{book?.title}</p>
               </div>
             )}
           </div>
@@ -699,15 +700,15 @@ function BookCard({ userbook, onClick }) {
 
         {userbook.status === 'reading' && (
           <div className="space-y-1 pt-0.5">
-            <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider">
+            <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider">
               <span className={statusColor}>{statusLabel}</span>
-              <span className="text-on-surface-variant/60">{progress}%</span>
+              <span className="text-on-surface-muted">{progress}%</span>
             </div>
             <div className="h-1 rounded-full bg-surface-container-high overflow-hidden">
               <div className="h-full bg-secondary rounded-full transition-all duration-500" style={{ width: `${progress}%` }} />
             </div>
             {book?.total_pages && (
-              <p className="text-[10px] text-on-surface-variant/50">
+              <p className="text-xs text-on-surface-faint">
                 {userbook.current_page || 0} / {book.total_pages} pages
               </p>
             )}
@@ -723,7 +724,7 @@ function BookCard({ userbook, onClick }) {
           </div>
         )}
         {userbook.status !== 'reading' && userbook.status !== 'finished' && statusLabel && (
-          <p className={`text-[10px] font-bold uppercase tracking-wider ${statusColor}`}>{statusLabel}</p>
+          <p className={`text-xs font-bold uppercase tracking-wider ${statusColor}`}>{statusLabel}</p>
         )}
       </div>
     </button>
@@ -754,11 +755,11 @@ function LibrarySidebar({ library, onAddBook }) {
         {/* Stats grid */}
         <div className="grid grid-cols-2 gap-3">
           <div className="bg-surface-container-low rounded-2xl p-4 space-y-1">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/60">{t('library.totalBooks')}</p>
+            <p className="text-xs font-bold uppercase tracking-widest text-on-surface-muted">{t('library.totalBooks')}</p>
             <p className="text-2xl font-bold font-serif text-on-surface">{total}</p>
           </div>
           <div className="bg-surface-container-low rounded-2xl p-4 space-y-1">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/60">{t('library.pagesRead')}</p>
+            <p className="text-xs font-bold uppercase tracking-widest text-on-surface-muted">{t('library.pagesRead')}</p>
             <p className="text-2xl font-bold font-serif text-on-surface">
               {totalPages >= 1000 ? `${(totalPages / 1000).toFixed(1)}k` : totalPages}
             </p>

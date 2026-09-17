@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useToast } from '../components/Toast'
 import { useTranslation } from 'react-i18next'
+import VisibilityToggle from '../components/VisibilityToggle'
+import { readNoteVisibility } from '../utils/noteVisibility'
 import {
   updateProgress, updateUserBook, markFinished, removeFromLibrary,
   getNotesForBook, createNote, deleteNote, getUserbook,
@@ -104,6 +106,7 @@ export default function BookDetailPage() {
   const [postingNote,    setPostingNote]    = useState(false)
   const [removing,       setRemoving]       = useState(false)
   const [descExpanded,   setDescExpanded]   = useState(false)
+  const [visibility,     setVisibility]     = useState(readNoteVisibility)
 
   // Fetch userbook from API if page was refreshed (no location.state)
   useEffect(() => {
@@ -215,7 +218,7 @@ export default function BookDetailPage() {
         text: noteText.trim(),
         quote: noteQuote.trim() || null,
         userbook_id: userbook.id,
-        is_public: true,
+        is_public: visibility === 'public',
       })
       setNotes(prev => [note, ...prev])
       setNoteText('')
@@ -283,7 +286,7 @@ export default function BookDetailPage() {
               {t('book.buyOnAmazon')}
             </a>
           )}
-          <p className="text-center text-xs text-on-surface-variant/50 -mt-2">{t('book.affiliateDisclaimer')}</p>
+          <p className="text-center text-xs text-on-surface-faint -mt-2">{t('book.affiliateDisclaimer')}</p>
         </div>
 
         {/* Right column — main content */}
@@ -398,6 +401,7 @@ export default function BookDetailPage() {
                     className="w-full bg-surface-container-lowest rounded-xl pl-8 pr-3 py-2 text-sm border-none focus:outline-none focus:ring-2 focus:ring-primary/20"
                   />
                 </div>
+                <VisibilityToggle value={visibility} onChange={setVisibility} />
                 <button
                   onClick={postNote}
                   disabled={postingNote || !noteText.trim()}
@@ -410,7 +414,7 @@ export default function BookDetailPage() {
 
             {loadingNotes && <p className="text-xs text-on-surface-variant">{t('book.loadingNotes')}</p>}
             {!loadingNotes && notes.length === 0 && (
-              <p className="text-sm text-on-surface-variant/60 italic">{t('book.noNotesYet')}</p>
+              <p className="text-sm text-on-surface-muted italic">{t('book.noNotesYet')}</p>
             )}
             {notes.map(note => (
               <div key={note.id} className="bg-surface-container-low rounded-2xl p-4 space-y-2">
@@ -419,8 +423,8 @@ export default function BookDetailPage() {
                   <p className="text-sm italic text-on-surface-variant border-l-4 border-secondary/30 pl-3">"{note.quote}"</p>
                 )}
                 <div className="flex justify-between items-center">
-                  <span className="text-xs text-on-surface-variant/50">{timeAgo(note.created_at)}</span>
-                  <button onClick={() => removeNote(note.id)} className="text-xs text-error/60 hover:text-error transition-colors">{t('common.delete')}</button>
+                  <span className="text-xs text-on-surface-faint">{timeAgo(note.created_at)}</span>
+                  <button onClick={() => removeNote(note.id)} className="text-xs text-error hover:text-error transition-colors">{t('common.delete')}</button>
                 </div>
               </div>
             ))}
@@ -431,7 +435,7 @@ export default function BookDetailPage() {
             <button
               onClick={remove}
               disabled={removing}
-              className="text-sm text-error/70 hover:text-error transition-colors flex items-center gap-1 disabled:opacity-50"
+              className="text-sm text-error hover:text-error transition-colors flex items-center gap-1 disabled:opacity-50"
             >
               <span className="material-symbols-outlined text-base">{removing ? 'progress_activity' : 'delete'}</span>
               {removing ? t('common.loading') : t('book.removeFromLibrary')}

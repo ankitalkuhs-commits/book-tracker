@@ -36,7 +36,7 @@ function StarRow({ rating, count }) {
   return (
     <div className="flex items-center gap-0.5 text-secondary text-xs">
       {'★'.repeat(stars)}{'☆'.repeat(5 - stars)}
-      {count ? <span className="text-outline/60 ml-1">{label}</span> : null}
+      {count ? <span className="text-on-surface-faint ml-1">{label}</span> : null}
     </div>
   )
 }
@@ -97,16 +97,16 @@ function BookResult({ book }) {
               {genre}
             </span>
           )}
-          {year && <span className="text-xs text-outline/60">{year}</span>}
+          {year && <span className="text-xs text-on-surface-faint">{year}</span>}
           {book.total_pages > 0 && (
-            <span className="text-xs text-outline/50">{book.total_pages} pp</span>
+            <span className="text-xs text-on-surface-faint">{book.total_pages} pp</span>
           )}
         </div>
 
         <StarRow rating={book.average_rating} count={book.ratings_count} />
 
         {book.description && (
-          <p className="text-xs text-on-surface-variant/70 line-clamp-2 leading-relaxed">{book.description}</p>
+          <p className="text-xs text-on-surface-muted line-clamp-2 leading-relaxed">{book.description}</p>
         )}
 
         {added ? (
@@ -166,18 +166,9 @@ export default function SearchPage() {
     { key: 'literary',   label: t('search.genreLiterary') },
   ]
 
-  const FORMAT_OPTIONS = [
-    { key: 'all',       label: t('search.allFormats') },
-    { key: 'paperback', label: t('format.paperback') },
-    { key: 'hardcover', label: t('format.hardcover') },
-    { key: 'ebook',     label: t('format.ebook') },
-    { key: 'audiobook', label: t('format.audiobook') },
-  ]
-
   const [query,         setQuery]         = useState('')
   const [tab,           setTab]           = useState('google')    // 'google' | 'community'
   const [activeGenre,   setActiveGenre]   = useState('all')
-  const [activeFormat,  setActiveFormat]  = useState('all')
   const [activeSort,    setActiveSort]    = useState('relevance') // 'relevance' | 'newest'
   const [googleResults, setGoogleResults] = useState([])
   const [localResults,  setLocalResults]  = useState([])
@@ -252,19 +243,7 @@ export default function SearchPage() {
     setHasMore(false)
   }
 
-  const filterByFormat = (books) => {
-    if (activeFormat === 'all') return books
-    return books.filter(b => {
-      const binding = (b.binding || b.format || '').toLowerCase()
-      if (activeFormat === 'ebook')     return binding.includes('ebook') || binding.includes('kindle') || binding.includes('digital')
-      if (activeFormat === 'audiobook') return binding.includes('audio')
-      if (activeFormat === 'paperback') return binding.includes('paper') || (!binding && true)
-      if (activeFormat === 'hardcover') return binding.includes('hard')
-      return true
-    })
-  }
-
-  const activeResults = tab === 'google' ? filterByFormat(googleResults) : localResults
+  const activeResults = tab === 'google' ? googleResults : localResults
 
   return (
     <main className="pb-12 max-w-screen-lg mx-auto px-4 md:px-8 pt-8 space-y-6">
@@ -310,21 +289,6 @@ export default function SearchPage() {
               </button>
             ))}
           </div>
-          <div className="flex flex-wrap gap-2">
-            {FORMAT_OPTIONS.map(f => (
-              <button
-                key={f.key}
-                onClick={() => setActiveFormat(f.key)}
-                className={`px-3.5 py-1.5 rounded-full text-xs font-medium border transition-all ${
-                  activeFormat === f.key
-                    ? 'bg-secondary text-on-secondary border-secondary font-bold'
-                    : 'bg-surface-container-lowest text-on-surface-variant border-outline/30 hover:border-secondary/40'
-                }`}
-              >
-                {f.label}
-              </button>
-            ))}
-          </div>
         </div>
       )}
 
@@ -337,7 +301,7 @@ export default function SearchPage() {
           >
             Google Books
             {searched && tab === 'google' && googleResults.length > 0 && (
-              <span className="ml-1.5 text-[10px] bg-on-primary/20 rounded-full px-1.5 py-0.5">{googleResults.length}</span>
+              <span className="ml-1.5 text-xs bg-on-primary/20 rounded-full px-1.5 py-0.5">{googleResults.length}</span>
             )}
           </button>
           <button
@@ -346,7 +310,7 @@ export default function SearchPage() {
           >
             {t('search.communityLibrary')}
             {searched && tab === 'community' && localResults.length > 0 && (
-              <span className="ml-1.5 text-[10px] bg-on-primary/20 rounded-full px-1.5 py-0.5">{localResults.length}</span>
+              <span className="ml-1.5 text-xs bg-on-primary/20 rounded-full px-1.5 py-0.5">{localResults.length}</span>
             )}
           </button>
         </div>
@@ -354,7 +318,7 @@ export default function SearchPage() {
         {/* Sort (Google only, after search) */}
         {tab === 'google' && searched && (
           <div className="flex items-center gap-2 ml-auto">
-            <span className="text-xs text-outline">{t('search.sortBy')}</span>
+            <span className="text-xs text-on-surface-faint">{t('search.sortBy')}</span>
             {[['relevance', t('search.sortRelevance')],['newest', t('search.sortNewest')]].map(([k,l]) => (
               <button
                 key={k}
@@ -394,8 +358,8 @@ export default function SearchPage() {
       {!loading && !searched && (
         <div className="text-center py-20">
           <span className="material-symbols-outlined text-6xl text-outline/30 block mb-4">auto_stories</span>
-          <p className="font-serif text-xl text-on-surface/60">{t('search.findYourNextRead')}</p>
-          <p className="text-sm text-on-surface-variant/60 mt-1">
+          <p className="font-serif text-xl text-on-surface-muted">{t('search.findYourNextRead')}</p>
+          <p className="text-sm text-on-surface-muted mt-1">
             {t('search.enterSearchTerm')}
           </p>
         </div>

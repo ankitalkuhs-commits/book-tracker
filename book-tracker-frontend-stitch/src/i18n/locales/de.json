@@ -115,7 +115,11 @@
     "failedToDeleteComment": "Kommentar konnte nicht gelöscht werden",
     "couldNotPostComment": "Kommentar konnte nicht gepostet werden",
     "happyReading": "Viel Spaß beim Lesen!",
-    "addedToWantToRead": "Zur Liste «Möchte lesen» hinzugefügt."
+    "addedToWantToRead": "Zur Liste «Möchte lesen» hinzugefügt.",
+    "visibilityLabel": "Wer kann das sehen",
+    "visibilityPublic": "Öffentlich",
+    "visibilityPrivate": "Nur ich",
+    "savedPrivately": "Privat gespeichert — zu finden in deinem Profil"
   },
   "library": {
     "eyebrow": "DEINE LESEREISE",
@@ -252,7 +256,15 @@
     "searchByUsername": "Nach Benutzernamen suchen...",
     "disbandGroup": "Kreis auflösen",
     "disbandConfirm": "«{{name}}» dauerhaft löschen? Dies kann nicht rückgängig gemacht werden.",
-    "disband": "Auflösen"
+    "disband": "Auflösen",
+    "leaveConfirm": "Du siehst die Beiträge und Aktivitäten von {{name}} nicht mehr. Um einem privaten Kreis erneut beizutreten, brauchst du eine neue Einladung.",
+    "leave": "Verlassen",
+    "removeMemberTitle": "Mitglied entfernen?",
+    "removeMemberConfirm": "{{name}} aus diesem Kreis entfernen?",
+    "remove": "Entfernen",
+    "deletePostTitle": "Beitrag löschen?",
+    "deletePostConfirm": "Dieser Beitrag wird für alle gelöscht. Dies kann nicht widerrufen werden.",
+    "delete": "Löschen"
   },
   "insights": {
     "eyebrow": "DEIN LESERLEBEN",

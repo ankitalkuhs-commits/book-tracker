@@ -115,7 +115,11 @@
     "failedToDeleteComment": "Falha ao excluir comentário",
     "couldNotPostComment": "Não foi possível publicar o comentário",
     "happyReading": "Boa leitura!",
-    "addedToWantToRead": "Adicionado à lista «Quero ler»."
+    "addedToWantToRead": "Adicionado à lista «Quero ler».",
+    "visibilityLabel": "Quem pode ver isso",
+    "visibilityPublic": "Público",
+    "visibilityPrivate": "Só eu",
+    "savedPrivately": "Salvo em privado — encontre no seu Perfil"
   },
   "library": {
     "eyebrow": "SUA JORNADA DE LEITURA",
@@ -252,7 +256,15 @@
     "searchByUsername": "Buscar por nome de usuário...",
     "disbandGroup": "Dissolver o círculo",
     "disbandConfirm": "Excluir permanentemente «{{name}}»? Isso não pode ser desfeito.",
-    "disband": "Dissolver"
+    "disband": "Dissolver",
+    "leaveConfirm": "Você deixará de ver as publicações e atividades de {{name}}. Para entrar novamente em um círculo privado, será necessário um novo convite.",
+    "leave": "Sair",
+    "removeMemberTitle": "Remover membro?",
+    "removeMemberConfirm": "Remover {{name}} deste círculo?",
+    "remove": "Remover",
+    "deletePostTitle": "Excluir publicação?",
+    "deletePostConfirm": "Esta publicação será excluída para todos. Essa ação não pode ser desfeita.",
+    "delete": "Excluir"
   },
   "insights": {
     "eyebrow": "SUA VIDA DE LEITURA",
