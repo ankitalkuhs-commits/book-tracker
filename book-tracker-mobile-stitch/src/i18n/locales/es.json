@@ -81,7 +81,9 @@
     "errorPleaseWait": "Por favor, espera",
     "errorAlreadyInProgress": "El inicio de sesión ya está en progreso",
     "errorGooglePlayServices": "Google Play Services no disponible",
-    "errorSignInFailed": "Error al iniciar sesión"
+    "errorSignInFailed": "Error al iniciar sesión",
+    "sessionExpiredTitle": "Sesión caducada",
+    "sessionExpiredBody": "Vuelve a iniciar sesión."
   },
   "feed": {
     "thoughtsPlaceholder": "¿Qué piensas sobre tu lectura actual?",
@@ -165,6 +167,11 @@
     "alreadyInLibrary": "Ya está en tu biblioteca",
     "viewInMyLibrary": "Ver en mi biblioteca",
     "totalPages": "{{total}} páginas"
+  },
+  "notes": {
+    "visibilityHintPrivate": "Solo tú puedes ver esto",
+    "visibilityHintPublic": "Se muestra en el feed de la comunidad",
+    "savedPrivately": "Guardado en privado — búscalo en tu perfil"
   },
   "groups": {
     "eyebrow": "TUS CÍRCULOS LITERARIOS",
@@ -252,7 +259,9 @@
     "searchByUsername": "Buscar por nombre de usuario...",
     "disbandGroup": "Disolver el círculo",
     "disbandConfirm": "¿Eliminar permanentemente «{{name}}»? Esto no se puede deshacer.",
-    "disband": "Disolver"
+    "disband": "Disolver",
+    "rejectRequestTitle": "¿Rechazar solicitud?",
+    "rejectRequestConfirm": "{{name}} no se añadirá al círculo."
   },
   "insights": {
     "eyebrow": "TU VIDA LECTORA",
@@ -500,5 +509,32 @@
     "pt": "Português (BR)",
     "de": "Deutsch",
     "fr": "Français"
+  },
+  "a11y": {
+    "back": "Atrás",
+    "close": "Cerrar",
+    "openSettings": "Ajustes",
+    "openProfile": "Tu perfil",
+    "openUserProfile": "Abrir el perfil de {{name}}",
+    "notifications": "Notificaciones",
+    "changePhoto": "Cambiar foto de perfil",
+    "addPhoto": "Añadir foto",
+    "removePhoto": "Quitar foto",
+    "removeTaggedBook": "Quitar libro etiquetado",
+    "postOptions": "Opciones de la publicación",
+    "deletePost": "Eliminar publicación",
+    "deleteComment": "Eliminar comentario",
+    "editNote": "Editar nota",
+    "deleteNote": "Eliminar nota",
+    "like": "Me gusta",
+    "comments": "Comentarios",
+    "sendComment": "Enviar comentario",
+    "share": "Compartir",
+    "searchBooks": "Buscar libros",
+    "clearSearch": "Borrar búsqueda",
+    "rateStars": "Calificar con {{count}} estrellas",
+    "chooseAvatar": "Avatar {{name}}",
+    "coverPreset": "Portada {{name}}",
+    "postVisibility": "Visibilidad de la publicación"
   }
 }

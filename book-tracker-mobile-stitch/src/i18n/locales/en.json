@@ -81,7 +81,9 @@
     "errorPleaseWait": "Please wait",
     "errorAlreadyInProgress": "Sign-in already in progress",
     "errorGooglePlayServices": "Google Play Services not available",
-    "errorSignInFailed": "Sign In Failed"
+    "errorSignInFailed": "Sign In Failed",
+    "sessionExpiredTitle": "Session expired",
+    "sessionExpiredBody": "Please sign in again."
   },
   "feed": {
     "thoughtsPlaceholder": "What are your thoughts on your current read?",
@@ -165,6 +167,11 @@
     "alreadyInLibrary": "Already in your library",
     "viewInMyLibrary": "View in My Library",
     "totalPages": "{{total}} pages"
+  },
+  "notes": {
+    "visibilityHintPrivate": "Only you can see this",
+    "visibilityHintPublic": "Shown in the Community feed",
+    "savedPrivately": "Saved privately — find it on your Profile"
   },
   "groups": {
     "eyebrow": "YOUR LITERARY CIRCLES",
@@ -252,7 +259,9 @@
     "searchByUsername": "Search by username...",
     "disbandGroup": "Disband Group",
     "disbandConfirm": "Permanently delete \"{{name}}\"? This cannot be undone.",
-    "disband": "Disband"
+    "disband": "Disband",
+    "rejectRequestTitle": "Reject request?",
+    "rejectRequestConfirm": "{{name}} will not be added to the circle."
   },
   "insights": {
     "eyebrow": "YOUR READING LIFE",
@@ -500,5 +509,32 @@
     "pt": "Português (BR)",
     "de": "Deutsch",
     "fr": "Français"
+  },
+  "a11y": {
+    "back": "Back",
+    "close": "Close",
+    "openSettings": "Settings",
+    "openProfile": "Your profile",
+    "openUserProfile": "Open {{name}}'s profile",
+    "notifications": "Notifications",
+    "changePhoto": "Change profile photo",
+    "addPhoto": "Add photo",
+    "removePhoto": "Remove photo",
+    "removeTaggedBook": "Remove tagged book",
+    "postOptions": "Post options",
+    "deletePost": "Delete post",
+    "deleteComment": "Delete comment",
+    "editNote": "Edit note",
+    "deleteNote": "Delete note",
+    "like": "Like",
+    "comments": "Comments",
+    "sendComment": "Send comment",
+    "share": "Share",
+    "searchBooks": "Search books",
+    "clearSearch": "Clear search",
+    "rateStars": "Rate {{count}} stars",
+    "chooseAvatar": "Avatar {{name}}",
+    "coverPreset": "Cover {{name}}",
+    "postVisibility": "Post visibility"
   }
 }

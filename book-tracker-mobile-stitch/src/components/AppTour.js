@@ -184,7 +184,13 @@ export default function AppTour({ onDone }) {
       setSearchingBook(true);
       try {
         const res = await booksAPI.search(query);
-        setBookResults((res.books || res || []).slice(0, 5));
+        const items = Array.isArray(res?.results) ? res.results : [];
+        setBookResults(items.slice(0, 5).map(b => ({
+          ...b,
+          google_books_id: b.google_id,
+          author: b.authors?.join(', ') || '',
+          isbn: b.isbn_13 || b.isbn_10 || null,
+        })));
       } catch { setBookResults([]); }
       finally { setSearchingBook(false); }
     }, 500);
@@ -199,6 +205,8 @@ export default function AppTour({ onDone }) {
         author:          book.authors?.[0] || book.author || '',
         cover_url:       book.cover_url || book.thumbnail || '',
         status:          'to-read',
+        total_pages:     book.total_pages || null,
+        isbn:            book.isbn,
       });
       setAddedBook(book);
     } catch { /* non-fatal */ }
@@ -320,6 +328,9 @@ export default function AppTour({ onDone }) {
                     key={av.id}
                     onPress={() => setSelectedAvatar(av)}
                     activeOpacity={0.8}
+                    accessibilityRole="button"
+                    accessibilityLabel={t('a11y.chooseAvatar', { name: av.id })}
+                    accessibilityState={{ selected: selectedAvatar?.id === av.id }}
                     style={[
                       styles.avatarTile,
                       { backgroundColor: av.bg },

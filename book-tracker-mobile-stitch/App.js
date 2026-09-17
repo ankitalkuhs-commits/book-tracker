@@ -1,15 +1,16 @@
 import React, { useState, useEffect, createContext, useRef } from 'react';
-import { View, Text, Animated, ActivityIndicator, StyleSheet, AppState } from 'react-native';
+import { View, Text, Animated, ActivityIndicator, StyleSheet, AppState, Alert } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import * as Notifications from 'expo-notifications';
 import * as Font from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
+import i18n from 'i18next';
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { initI18n } from './src/i18n';
-import { authAPI, userAPI, userbooksAPI, notesAPI, notificationsAPI, importAPI, activityAPI, groupsAPI } from './src/services/api';
-import { registerExpoPushToken } from './src/services/NotificationService';
+import { authAPI, userAPI, userbooksAPI, notesAPI, notificationsAPI, importAPI, activityAPI, groupsAPI, setAuthExpiredHandler, NOTE_VISIBILITY_KEY } from './src/services/api';
+import { registerExpoPushToken, deregisterPushToken, resetPushRegistration } from './src/services/NotificationService';
 import AppNavigator from './src/navigation/AppNavigator';
 import LoginScreen from './src/screens/LoginScreen';
 import AppTour, { TOUR_KEY } from './src/components/AppTour';
@@ -72,12 +73,26 @@ export default function App() {
     return () => clearInterval(interval);
   }, [ready, transitioning]);
 
+  // ── Session expiry (F-11) ─────────────────────────────────────────────────
+  // Registered with api.js so any 401 that carried a token routes here,
+  // instead of leaving the tabs rendered without a valid session.
+  const handleSessionExpired = () => {
+    resetPushRegistration();          // cannot deregister: token is already invalid (4A reassignment covers it)
+    clearInterval(pollRef.current);
+    setPreloaded(null); setUnreadCount(0); setShowTour(false);
+    setTransitioning(false); setIsLoggedIn(false); setAuthChecked(true);
+    AsyncStorage.removeItem(NOTE_VISIBILITY_KEY).catch(() => {});   // T-11: next account starts on Private
+    Alert.alert(i18n.t('auth.sessionExpiredTitle'), i18n.t('auth.sessionExpiredBody'));
+  };
+  useEffect(() => { setAuthExpiredHandler(handleSessionExpired); return () => setAuthExpiredHandler(null); }, []);
+
   // ── Auth check on mount ──────────────────────────────────────────────────
   useEffect(() => {
     (async () => {
       const loggedIn = await authAPI.isLoggedIn();
       if (loggedIn) {
         await preloadData();
+        if (!(await authAPI.isLoggedIn())) { setAuthChecked(true); return; }
         const tourDone = await AsyncStorage.getItem(TOUR_KEY).catch(() => null);
         setIsLoggedIn(true);
         if (!tourDone) setShowTour(true);
@@ -158,25 +173,27 @@ export default function App() {
   // ── Push notification registration ──────────────────────────────────────
   useEffect(() => {
     if (!isLoggedIn) return;
-    authAPI.getToken().then(token => registerExpoPushToken(token)).catch(() => {});
+    registerExpoPushToken().catch(() => {});
   }, [isLoggedIn]);
 
   // ── Login / Logout ───────────────────────────────────────────────────────
   const handleLoginSuccess = async () => {
     setTransitioning(true);
     await preloadData();
+    if (!(await authAPI.isLoggedIn())) { setTransitioning(false); return; }
     const tourDone = await AsyncStorage.getItem(TOUR_KEY).catch(() => null);
     setTransitioning(false);
     setIsLoggedIn(true);
     if (!tourDone) setShowTour(true);
   };
 
-  const handleLogout = async () => {
+  const handleLogout = async ({ alreadyDeregistered = false } = {}) => {
+    if (!alreadyDeregistered && (await authAPI.isLoggedIn())) await deregisterPushToken();
+    else resetPushRegistration();
+    await authAPI.logout();
+    await AsyncStorage.removeItem(NOTE_VISIBILITY_KEY).catch(() => {});   // T-11: next account starts on Private
     clearInterval(pollRef.current);
-    setPreloaded(null);
-    setUnreadCount(0);
-    setShowTour(false);
-    setIsLoggedIn(false);
+    setPreloaded(null); setUnreadCount(0); setShowTour(false); setIsLoggedIn(false);
   };
 
   // ── Loading splash — wait for both fonts + auth ──────────────────────────
@@ -230,7 +247,7 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-      <NotificationContext.Provider value={{ unreadCount }}>
+      <NotificationContext.Provider value={{ unreadCount, refreshUnread: fetchUnread }}>
         <PreloadContext.Provider value={{
             ...(preloaded || {}),
             updateProfile: (patch) =>

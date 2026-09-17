@@ -1,13 +1,19 @@
 // API Service - Connects mobile app to Stitch backend
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
+import { isAuthExpiredError, isRetryableRequest } from './httpPolicy';
 
 // Stitch backend
 const API_BASE_URL = 'https://book-tracker-stitch.onrender.com';
 
+const DEFAULT_TIMEOUT = 30000;
+const COLD_START_TIMEOUT = 45000;
+let coldStart = true;                       // true until the first successful response
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+
 const api = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 30000,
+  timeout: DEFAULT_TIMEOUT,
   headers: { 'Content-Type': 'application/json' },
 });
 
@@ -16,19 +22,45 @@ api.interceptors.request.use(
   async (config) => {
     const token = await AsyncStorage.getItem('bt_token');
     if (token) config.headers.Authorization = `Bearer ${token}`;
+    if (coldStart && config.timeout === DEFAULT_TIMEOUT) config.timeout = COLD_START_TIMEOUT;
     return config;
   },
   (error) => Promise.reject(error)
 );
 
-// Handle 401 globally
+// Session-expiry notification (F-11): App.js registers the handler that
+// resets state and shows Login once, even though every parallel preload
+// request can 401 at the same time.
+let authExpiredHandler = null;
+let authExpiredNotified = false;
+export const setAuthExpiredHandler = (fn) => { authExpiredHandler = fn; };
+
+// Cold-start retry (F-31) + session-expiry (F-11), in that order.
 api.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    if (error.response?.status === 401) AsyncStorage.removeItem('bt_token');
+  (response) => { coldStart = false; return response; },
+  async (error) => {
+    if (isRetryableRequest(error)) {   // src/services/httpPolicy.js (T-22)
+      const cfg = error.config;
+      cfg.__retried = true;
+      cfg.timeout = DEFAULT_TIMEOUT;
+      await sleep(2000);
+      return api(cfg);
+    }
+    if (isAuthExpiredError(error)) {   // src/services/httpPolicy.js (T-22)
+      await AsyncStorage.removeItem('bt_token');
+      if (!authExpiredNotified) { authExpiredNotified = true; authExpiredHandler?.(); }
+    }
     return Promise.reject(error);
   }
 );
+
+// Warm-up ping (F-31): fire-and-forget from LoginScreen to wake a sleeping
+// Render instance before the Google account picker / login round-trip.
+export const warmUp = () => api.get('/version', { timeout: COLD_START_TIMEOUT, skipAuthExpired: true }).then(() => true).catch(() => false);
+
+// Note composer visibility (F-17): the single AsyncStorage key every note
+// composer reads/writes. Web uses the same key name in localStorage.
+export const NOTE_VISIBILITY_KEY = 'bt_note_visibility';
 
 // Auth API
 export const authAPI = {
@@ -36,7 +68,7 @@ export const authAPI = {
     const response = await api.post('/auth/google', { token: idToken });
     return response.data;
   },
-  saveToken: async (token) => { await AsyncStorage.setItem('bt_token', token); },
+  saveToken: async (token) => { authExpiredNotified = false; await AsyncStorage.setItem('bt_token', token); },
   getToken: async () => AsyncStorage.getItem('bt_token'),
   logout: async () => { await AsyncStorage.removeItem('bt_token'); },
   isLoggedIn: async () => !!(await AsyncStorage.getItem('bt_token')),
@@ -105,6 +137,7 @@ export const userAPI = {
   unfollowUser: async (userId) => (await api.delete(`/follow/${userId}`)).data,
   getFollowing: async () => (await api.get('/users/following')).data,
   registerPushToken: async (pushToken) => (await api.post('/push-tokens/', { token: pushToken })).data,
+  deregisterPushToken: async () => (await api.delete('/push-tokens/', { timeout: 10000, skipAuthExpired: true })).data,
 };
 
 // Notifications API
@@ -112,6 +145,7 @@ export const notificationsAPI = {
   getUnreadCount: async () => (await api.get('/notifications/unread-count')).data,
   getHistory: async () => (await api.get('/notifications/history')).data,
   markAllRead: async () => (await api.post('/notifications/mark-read')).data,
+  markRead: async (id) => (await api.post(`/notifications/${id}/read`)).data,
   getPrefs: async () => (await api.get('/notifications/prefs')).data,
   updatePrefs: async (prefs) => (await api.patch('/notifications/prefs', prefs)).data,
 };
@@ -126,6 +160,8 @@ export const groupsAPI = {
   },
   getGroup: async (id) => (await api.get(`/groups/${id}`)).data,
   getGroupActivity: async (id) => (await api.get(`/groups/${id}/activity`)).data,
+  deleteGroup: async (id) => { await api.delete(`/groups/${id}`); },
+  getGroupGoal: async (id) => (await api.get(`/groups/${id}/goal`)).data,
   createGroup: async (data) => (await api.post('/groups/', data)).data,
   joinGroup: async (id) => (await api.post(`/groups/${id}/join`)).data,
   joinByInviteCode: async (code) => (await api.post(`/groups/join/${code}`)).data,

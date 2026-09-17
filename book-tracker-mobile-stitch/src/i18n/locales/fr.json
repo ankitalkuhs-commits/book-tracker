@@ -81,7 +81,9 @@
     "errorPleaseWait": "Veuillez patienter",
     "errorAlreadyInProgress": "Connexion déjà en cours",
     "errorGooglePlayServices": "Google Play Services indisponible",
-    "errorSignInFailed": "Échec de la connexion"
+    "errorSignInFailed": "Échec de la connexion",
+    "sessionExpiredTitle": "Session expirée",
+    "sessionExpiredBody": "Veuillez vous reconnecter."
   },
   "feed": {
     "thoughtsPlaceholder": "Que pensez-vous de votre lecture actuelle ?",
@@ -165,6 +167,11 @@
     "alreadyInLibrary": "Déjà dans la bibliothèque",
     "viewInMyLibrary": "Voir dans ma bibliothèque",
     "totalPages": "{{total}} pages"
+  },
+  "notes": {
+    "visibilityHintPrivate": "Toi seul peux voir ceci",
+    "visibilityHintPublic": "Affiché dans le fil Communauté",
+    "savedPrivately": "Enregistré en privé — retrouve-le sur ton profil"
   },
   "groups": {
     "eyebrow": "VOS CERCLES LITTÉRAIRES",
@@ -252,7 +259,9 @@
     "searchByUsername": "Rechercher par nom d'utilisateur...",
     "disbandGroup": "Dissoudre le cercle",
     "disbandConfirm": "Supprimer définitivement «{{name}}» ? Cette action est irréversible.",
-    "disband": "Dissoudre"
+    "disband": "Dissoudre",
+    "rejectRequestTitle": "Refuser la demande ?",
+    "rejectRequestConfirm": "{{name}} ne sera pas ajouté au cercle."
   },
   "insights": {
     "eyebrow": "VOTRE VIE DE LECTEUR",
@@ -500,5 +509,32 @@
     "pt": "Português (BR)",
     "de": "Deutsch",
     "fr": "Français"
+  },
+  "a11y": {
+    "back": "Retour",
+    "close": "Fermer",
+    "openSettings": "Paramètres",
+    "openProfile": "Ton profil",
+    "openUserProfile": "Ouvrir le profil de {{name}}",
+    "notifications": "Notifications",
+    "changePhoto": "Changer la photo de profil",
+    "addPhoto": "Ajouter une photo",
+    "removePhoto": "Supprimer la photo",
+    "removeTaggedBook": "Retirer le livre associé",
+    "postOptions": "Options de la publication",
+    "deletePost": "Supprimer la publication",
+    "deleteComment": "Supprimer le commentaire",
+    "editNote": "Modifier la note",
+    "deleteNote": "Supprimer la note",
+    "like": "J'aime",
+    "comments": "Commentaires",
+    "sendComment": "Envoyer le commentaire",
+    "share": "Partager",
+    "searchBooks": "Rechercher des livres",
+    "clearSearch": "Effacer la recherche",
+    "rateStars": "Noter {{count}} étoiles",
+    "chooseAvatar": "Avatar {{name}}",
+    "coverPreset": "Couverture {{name}}",
+    "postVisibility": "Visibilité de la publication"
   }
 }
