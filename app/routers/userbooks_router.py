@@ -1,13 +1,14 @@
 # app/routers/userbooks_router.py
-from fastapi import APIRouter, Depends, HTTPException, status
-from typing import Optional
+from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks, Query
+from typing import Optional, Literal
 from sqlmodel import Session, select
+from sqlalchemy.exc import IntegrityError
 from ..deps import get_db, get_current_user
 from .. import crud, models
 from typing import List
 from ..models import UserBook, Book, Follow   # adjust import path if different
 from datetime import datetime
-from pydantic import BaseModel
+from pydantic import BaseModel, conint, root_validator
 from app.models import UserBookProgress
 from app.database import get_db
 from sqlalchemy.orm import Session
@@ -23,8 +24,28 @@ class UpdatePagePayload(BaseModel):
     current_page: int
 
 
+class UserBookPatch(BaseModel):
+    """PATCH /userbooks/{id}. Pydantic v1; unknown keys ignored (v1 default Extra.ignore)."""
+    status: Optional[Literal["to-read", "reading", "finished"]] = None
+    current_page: Optional[conint(ge=0)] = None
+    rating: Optional[conint(strict=True, ge=0, le=5)] = None      # 0 or null clears (web sends 0 for "Rating removed")
+    private_notes: Optional[str] = None
+    format: Optional[Literal["hardcover", "paperback", "ebook", "kindle", "pdf", "audiobook"]] = None
+    ownership_status: Optional[Literal["owned", "borrowed", "loaned"]] = None
+    borrowed_from: Optional[str] = None
+    loaned_to: Optional[str] = None
+    total_pages: Optional[conint(ge=1)] = None
+
+    @root_validator(pre=True)
+    def _no_null_for_required_columns(cls, values):
+        for k in ("status", "format", "ownership_status", "total_pages"):
+            if k in values and values[k] is None:
+                raise ValueError(f"{k} cannot be null")
+        return values
+
+
 @router.put("/{userbook_id}/progress")
-def update_progress(userbook_id: int, data: UserBookProgress, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+def update_progress(userbook_id: int, data: UserBookProgress, background_tasks: BackgroundTasks, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     userbook = db.get(UserBook, userbook_id)
     if not userbook or userbook.user_id != current_user.id:
         raise HTTPException(status_code=404, detail="UserBook not found")
@@ -98,13 +119,15 @@ def update_progress(userbook_id: int, data: UserBookProgress, db: Session = Depe
     db.commit()
     db.refresh(userbook)
 
-    # Fire book_completed / milestone events
+    # Fire book_completed / milestone events (F-59: scheduled after the response; values
+    # captured now, before the background tasks run)
     if _fire_completed:
         book_title = book.title if book else "a book"
         actor = db.get(models.User, userbook.user_id)
         if actor:
             follower_ids = get_follower_ids(db, userbook.user_id)
-            fire_event(
+            background_tasks.add_task(
+                fire_event,
                 db=db,
                 event_type="book_completed",
                 actor_id=userbook.user_id,
@@ -112,7 +135,8 @@ def update_progress(userbook_id: int, data: UserBookProgress, db: Session = Depe
                 recipient_ids=follower_ids,
                 extra={"book_title": book_title},
             )
-        fire_group_activity_for_user(
+        background_tasks.add_task(
+            fire_group_activity_for_user,
             db, userbook.user_id, "book_finished",
             {"book_title": book_title, "book_id": userbook.book_id},
         )
@@ -124,7 +148,8 @@ def update_progress(userbook_id: int, data: UserBookProgress, db: Session = Depe
         new_pct = int((new_page / total_pages) * 100)
         for m in MILESTONES:
             if old_pct < m <= new_pct:
-                fire_group_activity_for_user(
+                background_tasks.add_task(
+                    fire_group_activity_for_user,
                     db, userbook.user_id, "milestone_reached",
                     {"book_title": book_title, "book_id": userbook.book_id,
                      "pct": m, "current_page": new_page, "total_pages": total_pages},
@@ -140,7 +165,7 @@ def update_progress(userbook_id: int, data: UserBookProgress, db: Session = Depe
     }
 
 @router.post("/{userbook_id}/finish", status_code=200)
-def mark_userbook_finished(userbook_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+def mark_userbook_finished(userbook_id: int, background_tasks: BackgroundTasks, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     """
     Mark a user's book as finished.
     If the Book has total_pages set, set userbook.current_page to total_pages.
@@ -166,13 +191,14 @@ def mark_userbook_finished(userbook_id: int, db: Session = Depends(get_db), curr
     db.commit()
     db.refresh(ub)
 
-    # Notify followers that this user finished a book
+    # Notify followers that this user finished a book (F-59: scheduled after the response)
     book = db.get(Book, ub.book_id) if ub.book_id else None
     book_title = book.title if book else "a book"
     actor = db.get(models.User, ub.user_id)
     if actor:
         follower_ids = get_follower_ids(db, ub.user_id)
-        fire_event(
+        background_tasks.add_task(
+            fire_event,
             db=db,
             event_type="book_completed",
             actor_id=ub.user_id,
@@ -180,7 +206,8 @@ def mark_userbook_finished(userbook_id: int, db: Session = Depends(get_db), curr
             recipient_ids=follower_ids,
             extra={"book_title": book_title},
         )
-    fire_group_activity_for_user(
+    background_tasks.add_task(
+        fire_group_activity_for_user,
         db, ub.user_id, "book_finished",
         {"book_title": book_title, "book_id": ub.book_id},
     )
@@ -189,7 +216,7 @@ def mark_userbook_finished(userbook_id: int, db: Session = Depends(get_db), curr
 
 
 @router.post("/", status_code=status.HTTP_201_CREATED)
-def add_userbook(payload: dict, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+def add_userbook(payload: dict, background_tasks: BackgroundTasks, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     """
     Add a book to the current user's library.
     Expected payload: { 
@@ -233,22 +260,31 @@ def add_userbook(payload: dict, db: Session = Depends(get_db), current_user: mod
     borrowed_from = payload.get("borrowed_from")
     loaned_to = payload.get("loaned_to")
     
-    ub = crud.create_userbook(
-        db, 
-        user_id=current_user.id, 
-        book_id=book_id, 
-        status=status_val, 
-        current_page=current_page,
-        format=book_format,
-        ownership_status=ownership_status,
-        borrowed_from=borrowed_from,
-        loaned_to=loaned_to
-    )
+    try:
+        ub = crud.create_userbook(
+            db,
+            user_id=current_user.id,
+            book_id=book_id,
+            status=status_val,
+            current_page=current_page,
+            format=book_format,
+            ownership_status=ownership_status,
+            borrowed_from=borrowed_from,
+            loaned_to=loaned_to
+        )
+    except IntegrityError:
+        # F-53: a concurrent request won the race on (user_id, book_id) between our check and our commit.
+        db.rollback()
+        raise HTTPException(
+            status_code=400,
+            detail=f"You already have '{book.title}' in your library"
+        )
 
-    # Notify followers that this user added a book
+    # Notify followers that this user added a book (F-59: scheduled after the response)
     follower_ids = get_follower_ids(db, current_user.id)
     actor_name = current_user.name or current_user.username or "Someone"
-    fire_event(
+    background_tasks.add_task(
+        fire_event,
         db=db,
         event_type="book_added",
         actor_id=current_user.id,
@@ -348,16 +384,18 @@ def get_userbook(
 
 
 @router.patch("/{userbook_id}", status_code=status.HTTP_200_OK)
-def patch_userbook(userbook_id: int, payload: dict, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+def patch_userbook(userbook_id: int, payload: UserBookPatch, background_tasks: BackgroundTasks, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     ub = crud.get_userbook(db, userbook_id=userbook_id)
     if not ub or ub.user_id != current_user.id:
         raise HTTPException(status_code=404, detail="UserBook not found")
 
-    allowed = {"status", "current_page", "rating", "private_notes", "format", "ownership_status", "borrowed_from", "loaned_to"}
-    update_fields = {k: v for k, v in payload.items() if k in allowed}
+    sent = payload.dict(exclude_unset=True)
+    new_total_pages = sent.pop("total_pages", None)
+    if "rating" in sent and not sent["rating"]:
+        sent["rating"] = None
+    update_fields = sent
 
     # If total_pages provided, update the Book model directly
-    new_total_pages = payload.get("total_pages")
     if new_total_pages is not None and not update_fields:
         # total_pages alone is valid
         pass
@@ -377,11 +415,12 @@ def patch_userbook(userbook_id: int, payload: dict, db: Session = Depends(get_db
     new_status = update_fields.get("status")
     book_title = book.title if book else "a book"
 
-    # Notify followers when status manually changed to 'finished'
+    # Notify followers when status manually changed to 'finished' (F-59: scheduled after the response)
     if new_status == "finished" and old_status != "finished":
         follower_ids = get_follower_ids(db, current_user.id)
         actor_name = current_user.name or current_user.username or "Someone"
-        fire_event(
+        background_tasks.add_task(
+            fire_event,
             db=db,
             event_type="book_completed",
             actor_id=current_user.id,
@@ -389,12 +428,14 @@ def patch_userbook(userbook_id: int, payload: dict, db: Session = Depends(get_db
             recipient_ids=follower_ids,
             extra={"book_title": book_title},
         )
-        fire_group_activity_for_user(
+        background_tasks.add_task(
+            fire_group_activity_for_user,
             db, current_user.id, "book_finished",
             {"book_title": book_title, "book_id": ub.book_id},
         )
     elif new_status == "reading" and old_status != "reading":
-        fire_group_activity_for_user(
+        background_tasks.add_task(
+            fire_group_activity_for_user,
             db, current_user.id, "book_started",
             {"book_title": book_title, "book_id": ub.book_id},
         )
@@ -418,11 +459,19 @@ def delete_userbook(userbook_id: int, db: Session = Depends(get_db), current_use
     ub = crud.get_userbook(db, userbook_id=userbook_id)
     if not ub or ub.user_id != current_user.id:
         raise HTTPException(status_code=404, detail="UserBook not found")
-    
+
+    # F-50: reading_activity and group_post reference userbook without an ORM relationship, so the
+    # DELETE violated the FK in Postgres (500). Notes keep today's behaviour: the ORM detaches them.
+    for ra in db.exec(select(models.ReadingActivity).where(models.ReadingActivity.userbook_id == ub.id)).all():
+        db.delete(ra)
+    for gp in db.exec(select(models.GroupPost).where(models.GroupPost.userbook_id == ub.id)).all():
+        gp.userbook_id = None
+        db.add(gp)
+
     # Delete the userbook (cascading deletes should handle notes if configured)
     db.delete(ub)
     db.commit()
-    
+
     return {"status": "ok", "message": "Book removed from library successfully"}
 
 
@@ -486,8 +535,8 @@ def get_user_books(
 
 @router.get("/friends/currently-reading", response_model=List[dict])
 def get_friends_currently_reading(
-    limit: int = 10,
-    db: Session = Depends(get_db), 
+    limit: int = Query(10, ge=1, le=200),
+    db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
     """
@@ -548,14 +597,17 @@ def get_friends_currently_reading(
                     "id": user.id,
                     "username": user.username,
                     "name": user.name,
-                    "is_mutual": user.id in mutual_ids
+                    "is_mutual": user.id in mutual_ids,
+                    "profile_picture": getattr(user, "profile_picture", None),
                 },
                 "book": {
                     "id": book.id,
                     "title": book.title,
                     "author": book.author,
                     "cover_url": normalize_google_cover_url(book.cover_url),
-                    "total_pages": book.total_pages
+                    "total_pages": book.total_pages,
+                    "google_books_id": book.google_books_id,
+                    "isbn": book.isbn,
                 },
                 "current_page": ub.current_page,
                 "updated_at": ub.updated_at

@@ -3,7 +3,7 @@ Admin Router - Statistics and management dashboard
 Security: Only accessible by admin users (ankitalkuhs@gmail.com)
 """
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlmodel import Session, select, func
 from typing import List, Dict
 from pydantic import BaseModel
@@ -34,6 +34,7 @@ class PlatformStats(BaseModel):
     total_journals: int
     total_likes: int
     total_comments: int
+    push_subscribed_users: int = 0
 
 
 class UserSummary(BaseModel):
@@ -145,7 +146,10 @@ def get_platform_stats(
         total_comments = db.exec(select(func.count(models.Comment.id))).one()
     except:
         total_comments = 0
-    
+
+    # F-26: same audience as the broadcast — distinct users holding any push token/subscription
+    push_subscribed_users = db.exec(select(func.count(func.distinct(models.PushToken.user_id)))).one()
+
     return PlatformStats(
         total_users=total_users or 0,
         new_users_this_week=new_users_week or 0,
@@ -159,7 +163,8 @@ def get_platform_stats(
         total_follows=total_follows or 0,
         total_journals=total_journals,
         total_likes=total_likes,
-        total_comments=total_comments
+        total_comments=total_comments,
+        push_subscribed_users=push_subscribed_users or 0,
     )
 
 
@@ -167,7 +172,7 @@ def get_platform_stats(
 def get_all_users(
     db: Session = Depends(get_session),
     admin_user = Depends(get_admin_user),
-    limit: int = 100,
+    limit: int = Query(100, ge=1, le=200),
     offset: int = 0
 ):
     """
@@ -222,7 +227,7 @@ def get_all_users(
 def get_popular_books(
     db: Session = Depends(get_session),
     admin_user = Depends(get_admin_user),
-    limit: int = 50
+    limit: int = Query(50, ge=1, le=200)
 ):
     """
     Get most popular books by user count.
@@ -282,7 +287,7 @@ def get_popular_books(
 def get_follow_relationships(
     db: Session = Depends(get_session),
     admin_user = Depends(get_admin_user),
-    limit: int = 100
+    limit: int = Query(100, ge=1, le=200)
 ):
     """
     Get follow relationships for network analysis.
@@ -453,7 +458,7 @@ class CommentAdminView(BaseModel):
 
 @router.get("/content/notes", response_model=List[NoteAdminView])
 def list_recent_notes(
-    limit: int = 50,
+    limit: int = Query(50, ge=1, le=200),
     db: Session = Depends(get_session),
     admin_user=Depends(get_admin_user),
 ):
@@ -499,7 +504,7 @@ def list_recent_notes(
 
 @router.get("/content/comments", response_model=List[CommentAdminView])
 def list_recent_comments(
-    limit: int = 100,
+    limit: int = Query(100, ge=1, le=200),
     db: Session = Depends(get_session),
     admin_user=Depends(get_admin_user),
 ):

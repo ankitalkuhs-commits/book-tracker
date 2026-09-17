@@ -8,17 +8,54 @@ Search strategy (optimized for novel readers):
 - Default (no genre)   → subject:fiction bias to suppress textbooks/academic noise
 - Always fetch 40 from Google, filter noise, re-rank by novel-friendliness, return top N
 """
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends, Request
 from typing import List, Optional
 import httpx
 import os
 import re
 import asyncio
+import hashlib
+import secrets
+import time
 from pydantic import BaseModel
+from ..deps import get_current_user_optional
 
 router = APIRouter(prefix="/api/googlebooks", tags=["Google Books"])
 
 GOOGLE_BOOKS_API_KEY = os.getenv("GOOGLE_BOOKS_API_KEY")
+
+# ── F-29: anonymous quota ───────────────────────────────────────────────────────
+ANON_CALLS_PER_WINDOW = 2
+ANON_WINDOW_SECONDS = 24 * 60 * 60
+_anon_calls: dict[str, list[float]] = {}   # salted ip-hash -> call times. In-process only: resets on Render restart/sleep (PM-accepted).
+_IP_SALT = secrets.token_bytes(16)          # per process, so hashes cannot be reversed from a memory dump
+_clock = time.time                          # tests monkeypatch this
+
+
+def _caller_key(request: Request) -> str:
+    fwd = request.headers.get("x-forwarded-for", "")
+    # Right-most X-Forwarded-For entry: the one Render's proxy appends. Everything to its left is
+    # caller-supplied and forgeable (resolved, orchestrator default 2026-09-13).
+    hops = [h.strip() for h in fwd.split(",") if h.strip()]
+    ip = hops[-1] if hops else (request.client.host if request.client else "unknown")
+    return hashlib.sha256(_IP_SALT + ip.encode()).hexdigest()
+
+
+def _consume_anonymous_call(request: Request) -> None:
+    now = _clock()
+    key = _caller_key(request)
+    recent = [t for t in _anon_calls.get(key, ()) if now - t < ANON_WINDOW_SECONDS]
+    if len(recent) >= ANON_CALLS_PER_WINDOW:
+        _anon_calls[key] = recent
+        raise HTTPException(status_code=401, detail={"code": "login_required", "message": "Log in to keep searching"})
+    recent.append(now)
+    _anon_calls[key] = recent
+    if len(_anon_calls) > 10_000:           # bound memory: drop callers with no call inside the window
+        for k in [k for k, ts in _anon_calls.items() if not ts or now - ts[-1] >= ANON_WINDOW_SECONDS]:
+            del _anon_calls[k]
+
+
+MAX_START_INDEX = 1000   # F-54: Google yields nothing useful this deep; short-circuit instead of erroring
 
 if not GOOGLE_BOOKS_API_KEY:
     print("WARNING: GOOGLE_BOOKS_API_KEY not set. Google Books API may be rate-limited.")
@@ -167,6 +204,20 @@ def normalize_google_cover_url(cover_url: Optional[str]) -> Optional[str]:
     return cover_url.replace("http://", "https://")
 
 
+def _cover_from_volume(google_id: str, image_links: Optional[dict]) -> Optional[str]:
+    """Google's front-cover CDN answers 200 with an 'image not available' PNG for volumes that
+    have no imageLinks, which defeats every client's onError fallback. Only build a URL when
+    Google says an image exists."""
+    if not image_links:
+        return None
+    raw = (image_links.get("large") or image_links.get("medium")
+           or image_links.get("thumbnail") or image_links.get("smallThumbnail"))
+    if not raw:
+        return None
+    return normalize_google_cover_url(
+        f"https://books.google.com/books/content?id={google_id}" if google_id else raw)
+
+
 class GoogleBookResult(BaseModel):
     google_id: str
     title: str
@@ -194,11 +245,13 @@ class GoogleBooksSearchResponse(BaseModel):
 @router.get("/search", response_model=GoogleBooksSearchResponse)
 async def search_google_books(
     query: str,
+    request: Request,
     max_results: int = 10,            # results to return per page
     start_index: int = 0,             # pagination offset (pass next_start_index from previous response)
     genre: Optional[str] = None,      # fiction|fantasy|mystery|thriller|sci-fi|romance|historical|literary|all
     order_by: str = "relevance",       # relevance|newest
     filter_noise: bool = True,         # apply noise filtering + re-ranking
+    current_user=Depends(get_current_user_optional),
 ):
     """
     Search for books using Google Books API — optimised for novel readers.
@@ -219,11 +272,22 @@ async def search_google_books(
     if not query or len(query.strip()) < 2:
         raise HTTPException(status_code=400, detail="Query must be at least 2 characters")
 
+    # F-29: the quota check sits outside the try below, so its 401 is never re-wrapped.
+    if current_user is None:
+        _consume_anonymous_call(request)
+
     if max_results < 1 or max_results > 40:
         max_results = 10
 
     if start_index < 0:
         start_index = 0
+
+    # F-54: Google yields nothing useful this deep — short-circuit instead of a 500.
+    if start_index >= MAX_START_INDEX:
+        return GoogleBooksSearchResponse(
+            results=[], total_items=0, query_used=_build_query(query, genre),
+            has_more=False, next_start_index=start_index,
+        )
 
     # Fetch Google's maximum per request so we have the most to filter/re-rank
     google_fetch = 40
@@ -265,15 +329,9 @@ async def search_google_books(
             vi = item.get("volumeInfo", {})
             google_id = item.get("id", "")
 
-            # Cover URL — use CDN format for reliability
-            image_links = vi.get("imageLinks", {})
-            raw_cover = (
-                image_links.get("large") or image_links.get("medium") or
-                image_links.get("thumbnail") or image_links.get("smallThumbnail")
-            ) if image_links else None
-            cover_url = normalize_google_cover_url(
-                f"https://books.google.com/books/content?id={google_id}" if google_id else raw_cover
-            )
+            # Cover URL — F-19: null when Google has no imageLinks, rather than a URL that
+            # answers 200 with an "image not available" placeholder.
+            cover_url = _cover_from_volume(google_id, vi.get("imageLinks"))
 
             # ISBNs
             isbn_10 = isbn_13 = None
@@ -320,7 +378,7 @@ async def search_google_books(
 
         # Pagination: next window starts where this one ended in Google's index
         next_start = start_index + google_fetch
-        has_more = total_items > next_start
+        has_more = total_items > next_start and next_start < MAX_START_INDEX
 
         return GoogleBooksSearchResponse(
             results=results,
@@ -330,15 +388,25 @@ async def search_google_books(
             next_start_index=next_start,
         )
 
-    except httpx.HTTPError as e:
-        raise HTTPException(status_code=500, detail=f"Error fetching from Google Books: {str(e)}")
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
+    except HTTPException:
+        raise                                   # keep our own 502 instead of rewrapping it as 500
+    except httpx.HTTPError:
+        raise HTTPException(status_code=502, detail="Google Books is unavailable right now")
+    except Exception:
+        raise HTTPException(status_code=502, detail="Google Books returned an unexpected response")
 
 
 @router.get("/book/{google_book_id}", response_model=GoogleBookResult)
-async def get_book_details(google_book_id: str):
+async def get_book_details(
+    google_book_id: str,
+    request: Request,
+    current_user=Depends(get_current_user_optional),
+):
     """Get detailed information about a specific book by Google Books ID."""
+    # F-29: the quota check is the first line, outside the try, so its 401 is never re-wrapped.
+    if current_user is None:
+        _consume_anonymous_call(request)
+
     url = f"https://www.googleapis.com/books/v1/volumes/{google_book_id}"
     params = {"key": GOOGLE_BOOKS_API_KEY}
 
@@ -358,14 +426,9 @@ async def get_book_details(google_book_id: str):
             elif ident.get("type") == "ISBN_13":
                 isbn_13 = ident.get("identifier")
 
-        image_links = vi.get("imageLinks", {})
-        raw_cover = (
-            image_links.get("large") or image_links.get("medium") or
-            image_links.get("thumbnail") or image_links.get("smallThumbnail")
-        ) if image_links else None
-        cover_url = normalize_google_cover_url(
-            f"https://books.google.com/books/content?id={google_id_val}" if google_id_val else raw_cover
-        )
+        # Cover URL — F-19: null when Google has no imageLinks, rather than a URL that
+        # answers 200 with an "image not available" placeholder.
+        cover_url = _cover_from_volume(google_id_val, vi.get("imageLinks"))
 
         return GoogleBookResult(
             google_id=google_id_val,
@@ -383,7 +446,9 @@ async def get_book_details(google_book_id: str):
             categories=vi.get("categories") or [],
         )
 
-    except httpx.HTTPError as e:
-        raise HTTPException(status_code=500, detail=f"Error fetching from Google Books: {str(e)}")
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
+    except HTTPException:
+        raise                                   # keep our own 502 instead of rewrapping it as 500
+    except httpx.HTTPError:
+        raise HTTPException(status_code=502, detail="Google Books is unavailable right now")
+    except Exception:
+        raise HTTPException(status_code=502, detail="Google Books returned an unexpected response")
