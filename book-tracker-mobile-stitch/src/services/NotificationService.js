@@ -3,8 +3,8 @@
 import * as Notifications from 'expo-notifications';
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
+import { userAPI, authAPI } from './api';
 
-const API_BASE_URL = 'https://book-tracker-stitch.onrender.com'; // Stitch backend
 const EXPO_PROJECT_ID =
   Constants?.expoConfig?.extra?.eas?.projectId ||
   Constants?.easConfig?.projectId ||
@@ -12,6 +12,7 @@ const EXPO_PROJECT_ID =
 
 let registrationInProgress = false;
 let lastRegisteredExpoToken = null;
+let registrationEpoch = 0;
 
 // ─── Show notifications when app is in foreground ────────────────────────────
 Notifications.setNotificationHandler({
@@ -39,12 +40,22 @@ export async function requestNotificationPermission() {
   return status === 'granted';
 }
 
+// ─── Reset the push registration guard (F-03) ─────────────────────────────────
+// Called on sign-out, session expiry and before deregistering. The epoch stops
+// an in-flight registration for the account that just signed out from re-arming
+// the guard once its request resolves.
+export function resetPushRegistration() {
+  lastRegisteredExpoToken = null;
+  registrationEpoch += 1;
+}
+
 // ─── Get Expo push token and register it with the backend ────────────────────
-export async function registerExpoPushToken(authToken) {
+export async function registerExpoPushToken() {
   if (registrationInProgress) return;
   try {
     registrationInProgress = true;
-    if (!authToken || !EXPO_PROJECT_ID) return;
+    const epoch = registrationEpoch;
+    if (!EXPO_PROJECT_ID || !(await authAPI.isLoggedIn())) return;
 
     const hasPermission = await requestNotificationPermission();
     if (!hasPermission) return;
@@ -53,7 +64,7 @@ export async function registerExpoPushToken(authToken) {
     try {
       tokenResult = await Notifications.getExpoPushTokenAsync({ projectId: EXPO_PROJECT_ID });
     } catch (tokenErr) {
-      console.error('[Push] getExpoPushTokenAsync failed:', tokenErr?.message);
+      if (__DEV__) console.error('[Push] getExpoPushTokenAsync failed:', tokenErr?.message);
       return;
     }
 
@@ -61,21 +72,8 @@ export async function registerExpoPushToken(authToken) {
     if (!expoPushToken) return;
     if (lastRegisteredExpoToken === expoPushToken) return;
 
-    const response = await fetch(`${API_BASE_URL}/push-tokens/`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${authToken}`,
-      },
-      body: JSON.stringify({ token: expoPushToken }),
-    });
-
-    if (!response.ok) {
-      console.warn('[Push] Backend registration failed:', response.status);
-      return;
-    }
-
-    lastRegisteredExpoToken = expoPushToken;
+    await userAPI.registerPushToken(expoPushToken);
+    if (epoch === registrationEpoch) lastRegisteredExpoToken = expoPushToken;
     if (__DEV__) console.log('[Push] Token registered successfully');
   } catch (err) {
     if (__DEV__) console.warn('[Push] Error registering push token:', err?.message);
@@ -85,17 +83,10 @@ export async function registerExpoPushToken(authToken) {
 }
 
 // ─── Remove token from backend on logout ─────────────────────────────────────
-export async function deregisterPushToken(authToken) {
+export async function deregisterPushToken() {
+  resetPushRegistration();
   try {
-    if (!authToken) return;
-    lastRegisteredExpoToken = null;
-
-    const response = await fetch(`${API_BASE_URL}/push-tokens/`, {
-      method: 'DELETE',
-      headers: { Authorization: `Bearer ${authToken}` },
-    });
-
-    if (!response.ok) console.warn('[Push] Backend deregistration failed:', response.status);
+    await userAPI.deregisterPushToken();
   } catch (err) {
     if (__DEV__) console.warn('[Push] Error deregistering push token:', err?.message);
   }

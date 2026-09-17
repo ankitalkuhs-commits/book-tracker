@@ -23,6 +23,9 @@ jobs:
           cache: 'npm'
           cache-dependency-path: book-tracker-mobile-stitch/package-lock.json
 
+      - name: Check version bump
+        run: node scripts/check-version-bump.js --strict
+
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
@@ -36,7 +39,7 @@ jobs:
           token: ${{ secrets.EXPO_TOKEN }}
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
       - name: Inject build info
         run: |

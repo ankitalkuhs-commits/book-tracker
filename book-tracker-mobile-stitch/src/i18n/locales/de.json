@@ -81,7 +81,9 @@
     "errorPleaseWait": "Bitte warten",
     "errorAlreadyInProgress": "Anmeldung läuft bereits",
     "errorGooglePlayServices": "Google Play Services nicht verfügbar",
-    "errorSignInFailed": "Anmeldung fehlgeschlagen"
+    "errorSignInFailed": "Anmeldung fehlgeschlagen",
+    "sessionExpiredTitle": "Sitzung abgelaufen",
+    "sessionExpiredBody": "Bitte melde dich erneut an."
   },
   "feed": {
     "thoughtsPlaceholder": "Was denkst du über dein aktuelles Buch?",
@@ -165,6 +167,11 @@
     "alreadyInLibrary": "Bereits in der Bibliothek",
     "viewInMyLibrary": "In meiner Bibliothek anzeigen",
     "totalPages": "{{total}} Seiten"
+  },
+  "notes": {
+    "visibilityHintPrivate": "Nur du kannst das sehen",
+    "visibilityHintPublic": "Wird im Community-Feed angezeigt",
+    "savedPrivately": "Privat gespeichert — zu finden in deinem Profil"
   },
   "groups": {
     "eyebrow": "DEINE LITERARISCHEN KREISE",
@@ -252,7 +259,9 @@
     "searchByUsername": "Nach Benutzernamen suchen...",
     "disbandGroup": "Kreis auflösen",
     "disbandConfirm": "«{{name}}» dauerhaft löschen? Dies kann nicht rückgängig gemacht werden.",
-    "disband": "Auflösen"
+    "disband": "Auflösen",
+    "rejectRequestTitle": "Anfrage ablehnen?",
+    "rejectRequestConfirm": "{{name}} wird nicht zum Kreis hinzugefügt."
   },
   "insights": {
     "eyebrow": "DEIN LESERLEBEN",
@@ -500,5 +509,32 @@
     "pt": "Português (BR)",
     "de": "Deutsch",
     "fr": "Français"
+  },
+  "a11y": {
+    "back": "Zurück",
+    "close": "Schließen",
+    "openSettings": "Einstellungen",
+    "openProfile": "Dein Profil",
+    "openUserProfile": "Profil von {{name}} öffnen",
+    "notifications": "Benachrichtigungen",
+    "changePhoto": "Profilbild ändern",
+    "addPhoto": "Foto hinzufügen",
+    "removePhoto": "Foto entfernen",
+    "removeTaggedBook": "Verknüpftes Buch entfernen",
+    "postOptions": "Beitragsoptionen",
+    "deletePost": "Beitrag löschen",
+    "deleteComment": "Kommentar löschen",
+    "editNote": "Notiz bearbeiten",
+    "deleteNote": "Notiz löschen",
+    "like": "Gefällt mir",
+    "comments": "Kommentare",
+    "sendComment": "Kommentar senden",
+    "share": "Teilen",
+    "searchBooks": "Bücher suchen",
+    "clearSearch": "Suche löschen",
+    "rateStars": "Mit {{count}} Sternen bewerten",
+    "chooseAvatar": "Avatar {{name}}",
+    "coverPreset": "Cover {{name}}",
+    "postVisibility": "Sichtbarkeit des Beitrags"
   }
 }

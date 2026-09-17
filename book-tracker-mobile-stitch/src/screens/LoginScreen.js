@@ -7,7 +7,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Svg, { Path } from 'react-native-svg';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { useTranslation } from 'react-i18next';
-import { authAPI } from '../services/api';
+import { authAPI, warmUp } from '../services/api';
 import { colors, radius, shadow, type } from '../theme';
 
 
@@ -29,6 +29,7 @@ export default function LoginScreen({ onLoginSuccess }) {
 
   useEffect(() => {
     GoogleSignin.configure({ webClientId: WEB_CLIENT_ID, offlineAccess: false });
+    warmUp();   // fire-and-forget: wake a sleeping Render instance before the account picker returns (F-31)
   }, []);
 
   const handleSignIn = async () => {

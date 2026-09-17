@@ -81,7 +81,9 @@
     "errorPleaseWait": "Пожалуйста, подождите",
     "errorAlreadyInProgress": "Вход уже выполняется",
     "errorGooglePlayServices": "Google Play Services недоступен",
-    "errorSignInFailed": "Ошибка входа"
+    "errorSignInFailed": "Ошибка входа",
+    "sessionExpiredTitle": "Сессия истекла",
+    "sessionExpiredBody": "Пожалуйста, войдите снова."
   },
   "feed": {
     "thoughtsPlaceholder": "Что вы думаете о своей текущей книге?",
@@ -167,6 +169,11 @@
     "alreadyInLibrary": "Уже в библиотеке",
     "viewInMyLibrary": "Открыть в библиотеке",
     "totalPages": "{{total}} страниц"
+  },
+  "notes": {
+    "visibilityHintPrivate": "Видно только вам",
+    "visibilityHintPublic": "Показывается в общей ленте",
+    "savedPrivately": "Сохранено как личное — найдите в своём профиле"
   },
   "groups": {
     "eyebrow": "ВАШИ ЧИТАТЕЛЬСКИЕ КРУЖКИ",
@@ -256,7 +263,9 @@
     "searchByUsername": "Поиск по имени пользователя...",
     "disbandGroup": "Расформировать кружок",
     "disbandConfirm": "Навсегда удалить «{{name}}»? Это нельзя отменить.",
-    "disband": "Расформировать"
+    "disband": "Расформировать",
+    "rejectRequestTitle": "Отклонить запрос?",
+    "rejectRequestConfirm": "{{name}} не будет добавлен в кружок."
   },
   "insights": {
     "eyebrow": "ВАША ЧИТАТЕЛЬСКАЯ ЖИЗНЬ",
@@ -510,5 +519,32 @@
     "pt": "Português (BR)",
     "de": "Deutsch",
     "fr": "Français"
+  },
+  "a11y": {
+    "back": "Назад",
+    "close": "Закрыть",
+    "openSettings": "Настройки",
+    "openProfile": "Ваш профиль",
+    "openUserProfile": "Открыть профиль {{name}}",
+    "notifications": "Уведомления",
+    "changePhoto": "Изменить фото профиля",
+    "addPhoto": "Добавить фото",
+    "removePhoto": "Удалить фото",
+    "removeTaggedBook": "Убрать отмеченную книгу",
+    "postOptions": "Параметры записи",
+    "deletePost": "Удалить запись",
+    "deleteComment": "Удалить комментарий",
+    "editNote": "Редактировать заметку",
+    "deleteNote": "Удалить заметку",
+    "like": "Нравится",
+    "comments": "Комментарии",
+    "sendComment": "Отправить комментарий",
+    "share": "Поделиться",
+    "searchBooks": "Искать книги",
+    "clearSearch": "Очистить поиск",
+    "rateStars": "Оценить на {{count}} звёзд",
+    "chooseAvatar": "Аватар {{name}}",
+    "coverPreset": "Обложка {{name}}",
+    "postVisibility": "Видимость записи"
   }
 }
