@@ -40,7 +40,14 @@ export default function AppHeader({ user, onBellPress, onAvatarPress }) {
 
         <View style={styles.actions}>
           {/* Bell */}
-          <TouchableOpacity onPress={onBellPress} activeOpacity={0.7} style={styles.iconBtn}>
+          <TouchableOpacity
+            onPress={onBellPress}
+            activeOpacity={0.7}
+            style={styles.iconBtn}
+            accessibilityRole="button"
+            accessibilityLabel={t('a11y.notifications')}
+            accessibilityValue={{ text: String(unreadCount) }}
+          >
             <Ionicons name="notifications-outline" size={24} color={badgeCount ? '#ffffff' : colors.onPrimaryContainer} />
             {badgeCount && (
               <View style={styles.badge}>
@@ -50,7 +57,12 @@ export default function AppHeader({ user, onBellPress, onAvatarPress }) {
           </TouchableOpacity>
 
           {/* Avatar */}
-          <TouchableOpacity onPress={onAvatarPress} activeOpacity={0.8}>
+          <TouchableOpacity
+            onPress={onAvatarPress}
+            activeOpacity={0.8}
+            accessibilityRole="button"
+            accessibilityLabel={t('a11y.openProfile')}
+          >
             {user?.profile_picture ? (
               <Image source={{ uri: user.profile_picture }} style={styles.avatarImg} />
             ) : (

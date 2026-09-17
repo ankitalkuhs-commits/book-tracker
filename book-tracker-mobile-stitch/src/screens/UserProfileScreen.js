@@ -275,7 +275,12 @@ export default function UserProfileScreen({ route, navigation }) {
       {renderShelfModal()}
       {/* Back bar */}
       <View style={[styles.topBar, { paddingTop: insets.top + 10 }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={styles.backBtn}
+          accessibilityRole="button"
+          accessibilityLabel={t('a11y.back')}
+        >
           <Ionicons name="arrow-back" size={22} color={colors.onSurface} />
         </TouchableOpacity>
         <Text style={styles.topBarTitle} numberOfLines={1}>{name}</Text>
@@ -307,20 +312,20 @@ export default function UserProfileScreen({ route, navigation }) {
 
           {/* Stats pills */}
           <View style={styles.statsPills}>
-            <TouchableOpacity style={styles.statPill}>
+            <View style={styles.statPill}>
               <Text style={styles.statPillValue}>{fmt(user?.followers_count ?? 0)}</Text>
               <Text style={styles.statPillLabel}>{t('profile.followersLabel')}</Text>
-            </TouchableOpacity>
+            </View>
             <View style={styles.statPillDivider} />
-            <TouchableOpacity style={styles.statPill}>
+            <View style={styles.statPill}>
               <Text style={styles.statPillValue}>{fmt(user?.following_count ?? 0)}</Text>
               <Text style={styles.statPillLabel}>{t('profile.followingLabel')}</Text>
-            </TouchableOpacity>
+            </View>
             <View style={styles.statPillDivider} />
-            <TouchableOpacity style={styles.statPill}>
+            <View style={styles.statPill}>
               <Text style={styles.statPillValue}>{fmt(books.length)}</Text>
               <Text style={styles.statPillLabel}>{t('profile.booksLabel')}</Text>
-            </TouchableOpacity>
+            </View>
           </View>
 
           {/* Follow button */}
@@ -505,11 +510,20 @@ export default function UserProfileScreen({ route, navigation }) {
                         )}
                         <View style={{ flexDirection: 'row', gap: 8 }}>
                           {currentUser?.is_admin && (
-                            <TouchableOpacity onPress={() => handleAdminDeleteNote(note.id)}>
+                            <TouchableOpacity
+                              onPress={() => handleAdminDeleteNote(note.id)}
+                              accessibilityRole="button"
+                              accessibilityLabel={t('a11y.deleteNote')}
+                            >
                               <Ionicons name="trash-outline" size={15} color="#e53935" />
                             </TouchableOpacity>
                           )}
-                          <TouchableOpacity style={styles.shareBtn} onPress={() => handleShare(note)}>
+                          <TouchableOpacity
+                            style={styles.shareBtn}
+                            onPress={() => handleShare(note)}
+                            accessibilityRole="button"
+                            accessibilityLabel={t('a11y.share')}
+                          >
                             <Ionicons name="share-outline" size={16} color={colors.outline} />
                           </TouchableOpacity>
                         </View>
@@ -525,7 +539,14 @@ export default function UserProfileScreen({ route, navigation }) {
                       <View style={styles.noteFooter}>
                         <Text style={styles.noteDate}>{formatDate(note.created_at)}</Text>
                         <View style={styles.noteActions}>
-                          <TouchableOpacity style={styles.noteAction} onPress={() => handleLike(note.id, note.user_has_liked)}>
+                          <TouchableOpacity
+                            style={styles.noteAction}
+                            onPress={() => handleLike(note.id, note.user_has_liked)}
+                            accessibilityRole="button"
+                            accessibilityLabel={t('a11y.like')}
+                            accessibilityState={{ selected: !!note.user_has_liked }}
+                            accessibilityValue={{ text: String(note.likes_count || 0) }}
+                          >
                             <Ionicons name={note.user_has_liked ? 'heart' : 'heart-outline'} size={15} color={note.user_has_liked ? '#e53935' : colors.onSurfaceVariant} />
                             <Text style={styles.noteActionCount}>{note.likes_count || 0}</Text>
                           </TouchableOpacity>

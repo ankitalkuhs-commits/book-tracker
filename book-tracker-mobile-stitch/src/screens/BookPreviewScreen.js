@@ -35,6 +35,8 @@ export default function BookPreviewScreen({ route, navigation }) {
   // Normalize: accept either a flat book or a userbook with nested book
   const rawBook      = route.params?.book || {};
   const book         = rawBook.book || rawBook; // unwrap if it's a userbook
+  // book_id only for a real Book object — never a userbook's id
+  const localBookId = rawBook.book ? rawBook.book.id : (rawBook.status == null ? rawBook.id : null);
 
   const [myUserbook,     setMyUserbook]     = useState(null);
   const [loading,        setLoading]        = useState(true);
@@ -64,7 +66,9 @@ export default function BookPreviewScreen({ route, navigation }) {
     setAdding(true);
     try {
       const result = await booksAPI.addToLibrary({
+        book_id: localBookId ?? null,
         google_books_id: book.google_books_id || book.google_id || null,
+        isbn: book.isbn || null,
         title:      book.title,
         author:     book.author || '',
         cover_url:  book.cover_url || null,
@@ -83,7 +87,12 @@ export default function BookPreviewScreen({ route, navigation }) {
     <View style={styles.container}>
       {/* Top bar */}
       <View style={[styles.topBar, { paddingTop: insets.top + 10 }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={styles.backBtn}
+          accessibilityRole="button"
+          accessibilityLabel={t('a11y.back')}
+        >
           <Ionicons name="arrow-back" size={22} color={colors.onSurface} />
         </TouchableOpacity>
         <Text style={styles.topBarTitle} numberOfLines={1}>{book.title || 'Book'}</Text>

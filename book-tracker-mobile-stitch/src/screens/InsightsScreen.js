@@ -176,13 +176,13 @@ export default function InsightsScreen({ navigation }) {
   const streak          = insights?.current_streak     || 0;
   const bestStreak      = insights?.longest_streak     || 0;
   const totalBooks      = insights?.total_books        ?? books.length;
-  const finished        = insights?.finished_books     ?? books.filter(b => b.status === 'finished').length;
+  const finished        = insights?.total_finished     ?? books.filter(b => b.status === 'finished').length;
   const pagesRead       = insights?.total_pages_read   ?? 0;
-  const avgRating       = insights?.average_rating     ?? null;
+  const avgRating       = insights?.avg_rating         ?? null;
   const avgPpd          = insights?.avg_pages_per_day  ?? null;
   const yearGoal        = insights?.yearly_goal;
   const projected       = insights?.projected_finishes || [];
-  const booksThisYear   = insights?.books_this_year    ?? insights?.books_finished_this_year ?? null;
+  const booksThisYear   = insights?.finished_this_year ?? null;
   const readingBooks    = books.filter(b => b.status === 'reading');
   const currentlyReading = readingBooks.length;
 
@@ -200,7 +200,7 @@ export default function InsightsScreen({ navigation }) {
   let goalFinished = 0;
   let goalTarget = 0;
   if (yearGoal) {
-    goalFinished = yearGoal.finished || 0;
+    goalFinished = yearGoal.completed ?? 0;
     goalTarget   = yearGoal.goal     || 1;
     goalPct      = Math.min(100, Math.round((goalFinished / goalTarget) * 100));
   }
@@ -346,7 +346,7 @@ export default function InsightsScreen({ navigation }) {
                 const total = book?.total_pages || 0;
                 const pct   = total > 0 ? Math.min(100, Math.round((cur / total) * 100)) : 0;
                 const proj  = projected.find(p => p.userbook_id === ub.id);
-                const dl    = proj ? daysLeft(proj.projected_finish_date) : null;
+                const dl    = proj ? daysLeft(proj.projected_finish) : null;
                 return (
                   <TouchableOpacity
                     key={ub.id}
@@ -371,9 +371,9 @@ export default function InsightsScreen({ navigation }) {
                         <Text style={styles.projPct}>{pct}%</Text>
                       </View>
                     </View>
-                    {proj?.projected_finish_date && (
+                    {proj?.projected_finish && (
                       <View style={styles.projDate}>
-                        <Text style={styles.projDateText}>{shortDate(proj.projected_finish_date)}</Text>
+                        <Text style={styles.projDateText}>{shortDate(proj.projected_finish)}</Text>
                         {dl ? <Text style={styles.projDaysLeft}>{t('insights.daysLeft', { count: dl })}</Text> : null}
                       </View>
                     )}

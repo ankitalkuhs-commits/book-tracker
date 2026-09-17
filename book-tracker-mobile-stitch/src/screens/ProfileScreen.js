@@ -9,7 +9,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
-import { userAPI, authAPI, userbooksAPI, notesAPI, activityAPI, profileAPI } from '../services/api';
+import { userAPI, userbooksAPI, notesAPI, activityAPI, profileAPI } from '../services/api';
+import VisibilityToggle, { useNoteVisibility } from '../components/VisibilityToggle';
 import { PreloadContext } from '../../App';
 import { formatTimeAgo } from '../utils/bookUtils';
 import { colors, radius, shadow, type } from '../theme';
@@ -89,6 +90,7 @@ function GoalRing({ pct = 0, size = 72, stroke = 8, color = colors.primary, chil
 
 // ── Note card ─────────────────────────────────────────────────────────────────
 function NoteCard({ note, currentUserId, onEdit, onDelete, onLike }) {
+  const { t } = useTranslation();
   const [showComments, setShowComments] = useState(false);
   const [comments, setComments]         = useState([]);
   const [commentText, setCommentText]   = useState('');
@@ -127,10 +129,20 @@ function NoteCard({ note, currentUserId, onEdit, onDelete, onLike }) {
         </View>
         {isOwn && (
           <View style={{ flexDirection: 'row', gap: 4 }}>
-            <TouchableOpacity onPress={() => onEdit(note)} style={styles.noteIconBtn}>
+            <TouchableOpacity
+              onPress={() => onEdit(note)}
+              style={styles.noteIconBtn}
+              accessibilityRole="button"
+              accessibilityLabel={t('a11y.editNote')}
+            >
               <Ionicons name="pencil-outline" size={15} color={colors.onSurfaceVariant} />
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => onDelete(note)} style={styles.noteIconBtn}>
+            <TouchableOpacity
+              onPress={() => onDelete(note)}
+              style={styles.noteIconBtn}
+              accessibilityRole="button"
+              accessibilityLabel={t('a11y.deleteNote')}
+            >
               <Ionicons name="trash-outline" size={15} color={colors.error} />
             </TouchableOpacity>
           </View>
@@ -149,11 +161,24 @@ function NoteCard({ note, currentUserId, onEdit, onDelete, onLike }) {
 
       {/* Footer */}
       <View style={styles.noteFooter}>
-        <TouchableOpacity style={styles.noteAction} onPress={() => onLike(note.id, note.user_has_liked)}>
+        <TouchableOpacity
+          style={styles.noteAction}
+          onPress={() => onLike(note.id, note.user_has_liked)}
+          accessibilityRole="button"
+          accessibilityLabel={t('a11y.like')}
+          accessibilityState={{ selected: !!note.user_has_liked }}
+          accessibilityValue={{ text: String(note.likes_count || 0) }}
+        >
           <Ionicons name={note.user_has_liked ? 'heart' : 'heart-outline'} size={16} color={note.user_has_liked ? '#e53935' : colors.onSurfaceVariant} />
           <Text style={styles.noteActionCount}>{note.likes_count || 0}</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.noteAction} onPress={toggleComments}>
+        <TouchableOpacity
+          style={styles.noteAction}
+          onPress={toggleComments}
+          accessibilityRole="button"
+          accessibilityLabel={t('a11y.comments')}
+          accessibilityValue={{ text: String(note.comments_count || comments.length || 0) }}
+        >
           <Ionicons name="chatbubble-outline" size={16} color={colors.onSurfaceVariant} />
           <Text style={styles.noteActionCount}>{note.comments_count || comments.length || 0}</Text>
         </TouchableOpacity>
@@ -185,7 +210,12 @@ function NoteCard({ note, currentUserId, onEdit, onDelete, onLike }) {
               onSubmitEditing={submitComment}
               returnKeyType="send"
             />
-            <TouchableOpacity onPress={submitComment} disabled={!commentText.trim()}>
+            <TouchableOpacity
+              onPress={submitComment}
+              disabled={!commentText.trim()}
+              accessibilityRole="button"
+              accessibilityLabel={t('a11y.sendComment')}
+            >
               <Ionicons name="send" size={18} color={commentText.trim() ? colors.primary : colors.outlineVariant} />
             </TouchableOpacity>
           </View>
@@ -202,12 +232,15 @@ function NewNoteModal({ visible, editNote, books, onClose, onSaved }) {
   const [quote, setQuote] = useState('');
   const [ubId, setUbId]   = useState(null);
   const [saving, setSaving] = useState(false);
+  const [rememberedPublic, setRememberedPublic] = useNoteVisibility();
+  const [editPublic, setEditPublic] = useState(false);
 
   useEffect(() => {
     if (editNote) {
       setText(editNote.text || '');
       setQuote(editNote.quote || '');
       setUbId(editNote.userbook_id || null);
+      setEditPublic(!!editNote?.is_public);
     } else {
       setText(''); setQuote(''); setUbId(null);
     }
@@ -218,9 +251,9 @@ function NewNoteModal({ visible, editNote, books, onClose, onSaved }) {
     setSaving(true);
     try {
       if (editNote) {
-        await notesAPI.updateNote(editNote.id, { text: text.trim(), quote: quote.trim() || null });
+        await notesAPI.updateNote(editNote.id, { text: text.trim(), quote: quote.trim() || null, is_public: editPublic });
       } else {
-        await notesAPI.createNote({ text: text.trim(), quote: quote.trim() || null, userbook_id: ubId, is_public: true });
+        await notesAPI.createNote({ text: text.trim(), quote: quote.trim() || null, userbook_id: ubId, is_public: rememberedPublic });
       }
       onSaved();
       onClose();
@@ -285,6 +318,12 @@ function NewNoteModal({ visible, editNote, books, onClose, onSaved }) {
               onChangeText={setQuote}
               multiline
               textAlignVertical="top"
+            />
+
+            <VisibilityToggle
+              isPublic={editNote ? editPublic : rememberedPublic}
+              onChange={editNote ? setEditPublic : setRememberedPublic}
+              disabled={saving}
             />
           </ScrollView>
         </View>
@@ -391,8 +430,7 @@ export default function ProfileScreen({ navigation, onLogout }) {
     Alert.alert(t('profile.signOut'), 'You will be logged out.', [
       { text: t('common.cancel'), style: 'cancel' },
       { text: t('profile.signOut'), style: 'destructive', onPress: async () => {
-        await authAPI.logout();
-        onLogout?.();
+        await onLogout?.();
       }},
     ]);
   };
@@ -404,7 +442,7 @@ export default function ProfileScreen({ navigation, onLogout }) {
   const streak     = insights?.current_streak  || 0;
   const bestStreak = insights?.longest_streak  || 0;
   const yearGoal   = insights?.yearly_goal;
-  const goalPct    = yearGoal ? Math.min(100, Math.round(((yearGoal.finished || 0) / (yearGoal.goal || 1)) * 100)) : 0;
+  const goalPct    = yearGoal ? Math.min(100, Math.round(((yearGoal.completed ?? 0) / (yearGoal.goal || 1)) * 100)) : 0;
   const onTrack    = yearGoal?.on_track;
 
   const readingBooks = books.filter(b => b.status === 'reading').slice(0, 3);
@@ -416,14 +454,24 @@ export default function ProfileScreen({ navigation, onLogout }) {
     <View style={styles.container}>
       {/* ── Fixed header ── */}
       <View style={[styles.topBar, { paddingTop: insets.top + 16 }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={styles.backBtn}
+          accessibilityRole="button"
+          accessibilityLabel={t('a11y.back')}
+        >
           <Ionicons name="arrow-back" size={22} color={colors.onSurface} />
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
           <Text style={styles.topBarLabel}>{t('profile.eyebrow')}</Text>
           <Text style={styles.topBarTitle}>{t('profile.title')}</Text>
         </View>
-        <TouchableOpacity onPress={() => navigation?.navigate('Settings')} style={styles.settingsBtn}>
+        <TouchableOpacity
+          onPress={() => navigation?.navigate('Settings')}
+          style={styles.settingsBtn}
+          accessibilityRole="button"
+          accessibilityLabel={t('a11y.openSettings')}
+        >
           <Ionicons name="settings-outline" size={22} color={colors.primary} />
         </TouchableOpacity>
       </View>
@@ -448,7 +496,12 @@ export default function ProfileScreen({ navigation, onLogout }) {
                 <ActivityIndicator size="small" color="#fff" />
               </View>
             ) : (
-              <TouchableOpacity style={styles.avatarUploadBtn} onPress={handlePhotoUpload}>
+              <TouchableOpacity
+                style={styles.avatarUploadBtn}
+                onPress={handlePhotoUpload}
+                accessibilityRole="button"
+                accessibilityLabel={t('a11y.changePhoto')}
+              >
                 <Ionicons name="camera" size={14} color="#fff" />
               </TouchableOpacity>
             )}
@@ -517,7 +570,7 @@ export default function ProfileScreen({ navigation, onLogout }) {
               </GoalRing>
               <View style={{ flex: 1, marginLeft: 12 }}>
                 <Text style={styles.goalLabel}>{t('profile.yearReadingGoal', { year: new Date().getFullYear() })}</Text>
-                <Text style={styles.goalValue}>{yearGoal.finished} / {yearGoal.goal} books</Text>
+                <Text style={styles.goalValue}>{yearGoal.completed ?? 0} / {yearGoal.goal} books</Text>
                 <Text style={[styles.goalStatus, { color: onTrack ? colors.primary : colors.secondary }]}>
                   {onTrack ? t('insights.onTrack') : t('insights.behindPace')}
                 </Text>
