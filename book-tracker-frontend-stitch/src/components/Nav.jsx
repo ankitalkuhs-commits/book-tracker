@@ -58,13 +58,13 @@ export default function Nav() {
               className={({ isActive }) =>
                 isActive
                   ? 'text-primary border-b-2 border-primary pb-0.5 font-bold'
-                  : 'text-on-surface/50 hover:text-primary transition-colors duration-200'
+                  : 'text-on-surface-muted hover:text-primary transition-colors duration-200'
               }
             >
               {labelKey === 'tabs.notifications' && unread > 0 ? (
                 <span className="relative">
                   {t(labelKey)}
-                  <span className="absolute -top-2 -right-4 bg-error text-on-error text-[10px] font-bold font-sans rounded-full w-4 h-4 flex items-center justify-center">
+                  <span className="absolute -top-2 -right-4 bg-error text-on-error text-xs font-bold font-sans rounded-full min-w-[18px] h-[18px] px-1 leading-none flex items-center justify-center">
                     {unread > 9 ? '9+' : unread}
                   </span>
                 </span>
@@ -82,7 +82,7 @@ export default function Nav() {
                 `px-4 py-1.5 rounded-xl text-sm font-sans font-medium transition-all duration-200 ${
                   isActive
                     ? 'bg-surface-container-highest text-primary'
-                    : 'text-on-surface/50 hover:bg-surface-container-low'
+                    : 'text-on-surface-muted hover:bg-surface-container-low'
                 }`
               }
             >
@@ -170,7 +170,7 @@ export default function Nav() {
             >
               <span>{t(labelKey)}</span>
               {labelKey === 'tabs.notifications' && unread > 0 && (
-                <span className="bg-error text-on-error text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                <span className="bg-error text-on-error text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center leading-none">
                   {unread > 9 ? '9+' : unread}
                 </span>
               )}

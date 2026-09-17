@@ -22,11 +22,11 @@ function StatCard({ label, value, sub, icon, accent = false }) {
   return (
     <div className={`rounded-2xl p-5 space-y-1 ${accent ? 'bg-primary text-on-primary' : 'bg-surface-container-low'}`}>
       <div className="flex items-center justify-between">
-        <p className={`text-[10px] font-bold uppercase tracking-widest ${accent ? 'text-on-primary/70' : 'text-on-surface-variant/60'}`}>{label}</p>
+        <p className={`text-xs font-bold uppercase tracking-widest ${accent ? 'text-on-primary/70' : 'text-on-surface-muted'}`}>{label}</p>
         {icon && <span className={`material-symbols-outlined text-lg ${accent ? 'text-on-primary/70' : 'text-on-surface-variant/40'}`}>{icon}</span>}
       </div>
       <p className={`text-3xl font-bold font-serif leading-none ${accent ? 'text-on-primary' : 'text-on-surface'}`}>{value}</p>
-      {sub && <p className={`text-xs ${accent ? 'text-on-primary/70' : 'text-on-surface-variant/60'}`}>{sub}</p>}
+      {sub && <p className={`text-xs ${accent ? 'text-on-primary/70' : 'text-on-surface-muted'}`}>{sub}</p>}
     </div>
   )
 }
@@ -41,7 +41,7 @@ function MonthlyChart({ data }) {
 
   return (
     <div className="space-y-3">
-      <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/60">{t('insights.monthlyPagesRead')}</p>
+      <p className="text-xs font-bold uppercase tracking-widest text-on-surface-muted">{t('insights.monthlyPagesRead')}</p>
       <div className="flex items-end gap-1 h-28">
         {data.map((d, i) => {
           const h = (d.pages_read / max) * 100
@@ -50,7 +50,7 @@ function MonthlyChart({ data }) {
           return (
             <div key={i} className="flex-1 flex flex-col items-center gap-1 h-full justify-end group relative">
               {d.pages_read > 0 && (
-                <div className="absolute bottom-full mb-1 hidden group-hover:flex bg-on-surface text-surface text-[10px] font-bold rounded px-1.5 py-0.5 whitespace-nowrap z-10">
+                <div className="absolute bottom-full mb-1 hidden group-hover:flex bg-on-surface text-surface text-xs font-bold rounded px-1.5 py-0.5 whitespace-nowrap z-10">
                   {d.pages_read}p
                 </div>
               )}
@@ -66,7 +66,7 @@ function MonthlyChart({ data }) {
       </div>
       <div className="flex gap-1">
         {data.map((d, i) => (
-          <div key={i} className="flex-1 text-center text-[9px] text-on-surface-variant/40 font-medium truncate">
+          <div key={i} className="flex-1 text-center text-xs text-on-surface-faint font-medium truncate">
             {monthLabel(d.month)}
           </div>
         ))}
@@ -83,21 +83,21 @@ function StreakBadge({ current, longest }) {
   const longestLabel = t('insights.longestEverDay').split('\n')
   return (
     <div className="bg-surface-container-low rounded-2xl p-5 space-y-4">
-      <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/60">{t('insights.readingStreak')}</p>
+      <p className="text-xs font-bold uppercase tracking-widest text-on-surface-muted">{t('insights.readingStreak')}</p>
       <div className="flex items-center gap-6">
         <div className="text-center">
           <div className="flex items-center gap-1 justify-center">
             <span className="material-symbols-outlined text-2xl text-secondary" style={{ fontVariationSettings: "'FILL' 1" }}>local_fire_department</span>
             <span className="text-4xl font-bold font-serif text-on-surface">{current}</span>
           </div>
-          <p className="text-xs text-on-surface-variant/60 mt-1">{streakLabel[0]}</p>
-          <p className="text-[10px] text-on-surface-variant/40">{streakLabel[1]}</p>
+          <p className="text-xs text-on-surface-muted mt-1">{streakLabel[0]}</p>
+          <p className="text-xs text-on-surface-faint">{streakLabel[1]}</p>
         </div>
         <div className="w-px h-12 bg-outline-variant/20" />
         <div className="text-center">
           <span className="text-2xl font-bold font-serif text-on-surface">{longest}</span>
-          <p className="text-xs text-on-surface-variant/60 mt-1">{longestLabel[0]}</p>
-          <p className="text-[10px] text-on-surface-variant/40">{longestLabel[1]}</p>
+          <p className="text-xs text-on-surface-muted mt-1">{longestLabel[0]}</p>
+          <p className="text-xs text-on-surface-faint">{longestLabel[1]}</p>
         </div>
       </div>
       {current >= 7 && (
@@ -123,7 +123,7 @@ function YearlyGoalRing({ goal }) {
   return (
     <div className="bg-surface-container-low rounded-2xl p-5 space-y-3">
       <div className="flex items-center justify-between">
-        <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/60">{t('insights.yearlyGoal')}</p>
+        <p className="text-xs font-bold uppercase tracking-widest text-on-surface-muted">{t('insights.yearlyGoal')}</p>
         <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${goal.on_track ? 'bg-primary/10 text-primary' : 'bg-secondary/10 text-secondary'}`}>
           {goal.on_track ? t('insights.onTrack') : t('insights.behindPace')}
         </span>
@@ -148,7 +148,7 @@ function YearlyGoalRing({ goal }) {
         <div className="space-y-1">
           <p className="text-2xl font-bold font-serif text-on-surface">{goal.completed}</p>
           <p className="text-sm text-on-surface-variant">{t('insights.ofGoalBooks', { goal: goal.goal })}</p>
-          <p className="text-xs text-on-surface-variant/50">{t('insights.toGo', { remaining: goal.goal - goal.completed })}</p>
+          <p className="text-xs text-on-surface-faint">{t('insights.toGo', { remaining: goal.goal - goal.completed })}</p>
         </div>
       </div>
     </div>
@@ -162,7 +162,7 @@ function ProjectedFinishes({ items }) {
   if (!items?.length) return null
   return (
     <div className="space-y-3">
-      <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/60">{t('insights.projectedFinishDates')}</p>
+      <p className="text-xs font-bold uppercase tracking-widest text-on-surface-muted">{t('insights.projectedFinishDates')}</p>
       <div className="space-y-3">
         {items.map(p => (
           <div key={p.userbook_id} className="flex items-center gap-4 bg-surface-container-low rounded-2xl p-4">
@@ -176,7 +176,7 @@ function ProjectedFinishes({ items }) {
             <div className="flex-1 min-w-0">
               <p className="font-bold text-sm text-on-surface line-clamp-1">{p.title}</p>
               <div className="mt-1.5 space-y-1">
-                <div className="flex justify-between text-[10px] text-on-surface-variant/60">
+                <div className="flex justify-between text-xs text-on-surface-muted">
                   <span>{t('book.pagesProgress', { current: p.current_page, total: p.total_pages })}</span>
                   <span className="font-bold text-primary">{p.pct}%</span>
                 </div>
@@ -189,7 +189,7 @@ function ProjectedFinishes({ items }) {
               <p className="text-xs font-bold text-secondary">
                 {new Date(p.projected_finish).toLocaleDateString('default', { month: 'short', day: 'numeric' })}
               </p>
-              <p className="text-[10px] text-on-surface-variant/50">{t('insights.daysLeft', { count: p.days_left })}</p>
+              <p className="text-xs text-on-surface-faint">{t('insights.daysLeft', { count: p.days_left })}</p>
             </div>
           </div>
         ))}
@@ -288,7 +288,7 @@ export default function InsightsPage() {
           <div className="bg-surface-container-low rounded-2xl p-5 flex flex-col items-center justify-center gap-3 text-center">
             <span className="material-symbols-outlined text-3xl text-outline/30">flag</span>
             <p className="text-sm font-bold text-on-surface">{t('insights.setYearlyGoalPrompt')}</p>
-            <p className="text-xs text-on-surface-variant/60">{t('insights.setGoalInSettings')}</p>
+            <p className="text-xs text-on-surface-muted">{t('insights.setGoalInSettings')}</p>
           </div>
         )}
       </div>

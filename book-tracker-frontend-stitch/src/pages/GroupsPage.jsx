@@ -47,7 +47,7 @@ function MyGroupCard({ group, onClick }) {
       <div className="flex-1 min-w-0 py-4 pr-4 space-y-1">
         <div className="flex items-center gap-2">
           {group.membership_role === 'curator' && (
-            <span className="text-[10px] font-bold uppercase tracking-wider text-secondary bg-secondary/10 px-2 py-0.5 rounded-full">{t('groups.curatorBadge')}</span>
+            <span className="text-xs font-bold uppercase tracking-wider text-secondary bg-secondary/10 px-2 py-0.5 rounded-full">{t('groups.curatorBadge')}</span>
           )}
         </div>
         <p className="font-serif font-bold text-on-surface text-lg leading-snug">{group.name}</p>
@@ -59,7 +59,7 @@ function MyGroupCard({ group, onClick }) {
         {!group.current_book && group.description && (
           <p className="text-xs text-on-surface-variant line-clamp-1">{group.description}</p>
         )}
-        <div className="flex items-center gap-4 pt-1 text-[11px] font-bold text-on-surface-variant/60">
+        <div className="flex items-center gap-4 pt-1 text-xs font-bold text-on-surface-muted">
           <span className="flex items-center gap-1">
             <span className="material-symbols-outlined text-sm">group</span>
             {t('groups.memberCount', { count: group.member_count })}
@@ -89,7 +89,7 @@ function DiscoverCard({ group, onJoin, joining }) {
           <p className="text-xs text-on-surface-variant leading-relaxed line-clamp-2 flex-1">{group.description}</p>
         )}
         <div className="flex items-center justify-between pt-1">
-          <span className="text-[11px] font-bold text-on-surface-variant/60 uppercase tracking-wider">
+          <span className="text-xs font-bold text-on-surface-muted uppercase tracking-wider">
             {t('groups.memberCount', { count: group.member_count || 0 })}
           </span>
           <button
@@ -262,14 +262,14 @@ export default function GroupsPage() {
               >
                 <GroupCover preset={g.cover_preset} className="w-24 shrink-0" />
                 <div className="flex-1 min-w-0 py-4 pr-4 space-y-1">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-tertiary bg-tertiary/10 px-2 py-0.5 rounded-full">
+                  <span className="text-xs font-bold uppercase tracking-wider text-tertiary bg-tertiary/10 px-2 py-0.5 rounded-full">
                     {t('groups.requestPending')}
                   </span>
                   <p className="font-serif font-bold text-on-surface text-base leading-snug mt-1">{g.name}</p>
                   {g.description && (
                     <p className="text-xs text-on-surface-variant line-clamp-1">{g.description}</p>
                   )}
-                  <p className="text-[11px] text-on-surface-variant/60 pt-0.5">{t('groups.waitingForApproval')}</p>
+                  <p className="text-xs text-on-surface-muted pt-0.5">{t('groups.waitingForApproval')}</p>
                 </div>
               </div>
             ))}

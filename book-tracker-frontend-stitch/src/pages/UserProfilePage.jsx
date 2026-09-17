@@ -47,7 +47,7 @@ function VelocityChart({ activity30, activity90 }) {
               className={`px-3 py-1 rounded-full transition-all uppercase tracking-wider ${
                 range === r
                   ? 'bg-surface-container-lowest text-on-surface shadow-sm'
-                  : 'text-on-surface-variant/60 hover:text-on-surface'
+                  : 'text-on-surface-muted hover:text-on-surface'
               }`}
             >
               {r.replace('d', 'D')}
@@ -57,7 +57,7 @@ function VelocityChart({ activity30, activity90 }) {
       </div>
 
       {bars.length === 0 || max === 1 ? (
-        <div className="h-28 flex items-center justify-center text-sm text-on-surface-variant/50">
+        <div className="h-28 flex items-center justify-center text-sm text-on-surface-faint">
           {t('profile.noReadingActivity')}
         </div>
       ) : (
@@ -87,7 +87,7 @@ function VelocityChart({ activity30, activity90 }) {
               )
             })}
           </div>
-          <div className="flex justify-between text-[10px] font-bold uppercase tracking-wider text-on-surface-variant/40">
+          <div className="flex justify-between text-xs font-bold uppercase tracking-wider text-on-surface-faint">
             <span>{t('profile.activityTracked', { period: range === '30d' ? '30' : '90' })}</span>
             <span>{t('common.today')}</span>
           </div>
@@ -170,17 +170,17 @@ function PublicNoteCard({ note, profileUrl, isAdmin, onDelete, onLike }) {
 
       {/* Footer */}
       <div className="flex items-center justify-between pt-1">
-        <span className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant/50">
+        <span className="text-xs font-bold uppercase tracking-wider text-on-surface-faint">
           {formatDate(note.created_at)}
         </span>
         {note.book && (
-          <span className="text-[10px] font-bold text-secondary/80 bg-secondary/10 px-2.5 py-1 rounded-full">
+          <span className="text-xs font-bold text-secondary bg-secondary/10 px-2.5 py-1 rounded-full">
             Re: {note.book.title}
           </span>
         )}
       </div>
 
-      <div className="flex items-center gap-4 pt-0.5 border-t border-outline-variant/10 text-xs font-bold text-on-surface-variant/50">
+      <div className="flex items-center gap-4 pt-0.5 border-t border-outline-variant/10 text-xs font-bold text-on-surface-faint">
         <button
           onClick={() => onLike(note.id, note.liked_by_me)}
           className="flex items-center gap-1 hover:text-error/80 transition-colors"
@@ -384,7 +384,7 @@ export default function UserProfilePage() {
               </p>
             )}
             {joinedDate && (
-              <p className="text-xs text-on-surface-variant/60 flex items-center gap-1.5">
+              <p className="text-xs text-on-surface-muted flex items-center gap-1.5">
                 <span className="material-symbols-outlined text-sm">calendar_month</span>
                 {t('profile.memberSince', { date: joinedDate })}
               </p>
@@ -399,7 +399,7 @@ export default function UserProfilePage() {
               ].map(({ value, label }) => (
                 <div key={label}>
                   <p className="font-serif text-2xl font-bold text-on-surface leading-none">{value?.toLocaleString()}</p>
-                  <p className="text-[11px] font-bold uppercase tracking-widest text-on-surface-variant/60 mt-0.5">{label}</p>
+                  <p className="text-xs font-bold uppercase tracking-widest text-on-surface-muted mt-0.5">{label}</p>
                 </div>
               ))}
             </div>
@@ -408,7 +408,7 @@ export default function UserProfilePage() {
           {/* Follow button */}
           <div className="shrink-0 flex flex-col items-end gap-1.5">
             {profile.follows_you && !isFollowing && (
-              <span className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant/50">{t('profile.followsYou')}</span>
+              <span className="text-xs font-bold uppercase tracking-wider text-on-surface-faint">{t('profile.followsYou')}</span>
             )}
             <button
               onClick={toggleFollow}
@@ -445,7 +445,7 @@ export default function UserProfilePage() {
         {/* Stats card */}
         <div className="md:col-span-4">
           <div className="bg-surface-container-lowest rounded-3xl p-6 space-y-5 h-full">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-secondary">{currentYear}</p>
+            <p className="text-xs font-bold uppercase tracking-widest text-secondary">{currentYear}</p>
 
             {/* Book counts */}
             <div className="grid grid-cols-3 gap-3 text-center">
@@ -456,7 +456,7 @@ export default function UserProfilePage() {
               ].map(({ value, label }) => (
                 <div key={label} className="bg-surface-container rounded-2xl py-3 px-1">
                   <p className="font-serif text-2xl font-bold text-on-surface leading-none">{value}</p>
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant/60 mt-1">{label}</p>
+                  <p className="text-xs font-bold uppercase tracking-wider text-on-surface-muted mt-1">{label}</p>
                 </div>
               ))}
             </div>
@@ -465,7 +465,7 @@ export default function UserProfilePage() {
             {profile.yearly_goal > 0 && (
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between text-xs">
-                  <span className="text-on-surface-variant/60 font-medium">{currentYear} Goal</span>
+                  <span className="text-on-surface-muted font-medium">{currentYear} Goal</span>
                   <span className="font-bold text-secondary">{finishedCount} / {profile.yearly_goal} books</span>
                 </div>
                 <div className="h-2 bg-surface-container rounded-full overflow-hidden">
@@ -491,7 +491,7 @@ export default function UserProfilePage() {
                 <span className="material-symbols-outlined text-base text-primary">speed</span>
                 <div>
                   <span className="font-serif text-lg font-bold text-primary">{avgPpd}</span>
-                  <span className="text-xs text-primary/70 ml-1">{t('profile.avgPagesPerDay')}</span>
+                  <span className="text-xs text-primary ml-1">{t('profile.avgPagesPerDay')}</span>
                 </div>
               </div>
             )}
@@ -522,13 +522,13 @@ export default function UserProfilePage() {
                   </div>
                   <div className="flex-1 min-w-0 space-y-1">
                     <p className="text-sm font-bold text-on-surface truncate group-hover:text-primary transition-colors">{ub.book?.title}</p>
-                    <p className="text-xs text-on-surface-variant/60 truncate">{ub.book?.author}</p>
+                    <p className="text-xs text-on-surface-muted truncate">{ub.book?.author}</p>
                     {total > 0 && (
                       <div className="flex items-center gap-2">
                         <div className="flex-1 h-1.5 bg-surface-container rounded-full overflow-hidden">
                           <div className="h-full bg-primary rounded-full" style={{ width: `${progress}%` }} />
                         </div>
-                        <span className="text-[10px] font-bold text-primary">{progress}%</span>
+                        <span className="text-xs font-bold text-primary">{progress}%</span>
                       </div>
                     )}
                   </div>
@@ -572,7 +572,7 @@ export default function UserProfilePage() {
                     <BookCover book={ub.book} />
                   </div>
                   <p className="text-xs font-bold text-on-surface line-clamp-2 leading-snug">{ub.book?.title}</p>
-                  <p className="text-[10px] text-on-surface-variant/60 truncate">{ub.book?.author}</p>
+                  <p className="text-xs text-on-surface-muted truncate">{ub.book?.author}</p>
                 </button>
               ))}
             </div>

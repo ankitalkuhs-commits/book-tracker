@@ -36,6 +36,8 @@ export default {
         "surface-tint": "#14696d",
         "on-surface": "#1b1c19",
         "on-surface-variant": "#3f4949",
+        "on-surface-muted": "#586060",
+        "on-surface-faint": "#636a6a",
         "outline": "#6f7979",
         "outline-variant": "#bec8c9",
         "inverse-surface": "#30312e",

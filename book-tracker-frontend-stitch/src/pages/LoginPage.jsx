@@ -167,7 +167,7 @@ export default function LoginPage() {
                 <p className="font-serif text-primary text-sm leading-snug italic">
                   {t('auth.quote')}
                 </p>
-                <p className="text-[10px] mt-2 text-on-surface-variant font-medium text-right">
+                <p className="text-xs mt-2 text-on-surface-variant font-medium text-right">
                   — {t('auth.quoteAuthor')}
                 </p>
               </div>
@@ -249,7 +249,7 @@ export default function LoginPage() {
               { label: 'Privacy', href: '/privacy' },
               { label: 'Terms',   href: '/terms'   },
             ].map(({ label, href }) => (
-              <a key={label} href={href} className="text-on-surface/40 hover:text-primary transition-colors">
+              <a key={label} href={href} className="text-on-surface-muted hover:text-primary transition-colors">
                 {label}
               </a>
             ))}
