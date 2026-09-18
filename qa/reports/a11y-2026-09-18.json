@@ -1,0 +1,166 @@
+[
+  {
+    "route": "/home",
+    "label": "authed",
+    "violations": [],
+    "keyboard": [],
+    "error": null,
+    "contrastPairs": []
+  },
+  {
+    "route": "/library",
+    "label": "authed",
+    "violations": [],
+    "keyboard": [],
+    "error": null,
+    "contrastPairs": []
+  },
+  {
+    "route": "/library/book/1",
+    "label": "authed",
+    "violations": [],
+    "keyboard": [],
+    "error": null,
+    "contrastPairs": []
+  },
+  {
+    "route": "/groups",
+    "label": "authed",
+    "violations": [],
+    "keyboard": [],
+    "error": null,
+    "contrastPairs": []
+  },
+  {
+    "route": "/groups/1",
+    "label": "authed",
+    "violations": [],
+    "keyboard": [],
+    "error": null,
+    "contrastPairs": []
+  },
+  {
+    "route": "/groups/new",
+    "label": "authed",
+    "violations": [],
+    "keyboard": [],
+    "error": null,
+    "contrastPairs": []
+  },
+  {
+    "route": "/insights",
+    "label": "authed",
+    "violations": [],
+    "keyboard": [],
+    "error": null,
+    "contrastPairs": []
+  },
+  {
+    "route": "/notifications",
+    "label": "authed",
+    "violations": [],
+    "keyboard": [],
+    "error": null,
+    "contrastPairs": []
+  },
+  {
+    "route": "/profile",
+    "label": "authed",
+    "violations": [],
+    "keyboard": [],
+    "error": null,
+    "contrastPairs": []
+  },
+  {
+    "route": "/profile/111",
+    "label": "authed",
+    "violations": [],
+    "keyboard": [],
+    "error": null,
+    "contrastPairs": []
+  },
+  {
+    "route": "/settings",
+    "label": "authed",
+    "violations": [],
+    "keyboard": [],
+    "error": null,
+    "contrastPairs": []
+  },
+  {
+    "route": "/",
+    "label": "public",
+    "violations": [],
+    "keyboard": [
+      {
+        "tag": "iframe",
+        "role": null,
+        "name": "Sign in with Google Button",
+        "visibleFocus": false,
+        "hasName": true
+      },
+      {
+        "tag": "iframe",
+        "role": null,
+        "name": "Sign in with Google Button",
+        "visibleFocus": false,
+        "hasName": true
+      },
+      {
+        "tag": "iframe",
+        "role": null,
+        "name": "Sign in with Google Button",
+        "visibleFocus": false,
+        "hasName": true
+      },
+      {
+        "tag": "iframe",
+        "role": null,
+        "name": "Sign in with Google Button",
+        "visibleFocus": false,
+        "hasName": true
+      },
+      {
+        "tag": "iframe",
+        "role": null,
+        "name": "Sign in with Google Button",
+        "visibleFocus": false,
+        "hasName": true
+      }
+    ],
+    "error": null,
+    "contrastPairs": []
+  },
+  {
+    "route": "/about",
+    "label": "public",
+    "violations": [],
+    "keyboard": [],
+    "error": null,
+    "contrastPairs": []
+  },
+  {
+    "route": "/privacy",
+    "label": "public",
+    "violations": [],
+    "keyboard": [],
+    "error": null,
+    "contrastPairs": []
+  },
+  {
+    "route": "/terms",
+    "label": "public",
+    "violations": [],
+    "keyboard": [],
+    "error": null,
+    "contrastPairs": []
+  },
+  {
+    "route": "/blog",
+    "label": "public",
+    "violations": [],
+    "keyboard": [],
+    "error": null,
+    "contrastPairs": []
+  }
+]
