@@ -267,8 +267,14 @@ class TestProfileRegression:
         assert get_body["is_private_profile"] is True
         assert get_body["profile_picture"] == "https://example.com/r07.png"
 
-        # is_private_profile still gates these three endpoints at 403 for a non-follower
-        assert client.get(f"/profile/{b.id}", headers=ha).status_code == 403
+        # is_private_profile still gates all three for a non-follower. Corrected 2026-09-18
+        # (tests.md §9 R-07 said 403 for all three): /profile/{id} has always gated by
+        # returning the public card with locked=true and stats=None, identically at beb7058
+        # before 4A; the content endpoints are the ones that 403.
+        prof = client.get(f"/profile/{b.id}", headers=ha)
+        assert prof.status_code == 200
+        assert prof.json()["locked"] is True
+        assert prof.json()["stats"] is None
         assert client.get(f"/notes/user/{b.id}", headers=ha).status_code == 403
         assert client.get(f"/users/{b.id}/stats", headers=ha).status_code == 403
 

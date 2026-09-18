@@ -330,7 +330,9 @@ class TestGroupsRegression:
         pend = client.get("/groups/invites/pending", headers=hi)
         assert pend.status_code == 200
         row3 = next(x for x in pend.json() if x["id"] == g["id"])
-        assert set(row3.keys()) == self.G16
+        # Corrected 2026-09-18: invites also carry invited_by_name (groups_router.py), an
+        # additive key present identically at beb7058 before 4A. tests.md §9 R-12 omitted it.
+        assert set(row3.keys()) == self.G16 | {"invited_by_name"}
         assert "reading_goal" not in row3
         assert "pages_read_total" not in row3
 

@@ -1163,28 +1163,44 @@ class TestNoteShapeRegression:
         assert n["liked_by_me"] == n["user_has_liked"] is True
 
     def test_user_notes_keeps_its_asymmetries(self, client, db):
-        """R-03 (tests.md §9) literally claims: '/notes/user/{id} still has no user_id and
-        no like keys'. THIS DOES NOT MATCH THE MERGED TREE: response_model=List[NoteOutSchema]
-        pads every note endpoint to the model's full 17-key set (see T-A1-67 /
-        test_note_list_outputs_unchanged_apart_from_book_keys above, whose own docstring
-        already documents this), so /notes/user/{id} DOES return a `user_id` key (defaulted
-        to null) and DOES return `liked_by_me`/`user_has_liked` keys (defaulted to False,
-        not reflecting real like state). This padding predates this sprint — response_model
-        was already on this route before F-07/F-08 — so it is not a regression introduced by
-        the A1/A2 merge, but it does mean the plan's R-03 wording is stale. Written verbatim
-        to match tests.md so the mismatch is caught by the suite; see build-notes-regression.md."""
+        """R-03, corrected 2026-09-18 by the PM (tests.md §9 R-03 was wrong).
+
+        The plan said /notes/user/{id} has "no user_id and no like keys". It never did:
+        response_model=List[NoteOutSchema] pads every note to the model's full key set, and
+        this held identically at beb7058, before any 4A change (verified by running this
+        class against that tree). Both clients READ those keys on another user's profile:
+        web UserProfilePage uses `liked_by_me`, Android UserProfileScreen uses `user_has_liked`.
+
+        So the contract that matters is that they are TRUE, not that they are absent. Before
+        F-63 they were the schema default False for every viewer, so a note you had liked
+        showed an empty heart, and tapping it sent a second like instead of an unlike.
+        """
         alice = _make_user(db, email="r03_alice@example.com")
         bob = _make_user(db, email="r03_bob@example.com")
-        _create_note(client, _auth(alice), text="R03 public note", is_public=True)
+        carol = _make_user(db, email="r03_carol@example.com")
+        liked_id = _create_note(client, _auth(alice), text="R03 liked", is_public=True).json()["id"]
+        _create_note(client, _auth(alice), text="R03 unliked", is_public=True)
+        assert client.post(f"/notes/{liked_id}/like", headers=_auth(bob)).status_code == 201
 
-        rows = [n for n in client.get(f"/notes/user/{alice.id}", headers=_auth(bob)).json()
-                if n["text"] == "R03 public note"]
-        assert rows
-        n = rows[0]
-        assert "user_id" not in n
-        assert "liked_by_me" not in n
-        assert "user_has_liked" not in n
-        assert n["user"] == {"id": alice.id, "name": alice.name}
+        def by_text(viewer):
+            r = client.get(f"/notes/user/{alice.id}", headers=_auth(viewer))
+            assert r.status_code == 200
+            return {n["text"]: n for n in r.json()}
+
+        as_bob = by_text(bob)
+        # F-63: the viewer's own like state, under both keys each client reads
+        assert as_bob["R03 liked"]["liked_by_me"] is True
+        assert as_bob["R03 liked"]["user_has_liked"] is True
+        assert as_bob["R03 unliked"]["liked_by_me"] is False
+        assert as_bob["R03 unliked"]["user_has_liked"] is False
+        assert as_bob["R03 liked"]["likes_count"] == 1
+        # it is per-viewer, not per-note: carol has liked nothing
+        as_carol = by_text(carol)
+        assert as_carol["R03 liked"]["liked_by_me"] is False
+        assert as_carol["R03 liked"]["user_has_liked"] is False
+        assert as_carol["R03 liked"]["likes_count"] == 1
+        # the asymmetry that does hold: `user` is only {id, name} here
+        assert as_bob["R03 liked"]["user"] == {"id": alice.id, "name": alice.name}
 
         # private-profile gate still applies to a non-follower
         client.put("/profile/me", json={"is_private_profile": True}, headers=_auth(alice))

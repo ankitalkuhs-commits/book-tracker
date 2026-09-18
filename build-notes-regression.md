@@ -195,3 +195,26 @@ brief's "428 passed" by exactly one.
   than building a new one
 - Nothing under `app/`, `tests/conftest.py`, or either client app was touched (other than the
   Package A2 precondition merge in §0, which is git history, not authored app code).
+
+---
+
+## PM resolution — 2026-09-18
+
+**Verification of "pre-existing":** the three failing tests (R-03, R-07, R-12) were run against a throwaway worktree at `beb7058` (the pre-4A backend) with only these test files overlaid. All three fail there with **byte-identical assertion errors**: the same `user_id`, the same `200 == 403`, and the same extra `invited_by_name`. So 4A introduced **no shape regression**; section 9 described contracts the code never had.
+
+**How each was resolved:**
+
+| Row | Was it a bug? | Resolution |
+|---|---|---|
+| R-12 | No. `invited_by_name` is an additive key sent by `groups_router.py:211`. | Expected set is now `G16 \| {"invited_by_name"}`. |
+| R-07 | No. `/profile/{id}` gates a private profile with the public card, `locked: true` and `stats: null`, which is standard private-account behaviour; the content endpoints are the ones that 403. | Test asserts `200`, `locked is True` and `stats is None`. |
+| R-03 | **Yes, a real user-facing bug (F-63).** | **Fixed in code**; see below. |
+
+**F-63:** `/notes/user/{id}` never computed the viewer's like state, so `liked_by_me` and `user_has_liked` were the schema default `False` for every viewer. Both clients read those keys on another user's profile: web `UserProfilePage` uses `liked_by_me`, and Android `UserProfileScreen` uses `user_has_liked`. Every heart showed empty, even on notes the viewer had liked. Tapping one sent a second **like** instead of an unlike, so a like could never be removed from a profile page.
+
+- Before 4A, that second like wrote a duplicate `like` row. This is a plausible source of the duplicates F-53's dedupe removes.
+- After 4A, the new unique constraint rejects it, but the UI still adds 1 optimistically, so the count drifts until reload.
+
+The fix is one batched query per request (the pattern already used at `notes_router.py:353`), setting both keys so **both clients are fixed with no client change and no Android rebuild**. Test-first: the corrected R-03 failed with `assert False is True` before the fix and passed after.
+
+**Final:** `pytest tests -q` → **430 passed, 0 failed**. The F-62 tests also pass, because this run was outside the 00:00–05:30 IST window.
