@@ -1116,6 +1116,99 @@ class TestNoteQueryCount:
         assert by_user["comments_count"] == 1
 
 
+# ── §9 R-01..R-04 — cross-package regression: F-07/F-08 must not have changed the shapes
+#    the web app and Android app consume from /notes/* ──────────────────────────────────
+
+class TestNoteShapeRegression:
+    TOP_KEYS = {"book", "chapter", "comments_count", "created_at", "emotion", "id",
+                "image_url", "is_public", "liked_by_me", "likes_count", "page_number",
+                "quote", "text", "updated_at", "user", "user_has_liked", "user_id"}
+
+    def test_feed_top_level_keys_unchanged(self, client, db):
+        """R-01: the 17 measured top-level keys and the `user` sub-shape survive F-07 and
+        F-08 byte for byte (T-A1-67 asserts it once; this re-asserts it against an
+        UNAUTHENTICATED /notes/feed — the path App.js preloads before login state settles)."""
+        user = _make_user(db, email="r01_feed_author@example.com")
+        note_id = _create_note(client, _auth(user), text="R01 unauth feed", is_public=True).json()["id"]
+        _forward_date(db, note_id)  # outrank the shared DB's other notes, incl. the F-08 seeds
+        r = client.get("/notes/feed?limit=200")  # no headers — unauthenticated
+        assert r.status_code == 200
+        rows = [n for n in r.json() if n["text"] == "R01 unauth feed"]
+        assert rows
+        n = rows[0]
+        assert set(n.keys()) == self.TOP_KEYS
+        assert n["created_at"].endswith("Z")
+        assert n["liked_by_me"] == n["user_has_liked"] is False
+        assert set(n["user"].keys()) == {"id", "name", "profile_picture", "username"}
+
+    def test_me_keeps_updated_at_and_like_keys(self, client, db):
+        """R-02: /notes/me is the endpoint whose handler actually computes a real
+        `updated_at` and real like state for the caller (unlike /user/{id} and
+        /userbook/{id}, whose handlers never set either — see TestNoteShapeRegression
+        docstring on test_user_notes_keeps_its_asymmetries below)."""
+        owner = _make_user(db, email="r02_owner@example.com")
+        liker = _make_user(db, email="r02_liker@example.com")
+        ho, hl = _auth(owner), _auth(liker)
+        note_id = _create_note(client, ho, text="R02 note", is_public=True).json()["id"]
+        client.put(f"/notes/{note_id}", json={"text": "R02 note edited", "is_public": True}, headers=ho)
+        client.post(f"/notes/{note_id}/like", headers=hl)
+        client.post(f"/notes/{note_id}/like", headers=ho)  # owner likes their own note too
+
+        rows = [n for n in client.get("/notes/me", headers=ho).json() if n["id"] == note_id]
+        assert rows
+        n = rows[0]
+        assert n["updated_at"] is not None
+        assert n["updated_at"].endswith("Z")
+        assert n["likes_count"] == 2
+        assert n["liked_by_me"] == n["user_has_liked"] is True
+
+    def test_user_notes_keeps_its_asymmetries(self, client, db):
+        """R-03 (tests.md §9) literally claims: '/notes/user/{id} still has no user_id and
+        no like keys'. THIS DOES NOT MATCH THE MERGED TREE: response_model=List[NoteOutSchema]
+        pads every note endpoint to the model's full 17-key set (see T-A1-67 /
+        test_note_list_outputs_unchanged_apart_from_book_keys above, whose own docstring
+        already documents this), so /notes/user/{id} DOES return a `user_id` key (defaulted
+        to null) and DOES return `liked_by_me`/`user_has_liked` keys (defaulted to False,
+        not reflecting real like state). This padding predates this sprint — response_model
+        was already on this route before F-07/F-08 — so it is not a regression introduced by
+        the A1/A2 merge, but it does mean the plan's R-03 wording is stale. Written verbatim
+        to match tests.md so the mismatch is caught by the suite; see build-notes-regression.md."""
+        alice = _make_user(db, email="r03_alice@example.com")
+        bob = _make_user(db, email="r03_bob@example.com")
+        _create_note(client, _auth(alice), text="R03 public note", is_public=True)
+
+        rows = [n for n in client.get(f"/notes/user/{alice.id}", headers=_auth(bob)).json()
+                if n["text"] == "R03 public note"]
+        assert rows
+        n = rows[0]
+        assert "user_id" not in n
+        assert "liked_by_me" not in n
+        assert "user_has_liked" not in n
+        assert n["user"] == {"id": alice.id, "name": alice.name}
+
+        # private-profile gate still applies to a non-follower
+        client.put("/profile/me", json={"is_private_profile": True}, headers=_auth(alice))
+        r2 = client.get(f"/notes/user/{alice.id}", headers=_auth(bob))
+        assert r2.status_code == 403
+
+    def test_userbook_notes_book_shape_unchanged(self, client, db):
+        """R-04: /notes/userbook/{id} `book` is still exactly {author, id, title}; F-07's
+        dedup keys (cover_url, google_books_id, isbn, total_pages) must not leak in here."""
+        user = _make_user(db, email="r04_user@example.com")
+        h = _auth(user)
+        add = client.post("/books/add-to-library", json={
+            "title": "R04 Book", "google_books_id": "r04-gbid", "isbn": "r04-isbn",
+            "total_pages": 250, "status": "reading",
+        }, headers=h)
+        ub_id = add.json()["id"]
+        client.post("/notes/", json={"text": "R04 note", "userbook_id": ub_id, "is_public": True}, headers=h)
+
+        rows = [n for n in client.get(f"/notes/userbook/{ub_id}", headers=h).json()
+                if n["text"] == "R04 note"]
+        assert rows
+        assert set(rows[0]["book"].keys()) == {"author", "id", "title"}
+
+
 class TestPushAfterResponse:
     """F-59 — like/comment/follow/public-note push and group-activity delivery happens
     after the response is sent, via BackgroundTasks."""

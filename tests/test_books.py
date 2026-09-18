@@ -327,6 +327,36 @@ class TestListUserbooks:
         assert any(item["book"]["google_books_id"] == "gbid-shape-1" for item in items)
 
 
+# ── §9 R-10 — cross-package regression: library list ────────────────────────────────
+
+class TestUserbookRegression:
+    TOP_KEYS = {"id", "user_id", "book_id", "status", "current_page", "rating",
+                "private_notes", "format", "ownership_status", "borrowed_from",
+                "loaned_to", "created_at", "updated_at", "book"}
+
+    def test_userbooks_list_shape_unchanged(self, client, db):
+        """R-10: GET /userbooks/ and /userbooks/{id} key sets, with nested
+        book.google_books_id, survive F-52 and F-50."""
+        user = _make_user(db, email="r10_user@example.com")
+        h = _auth(user)
+        add = client.post("/books/add-to-library", json={
+            "title": "R10 Book", "total_pages": 150, "status": "reading",
+            "google_books_id": "r10-gbid",
+        }, headers=h)
+        ub_id = add.json()["id"]
+
+        list_r = client.get("/userbooks/", headers=h)
+        assert list_r.status_code == 200
+        item = next(b for b in list_r.json() if b["id"] == ub_id)
+        assert set(item.keys()) == self.TOP_KEYS
+        assert item["book"]["google_books_id"] == "r10-gbid"
+
+        single_r = client.get(f"/userbooks/{ub_id}", headers=h)
+        assert single_r.status_code == 200
+        assert set(single_r.json().keys()) == self.TOP_KEYS
+        assert single_r.json()["book"]["google_books_id"] == "r10-gbid"
+
+
 # ── /userbooks/{id}/progress ─────────────────────────────────────────────────
 
 class TestProgress:
@@ -488,6 +518,28 @@ class TestPatchUserbookValidation:
         h, ub = self._ub(client, db, "f52_empty_body@example.com")
         r = client.patch(f"/userbooks/{ub}", json={}, headers=h)
         assert r.status_code == 400
+
+    # ── §9 R-11 — cross-package regression: every recorded PATCH caller payload ─────
+
+    def test_recorded_caller_payloads_200(self, client, db):
+        """R-11: the exact 4 payloads from the architecture doc — web BookDetailPage.jsx
+        {status}; web {rating: stars} across the full 0..5 range; Android BookDetailScreen.js
+        {status, current_page, total_pages}; and Android's no-total_pages variant
+        {status, current_page} — all still 200. A 422 here means a real user's Save button
+        breaks."""
+        h, ub = self._ub(client, db, "r11_recorded_caller@example.com")
+        assert client.patch(f"/userbooks/{ub}", json={"status": "reading"}, headers=h).status_code == 200
+        for stars in range(0, 6):
+            r = client.patch(f"/userbooks/{ub}", json={"rating": stars}, headers=h)
+            assert r.status_code == 200, f"rating={stars} -> {r.status_code}: {r.text}"
+        r3 = client.patch(f"/userbooks/{ub}", json={
+            "status": "reading", "current_page": 50, "total_pages": 300,
+        }, headers=h)
+        assert r3.status_code == 200, r3.text
+        r4 = client.patch(f"/userbooks/{ub}", json={
+            "status": "reading", "current_page": 60,
+        }, headers=h)
+        assert r4.status_code == 200, r4.text
 
     def test_response_key_set_unchanged(self, client, db):
         h, ub = self._ub(client, db, "f52_key_set@example.com")
@@ -910,3 +962,21 @@ class TestPushAfterResponse:
             e["event_type"] == "book_finished" and e["payload"].get("book_id") == book_id
             for e in activity
         )
+
+
+# ── §9 R-19 — cross-package regression: Goodreads import and cover fix ──────────────
+
+class TestImportRegression:
+    def test_covers_status_unchanged(self, client, db):
+        """R-19: /import/covers-status still 200 with its existing shape
+        {missing_count, book_ids}. import_router.py is explicitly not touched this
+        sprint (ST-A2-05)."""
+        user = _make_user(db, email="r19_import@example.com")
+        h = _auth(user)
+        _add_book(client, h, title="R19 No Cover")
+        r = client.get("/import/covers-status", headers=h)
+        assert r.status_code == 200
+        body = r.json()
+        assert set(body.keys()) == {"missing_count", "book_ids"}
+        assert body["missing_count"] >= 1
+        assert isinstance(body["book_ids"], list)

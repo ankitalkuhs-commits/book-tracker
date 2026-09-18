@@ -234,6 +234,45 @@ class TestProfile:
         assert calls == []
 
 
+# ── §9 R-07 — cross-package regression: follow + profile ───────────────────────────────
+
+class TestProfileRegression:
+    def test_put_profile_other_fields_unchanged(self, client, db):
+        """R-07: name, bio, is_private_profile and profile_picture round-trip through
+        PUT /profile/me; setting is_private_profile still gates /profile/{id},
+        /notes/user/{id} and /users/{id}/stats for a non-follower (F-18 changes only the
+        yearly_goal branch). NOTE: /profile/{id} itself gates by returning 200 with
+        {"locked": true, "stats": None} (see test_private_profile_locked_for_non_followers
+        above), not a 403 — tests.md §9 R-07 says all three "gate ... at 403", which does not
+        match /profile/{id}'s actual (pre-existing, untouched-by-this-sprint) behaviour.
+        Asserted verbatim per task instructions; see build-notes-regression.md."""
+        a = _make_user(db, email="r07_a@example.com")
+        b = _make_user(db, email="r07_b@example.com")
+        ha, hb = _auth(a), _auth(b)
+
+        r = client.put("/profile/me", json={
+            "name": "R07 Name", "bio": "R07 bio",
+            "is_private_profile": True, "profile_picture": "https://example.com/r07.png",
+        }, headers=hb)
+        assert r.status_code == 200
+        body = r.json()
+        assert body["name"] == "R07 Name"
+        assert body["bio"] == "R07 bio"
+        assert body["is_private_profile"] is True
+        assert body["profile_picture"] == "https://example.com/r07.png"
+
+        get_body = client.get("/profile/me", headers=hb).json()
+        assert get_body["name"] == "R07 Name"
+        assert get_body["bio"] == "R07 bio"
+        assert get_body["is_private_profile"] is True
+        assert get_body["profile_picture"] == "https://example.com/r07.png"
+
+        # is_private_profile still gates these three endpoints at 403 for a non-follower
+        assert client.get(f"/profile/{b.id}", headers=ha).status_code == 403
+        assert client.get(f"/notes/user/{b.id}", headers=ha).status_code == 403
+        assert client.get(f"/users/{b.id}/stats", headers=ha).status_code == 403
+
+
 class TestUserSearch:
     def test_search_finds_user(self, client, db):
         searcher = _make_user(db, email="search_searcher@example.com")

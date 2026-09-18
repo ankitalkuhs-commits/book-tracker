@@ -238,3 +238,28 @@ class TestDeepPagination:
         assert r.status_code == 502
         assert r.json() == {"detail": "Google Books is unavailable right now"}
         assert "boom-transport" not in r.text
+
+
+# ── §9 R-18 — cross-package regression: book search ──────────────────────────
+
+class TestSearchRegression:
+    def test_normal_search_unchanged(self, client, alice_headers):
+        """R-18: an authenticated search with the fake client returns the existing
+        response shape including has_more and next_start_index; normalize_google_cover_url
+        is unchanged (userbooks_router imports it)."""
+        r = client.get(SEARCH, headers=alice_headers)
+        assert r.status_code == 200
+        body = r.json()
+        assert set(body.keys()) == {"results", "total_items", "query_used", "has_more", "next_start_index"}
+        assert body["total_items"] == 2
+        assert body["has_more"] is False
+        assert body["next_start_index"] == 40
+        assert len(body["results"]) == 2
+        item_keys = {"google_id", "title", "authors", "description", "cover_url",
+                     "total_pages", "publisher", "published_date", "average_rating",
+                     "ratings_count", "isbn_10", "isbn_13", "categories"}
+        for item in body["results"]:
+            assert set(item.keys()) == item_keys
+
+        import app.routers.userbooks_router as ubr
+        assert ubr.normalize_google_cover_url is gb.normalize_google_cover_url

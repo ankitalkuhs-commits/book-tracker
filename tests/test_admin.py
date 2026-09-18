@@ -101,6 +101,58 @@ class TestAdminAccess:
             assert client.get(path, headers=alice_headers).status_code == 403
 
 
+# ── §9 R-17 — cross-package regression: admin dashboard ─────────────────────
+
+class TestAdminRegression:
+    STATS_KEYS = {
+        "books_being_read", "books_completed", "books_wishlist", "new_users_this_month",
+        "new_users_this_week", "total_books", "total_comments", "total_follows",
+        "total_journals", "total_likes", "total_notes", "total_userbooks", "total_users",
+        "push_subscribed_users",
+    }
+    USER_KEYS = {"id", "name", "username", "email", "is_admin", "books_count",
+                 "followers_count", "following_count", "created_at", "last_active",
+                 "deletion_requested_at", "deletion_reason"}
+    BOOK_KEYS = {"id", "title", "author", "users_reading", "users_completed",
+                 "total_users", "added_by_users"}
+    FOLLOW_KEYS = {"follower_id", "follower_name", "followed_id", "followed_name", "created_at"}
+    NOTE_KEYS = {"id", "user_id", "user_name", "text", "quote", "emotion",
+                 "is_public", "created_at", "likes_count", "comments_count"}
+    COMMENT_KEYS = {"id", "note_id", "user_id", "user_name", "text", "created_at"}
+
+    def test_stats_and_lists_unchanged(self, client, db, admin_headers, alice_headers):
+        """R-17: the 13 measured /admin/stats keys are all still present alongside
+        push_subscribed_users; the five list routes return their existing shapes at
+        their default limits; a non-admin still gets 403 on all six."""
+        stats = client.get("/admin/stats", headers=admin_headers)
+        assert stats.status_code == 200
+        assert set(stats.json().keys()) == self.STATS_KEYS
+
+        users = client.get("/admin/users", headers=admin_headers)
+        assert users.status_code == 200
+        assert all(set(u.keys()) == self.USER_KEYS for u in users.json())
+
+        books = client.get("/admin/books", headers=admin_headers)
+        assert books.status_code == 200
+        assert all(set(b.keys()) == self.BOOK_KEYS for b in books.json())
+
+        follows = client.get("/admin/follows", headers=admin_headers)
+        assert follows.status_code == 200
+        assert all(set(f.keys()) == self.FOLLOW_KEYS for f in follows.json())
+
+        notes = client.get("/admin/content/notes", headers=admin_headers)
+        assert notes.status_code == 200
+        assert all(set(n.keys()) == self.NOTE_KEYS for n in notes.json())
+
+        comments = client.get("/admin/content/comments", headers=admin_headers)
+        assert comments.status_code == 200
+        assert all(set(c.keys()) == self.COMMENT_KEYS for c in comments.json())
+
+        for path in ("/admin/stats", "/admin/users", "/admin/books", "/admin/follows",
+                     "/admin/content/notes", "/admin/content/comments"):
+            assert client.get(path, headers=alice_headers).status_code == 403, path
+
+
 # ── F-26: Make Admin (T-A2-45..49) ───────────────────────────────────────────
 
 class TestSetAdmin:

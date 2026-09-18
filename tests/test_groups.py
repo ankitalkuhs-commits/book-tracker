@@ -287,3 +287,106 @@ class TestGroupLeaderboard:
         r = client.get(f"/groups/{group_id}/leaderboard", headers=h)
         assert r.status_code == 200
         assert isinstance(r.json(), list)
+
+
+# ── §9 R-12, R-14 — cross-package regression: circle lists + circle detail sections ────
+# (R-13 is not implemented here: tests.md §9 names test_groups.py::TestGroupsCRUD::
+#  test_goal_endpoint_shape_unchanged verbatim, and that exact test already exists at
+#  TestGroupsCRUD above (T-A2-35) — see build-notes-regression.md.)
+
+class TestGroupsRegression:
+    G16 = {
+        "cover_preset", "created_at", "created_by", "creator_name", "current_book", "description",
+        "goal_pages", "goal_period", "goal_start_date", "id", "invite_code", "is_private",
+        "member_count", "membership_role", "membership_status", "name",
+    }
+
+    def test_list_serializers_unchanged(self, client, db):
+        """R-12: /groups/my, /groups/discover and /groups/invites/pending still return the
+        same 16 keys as _serialize_group (K-14), and do not gain reading_goal or
+        pages_read_total — F-15 adds those to GET /groups/{id} only."""
+        creator = _make_user(db, email="r12_creator@example.com")
+        invitee = _make_user(db, email="r12_invitee@example.com")
+        h, hi = _auth(creator), _auth(invitee)
+        g = client.post("/groups/", json={
+            "name": "R12 Circle", "is_private": False, "description": "R12",
+            "goal_pages": 500, "goal_period": "monthly", "invite_user_ids": [invitee.id],
+        }, headers=h).json()
+
+        my = client.get("/groups/my", headers=h)
+        assert my.status_code == 200
+        row = next(x for x in my.json() if x["id"] == g["id"])
+        assert set(row.keys()) == self.G16
+        assert "reading_goal" not in row
+        assert "pages_read_total" not in row
+
+        disc = client.get("/groups/discover", headers=hi)
+        assert disc.status_code == 200
+        row2 = next(x for x in disc.json() if x["id"] == g["id"])
+        assert set(row2.keys()) == self.G16
+        assert "reading_goal" not in row2
+        assert "pages_read_total" not in row2
+
+        pend = client.get("/groups/invites/pending", headers=hi)
+        assert pend.status_code == 200
+        row3 = next(x for x in pend.json() if x["id"] == g["id"])
+        assert set(row3.keys()) == self.G16
+        assert "reading_goal" not in row3
+        assert "pages_read_total" not in row3
+
+    def test_members_pending_leaderboard_activity_unchanged(self, client, db):
+        """R-14: /members, /pending, /leaderboard, /posts and /activity key sets unchanged;
+        the private-group 403 gate still applies to all of them; F-42's avatar_url is still
+        returned as-is on /activity's user sub-object (not in scope)."""
+        curator = _make_user(db, email="r14_curator@example.com")
+        member = _make_user(db, email="r14_member@example.com")
+        outsider = _make_user(db, email="r14_outsider@example.com")
+        hc, hm, ho = _auth(curator), _auth(member), _auth(outsider)
+
+        g = client.post("/groups/", json={
+            "name": "R14 Circle", "is_private": True, "description": "R14",
+        }, headers=hc).json()
+        gid = g["id"]
+        client.post(f"/groups/{gid}/join", headers=hm)  # private -> pending
+        client.post(f"/groups/{gid}/approve/{member.id}", headers=hc)
+        client.post(f"/groups/{gid}/posts", json={"text": "R14 post"}, headers=hm)
+
+        second_joiner = _make_user(db, email="r14_pending_joiner@example.com")
+        client.post(f"/groups/{gid}/join", headers=_auth(second_joiner))
+
+        members = client.get(f"/groups/{gid}/members", headers=hc)
+        assert members.status_code == 200
+        m_keys = {"user_id", "name", "username", "profile_picture", "role", "joined_at"}
+        assert all(set(row.keys()) == m_keys for row in members.json())
+
+        pending = client.get(f"/groups/{gid}/pending", headers=hc)
+        assert pending.status_code == 200
+        p_keys = {"user_id", "name", "username", "profile_picture", "invited_by"}
+        assert all(set(row.keys()) == p_keys for row in pending.json())
+
+        leaderboard = client.get(f"/groups/{gid}/leaderboard", headers=hc)
+        assert leaderboard.status_code == 200
+        l_keys = {"user_id", "name", "username", "profile_picture", "books_finished",
+                  "pages_read", "current_book", "rank"}
+        assert all(set(row.keys()) == l_keys for row in leaderboard.json())
+
+        posts = client.get(f"/groups/{gid}/posts", headers=hc)
+        assert posts.status_code == 200
+        post_keys = {"id", "text", "quote", "emotion", "image_url", "created_at", "user", "book"}
+        assert all(set(row.keys()) == post_keys for row in posts.json())
+
+        activity = client.get(f"/groups/{gid}/activity", headers=hc)
+        assert activity.status_code == 200
+        a_keys = {"id", "event_type", "payload", "created_at", "user"}
+        assert all(set(row.keys()) == a_keys for row in activity.json())
+        assert all(
+            set(row["user"].keys()) == {"id", "name", "username", "avatar_url"}
+            for row in activity.json() if row.get("user")
+        )
+
+        # private-group gate still applies to all five, for a non-member/non-curator
+        assert client.get(f"/groups/{gid}/members", headers=ho).status_code == 403
+        assert client.get(f"/groups/{gid}/pending", headers=ho).status_code == 403
+        assert client.get(f"/groups/{gid}/leaderboard", headers=ho).status_code == 403
+        assert client.get(f"/groups/{gid}/posts", headers=ho).status_code == 403
+        assert client.get(f"/groups/{gid}/activity", headers=ho).status_code == 403
