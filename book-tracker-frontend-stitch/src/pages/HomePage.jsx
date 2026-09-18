@@ -32,10 +32,11 @@ function Avatar({ user, size = 10 }) {
       src={user.profile_picture}
       alt={user.name}
       className={`w-${size} h-${size} rounded-full object-cover`}
+      style={{ width: `${size * 4}px`, height: `${size * 4}px` }}   // F-65: w-${size} is built at runtime, so Tailwind never emits w-11
       onError={e => { e.target.style.display = 'none' }}
     />
   ) : (
-    <div className={`w-${size} h-${size} rounded-full bg-primary flex items-center justify-center text-on-primary text-xs font-bold font-sans shrink-0`}>
+    <div className={`w-${size} h-${size} rounded-full bg-primary flex items-center justify-center text-on-primary text-xs font-bold font-sans shrink-0`} style={{ width: `${size * 4}px`, height: `${size * 4}px` }}>
       {initials}
     </div>
   )
