@@ -108,6 +108,48 @@ class TestNotificationPrefs:
         assert len(r_ok.json()) <= 1
 
 
+# ── §9 R-05, R-06 — cross-package regression: settings prefs + notification inbox ──────
+
+class TestPrefsRegression:
+    def test_get_prefs_shape_unchanged(self, client, db):
+        """R-05: GET /notifications/prefs returns exactly K7 for a user who has never
+        PATCHed, and for one who has."""
+        fresh = _make_user(db, email="r05_fresh@example.com")
+        r1 = client.get("/notifications/prefs", headers=_auth(fresh))
+        assert r1.status_code == 200
+        assert r1.json() == {k: True for k in K7}
+
+        patched = _make_user(db, email="r05_patched@example.com")
+        h_patched = _auth(patched)
+        client.patch("/notifications/prefs", json={"post_liked": False}, headers=h_patched)
+        r2 = client.get("/notifications/prefs", headers=h_patched)
+        assert r2.status_code == 200
+        assert set(r2.json()) == K7
+        assert r2.json()["post_liked"] is False
+
+    def test_history_and_unread_shapes_unchanged(self, client, db):
+        """R-06: /notifications/history item keys and /notifications/unread-count
+        {"unread": n} are unchanged, and POST /notifications/mark-read is not shadowed by
+        the new POST /{id}/read route (T-A1-43)."""
+        u, v, ids = _seed_notifications(db, "r06")
+        h = _auth(u)
+        hist = client.get("/notifications/history", headers=h)
+        assert hist.status_code == 200
+        rows = hist.json()
+        assert rows
+        assert set(rows[0].keys()) == {"id", "event_type", "title", "body", "data", "is_read", "sent_at"}
+
+        unread = client.get("/notifications/unread-count", headers=h)
+        assert unread.status_code == 200
+        assert unread.json() == {"unread": 3}
+
+        mark = client.post("/notifications/mark-read", headers=h)
+        assert mark.status_code == 200
+        assert mark.json() == {"message": "Marked 3 notifications as read"}
+        # not shadowed by /{id}/read — the single "mark-read" route still handled this call
+        assert client.get("/notifications/unread-count", headers=h).json() == {"unread": 0}
+
+
 class TestMarkOneRead:
     def test_mark_one_read_only_that_row(self, client, db):
         u, v, (n1, n2, n3) = _seed_notifications(db, "mor1")

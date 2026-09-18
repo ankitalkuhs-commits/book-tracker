@@ -428,6 +428,13 @@ def get_public_notes_for_user(
         select(models.Comment.note_id, func.count(models.Comment.id))
         .where(models.Comment.note_id.in_(note_ids)).group_by(models.Comment.note_id)
     ).all()}
+    # F-63: the viewer's own like state. Without it the response model pads
+    # liked_by_me/user_has_liked to False, so a liked note showed an empty heart.
+    liked_set = set(db.exec(
+        select(models.Like.note_id)
+        .where(models.Like.user_id == current_user.id)
+        .where(models.Like.note_id.in_(note_ids))
+    ).all())
     out = []
     for n in notes:
         ub = ubs.get(n.userbook_id)
@@ -450,6 +457,8 @@ def get_public_notes_for_user(
             } if book else None,
             "likes_count": likes_map.get(n.id, 0),
             "comments_count": comments_map.get(n.id, 0),
+            "liked_by_me": n.id in liked_set,
+            "user_has_liked": n.id in liked_set,
         })
     return out
 

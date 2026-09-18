@@ -104,6 +104,27 @@ class TestDailyStats:
             r = client.get(f"/reading-activity/user/{public_user.id}/daily?days={days}", headers=h)
             assert r.status_code == expected, f"days={days}"
 
+    # ── §9 R-16 — cross-package regression: activity charts ─────────────────
+
+    def test_recorded_caller_days_values_200(self, client, db):
+        """R-16: days=7, 30, 90 on both daily routes (getMyActivity / getUserActivity)
+        -> 200 with the existing shape. Every in-the-wild value must sit inside F-51's
+        new 1..200 bound."""
+        user = _make_user(db, email="r16_days@example.com")
+        h = _auth(user)
+        for days in (7, 30, 90):
+            r = client.get(f"/reading-activity/daily?days={days}", headers=h)
+            assert r.status_code == 200, f"own daily days={days}"
+            assert r.json()["days"] == days
+            assert len(r.json()["data"]) == days
+
+        other = _make_user(db, email="r16_days_other@example.com")
+        for days in (7, 30, 90):
+            r = client.get(f"/reading-activity/user/{other.id}/daily?days={days}", headers=h)
+            assert r.status_code == 200, f"user daily days={days}"
+            assert r.json()["days"] == days
+            assert len(r.json()["data"]) == days
+
 
 class TestInsights:
     def test_insights_requires_auth(self, client):
@@ -220,6 +241,25 @@ class TestInsights:
         assert data["books_this_year"] == data["finished_this_year"]
         for p in data["projected_finishes"]:
             assert p["projected_finish_date"] == p["projected_finish"]
+
+    # ── §9 R-15 — cross-package regression: insights ─────────────────────────
+
+    def test_insights_monthly_pages_shape_unchanged(self, client, db):
+        """R-15: stays green unchanged (the strict monthly_pages key-set test above at
+        TestInsightsMonthBuckets), and the 12 measured top-level keys are still all
+        present after the 4 F-13/F-14 aliases are added."""
+        user = _make_user(db, email="r15_insights@example.com")
+        r = client.get("/reading-activity/insights", headers=_auth(user))
+        assert r.status_code == 200
+        data = r.json()
+        original_12 = {
+            "total_books", "total_finished", "total_reading", "finished_this_year",
+            "total_pages_read", "avg_pages_per_day", "current_streak", "longest_streak",
+            "avg_rating", "yearly_goal", "monthly_pages", "projected_finishes",
+        }
+        assert original_12 <= set(data.keys())
+        for e in data["monthly_pages"]:
+            assert set(e.keys()) == {"month", "pages_read"}
 
 
 class TestPublicUserDaily:
