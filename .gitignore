@@ -60,3 +60,6 @@ qa/screenshots/
 
 # Editor / Office lock files (e.g. ~$.env.review created when opening .env.review)
 ~$*
+
+# Claude Code local settings and agent worktrees — machine-specific, never commit
+.claude/
