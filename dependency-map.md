@@ -57,7 +57,8 @@ Returned by `GET /userbooks/`, `GET /userbooks/{id}`, `GET /userbooks/user/{id}`
  comments_count, liked_by_me, user_has_liked, user:{id,name,username,profile_picture}, book:{id,title,author,cover_url}}
 ```
 - `liked_by_me` and `user_has_liked` are duplicates kept for old clients.
-- `/me` also has `updated_at`. `/user/{id}` omits `user_id` and the like keys; `NoteOutSchema` fills defaults.
+- `/me` also has `updated_at`.
+- `/user/{id}`: `user_id` is padded to `null` by `NoteOutSchema` and `user` is only `{id, name}`. It **does** return real like state: `likes_count`, plus the viewer's `liked_by_me`/`user_has_liked` since **F-63 (2026-09-18)**. Before that the like keys were the schema default `False` for every viewer, and this map recorded it as "omits the like keys; defaults filled", which led tests.md §9 R-03 to assert the bug as the contract. **Both clients read these keys here:** web `UserProfilePage` uses `liked_by_me`, Android `UserProfileScreen` uses `user_has_liked`. **Lesson:** a key filled by a default is still a contract. Record what its value *means*, not just whether it is present.
 - `/friends-feed` `user` adds `is_mutual`.
 - `GET /notes/feed` is **optional-auth**, so anonymous callers get it. It excludes `is_private_profile` authors in `crud.get_notes_feed`, but not review accounts (F-09, not approved).
 - `.book` lacks `google_books_id`/`isbn`/`total_pages` today.
