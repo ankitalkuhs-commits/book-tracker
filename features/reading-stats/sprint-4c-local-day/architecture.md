@@ -1188,6 +1188,18 @@ Generated appendix: the regenerated table should show **no row changes**, since 
 | **E-5** | Keep Render awake so reminders never miss (for example, a cron ping every 10 min, 14:00–17:00 UTC and other evening bands) | **Not in 4C.** Reliability is already better than today (2 h window vs 1 h grace). A pinger uses free-tier hours and needs its own decision | A GitHub Actions `schedule` workflow pinging `/version`; decide on cost |
 | **E-6** | Forgive a streak gap caused by eastward travel | **No.** It is rare, hard to prove, and needs zone history, which we deliberately do not keep | Needs a per-user zone-change log (privacy cost) |
 
+### PM decisions on the escalations (2026-09-19)
+| # | Decision | By |
+|---|---|---|
+| E-1 | **Accepted: `Asia/Kolkata`** is the fallback zone | PM |
+| E-2 | **Accepted: bridge once**, for streaks only (`_cutover_bridge` and `reading_activity.local_day` stay in scope) | PM |
+| E-3 | **Accepted: keep UTC** for circle goal and leaderboard months | PM reviewer, on the recommendation |
+| E-4 | **Accepted: add the one sentence** to the Privacy page, exactly as worded above | PM |
+| E-5 | **Accepted: not in 4C** | PM reviewer, on the recommendation |
+| E-6 | **Accepted: no** travel forgiveness | PM reviewer, on the recommendation |
+
+**Merge order (restated as a gate):** 4A is live, then the 2.2.2 AAB is built and its commit tagged, then the 4C SQL runs, and only then does 4C merge to `master`.
+
 ## Out of scope (observed, not changed)
 - **"Active today" means any authenticated request, not logging pages.** Yet the reminder says "You haven't logged any reading today." That is a pre-existing product mismatch; candidate finding for the next triage.
 - **`PATCH /userbooks/{id}` with `current_page`** (Android `BookDetailScreen.js:101`) changes progress without writing `reading_activity`, so those pages never appear in charts or streaks. This is pre-existing.
