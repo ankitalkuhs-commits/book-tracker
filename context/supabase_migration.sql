@@ -282,3 +282,30 @@ SELECT indexname FROM pg_indexes WHERE indexname IN ('uq_userbook_user_book', 'u
 -- INSERT INTO "like" SELECT * FROM dedupe_20260913_like;
 -- INSERT INTO follow SELECT * FROM dedupe_20260913_follow;
 -- Backup tables can be dropped by the PM after a successful release (not before 2026-10-13).
+
+-- ════════════════════════════════════════════════════════════════════════════
+-- Sprint 4C · F-62 · a reader's day is their own local day
+-- Run STEP 1, then STEP 2, BEFORE the 4C branch is merged to master (and so before any
+-- 4C backend deploy). Precondition: the Sprint 4A backend is live (GET /version = 4A SHA).
+-- Both columns are nullable with no default: metadata-only in PostgreSQL, no table rewrite,
+-- existing rows untouched. Re-running either step is harmless. Rollback at the end.
+-- ════════════════════════════════════════════════════════════════════════════
+
+-- STEP 1 — add the columns
+ALTER TABLE "user"           ADD COLUMN IF NOT EXISTS timezone  VARCHAR(64);
+ALTER TABLE reading_activity ADD COLUMN IF NOT EXISTS local_day BOOLEAN;
+
+-- STEP 2 — READ-ONLY verify: must list exactly 2 rows, then both SELECTs must succeed
+SELECT table_name, column_name, data_type, is_nullable
+  FROM information_schema.columns
+ WHERE table_schema = current_schema()
+   AND ((table_name = 'user' AND column_name = 'timezone')
+     OR (table_name = 'reading_activity' AND column_name = 'local_day'))
+ ORDER BY table_name;
+SELECT COUNT(*) AS users_with_zone        FROM "user"           WHERE timezone  IS NOT NULL;   -- 0 before deploy
+SELECT COUNT(*) AS local_day_rows         FROM reading_activity WHERE local_day IS TRUE;       -- 0 before deploy
+
+-- ROLLBACK (only AFTER the backend is back on a pre-4C SHA; pre-4C code never selects these
+-- columns, so leaving them in place is also safe):
+-- ALTER TABLE reading_activity DROP COLUMN IF EXISTS local_day;
+-- ALTER TABLE "user"           DROP COLUMN IF EXISTS timezone;

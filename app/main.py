@@ -156,6 +156,9 @@ app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 # ---------------------
 @app.on_event("startup")
 async def startup_event():
+    from .database import engine
+    from .schema_guard import assert_migrated
+    assert_migrated(engine)                      # R-14: exits before serving if the 4C SQL has not run
     from .notifications.scheduler import start_scheduler
     start_scheduler()
     print("✅ Application started.")

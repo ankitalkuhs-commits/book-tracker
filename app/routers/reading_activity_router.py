@@ -3,10 +3,26 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlmodel import Session, select, func
 from ..deps import get_db, get_current_user
 from ..models import ReadingActivity, UserBook, Book, User, Follow
+from .. import localday
 from datetime import datetime, timedelta, date as date_type
 from typing import List
 
 router = APIRouter(prefix="/reading-activity", tags=["reading-activity"])
+
+
+def _label(v):
+    return v.date() if isinstance(v, datetime) else v
+
+
+def _cutover_bridge(old_days: set, new_days: set) -> set:
+    """D-5 / R-06: pre-4C labels shift after-midnight reading one day earlier; forgive the single
+    day this leaves between the last pre-4C label and the first local-day label. Once per reader."""
+    if not old_days or not new_days:
+        return set()
+    last_old, first_new = max(old_days), min(new_days)
+    if first_new - last_old == timedelta(days=2):
+        return {last_old + timedelta(days=1)}
+    return set()
 
 
 @router.get("/daily")
@@ -19,10 +35,10 @@ def get_daily_reading_stats(
     Get daily reading activity for the current user for the last N days.
     Returns pages read per day for charts.
     """
-    # Calculate date range
-    end_date = datetime.utcnow().date()
+    # Calculate date range — the CALLER's local today (R-03)
+    end_date = localday.local_today(localday.zone_of(current_user))
     start_date = end_date - timedelta(days=days)
-    
+
     # Query reading activity
     activities = db.exec(
         select(ReadingActivity)
@@ -30,16 +46,17 @@ def get_daily_reading_stats(
         .where(ReadingActivity.date >= start_date)
         .order_by(ReadingActivity.date.desc())
     ).all()
-    
+
     # Group by date and sum pages_read
     daily_stats = {}
     for activity in activities:
-        date_key = activity.date.date() if isinstance(activity.date, datetime) else activity.date
+        date_key = _label(activity.date)
         if date_key not in daily_stats:
             daily_stats[date_key] = 0
         daily_stats[date_key] += (activity.pages_read or 0)
-    
-    # Fill in missing days with 0
+
+    # Fill in missing days with 0 — runs from today backwards, so a future-labelled
+    # row (west-of-UTC pre-4C row, D-4) never appears (it is after end_date)
     result = []
     current_date = end_date
     for i in range(days):
@@ -48,7 +65,7 @@ def get_daily_reading_stats(
             "date": date_key.isoformat(),
             "pages_read": daily_stats.get(date_key, 0)
         })
-    
+
     return {"days": days, "data": list(reversed(result))}
 
 
@@ -61,7 +78,8 @@ def get_reading_insights(
     Full reading insights for the current user:
     yearly stats, streaks, monthly breakdown, projected finish dates, avg rating.
     """
-    today = datetime.utcnow().date()
+    zone = localday.zone_of(current_user)
+    today = localday.local_today(zone)
     year_start = date_type(today.year, 1, 1)
 
     # ── All userbooks ────────────────────────────────────────────────────────
@@ -70,7 +88,7 @@ def get_reading_insights(
     reading_ubs  = [ub for ub in all_ubs if ub.status == "reading"]
     finished_this_year = [
         ub for ub in finished_ubs
-        if ub.updated_at and ub.updated_at.date() >= year_start
+        if ub.updated_at and localday.local_date(ub.updated_at, zone) >= year_start
     ]
 
     # ── Yearly goal ──────────────────────────────────────────────────────────
@@ -103,24 +121,29 @@ def get_reading_insights(
         .where(ReadingActivity.user_id == current_user.id)
         .where(ReadingActivity.pages_read > 0)
     ).all()
-    active_dates = set()
+    active_dates, old_days, new_days = set(), set(), set()
     for a in activities:
-        d = a.date.date() if isinstance(a.date, datetime) else a.date
+        d = _label(a.date)
         active_dates.add(d)
+        (new_days if a.local_day else old_days).add(d)
+
+    # K-08 (spec R-05): a future-labelled row is excluded from the chart AND both streaks
+    # until its day arrives, whatever set it came from (old or new).
+    streak_dates = {d for d in (active_dates | _cutover_bridge(old_days, new_days)) if d <= today}
 
     # Anchor on today if there is activity today, else on yesterday — a reader
     # who read yesterday but has not opened the app yet today still has a streak.
     current_streak = 0
-    check = today if today in active_dates else today - timedelta(days=1)
-    while check in active_dates:
+    check = today if today in streak_dates else today - timedelta(days=1)
+    while check in streak_dates:
         current_streak += 1
         check -= timedelta(days=1)
 
     longest_streak = 0
-    if active_dates:
+    if streak_dates:
         streak = 0
         prev_d = None
-        for d in sorted(active_dates):
+        for d in sorted(streak_dates):
             if prev_d is None or d == prev_d + timedelta(days=1):
                 streak += 1
                 longest_streak = max(longest_streak, streak)
@@ -131,7 +154,7 @@ def get_reading_insights(
     # ── Monthly breakdown (last 12 months) ──────────────────────────────────
     monthly = {}
     for a in activities:
-        d = a.date.date() if isinstance(a.date, datetime) else a.date
+        d = _label(a.date)
         key = f"{d.year}-{d.month:02d}"
         monthly[key] = monthly.get(key, 0) + (a.pages_read or 0)
     monthly_list = []
@@ -150,7 +173,7 @@ def get_reading_insights(
     thirty_ago = today - timedelta(days=30)
     recent_pages = sum(
         a.pages_read or 0 for a in activities
-        if (a.date.date() if isinstance(a.date, datetime) else a.date) >= thirty_ago
+        if _label(a.date) >= thirty_ago
     )
     avg_pages_per_day = round(recent_pages / 30, 1)
 
@@ -219,11 +242,11 @@ def get_user_daily_reading_stats(
         ).first())
         if not is_following:
             raise HTTPException(status_code=403, detail="This profile is private")
-    
-    # Calculate date range
-    end_date = datetime.utcnow().date()
+
+    # Calculate date range — the SUBJECT's local today (R-04), not the viewer's
+    end_date = localday.local_today(localday.zone_of(user))
     start_date = end_date - timedelta(days=days)
-    
+
     # Query reading activity
     activities = db.exec(
         select(ReadingActivity)
@@ -231,15 +254,15 @@ def get_user_daily_reading_stats(
         .where(ReadingActivity.date >= start_date)
         .order_by(ReadingActivity.date.desc())
     ).all()
-    
+
     # Group by date and sum pages_read
     daily_stats = {}
     for activity in activities:
-        date_key = activity.date.date() if isinstance(activity.date, datetime) else activity.date
+        date_key = _label(activity.date)
         if date_key not in daily_stats:
             daily_stats[date_key] = 0
         daily_stats[date_key] += (activity.pages_read or 0)
-    
+
     # Fill in missing days with 0
     result = []
     current_date = end_date
@@ -249,5 +272,5 @@ def get_user_daily_reading_stats(
             "date": date_key.isoformat(),
             "pages_read": daily_stats.get(date_key, 0)
         })
-    
+
     return {"days": days, "data": list(reversed(result))}

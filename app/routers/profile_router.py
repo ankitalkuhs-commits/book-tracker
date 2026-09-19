@@ -92,6 +92,7 @@ def get_profile(db: Session = Depends(get_db), current_user=Depends(get_current_
         "stats": stats,
         "is_admin": user.is_admin,
         "is_private_profile": getattr(user, "is_private_profile", False),
+        "timezone": getattr(user, "timezone", None),   # Sprint 4C R-13: own profile only
     }
 
 

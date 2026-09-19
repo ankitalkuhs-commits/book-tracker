@@ -1,7 +1,7 @@
 """Tests for /auth/* — the surviving routes (Google, review-login, delete-account) and
 proof that the legacy password signup/login routes (F-01) are gone."""
 import os
-from datetime import date
+from datetime import date, datetime
 
 import pytest
 from sqlmodel import select, func
@@ -508,7 +508,7 @@ class TestReviewLogin:
         assert r2.status_code == 200
         assert r2.json() == []
 
-    def test_last_active_set_to_today(self, client, db, monkeypatch):
+    def test_last_active_set_to_today(self, client, db, monkeypatch, pinned_now):
         _configure(monkeypatch, "review.active@trackmyread.com")
         r = client.post(
             "/auth/review-login",
@@ -519,7 +519,26 @@ class TestReviewLogin:
         db.expire_all()
         user = crud.get_user_by_email(db, "review.active@trackmyread.com")
         assert user.last_active is not None
-        assert user.last_active.date() == date.today()
+        # F-62: login sets last_active to the seam's now, never date.today() (which floats
+        # with the machine's local date and fails inside 00:00-05:30 IST).
+        assert user.last_active == pinned_now
+
+    def test_last_active_refreshed_at_local_midnight_boundary(self, client, db, monkeypatch, freeze_at):
+        _configure(monkeypatch, "review.4c.a3@trackmyread.com")
+        freeze_at("2026-09-17T18:00:00")
+        client.post(
+            "/auth/review-login",
+            json={"email": "review.4c.a3@trackmyread.com", "secret": REVIEW_SECRET},
+        )
+        freeze_at("2026-09-17T19:00:00")
+        r = client.post(
+            "/auth/review-login",
+            json={"email": "review.4c.a3@trackmyread.com", "secret": REVIEW_SECRET},
+        )
+        assert r.status_code == 200
+        db.expire_all()
+        user = crud.get_user_by_email(db, "review.4c.a3@trackmyread.com")
+        assert user.last_active == datetime(2026, 9, 17, 19, 0)
 
     def test_password_hash_is_not_the_review_secret(self, client, db, monkeypatch):
         _configure(monkeypatch, "review.pwd@trackmyread.com")
@@ -627,3 +646,27 @@ class TestReviewLogin:
     def test_get_on_review_login_is_405_not_404(self, client):
         r = client.get("/auth/review-login")
         assert r.status_code == 405
+
+
+class TestGoogleLoginLastActive:
+    """Sprint 4C: login is activity on the reader's day, whatever their zone (R-10)."""
+
+    def test_google_login_sets_last_active_to_now(self, client, db, monkeypatch, freeze_at):
+        from google.oauth2 import id_token as _id_token
+
+        def _fake_verify(token, request, audience=None, clock_skew_in_seconds=10):
+            return {"email": "4c-a4@example.com", "name": "A4", "sub": "g-4c-a4"}
+
+        monkeypatch.setattr(_id_token, "verify_oauth2_token", _fake_verify)
+
+        freeze_at("2026-09-17T18:00:00")
+        r1 = client.post("/auth/google", json={"token": "fake-token"})
+        assert r1.status_code == 200
+
+        freeze_at("2026-09-17T19:00:00")
+        r2 = client.post("/auth/google", json={"token": "fake-token"})
+        assert r2.status_code == 200
+
+        db.expire_all()
+        user = crud.get_user_by_email(db, "4c-a4@example.com")
+        assert user.last_active == datetime(2026, 9, 17, 19, 0)

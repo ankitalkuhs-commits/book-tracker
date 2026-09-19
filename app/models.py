@@ -38,6 +38,7 @@ class User(SQLModel, table=True):
     notification_prefs: Optional[str] = Field(default=None)  # JSON: {"new_follower": true, ...}
     created_at: datetime = Field(default_factory=datetime.utcnow)
     last_active: Optional[datetime] = None
+    timezone: Optional[str] = None            # Sprint 4C: device IANA zone, latest valid report (X-Timezone). NULL = never reported.
     deletion_requested_at: Optional[datetime] = None
     deletion_reason: Optional[str] = None
 
@@ -186,12 +187,14 @@ class ReadingActivity(SQLModel, table=True):
     user_id: int = Field(foreign_key="user.id", index=True)
     userbook_id: int = Field(foreign_key="userbook.id", index=True)
 
-    # date used for stats queries
+    # date used for stats queries — a calendar LABEL (naive midnight). Pre-4C rows: the UTC day.
+    # 4C rows: the writer's local day (local_day = True). See features/reading-stats/sprint-4c-local-day.
     date: datetime = Field(default_factory=datetime.utcnow, index=True)
 
     pages_read: Optional[int] = Field(default=0)
     current_page: Optional[int] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
+    local_day: Optional[bool] = None          # Sprint 4C: True = labelled with the reader's local day. NULL = pre-4C (UTC day).
 
 
 from typing import Optional
