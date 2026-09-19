@@ -8,6 +8,7 @@ os.environ.setdefault("SECRET_KEY", "test-secret-key-for-pytest-only-not-product
 import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import SQLModel, create_engine, Session
+from sqlalchemy.pool import QueuePool
 from app.main import app
 from app.database import get_db, get_session
 from app import auth, crud
@@ -16,9 +17,17 @@ from app import auth, crud
 # connection but they all share the same in-memory database instance.
 TEST_DB_URL = "sqlite:///file:testdb?mode=memory&cache=shared&uri=true"
 
+# QueuePool, not SQLAlchemy 1.4's default SingletonThreadPool for in-memory SQLite. That pool
+# keeps one connection per thread, and beyond 5 threads it closes other threads' connections,
+# chosen arbitrarily, even while they are in use. FastAPI serves sync routes on AnyIO worker
+# threads that retire after 10 s idle, so long runs exceed 5 threads and a request now and then
+# failed at teardown with "Cannot operate on a closed database" (tests.md K-01; about 1 full run
+# in 5). QueuePool never closes a checked-out connection, and it keeps idle ones open, which the
+# shared-cache in-memory database needs in order to survive.
 engine = create_engine(
     TEST_DB_URL,
     connect_args={"check_same_thread": False},
+    poolclass=QueuePool,
 )
 
 # Create tables at import time — before any fixture or test runs

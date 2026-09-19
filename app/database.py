@@ -54,15 +54,6 @@ Base = SQLModel
 def init_db() -> None:
     SQLModel.metadata.create_all(engine)
 
-# convenience session factory for scripts / one-off use
-def get_session() -> Session:
-    """
-    Use this in scripts:
-        with get_session() as session:
-            ...
-    """
-    return Session(engine)
-
 # FastAPI dependency: returns a generator that yields a Session instance
 # Use this in deps.py or directly in route dependencies:
 #   db: Session = Depends(get_db)
@@ -75,6 +66,14 @@ def get_db() -> Generator[Session, None, None]:
         yield session
     finally:
         session.close()
+
+
+# 24 routes depend on this name (auth, follow, users, admin, import). It used to be a plain
+# function returning Session(engine), and FastAPI never tears down a non-generator dependency,
+# so every one of those requests left its session unclosed (read-only routes kept a pooled
+# connection until garbage collection). Now the same generator as get_db.
+# Guarded by tests/test_dependencies.py.
+get_session = get_db
 
 # Note: init_db() is called explicitly via create_tables.py during deployment
 # Not calling it here to avoid duplicate initialization and SSL connection issues
