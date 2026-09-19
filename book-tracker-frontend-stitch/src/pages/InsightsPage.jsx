@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useTranslation } from 'react-i18next'
 import { getReadingInsights } from '../services/api'
+import { parseDayLabel } from '../utils/localDate'
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -187,7 +188,7 @@ function ProjectedFinishes({ items }) {
             </div>
             <div className="text-right shrink-0">
               <p className="text-xs font-bold text-secondary">
-                {new Date(p.projected_finish).toLocaleDateString('default', { month: 'short', day: 'numeric' })}
+                {parseDayLabel(p.projected_finish)?.toLocaleDateString('default', { month: 'short', day: 'numeric' })}
               </p>
               <p className="text-xs text-on-surface-faint">{t('insights.daysLeft', { count: p.days_left })}</p>
             </div>

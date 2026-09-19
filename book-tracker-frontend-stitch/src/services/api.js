@@ -1,3 +1,5 @@
+import { deviceTimeZone } from '../utils/localDate'
+
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 const TOKEN_KEY = 'bt_token';
 
@@ -43,9 +45,11 @@ export async function apiFetch(path, options = {}) {
 
 async function apiFetchRaw(path, options = {}) {
   const token = getToken();
+  const tz = deviceTimeZone();              // read per request: follows a device zone change without a reload
   const headers = {
     'Content-Type': 'application/json',
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...(tz ? { 'X-Timezone': tz } : {}),
     ...options.headers,
   };
 
