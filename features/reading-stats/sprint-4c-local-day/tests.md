@@ -77,6 +77,14 @@ None blocks writing the tests. **K-08, K-11 and K-12 need an answer before the B
 
 ---
 
+### PM resolutions of section 0 (2026-09-19)
+- **K-08: follow the spec.** A future-dated row is excluded from the chart, the streak **and `longest_streak`**. The spec is the authority where it and the architecture's specimen code disagree; B6 already assumes this.
+- **K-11: accepted.** `__tests__/versionGuard.test.mjs` is added to the ANDROID package's file list (architecture updated).
+- **K-12: "Last updated" becomes September 2026.** E-4 changes the policy's text, and leaving May on changed text would misstate it. `PrivacyPage.jsx` joins the WEB package for the E-4 sentence and this date only.
+- **K-07: accepted.** The raw-`fetch` calls in web `api.js` (uploads and import) don't carry `X-Timezone`. Every other request does, so the stored zone stays current. R-07 is to be read as "every `apiFetch` request".
+- **K-01: logged as a finding, not ignored.** `TestImportRegression::test_covers_status_unchanged` fails intermittently with "Cannot operate on a closed database". The PM is investigating whether it is a product bug: something using a DB session after its request closed. The exact-count gates keep the one-re-run allowance only until that is resolved.
+- **K-02..K-06, K-09, K-10, K-13..K-22:** accepted as resolved inside this plan.
+
 ## 1. Summary
 
 | Package | New automated cases | Changed existing | Command | Baseline → expected |
