@@ -2,6 +2,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import { isAuthExpiredError, isRetryableRequest } from './httpPolicy';
+import { deviceTimeZone } from './localDate';
 
 // Stitch backend
 const API_BASE_URL = 'https://book-tracker-stitch.onrender.com';
@@ -22,6 +23,8 @@ api.interceptors.request.use(
   async (config) => {
     const token = await AsyncStorage.getItem('bt_token');
     if (token) config.headers.Authorization = `Bearer ${token}`;
+    const tz = deviceTimeZone();               // Sprint 4C (R-07): the reader's own day, per request
+    if (tz) config.headers['X-Timezone'] = tz;
     if (coldStart && config.timeout === DEFAULT_TIMEOUT) config.timeout = COLD_START_TIMEOUT;
     return config;
   },

@@ -7,6 +7,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { activityAPI, userbooksAPI, profileAPI } from '../services/api';
+import { parseDayLabel, daysUntil } from '../services/localDate';
 import { PreloadContext } from '../../App';
 import { colors, radius, shadow, type } from '../theme';
 import AppHeader from '../components/AppHeader';
@@ -21,20 +22,20 @@ function fmt(n) {
 
 function shortMonth(dateStr) {
   if (!dateStr) return '';
-  const d = new Date(dateStr);
-  return d.toLocaleDateString('en', { month: 'short' });
+  const d = parseDayLabel(dateStr);
+  return d ? d.toLocaleDateString('en', { month: 'short' }) : '';
 }
 
 function shortDate(dateStr) {
   if (!dateStr) return '';
-  const d = new Date(dateStr);
-  return d.toLocaleDateString('en', { month: 'short', day: 'numeric' });
+  const d = parseDayLabel(dateStr);
+  return d ? d.toLocaleDateString('en', { month: 'short', day: 'numeric' }) : '';
 }
 
 function daysLeft(dateStr) {
   if (!dateStr) return null;
-  const diff = Math.ceil((new Date(dateStr) - Date.now()) / 86_400_000);
-  return diff > 0 ? diff : null;
+  const n = daysUntil(dateStr);
+  return n > 0 ? n : null;
 }
 
 // ── Circular progress ring (pure View) ────────────────────────────────────────
