@@ -1,30 +1,9 @@
 {
   "date": "2026-09-20",
-  "web": "http://127.0.0.1:5178",
-  "api": "http://127.0.0.1:8766",
-  "passed": 10,
-  "failed": 16,
-  "skipped": 0,
-  "evidence": {
-    "L-4D-05": {
-      "500-/home": {
-        "joinStatus": null
-      },
-      "500-/library": {
-        "joinStatus": null
-      },
-      "500-/join/IgoPw8Dy4FQ": {
-        "joinStatus": null
-      },
-      "offline-/home": {
-        "joinStatus": null
-      },
-      "offline-/library": {
-        "joinStatus": null
-      },
-      "offline-/join/IgoPw8Dy4FQ": {
-        "joinStatus": null
-      }
-    }
-  }
+  "web": "http://127.0.0.1:5174",
+  "api": "http://127.0.0.1:8765",
+  "passed": 0,
+  "failed": 1,
+  "skipped": 25,
+  "evidence": {}
 }

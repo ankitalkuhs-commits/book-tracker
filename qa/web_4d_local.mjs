@@ -328,12 +328,14 @@ async function installWatcher(page, detectors) {
           const all = document.querySelectorAll(d.within || 'button, a, span');
           for (const el of all) { if (re.test(textOf(el))) { found = true; break; } }
         } else if (d.type === 'iconInContainer') {
-          let containers = [...document.querySelectorAll(d.containerSelector || 'article')]
-            .filter(c => textOf(c).includes(d.containerText));
-          // Innermost matches only. A selector like 'div, article' also matches ancestors that wrap
-          // several posts, so a sibling post's own delete icon was attributed to this one and the
-          // case failed identically whether the product was broken or not (PM, 2026-09-20).
-          containers = containers.filter(c => !containers.some(o => o !== c && c.contains(o)));
+          // A container counts when it holds THIS post's text and none of excludeText (the other
+          // posts on the page). Ancestors wrapping several posts are excluded that way, so a
+          // sibling's icon is never attributed here. An "innermost container" rule was tried first
+          // and was wrong: the delete button is a sibling of the text column, not inside it, so it
+          // hid real hits and broke the positive control (PM, 2026-09-20).
+          const containers = [...document.querySelectorAll(d.containerSelector || 'article')]
+            .filter(c => textOf(c).includes(d.containerText))
+            .filter(c => !(d.excludeText || []).some(t => textOf(c).includes(t)));
           for (const c of containers) {
             const icons = c.querySelectorAll('.material-symbols-outlined');
             for (const ic of icons) { if (textOf(ic) === d.icon) { found = true; break; } }
@@ -802,7 +804,11 @@ async function main() {
       const B = { ...template, id: 990000012, text: `QA 4D circle-own ${TS}`, user: { id: FRIEND_ID, name: pre.friend.user.name }, user_id: FRIEND_ID };
       await context.route(u => isApi(u) && new URL(u).pathname === `/groups/${CIRCLE}/posts`, route_ => route_.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([A, B]) }));
       await installWatcher(page, [
-        { id: 'delete-A', type: 'iconInContainer', containerSelector: 'div, article', containerText: A.text, icon: 'delete' },
+        { id: 'delete-A', type: 'iconInContainer', containerSelector: 'div, article', containerText: A.text, excludeText: [B.text], icon: 'delete' },
+        // Positive control: the reader's OWN stub post must show the delete control once identity
+        // arrives. Without it, a detector that can never fire would pass this case silently (the
+        // plan requires a control on every "never shown" check; this one had none).
+        { id: 'delete-B', type: 'iconInContainer', containerSelector: 'div, article', containerText: B.text, excludeText: [A.text], icon: 'delete' },
       ]);
       const t0 = Date.now();
       const h = await hold(context, u => u.pathname === '/profile/me', 2000);
@@ -815,6 +821,7 @@ async function main() {
       const w = await watcherState(page);
       const hitAt = w?.hits['delete-A'];
       assert(w && hitAt == null, `authorless circle post showed a delete control at ${hitAt != null ? hitAt - t0 : hitAt} ms`);
+      assert(w.hits['delete-B'] != null, "control failed: the reader's own circle post never showed a delete control, so this detector proves nothing");
     });
   }
 
@@ -835,8 +842,11 @@ async function main() {
         while (releases < 8) {
           const val = await nameInput.inputValue().catch(() => '');
           if (val === 'Qa Reader') break;
-          const av = await avatarValue(page);
-          assert(av === '?' || av === null, `Nav avatar read "${av}" before the Settings form was usable (released ${releases})`);
+          // No avatar assertion here. Two /profile/me are in flight (the auth context's and this
+          // page's) and the park releases oldest-first, so whether identity lands before the form
+          // becomes usable depends on which was sent first — it flipped between runs and failed
+          // ~1 run in 3. What this case exists to prove (a stale answer must not overwrite the
+          // edit) is asserted at the end and is unaffected (PM, 2026-09-20).
           park.release(1); releases++;
           await page.waitForTimeout(250);
         }
@@ -854,7 +864,10 @@ async function main() {
         assert(putBody.yearly_goal === 24, `PUT body had yearly_goal=${putBody.yearly_goal}, expected 24 (the form was loaded)`);
         await page.waitForTimeout(300);
         const avMid = await avatarValue(page);
-        assert(avMid === '?' || avMid === null, `avatar read "${avMid}" 300ms after the PUT, expected still unknown (no partial user object)`);
+        // Order-independent: identity may legitimately have landed by now ("QR" from a released
+        // answer). What must never appear is the edited initials while no full user object exists,
+        // which is how a fabricated partial identity would show up.
+        assert(avMid === '?' || avMid === null || avMid === 'QR', `avatar read "${avMid}" 300ms after the PUT, expected unknown or the loaded name, never a partial user`);
         park.releaseAll();
         await page.waitForTimeout(1000);
         const avFinal = await avatarValue(page);
@@ -1366,8 +1379,18 @@ async function main() {
   for (const [id, title, fn] of CASES) {
     if (ONLY && !ONLY.includes(id)) { skipped++; continue; }
     if (UNRUNNABLE[id]) { skipped++; console.log(`SKIP ${id} ${title} — ${UNRUNNABLE[id]}`); continue; }
+    // Retry once, and only for infrastructure errors: a held request that never completed, or a
+    // browser torn down under memory pressure. An assertion failure is never retried, so a real
+    // defect cannot be retried away. Seen on a host with < 1 GB free (2026-09-20).
+    const INFRA = /hold entry never fulfilled|Target (page|browser) .*closed|Fetch response has been disposed|Protocol error/i;
     try { await fn(); report(id, title, true); }
-    catch (e) { report(id, title, false, e?.message || String(e)); }
+    catch (e) {
+      const msg = e?.message || String(e);
+      if (!INFRA.test(msg)) { report(id, title, false, msg); continue; }
+      console.log(`RETRY ${id} — infrastructure error, not an assertion: ${msg.split('\n')[0]}`);
+      try { await fn(); report(id, title, true, null, ['retried-after-infra-error']); }
+      catch (e2) { report(id, title, false, `${e2?.message || String(e2)} (first attempt: ${msg.split('\n')[0]})`); }
+    }
   }
 
   // ---------------------------------------------------------------------------

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, Navigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../components/Toast'
@@ -320,6 +320,12 @@ export default function UserProfilePage() {
     }
     setFollowLoading(false)
   }
+
+  // Redirect during render, not from an effect: effects run after paint, so once identity
+  // arrived this page painted one frame of the other-reader view — Follow button and all —
+  // on the reader's own profile before the effect navigated away (L-4D-07, found when
+  // WEB-A and WEB-B were merged; neither package showed it alone).
+  if (isOwnProfile) return <Navigate to="/profile" replace />
 
   if (loading || !me) {
     return (

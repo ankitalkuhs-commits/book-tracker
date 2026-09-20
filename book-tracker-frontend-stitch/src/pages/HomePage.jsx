@@ -765,7 +765,11 @@ export default function HomePage() {
   }
 
   const handleNewPost = (note) => {
-    const post = { ...note, user, likes_count: 0, comments_count: 0, liked_by_me: false }
+    // Prefer the author the server just returned. Since F-69 this page renders before
+    // /profile/me answers, so `user` can still be null here, and overwriting note.user with it
+    // left the new post with no author: no edit/delete menu, no name, no avatar — and it stays
+    // that way whenever the in-flight feed snapshot predates the post (4A regression L-B2-09).
+    const post = { ...note, user: note.user ?? user, likes_count: 0, comments_count: 0, liked_by_me: false }
     localPosts.current = [{ post, tab: activeTabRef.current }, ...localPosts.current]
     setPosts(prev => [post, ...prev.filter(p => p.id !== post.id)])
   }
