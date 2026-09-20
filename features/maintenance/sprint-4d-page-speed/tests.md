@@ -64,6 +64,12 @@ baseline_measured: 2026-09-20 19:50 UTC (01:20 IST on 09-20, inside the F-62 win
 
 ---
 
+### Red-first gate corrected (PM, 2026-09-20)
+G-4D-01 expects **`4D web local: 10 passed, 16 failed`**, not 9/17. The plan predicted L-4D-08 would fail on today's code; it passes, and the harness is right:
+- `App.jsx:74` and `PrivateRoute` (`App.jsx:44-53`) both block the signed-in app until `/profile/me` resolves, so `HomePage` never renders while identity is pending and the case has no window in which to fail. L-4D-01/02 prove this in the same run.
+- The case still matters **after** WEB-A. `HomePage.jsx:62` computes `isOwn` as `post.user?.id === currentUserId`, and when both sides are `undefined` that comparison is **true**, which would show the own-post menu on someone else's post. So WEB-A must keep the unknown identity as `null`, never `undefined`, and L-4D-08 is the guard. It is Critical, as the plan already raised it.
+Everything else matches the plan's exact PASS/FAIL membership.
+
 ### PM resolutions of section 0 (2026-09-20)
 - **K-01 accepted — Critical, and 4D must not ship without it.** Settings' profile fields, its Save button and the privacy toggle stay **disabled until that page's own `/profile/me` has arrived**. Without this, a reader who saves in the first second sends `yearly_goal: null` and **loses their goal**, because `PUT /profile/me` clears the goal whenever the key is sent (`profile_router.py:111`). `SettingsPage.jsx` is already a WEB-A file. L-4D-16 is the gate.
 - **K-02 accepted.** Only the live effect's `/profile/me` answer is applied; a stale or duplicated answer (React StrictMode sends two in dev) must never overwrite a newer edit. L-4D-09 covers it.
