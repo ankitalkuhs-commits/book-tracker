@@ -1,10 +1,10 @@
 # app/deps.py
 from typing import Generator, Optional
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlmodel import Session
 from .database import get_session
-from . import crud, auth
+from . import crud, auth, localday
 
 # Use HTTPBearer to parse the Authorization header (Bearer token)
 bearer_scheme = HTTPBearer(auto_error=False)
@@ -41,6 +41,7 @@ def _extract_token(credentials: Optional[HTTPAuthorizationCredentials]) -> Optio
 
 
 def get_current_user(
+    request: Request,
     db: Session = Depends(get_db),
     creds: Optional[HTTPAuthorizationCredentials] = Depends(bearer_scheme)
 ):
@@ -75,12 +76,18 @@ def get_current_user(
     if user is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
 
-    # Touch last_active once per day — keeps the inactivity reminder accurate
-    # (login only updates it on re-auth; this covers users with existing sessions)
-    from datetime import datetime as _dt
-    today = _dt.utcnow().date()
-    if user.last_active is None or user.last_active.date() < today:
-        user.last_active = _dt.utcnow()
+    # Sprint 4C (R-07, R-10): the device zone, then last_active once per LOCAL day — one commit.
+    now = localday.utcnow()
+    dirty = False
+    reported = localday.valid_zone(request.headers.get(localday.ZONE_HEADER))
+    if reported and reported != user.timezone:
+        user.timezone = reported
+        dirty = True
+    zone = localday.zone_of(user)
+    if user.last_active is None or localday.local_date(user.last_active, zone) < localday.local_date(now, zone):
+        user.last_active = now
+        dirty = True
+    if dirty:
         db.add(user)
         db.commit()
 

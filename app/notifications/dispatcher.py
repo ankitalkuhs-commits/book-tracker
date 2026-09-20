@@ -20,13 +20,14 @@ Usage:
         extra={"book_title": book.title},
     )
 """
-from datetime import datetime, date
+from datetime import datetime, timedelta
 from typing import Optional
 from sqlmodel import Session, select
 
 from .config import NOTIFICATION_EVENTS
 from .push_mobile import send_expo_push
 from .push_web import send_web_push
+from .. import localday
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -52,28 +53,30 @@ def _check_daily_cap(
     actor_id: int,
     recipient_id: int,
     event_type: str,
+    now: datetime,
 ) -> bool:
     """
     Returns True if this notification is allowed (under daily cap).
     Returns False if this actor has already sent this event type to this recipient today.
 
-    Purpose: prevents spam when e.g. a user adds 5 books in one day —
-    their followers receive 1 notification, not 5.
+    "Today" is the RECIPIENT's local day (R-12). Purpose: prevents spam when e.g. a user
+    adds 5 books in one day — their followers receive 1 notification, not 5.
     """
-    from ..models import NotificationLog  # deferred to avoid circular imports
+    from ..models import NotificationLog, User  # deferred to avoid circular imports
 
-    today_start = datetime.combine(date.today(), datetime.min.time())
-
-    existing = db.exec(
-        select(NotificationLog).where(
+    zone = localday.zone_of(db.get(User, recipient_id))     # identity-map hit: _user_wants_event loaded it
+    last = db.exec(
+        select(NotificationLog.sent_at)
+        .where(
             NotificationLog.user_id == recipient_id,
             NotificationLog.actor_id == actor_id,
             NotificationLog.event_type == event_type,
-            NotificationLog.sent_at >= today_start,
+            NotificationLog.sent_at >= now - timedelta(hours=48),
         )
+        .order_by(NotificationLog.sent_at.desc())
     ).first()
 
-    return existing is None  # True = allowed, False = capped
+    return last is None or localday.local_date(last, zone) < localday.local_date(now, zone)
 
 
 def _render_template(template: str, vars: dict) -> str:
@@ -144,6 +147,7 @@ def fire_event(
     body  = _render_template(config["body"],  template_vars)
     data  = {"type": event_type, "actor_id": actor_id, **(extra or {})}
 
+    now = localday.utcnow()
     sent = skipped_cap = skipped_self = 0
 
     for user_id in recipient_ids:
@@ -158,7 +162,7 @@ def fire_event(
             continue
 
         # Enforce daily cap if configured for this event type
-        if config.get("daily_cap") and not _check_daily_cap(db, actor_id, user_id, event_type):
+        if config.get("daily_cap") and not _check_daily_cap(db, actor_id, user_id, event_type, now):
             print(f"[Notify] Daily cap hit: {event_type} from actor {actor_id} → user {user_id}")
             skipped_cap += 1
             continue
@@ -179,6 +183,7 @@ def fire_event(
                 title=title,
                 body=body,
                 data=data,
+                sent_at=now,
             ))
 
         sent += 1

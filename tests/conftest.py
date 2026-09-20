@@ -5,12 +5,16 @@ Uses a named shared-cache in-memory SQLite DB so all sessions see the same data.
 import os
 os.environ.setdefault("SECRET_KEY", "test-secret-key-for-pytest-only-not-production")
 
+import re
+from datetime import datetime
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import SQLModel, create_engine, Session
 from app.main import app
 from app.database import get_db, get_session
 from app import auth, crud
+import app.localday as localday
 
 # Named shared-cache in-memory DB — every Session(engine) gets its own
 # connection but they all share the same in-memory database instance.
@@ -122,3 +126,74 @@ def bob_headers():
 @pytest.fixture(scope="session")
 def admin_headers():
     return _auth(_fresh_user("admin_f@example.com"))
+
+
+# ── Clock seam (Sprint 4C, F-62) ─────────────────────────────────────────────
+
+@pytest.fixture(autouse=True)
+def pinned_now(monkeypatch):
+    """Every test sees localday.utcnow() == today's UTC date at a fixed hour (default 06:00:00).
+
+    06:00 UTC is the same calendar date from UTC-6 to UTC+14, including IST (11:30) and UTC,
+    so tests that build data with the real datetime.utcnow() agree with the server's "today".
+    The hour is fixed, so no test can depend on the wall-clock hour (F-62). Boundary tests
+    override with freeze_at(). BT_TEST_PIN_HOUR (0-18) lets gate G-4C-04 pin the hour on either
+    side of the real clock (K-04)."""
+    pin_hour = int(os.environ.get("BT_TEST_PIN_HOUR", "6"))
+    pinned = datetime.utcnow().replace(hour=pin_hour, minute=0, second=0, microsecond=0)
+    monkeypatch.setattr(localday, "utcnow", lambda: pinned)
+    return pinned
+
+
+@pytest.fixture()
+def freeze_at(monkeypatch):
+    """freeze_at("2026-09-17T19:00:00") -> localday.utcnow() returns that naive-UTC instant."""
+    def _freeze(iso: str) -> datetime:
+        t = datetime.fromisoformat(iso)
+        monkeypatch.setattr(localday, "utcnow", lambda: t)
+        return t
+    return _freeze
+
+
+class _StatementCounter:
+    """Counts SQL statements on `engine` via before_cursor_execute (the F-08 pattern)."""
+
+    _UPDATE_USER_RE = re.compile(r'^\s*UPDATE\s+"?user"?\s', re.IGNORECASE)
+
+    def __init__(self):
+        self.selects = 0
+        self.updates_user = 0
+
+    def reset(self):
+        self.selects = 0
+        self.updates_user = 0
+
+    def _before_cursor_execute(self, conn, cursor, statement, parameters, context, executemany):
+        s = statement.strip()
+        if s[:6].upper() == "SELECT":
+            self.selects += 1
+        if self._UPDATE_USER_RE.match(s):
+            self.updates_user += 1
+
+
+@pytest.fixture()
+def stmt_counter():
+    """Listens on the SAME engine object the running app actually queries through.
+
+    tests/conftest.py is imported twice under two different module names — once as the
+    bare "conftest" plugin pytest auto-loads for fixtures, and again as "tests.conftest"
+    by every test file's `from tests.conftest import ...`. Each import re-runs this whole
+    module and creates its OWN `engine` (and re-registers `app.dependency_overrides`), so
+    the two module instances end up with two different Engine objects; whichever imports
+    last wins the dependency override. Listening on the bare-name copy's `engine` would
+    silently miss every HTTP-driven query. Resolving through `tests.conftest` (the name
+    every test file already imports) keeps this fixture correct regardless of import order.
+    """
+    import tests.conftest as _tc
+    from sqlalchemy import event
+    counter = _StatementCounter()
+    event.listen(_tc.engine, "before_cursor_execute", counter._before_cursor_execute)
+    try:
+        yield counter
+    finally:
+        event.remove(_tc.engine, "before_cursor_execute", counter._before_cursor_execute)

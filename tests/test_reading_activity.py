@@ -2,6 +2,7 @@
 from datetime import datetime, timedelta
 
 from tests.conftest import _make_user, _auth
+from app import localday
 
 
 def _add_book(client, headers, title="Test Book", pages=200, status="reading"):
@@ -83,7 +84,7 @@ class TestDailyStats:
         for d in data["data"]:
             assert set(d.keys()) == {"date", "pages_read"}
             assert isinstance(d["pages_read"], int)
-        today = datetime.utcnow().date().isoformat()
+        today = localday.local_today(localday.zone_of(None)).isoformat()
         assert data["data"][-1]["date"] == today
 
         r7 = client.get("/reading-activity/daily?days=7", headers=h)
@@ -301,7 +302,7 @@ class TestInsightsMonthBuckets:
 
     def test_insights_monthly_months_match_independent_calendar_walk(self, client, db):
         user = _make_user(db, email="ramb_walk@example.com")
-        today = datetime.utcnow().date()
+        today = localday.local_today(localday.zone_of(None))
         expected = []
         y, m = today.year, today.month
         for _ in range(12):
@@ -327,7 +328,7 @@ class TestInsightsMonthBuckets:
             y, m = pairs[i - 1]
             expected_next = (y + 1, 1) if m == 12 else (y, m + 1)
             assert pairs[i] == expected_next
-        today = datetime.utcnow().date()
+        today = localday.local_today(localday.zone_of(None))
         assert pairs[-1] == (today.year, today.month)
 
     def test_insights_monthly_covers_every_month_number_once(self, client, db):
@@ -344,9 +345,9 @@ class TestInsightsMonthBuckets:
         _log_activity(db, user.id, ub_id, days_ago=0, pages=7)
         _log_activity(db, user.id, ub_id, days_ago=70, pages=13)
 
-        key0 = datetime.utcnow().date()
-        key0 = f"{key0.year}-{key0.month:02d}"
-        key70 = (datetime.utcnow() - timedelta(days=70)).date()
+        today0 = localday.local_today(localday.zone_of(None))
+        key0 = f"{today0.year}-{today0.month:02d}"
+        key70 = today0 - timedelta(days=70)
         key70 = f"{key70.year}-{key70.month:02d}"
 
         r = client.get("/reading-activity/insights", headers=h)

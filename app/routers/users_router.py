@@ -4,10 +4,10 @@ from sqlmodel import select, func, or_, and_
 from sqlmodel import Session
 from typing import List, Optional
 from pydantic import BaseModel
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 from ..database import get_session
 from ..deps import get_current_user
-from .. import models
+from .. import models, localday
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -215,21 +215,23 @@ def get_user_stats(
     reading = len([b for b in all_books if b.status == "reading"])
     to_read = len([b for b in all_books if b.status == "to-read"])
     
-    # Calculate date ranges
-    now = datetime.utcnow()
-    one_month_ago = now - timedelta(days=30)
-    year_start = datetime(now.year, 1, 1)
-    
+    # Calculate date ranges — this_year is the SUBJECT's local year (R-04); last_month is a
+    # rolling 30-day window, unchanged (D-8).
+    zone = localday.zone_of(user)                       # the SUBJECT's zone (R-04)
+    now = localday.utcnow()
+    one_month_ago = now - timedelta(days=30)            # rolling window, unchanged (D-8)
+    year_start = date(localday.local_today(zone, now).year, 1, 1)
+
     # Count books finished last month
     last_month = len([
-        b for b in all_books 
+        b for b in all_books
         if b.status == "finished" and b.updated_at and b.updated_at >= one_month_ago
     ])
-    
+
     # Count books finished this year
     this_year = len([
-        b for b in all_books 
-        if b.status == "finished" and b.updated_at and b.updated_at >= year_start
+        b for b in all_books
+        if b.status == "finished" and b.updated_at and localday.local_date(b.updated_at, zone) >= year_start
     ])
     
     # Calculate total pages read (finished books + current progress)

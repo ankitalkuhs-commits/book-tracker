@@ -319,6 +319,7 @@ class TestProfileMeNoPII:
             "id", "name", "username", "email", "bio", "profile_picture", "yearly_goal",
             "created_at", "followers_count", "following_count", "stats", "is_admin",
             "is_private_profile",
+            "timezone",  # Sprint 4C R-13: own profile only
         }
         assert set(data["stats"].keys()) == {
             "total_books", "totalBooks", "finished", "reading", "to_read", "toRead",

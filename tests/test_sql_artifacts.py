@@ -242,3 +242,70 @@ class TestMigrationSQL:
         for name, cols in expected.items():
             assert name in model_constraints, f"models.py missing UniqueConstraint {name}"
             assert set(model_constraints[name]) == set(cols)
+
+
+# ── Sprint 4C: context/supabase_migration.sql (section starting at "Sprint 4C") ─────
+# Bounded (K-15): from the "Sprint 4C" header to EOF, so a later append cannot silently
+# grow this section's scope the way the open-ended _f53_section() does.
+
+C4_STEP_1 = "STEP 1 —"
+C4_STEP_2 = "STEP 2 —"
+C4_ROLLBACK = "ROLLBACK (only AFTER"
+
+
+def _4c_section():
+    text = _read(MIGRATION_SQL_PATH)
+    start = text.index("Sprint 4C")
+    assert "F-62" in text[start:start + 200]
+    return text[start:]
+
+
+class TestMigration4C:
+    def test_4c_section_present_steps_in_order(self):
+        section = _4c_section()
+        i1 = section.index(C4_STEP_1)
+        i2 = section.index(C4_STEP_2)
+        ir = section.index(C4_ROLLBACK)
+        assert i1 < i2 < ir
+
+    def test_4c_step1_idempotent_exact(self):
+        section = _4c_section()
+        step1 = strip_comments(section[section.index(C4_STEP_1):section.index(C4_STEP_2)])
+        normalized = " ".join(step1.split())
+        assert 'ALTER TABLE "user" ADD COLUMN IF NOT EXISTS timezone VARCHAR(64)' in normalized
+        assert "ALTER TABLE reading_activity ADD COLUMN IF NOT EXISTS local_day BOOLEAN" in normalized
+        assert "DEFAULT" not in normalized.upper()
+
+    def test_4c_step2_read_only_verify(self):
+        section = _4c_section()
+        step2 = strip_comments(section[section.index(C4_STEP_2):section.index(C4_ROLLBACK)])
+        assert not re.search(r"\b(INSERT|UPDATE|DELETE|CREATE|DROP|ALTER|TRUNCATE)\b", step2, re.IGNORECASE)
+        assert "information_schema.columns" in step2
+        assert "current_schema()" in step2
+        assert "timezone" in step2 and "local_day" in step2
+        assert "WHERE timezone  IS NOT NULL" in step2 or "WHERE timezone IS NOT NULL" in step2
+        assert "WHERE local_day IS TRUE" in step2
+
+    def test_4c_rollback_fully_commented(self):
+        section = _4c_section()
+        rollback = section[_line_start(section, C4_ROLLBACK):]
+        stripped = strip_comments(rollback)
+        assert stripped.strip() == ""
+        uncommented = uncomment(rollback)
+        normalized = " ".join(uncommented.split())
+        assert "ALTER TABLE reading_activity DROP COLUMN IF EXISTS local_day" in normalized
+        assert 'ALTER TABLE "user" DROP COLUMN IF EXISTS timezone' in normalized
+
+    def test_4c_section_never_rewrites_rows(self):
+        section = strip_comments(_4c_section())
+        assert not re.search(r"\b(UPDATE|DELETE|INSERT|TRUNCATE|CREATE TABLE)\b", section, re.IGNORECASE)
+
+    def test_4c_column_types_match_code(self):
+        from app import localday
+        from app.schema_guard import REQUIRED_COLUMNS
+        section = _4c_section()
+        step1 = section[section.index(C4_STEP_1):section.index(C4_STEP_2)]
+        m = re.search(r"VARCHAR\((\d+)\)", step1)
+        assert m and int(m.group(1)) == localday.MAX_ZONE_LEN == 64
+        for table, column in REQUIRED_COLUMNS:
+            assert column in step1
