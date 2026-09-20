@@ -514,9 +514,14 @@ async function main() {
           await page.waitForTimeout(1500);
           const path1 = new URL(page.url()).pathname;
           if (row.kind === 'root') {
-            const s1 = Date.now() - t0;
-            assert(s1 <= T + 1500, `sample window elapsed before redirect check`);
-            assert(path1 === '/home', `still on / (final path ${path1}), expected /home`);
+            // Wait for the redirect rather than assert a stopwatch reading. The old check sampled
+            // after a fixed 1500 ms wait and then required the sample to land within T + 1500, which
+            // is the boundary before any overhead, so it could not pass by construction (WEB-A
+            // Builder, verified by the PM 2026-09-20).
+            await page.waitForURL(u => new URL(u).pathname === '/home', { timeout: 5000 })
+              .catch(() => {});
+            const path1b = new URL(page.url()).pathname;
+            assert(path1b === '/home', `still on / (final path ${path1b}), expected /home`);
           } else if (row.kind === 'join') {
             await page.waitForTimeout(200);
             const path2 = new URL(page.url()).pathname;
