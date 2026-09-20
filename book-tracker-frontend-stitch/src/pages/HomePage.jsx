@@ -59,7 +59,9 @@ function PostCard({ post, currentUserId, isAdmin, onLikeToggle, onDelete, onEdit
   const [saving, setSaving] = useState(false)
   const [deletingCommentId, setDeletingCommentId] = useState(null)
 
-  const isOwn = post.user?.id === currentUserId || post.user_id === currentUserId
+  // F-69: currentUserId is null, never undefined, until identity is known — an authorless post
+  // (post.user null) must never compare undefined === undefined as "own" (L-4D-08).
+  const isOwn = currentUserId != null && (post.user?.id === currentUserId || post.user_id === currentUserId)
   const isEdited = post.updated_at && post.updated_at !== post.created_at
   const book = post.book
   const coverUrl = book?.cover_url
@@ -763,7 +765,11 @@ export default function HomePage() {
   }
 
   const handleNewPost = (note) => {
-    const post = { ...note, user, likes_count: 0, comments_count: 0, liked_by_me: false }
+    // Prefer the author the server just returned. Since F-69 this page renders before
+    // /profile/me answers, so `user` can still be null here, and overwriting note.user with it
+    // left the new post with no author: no edit/delete menu, no name, no avatar — and it stays
+    // that way whenever the in-flight feed snapshot predates the post (4A regression L-B2-09).
+    const post = { ...note, user: note.user ?? user, likes_count: 0, comments_count: 0, liked_by_me: false }
     localPosts.current = [{ post, tab: activeTabRef.current }, ...localPosts.current]
     setPosts(prev => [post, ...prev.filter(p => p.id !== post.id)])
   }

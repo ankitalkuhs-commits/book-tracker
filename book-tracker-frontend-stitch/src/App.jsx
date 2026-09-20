@@ -26,6 +26,14 @@ import TermsPage from './pages/TermsPage'
 import BlogListPage from './pages/BlogListPage'
 import BlogPostPage from './pages/BlogPostPage'
 
+function FullScreenLoading() {
+  return (
+    <div className="min-h-screen bg-surface flex items-center justify-center">
+      <span className="text-on-surface-variant font-sans">Loading...</span>
+    </div>
+  )
+}
+
 // Wraps all logged-in pages with the Nav bar + in-app tour for new users
 function AppLayout({ children }) {
   const [showTour, setShowTour] = useState(
@@ -43,18 +51,16 @@ function AppLayout({ children }) {
 
 function PrivateRoute({ children }) {
   const { user, loading } = useAuth()
-  if (loading) return (
-    <div className="min-h-screen bg-surface flex items-center justify-center">
-      <span className="text-on-surface-variant font-sans">Loading...</span>
-    </div>
-  )
-  if (!user) return <Navigate to="/" replace />
+  if (!user && !loading) return <Navigate to="/" replace />
+  // F-69: render while the stored token is still being checked. Each request the page sends carries
+  // the token and is checked by the server; a 401 sends the browser to "/" (api.js). ONE return path:
+  // a different element here while loading would re-mount the page and repeat every request.
   return <AppLayout>{children}</AppLayout>
 }
 
 function OnboardingRoute() {
   const { user, loading } = useAuth()
-  if (loading) return null
+  if (loading) return <FullScreenLoading />
   if (!user) return <Navigate to="/" replace />
   // /onboarding now only used if someone navigates there manually (e.g. "take tour again")
   return <OnboardingPage />
@@ -62,24 +68,19 @@ function OnboardingRoute() {
 
 function AdminRoute({ children }) {
   const { user, loading } = useAuth()
-  if (loading) return null
+  if (loading) return <FullScreenLoading />   // is_admin comes only from this load's /profile/me, never assumed
   if (!user) return <Navigate to="/" replace />
   if (!user.is_admin) return <Navigate to="/home" replace />
   return <AppLayout>{children}</AppLayout>
 }
 
 export default function App() {
-  const { user, loading } = useAuth()
-
-  if (loading) return (
-    <div className="min-h-screen bg-surface flex items-center justify-center">
-      <span className="text-on-surface-variant font-sans">Loading...</span>
-    </div>
-  )
+  const { user, loading } = useAuth()   // F-69: no app-wide full-screen gate here — signed-in pages
+                                         // start loading their own data at once
 
   return (
     <Routes>
-      <Route path="/" element={user ? <Navigate to="/home" replace /> : <LoginPage />} />
+      <Route path="/" element={user || loading ? <Navigate to="/home" replace /> : <LoginPage />} />
       <Route path="/onboarding" element={<OnboardingRoute />} />
       <Route path="/home" element={<PrivateRoute><HomePage /></PrivateRoute>} />
       <Route path="/library" element={<PrivateRoute><LibraryPage /></PrivateRoute>} />

@@ -861,6 +861,10 @@ async function main() {
       const card = page.locator('article', { hasText: text }).first();
       await card.waitFor({ state: 'visible', timeout: 20000 });
       const menu = card.locator('button:has(.material-symbols-outlined:text("more_horiz"))').first();
+      // Sprint 4D: pages now render before /profile/me answers, so a post's own-post menu appears
+      // only once identity arrives. Waiting for the menu is the edit the 4D plan allows here; the
+      // assertion below is unchanged.
+      await menu.waitFor({ state: 'visible', timeout: 30000 });
       await menu.click();
       page.once('dialog', d => d.accept());
       const [delResp] = await Promise.all([
