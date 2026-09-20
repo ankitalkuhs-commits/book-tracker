@@ -59,7 +59,9 @@ function PostCard({ post, currentUserId, isAdmin, onLikeToggle, onDelete, onEdit
   const [saving, setSaving] = useState(false)
   const [deletingCommentId, setDeletingCommentId] = useState(null)
 
-  const isOwn = post.user?.id === currentUserId || post.user_id === currentUserId
+  // F-69: currentUserId is null, never undefined, until identity is known — an authorless post
+  // (post.user null) must never compare undefined === undefined as "own" (L-4D-08).
+  const isOwn = currentUserId != null && (post.user?.id === currentUserId || post.user_id === currentUserId)
   const isEdited = post.updated_at && post.updated_at !== post.created_at
   const book = post.book
   const coverUrl = book?.cover_url

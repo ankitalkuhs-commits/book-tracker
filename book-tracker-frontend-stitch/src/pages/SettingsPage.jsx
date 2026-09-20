@@ -82,7 +82,7 @@ function AvatarPickerModal({ current, onSelect, onClose }) {
 
 export default function SettingsPage() {
   const { t } = useTranslation()
-  const { user, login, logout } = useAuth()
+  const { user, updateUser, logout } = useAuth()
   const navigate = useNavigate()
   const toast = useToast()
   const avatarInputRef = useRef()
@@ -90,6 +90,9 @@ export default function SettingsPage() {
   const [name, setName] = useState('')
   const [bio, setBio] = useState('')
   const [yearlyGoal, setYearlyGoal] = useState('')
+  // K-01: this page's own /profile/me. Its form, Save button and the privacy toggle stay disabled
+  // until it arrives — saving before then would send yearly_goal: null and erase the reader's goal.
+  const [profileLoaded, setProfileLoaded] = useState(false)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState(null)
@@ -159,6 +162,7 @@ export default function SettingsPage() {
       setBio(p.bio || '')
       setYearlyGoal(p.yearly_goal || '')
       setIsPrivate(p.is_private_profile || false)
+      setProfileLoaded(true)
     }).catch(() => {})
     getNotificationPrefs().then(p => setNotifPrefs(prev => ({ ...prev, ...p }))).catch(() => {})
   }, [])
@@ -167,7 +171,7 @@ export default function SettingsPage() {
     setUploadingAvatar(true)
     try {
       await updateMyProfile({ profile_picture: url })
-      login({ ...user, profile_picture: url })
+      updateUser({ profile_picture: url })
       setAvatarPreview(url)
       toast('Avatar updated!', 'success')
     } catch (e) {
@@ -183,7 +187,7 @@ export default function SettingsPage() {
     setUploadingAvatar(true)
     try {
       const { profile_picture } = await uploadProfilePicture(file)
-      login({ ...user, profile_picture })
+      updateUser({ profile_picture })
       toast('Profile picture updated!', 'success')
     } catch (e) {
       toast(e.message || 'Upload failed', 'error')
@@ -194,7 +198,7 @@ export default function SettingsPage() {
 
   const handleSave = async (e) => {
     e.preventDefault()
-    if (!name.trim()) return
+    if (!name.trim() || !profileLoaded) return   // K-01: never save before this page's own profile has loaded
     setSaving(true)
     setError(null)
     setSaved(false)
@@ -205,7 +209,7 @@ export default function SettingsPage() {
         yearly_goal: yearlyGoal ? parseInt(yearlyGoal, 10) : null,
       }
       const updated = await updateMyProfile(payload)
-      login({ ...user, name: updated.name, bio: updated.bio, yearly_goal: updated.yearly_goal })
+      updateUser({ name: updated.name, bio: updated.bio, yearly_goal: updated.yearly_goal })
       toast('Profile saved!', 'success')
       setSaved(true)
       setTimeout(() => setSaved(false), 2500)
@@ -230,6 +234,7 @@ export default function SettingsPage() {
   }
 
   const handlePrivacyToggle = async (val) => {
+    if (!profileLoaded) return   // K-01: same gate as the profile form
     setIsPrivate(val)
     setSavingPrivacy(true)
     try {
@@ -353,8 +358,6 @@ export default function SettingsPage() {
             </div>
           </div>
         </div>
-        <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
-
         {/* Edit form */}
         <form onSubmit={handleSave} className="space-y-4">
           <div className="space-y-1.5">
@@ -363,10 +366,12 @@ export default function SettingsPage() {
               value={name}
               onChange={e => setName(e.target.value)}
               placeholder={t('settings.yourNamePlaceholder')}
-              className="w-full bg-surface-container-low rounded-xl px-4 py-3 text-sm border-none focus:outline-none focus:ring-2 focus:ring-primary/20"
+              className="w-full bg-surface-container-low rounded-xl px-4 py-3 text-sm border-none focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:opacity-50"
               required
+              disabled={!profileLoaded}
             />
           </div>
+          <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} disabled={!profileLoaded} />
 
           <div className="space-y-1.5">
             <label className="block text-sm font-medium text-on-surface-variant">{t('settings.bio')}</label>
@@ -375,7 +380,8 @@ export default function SettingsPage() {
               onChange={e => setBio(e.target.value)}
               placeholder={t('settings.bioPlaceholder')}
               rows={3}
-              className="w-full bg-surface-container-low rounded-xl px-4 py-3 text-sm border-none focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none"
+              className="w-full bg-surface-container-low rounded-xl px-4 py-3 text-sm border-none focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none disabled:opacity-50"
+              disabled={!profileLoaded}
             />
           </div>
 
@@ -391,14 +397,15 @@ export default function SettingsPage() {
               value={yearlyGoal}
               onChange={e => setYearlyGoal(e.target.value)}
               placeholder={t('settings.goalPlaceholder')}
-              className="w-32 bg-surface-container-low rounded-xl px-4 py-3 text-sm border-none focus:outline-none focus:ring-2 focus:ring-primary/20"
+              className="w-32 bg-surface-container-low rounded-xl px-4 py-3 text-sm border-none focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:opacity-50"
+              disabled={!profileLoaded}
             />
           </div>
 
           <div className="flex items-center gap-3">
             <button
               type="submit"
-              disabled={saving || !name.trim()}
+              disabled={saving || !name.trim() || !profileLoaded}
               className="btn-primary px-6 py-2.5 text-sm rounded-xl disabled:opacity-50"
             >
               {saving ? t('common.saving') : t('settings.saveChanges')}
@@ -427,7 +434,7 @@ export default function SettingsPage() {
           </div>
           <button
             type="button"
-            disabled={savingPrivacy}
+            disabled={savingPrivacy || !profileLoaded}
             onClick={() => handlePrivacyToggle(!isPrivate)}
             className={`relative shrink-0 w-12 h-6 rounded-full transition-colors duration-200 focus:outline-none disabled:opacity-60 ${
               isPrivate ? 'bg-primary' : 'bg-outline-variant'
