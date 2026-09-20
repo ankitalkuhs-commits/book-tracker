@@ -49,6 +49,11 @@ Returned by `GET /userbooks/`, `GET /userbooks/{id}`, `GET /userbooks/user/{id}`
 ### `GET /profile/me`  ⚠️ 10 consuming files
 - `stats` carries both snake_case and camelCase keys (`total_books`/`totalBooks`, `to_read`/`toRead`, `total_pages_read`/`totalPagesRead`) on purpose. Mobile reads camel, web reads snake; removing either breaks a shipped app build.
 - `GET /profile/{id}` returns `stats: null, locked: true` for a private profile the caller does not follow. `follows_you` and `yearly_goal` were added 2026-05-04 for the Follow-Back label.
+- **(4D — designed, not built)** On web, `/profile/me` stops being a gate. Signed-in pages mount while it is in flight, and `useAuth().user` is `null` until it answers.
+  - A page must never build a request from `useAuth().user`. `ProfilePage` switches from `/userbooks/user/{me}` to `/userbooks/`.
+  - Identity-dependent UI must treat `null` as "not known yet".
+  - Only `/admin` and `/onboarding` still wait.
+  - The response shape is unchanged. See `features/maintenance/sprint-4d-page-speed/architecture.md`. After the build, run `python scripts/gen_dependency_map.py`.
 - `PUT /profile/me` applies a field only when it is not null, so a client cannot clear `yearly_goal` by sending null. Both Settings screens do send null when the field is emptied (F-18). **(4A — in build)** A `yearly_goal` key that is sent is applied, and null or 0 clears it. Other fields keep their not-null semantics.
 
 ### Note card shape — `GET /notes/feed`, `/friends-feed`, `/me`, `/user/{id}`
