@@ -328,9 +328,13 @@ async function installWatcher(page, detectors) {
           const all = document.querySelectorAll(d.within || 'button, a, span');
           for (const el of all) { if (re.test(textOf(el))) { found = true; break; } }
         } else if (d.type === 'iconInContainer') {
-          const containers = document.querySelectorAll(d.containerSelector || 'article');
+          let containers = [...document.querySelectorAll(d.containerSelector || 'article')]
+            .filter(c => textOf(c).includes(d.containerText));
+          // Innermost matches only. A selector like 'div, article' also matches ancestors that wrap
+          // several posts, so a sibling post's own delete icon was attributed to this one and the
+          // case failed identically whether the product was broken or not (PM, 2026-09-20).
+          containers = containers.filter(c => !containers.some(o => o !== c && c.contains(o)));
           for (const c of containers) {
-            if (!textOf(c).includes(d.containerText)) continue;
             const icons = c.querySelectorAll('.material-symbols-outlined');
             for (const ic of icons) { if (textOf(ic) === d.icon) { found = true; break; } }
             if (found) break;
@@ -1294,7 +1298,13 @@ async function main() {
         assert(bodyText.includes('This profile is private') || /private/i.test(bodyText), 'no "profile is private" message shown');
         const contentPaths = [`/userbooks/user/${FRIEND_ID}`, `/notes/user/${FRIEND_ID}`, `/users/${FRIEND_ID}/stats`];
         const rows = contentPaths.map(p => tl.rows.find(r => r.path.split('?')[0] === p));
-        const rows90 = tl.rows.filter(r => r.path.split('?')[0] === `/reading-activity/user/${FRIEND_ID}/daily`);
+        // Count each distinct request once: React StrictMode double-invokes effects in dev, so the
+        // same days=30 / days=90 call appears twice and the count read 7 instead of 5 (PM, 2026-09-20).
+        const seen90 = new Map();
+        for (const r of tl.rows.filter(r => r.path.split('?')[0] === `/reading-activity/user/${FRIEND_ID}/daily`)) {
+          if (!seen90.has(r.path)) seen90.set(r.path, r);
+        }
+        const rows90 = [...seen90.values()];
         const requested = rows.filter(Boolean).length + rows90.length;
         assert(requested === 5, `expected 5 requests (K-09: 3 endpoints + reading-activity called for both days=30 and days=90); got ${requested} (rows=${JSON.stringify(rows.map(r => !!r))}, days90 count=${rows90.length})`);
         const all403 = rows.every(r => r && r.status === 403) && rows90.every(r => r.status === 403);
