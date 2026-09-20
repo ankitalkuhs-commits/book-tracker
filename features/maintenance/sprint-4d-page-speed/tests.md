@@ -64,6 +64,19 @@ baseline_measured: 2026-09-20 19:50 UTC (01:20 IST on 09-20, inside the F-62 win
 
 ---
 
+### Harness corrections during the build (PM, 2026-09-20)
+Four cases could not tell a working product from a broken one. Each was found because mutating the product produced an identical message, and each is fixed in the harness, not by weakening the assertion:
+- **L-4D-11, L-4D-14** — holds matched on path alone, so `/groups/1` and `/profile/{id}` also held the page's own HTML navigation. `isApi()` now requires the API origin (`ff055cc`).
+- **L-4D-08b** — `'div, article'` matched an ancestor wrapping two posts, so a sibling's delete icon was attributed to the post under test. Only innermost containers count (`4bc66ab`).
+- **L-4D-14b** — StrictMode's double-invoke inflated the request count to 7. Each distinct request is counted once (`4bc66ab`).
+- **L-4D-02** — waited a fixed 1500 ms and then asserted the sample landed within `T + 1500`, the boundary before any overhead. It waits for the redirect instead (`79f01b1`).
+
+**L-4D-10b is marked unrunnable**, printed as SKIP with its reason: under the dev server the app and the harness's dynamic import can hold separate module instances, so the cache hit it needs cannot exist. Its subject, F-71, is covered by **`qa/unit/authCacheClear.test.mjs`**, which is mutation-proven (removing either `cacheClear()` call turns it red) and does not need a browser. So the final gate is **25 passed, 0 failed, 1 skipped**, not 26/0.
+
+**Harness rule added:** run `web_4a_local.mjs` and `web_4d_local.mjs` **sequentially**, never together against one dev server — concurrent runs truncated a run (WEB-B), and a low-memory host produced `hold entry never fulfilled` and a Playwright crash (WEB-A). Gate runs need a quiet machine.
+
+**Open at integration:** M-09 and M-22 could not be demonstrated while WEB-A's app-wide gate still existed. Both must be re-attempted on the merged branch, where that gate is gone.
+
 ### Red-first gate corrected (PM, 2026-09-20)
 G-4D-01 expects **`4D web local: 10 passed, 16 failed`**, not 9/17. The plan predicted L-4D-08 would fail on today's code; it passes, and the harness is right:
 - `App.jsx:74` and `PrivateRoute` (`App.jsx:44-53`) both block the signed-in app until `/profile/me` resolves, so `HomePage` never renders while identity is pending and the case has no window in which to fail. L-4D-01/02 prove this in the same run.
