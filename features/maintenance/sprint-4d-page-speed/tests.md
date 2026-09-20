@@ -64,6 +64,14 @@ baseline_measured: 2026-09-20 19:50 UTC (01:20 IST on 09-20, inside the F-62 win
 
 ---
 
+### PM resolutions of section 0 (2026-09-20)
+- **K-01 accepted — Critical, and 4D must not ship without it.** Settings' profile fields, its Save button and the privacy toggle stay **disabled until that page's own `/profile/me` has arrived**. Without this, a reader who saves in the first second sends `yearly_goal: null` and **loses their goal**, because `PUT /profile/me` clears the goal whenever the key is sent (`profile_router.py:111`). `SettingsPage.jsx` is already a WEB-A file. L-4D-16 is the gate.
+- **K-02 accepted.** Only the live effect's `/profile/me` answer is applied; a stale or duplicated answer (React StrictMode sends two in dev) must never overwrite a newer edit. L-4D-09 covers it.
+- **K-10 accepted** (the PM's call): if `/profile/me` fails on `/join/{code}`, the join request may go through before the reader is signed out. That is the correct outcome for the reader, who asked to join.
+- **K-03, K-04, K-05, K-11 and the harness rules:** accepted as written in this plan.
+- **Wording corrections accepted:** the lint baseline is `43 problems (36 errors, 7 warnings)`.
+- **Baseline note:** `master` is now `df38881`; rebase before merge. Master's suite is 435 tests, and its 3 F-62 failures are fixed by Sprint 4C, not by 4D.
+
 ## 1. Summary
 
 | Package | What proves it | New automated cases | Command | Baseline → expected |
