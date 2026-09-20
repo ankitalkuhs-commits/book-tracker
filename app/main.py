@@ -2,6 +2,7 @@
 import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from .server_timing import ServerTimingMiddleware
 from fastapi.staticfiles import StaticFiles
 from starlette.responses import JSONResponse
 from pathlib import Path
@@ -122,6 +123,7 @@ app.add_middleware(
 )
 
 app.add_middleware(SecurityHeadersMiddleware)        # 3rd → outermost: every response, preflights included
+app.add_middleware(ServerTimingMiddleware)           # 4th → outermost: times the whole request (F-68 diagnosis)
 
 # ---------------------
 # Step 4: Register all routers

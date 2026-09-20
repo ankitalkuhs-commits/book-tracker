@@ -1,0 +1,1124 @@
+{
+  "meta": {
+    "date": "2026-09-19",
+    "web": "https://www.trackmyread.com",
+    "api": "https://book-tracker-stitch.onrender.com",
+    "runs": 3,
+    "apiWake": {
+      "ms": 823,
+      "version": {
+        "commit": "6213ea08694b0e1486afc157254338d3c4ffc039",
+        "service": "book-tracker-stitch",
+        "branch": "master"
+      }
+    }
+  },
+  "results": [
+    {
+      "profile": "desktop",
+      "page": "/",
+      "name": "Landing",
+      "finalPath": "/",
+      "cold": {
+        "ttfb": 90.5,
+        "fcp": 296,
+        "lcp": 532,
+        "ready": 259.5,
+        "jsBytes": 209896
+      },
+      "warm": {
+        "fcp": 200,
+        "lcp": 272,
+        "ready": 150.2999999821186
+      },
+      "apiCalls": 0,
+      "slowest": null,
+      "apiFailed": [],
+      "blockedWrites": 0,
+      "errors": []
+    },
+    {
+      "profile": "desktop",
+      "page": "/about",
+      "name": "About",
+      "finalPath": "/about",
+      "cold": {
+        "ttfb": 166.5,
+        "fcp": 376,
+        "lcp": 476,
+        "ready": 353.5,
+        "jsBytes": 209896
+      },
+      "warm": {
+        "fcp": 164,
+        "lcp": 228,
+        "ready": 146.19999998807907
+      },
+      "apiCalls": 0,
+      "slowest": null,
+      "apiFailed": [],
+      "blockedWrites": 0,
+      "errors": []
+    },
+    {
+      "profile": "desktop",
+      "page": "/privacy",
+      "name": "Privacy",
+      "finalPath": "/privacy",
+      "cold": {
+        "ttfb": 162.09999999403954,
+        "fcp": 408,
+        "lcp": 452,
+        "ready": 388,
+        "jsBytes": 209896
+      },
+      "warm": {
+        "fcp": 176,
+        "lcp": 208,
+        "ready": 155.90000000596046
+      },
+      "apiCalls": 0,
+      "slowest": null,
+      "apiFailed": [],
+      "blockedWrites": 0,
+      "errors": []
+    },
+    {
+      "profile": "desktop",
+      "page": "/terms",
+      "name": "Terms",
+      "finalPath": "/terms",
+      "cold": {
+        "ttfb": 98.09999999403954,
+        "fcp": 308,
+        "lcp": 348,
+        "ready": 284.59999999403954,
+        "jsBytes": 209896
+      },
+      "warm": {
+        "fcp": 184,
+        "lcp": 220,
+        "ready": 161.7999999821186
+      },
+      "apiCalls": 0,
+      "slowest": null,
+      "apiFailed": [],
+      "blockedWrites": 0,
+      "errors": []
+    },
+    {
+      "profile": "desktop",
+      "page": "/blog",
+      "name": "Blog index",
+      "finalPath": "/blog",
+      "cold": {
+        "ttfb": 111.09999999403954,
+        "fcp": 360,
+        "lcp": 416,
+        "ready": 338.69999998807907,
+        "jsBytes": 209896
+      },
+      "warm": {
+        "fcp": 272,
+        "lcp": 360,
+        "ready": 237.7000000178814
+      },
+      "apiCalls": 0,
+      "slowest": null,
+      "apiFailed": [],
+      "blockedWrites": 0,
+      "errors": []
+    },
+    {
+      "profile": "desktop",
+      "page": "/blog/goodreads-alternative",
+      "name": "Blog post",
+      "finalPath": "/blog/goodreads-alternative",
+      "cold": {
+        "ttfb": 95.5,
+        "fcp": 340,
+        "lcp": 400,
+        "ready": 321.19999998807907,
+        "jsBytes": 209896
+      },
+      "warm": {
+        "fcp": 164,
+        "lcp": 224,
+        "ready": 143.2999999821186
+      },
+      "apiCalls": 0,
+      "slowest": null,
+      "apiFailed": [],
+      "blockedWrites": 0,
+      "errors": []
+    },
+    {
+      "profile": "desktop",
+      "page": "/this-page-does-not-exist",
+      "name": "404",
+      "finalPath": "/",
+      "cold": {
+        "ttfb": 101,
+        "fcp": 344,
+        "lcp": 644,
+        "ready": 323.69999998807907,
+        "jsBytes": 209896
+      },
+      "warm": {
+        "fcp": 172,
+        "lcp": 336,
+        "ready": 150.89999997615814
+      },
+      "apiCalls": 0,
+      "slowest": null,
+      "apiFailed": [],
+      "blockedWrites": 0,
+      "errors": []
+    },
+    {
+      "profile": "desktop",
+      "page": "/home",
+      "name": "Home feed",
+      "finalPath": "/home",
+      "cold": {
+        "ttfb": 135.19999998807907,
+        "fcp": 356,
+        "lcp": 4348,
+        "ready": 5399,
+        "jsBytes": 209896
+      },
+      "warm": {
+        "fcp": 196,
+        "lcp": 3460,
+        "ready": 4569
+      },
+      "apiCalls": 7,
+      "slowest": {
+        "call": "GET /notes/feed",
+        "ms": 3367
+      },
+      "apiFailed": [],
+      "blockedWrites": 0,
+      "errors": []
+    },
+    {
+      "profile": "desktop",
+      "page": "/library",
+      "name": "Library",
+      "finalPath": "/library",
+      "cold": {
+        "ttfb": 188.10000002384186,
+        "fcp": 416,
+        "lcp": 1988,
+        "ready": 3109,
+        "jsBytes": 209896
+      },
+      "warm": {
+        "fcp": 192,
+        "lcp": 1672,
+        "ready": 2769
+      },
+      "apiCalls": 4,
+      "slowest": {
+        "call": "GET /profile/me",
+        "ms": 1505
+      },
+      "apiFailed": [],
+      "blockedWrites": 0,
+      "errors": []
+    },
+    {
+      "profile": "desktop",
+      "page": "/library/book/856",
+      "name": "Book detail",
+      "finalPath": "/library/book/856",
+      "cold": {
+        "ttfb": 193.90000000596046,
+        "fcp": 392,
+        "lcp": 4652,
+        "ready": 4707,
+        "jsBytes": 209896
+      },
+      "warm": {
+        "fcp": 156,
+        "lcp": 3076,
+        "ready": 4441
+      },
+      "apiCalls": 4,
+      "slowest": {
+        "call": "GET /notes/userbook/856",
+        "ms": 1622
+      },
+      "apiFailed": [],
+      "blockedWrites": 0,
+      "errors": []
+    },
+    {
+      "profile": "desktop",
+      "page": "/search",
+      "name": "Search",
+      "finalPath": "/search",
+      "cold": {
+        "ttfb": 128.5,
+        "fcp": 348,
+        "lcp": 1956,
+        "ready": 2921,
+        "jsBytes": 209896
+      },
+      "warm": {
+        "fcp": 196,
+        "lcp": 1680,
+        "ready": 2628
+      },
+      "apiCalls": 2,
+      "slowest": {
+        "call": "GET /profile/me",
+        "ms": 1548
+      },
+      "apiFailed": [],
+      "blockedWrites": 0,
+      "errors": []
+    },
+    {
+      "profile": "desktop",
+      "page": "/groups",
+      "name": "Circles",
+      "finalPath": "/groups",
+      "cold": {
+        "ttfb": 131.60000002384186,
+        "fcp": 368,
+        "lcp": 1964,
+        "ready": 4180,
+        "jsBytes": 209896
+      },
+      "warm": {
+        "fcp": 180,
+        "lcp": 1692,
+        "ready": 3269
+      },
+      "apiCalls": 6,
+      "slowest": {
+        "call": "GET /groups/my/pending",
+        "ms": 2241
+      },
+      "apiFailed": [],
+      "blockedWrites": 0,
+      "errors": []
+    },
+    {
+      "profile": "desktop",
+      "page": "/groups/7",
+      "name": "Circle detail",
+      "finalPath": "/groups/7",
+      "cold": {
+        "ttfb": 130,
+        "fcp": 400,
+        "lcp": 6624,
+        "ready": 6385,
+        "jsBytes": 209896
+      },
+      "warm": {
+        "fcp": 176,
+        "lcp": 6200,
+        "ready": 6029
+      },
+      "apiCalls": 9,
+      "slowest": {
+        "call": "GET /groups/7/leaderboard",
+        "ms": 2005
+      },
+      "apiFailed": [],
+      "blockedWrites": 0,
+      "errors": []
+    },
+    {
+      "profile": "desktop",
+      "page": "/groups/new",
+      "name": "New circle",
+      "finalPath": "/groups/new",
+      "cold": {
+        "ttfb": 115,
+        "fcp": 368,
+        "lcp": 1960,
+        "ready": 2897,
+        "jsBytes": 209896
+      },
+      "warm": {
+        "fcp": 228,
+        "lcp": 1776,
+        "ready": 2672
+      },
+      "apiCalls": 2,
+      "slowest": {
+        "call": "GET /profile/me",
+        "ms": 1528
+      },
+      "apiFailed": [],
+      "blockedWrites": 0,
+      "errors": []
+    },
+    {
+      "profile": "desktop",
+      "page": "/join/UwjDrfsDmiI",
+      "name": "Join via invite",
+      "finalPath": "/join/UwjDrfsDmiI",
+      "cold": {
+        "ttfb": 204.90000000596046,
+        "fcp": 492,
+        "lcp": 2124,
+        "ready": 3006,
+        "jsBytes": 209896
+      },
+      "warm": {
+        "fcp": 164,
+        "lcp": 1760,
+        "ready": 2698
+      },
+      "apiCalls": 3,
+      "slowest": {
+        "call": "GET /profile/me",
+        "ms": 1566
+      },
+      "apiFailed": [
+        "POST /groups/join/UwjDrfsDmiI"
+      ],
+      "blockedWrites": 0,
+      "errors": []
+    },
+    {
+      "profile": "desktop",
+      "page": "/insights",
+      "name": "Insights",
+      "finalPath": "/insights",
+      "cold": {
+        "ttfb": 109.5,
+        "fcp": 344,
+        "lcp": 3352,
+        "ready": 3194,
+        "jsBytes": 209896
+      },
+      "warm": {
+        "fcp": 168,
+        "lcp": 3068,
+        "ready": 2977
+      },
+      "apiCalls": 3,
+      "slowest": {
+        "call": "GET /profile/me",
+        "ms": 1530
+      },
+      "apiFailed": [],
+      "blockedWrites": 0,
+      "errors": []
+    },
+    {
+      "profile": "desktop",
+      "page": "/notifications",
+      "name": "Notifications",
+      "finalPath": "/notifications",
+      "cold": {
+        "ttfb": 134.69999998807907,
+        "fcp": 616,
+        "lcp": 2416,
+        "ready": 3368,
+        "jsBytes": 209896
+      },
+      "warm": {
+        "fcp": 256,
+        "lcp": 1736,
+        "ready": 2678
+      },
+      "apiCalls": 3,
+      "slowest": {
+        "call": "GET /profile/me",
+        "ms": 1773
+      },
+      "apiFailed": [],
+      "blockedWrites": 0,
+      "errors": []
+    },
+    {
+      "profile": "desktop",
+      "page": "/profile",
+      "name": "My profile",
+      "finalPath": "/profile",
+      "cold": {
+        "ttfb": 152.7999999821186,
+        "fcp": 428,
+        "lcp": 4136,
+        "ready": 3956,
+        "jsBytes": 209896
+      },
+      "warm": {
+        "fcp": 200,
+        "lcp": 3780,
+        "ready": 3666
+      },
+      "apiCalls": 7,
+      "slowest": {
+        "call": "GET /notes/me",
+        "ms": 2006
+      },
+      "apiFailed": [],
+      "blockedWrites": 0,
+      "errors": []
+    },
+    {
+      "profile": "desktop",
+      "page": "/profile/111",
+      "name": "Friend's profile",
+      "finalPath": "/profile/111",
+      "cold": {
+        "ttfb": 132.5,
+        "fcp": 368,
+        "lcp": 5972,
+        "ready": 5843,
+        "jsBytes": 209896
+      },
+      "warm": {
+        "fcp": 232,
+        "lcp": 5812,
+        "ready": 5713
+      },
+      "apiCalls": 8,
+      "slowest": {
+        "call": "GET /notes/user/111",
+        "ms": 2137
+      },
+      "apiFailed": [],
+      "blockedWrites": 0,
+      "errors": []
+    },
+    {
+      "profile": "desktop",
+      "page": "/settings",
+      "name": "Settings",
+      "finalPath": "/settings",
+      "cold": {
+        "ttfb": 221.40000000596046,
+        "fcp": 500,
+        "lcp": 2160,
+        "ready": 3596,
+        "jsBytes": 209896
+      },
+      "warm": {
+        "fcp": 240,
+        "lcp": 1764,
+        "ready": 3183
+      },
+      "apiCalls": 4,
+      "slowest": {
+        "call": "GET /profile/me",
+        "ms": 1541
+      },
+      "apiFailed": [],
+      "blockedWrites": 0,
+      "errors": []
+    },
+    {
+      "profile": "desktop",
+      "page": "/onboarding",
+      "name": "Onboarding",
+      "finalPath": "/onboarding",
+      "cold": {
+        "ttfb": 152.40000000596046,
+        "fcp": 368,
+        "lcp": 1944,
+        "ready": 1870,
+        "jsBytes": 209896
+      },
+      "warm": {
+        "fcp": 176,
+        "lcp": 1744,
+        "ready": 1643
+      },
+      "apiCalls": 1,
+      "slowest": {
+        "call": "GET /profile/me",
+        "ms": 1501
+      },
+      "apiFailed": [],
+      "blockedWrites": 0,
+      "errors": []
+    },
+    {
+      "profile": "desktop",
+      "page": "/admin",
+      "name": "Admin (non-admin user)",
+      "finalPath": "/home",
+      "cold": {
+        "ttfb": 94.09999999403954,
+        "fcp": 324,
+        "lcp": 4320,
+        "ready": 4557,
+        "jsBytes": 209896
+      },
+      "warm": {
+        "fcp": 204,
+        "lcp": 3628,
+        "ready": 4478
+      },
+      "apiCalls": 7,
+      "slowest": {
+        "call": "GET /books/recommendations",
+        "ms": 2647
+      },
+      "apiFailed": [],
+      "blockedWrites": 0,
+      "errors": []
+    },
+    {
+      "profile": "mobile",
+      "page": "/",
+      "name": "Landing",
+      "finalPath": "/",
+      "cold": {
+        "ttfb": 163.40000000596046,
+        "fcp": 1860,
+        "lcp": 2324,
+        "ready": 1782.5999999940395,
+        "jsBytes": 209896
+      },
+      "warm": {
+        "fcp": 1784,
+        "lcp": 2180,
+        "ready": 1679.0999999940395
+      },
+      "apiCalls": 0,
+      "slowest": null,
+      "apiFailed": [],
+      "blockedWrites": 0,
+      "errors": []
+    },
+    {
+      "profile": "mobile",
+      "page": "/about",
+      "name": "About",
+      "finalPath": "/about",
+      "cold": {
+        "ttfb": 122.2000000178814,
+        "fcp": 1852,
+        "lcp": 2184,
+        "ready": 1773.7000000178814,
+        "jsBytes": 209896
+      },
+      "warm": {
+        "fcp": 1836,
+        "lcp": 2176,
+        "ready": 1714.6000000238419
+      },
+      "apiCalls": 0,
+      "slowest": null,
+      "apiFailed": [],
+      "blockedWrites": 0,
+      "errors": []
+    },
+    {
+      "profile": "mobile",
+      "page": "/privacy",
+      "name": "Privacy",
+      "finalPath": "/privacy",
+      "cold": {
+        "ttfb": 99.80000001192093,
+        "fcp": 1976,
+        "lcp": 2252,
+        "ready": 1883.4000000059605,
+        "jsBytes": 209896
+      },
+      "warm": {
+        "fcp": 1884,
+        "lcp": 2136,
+        "ready": 1762.800000011921
+      },
+      "apiCalls": 0,
+      "slowest": null,
+      "apiFailed": [],
+      "blockedWrites": 0,
+      "errors": []
+    },
+    {
+      "profile": "mobile",
+      "page": "/terms",
+      "name": "Terms",
+      "finalPath": "/terms",
+      "cold": {
+        "ttfb": 97.5,
+        "fcp": 1932,
+        "lcp": 2156,
+        "ready": 1807.300000011921,
+        "jsBytes": 209896
+      },
+      "warm": {
+        "fcp": 1812,
+        "lcp": 2088,
+        "ready": 1692
+      },
+      "apiCalls": 0,
+      "slowest": null,
+      "apiFailed": [],
+      "blockedWrites": 0,
+      "errors": []
+    },
+    {
+      "profile": "mobile",
+      "page": "/blog",
+      "name": "Blog index",
+      "finalPath": "/blog",
+      "cold": {
+        "ttfb": 92.7999999821186,
+        "fcp": 1904,
+        "lcp": 2272,
+        "ready": 1791.699999988079,
+        "jsBytes": 209896
+      },
+      "warm": {
+        "fcp": 1792,
+        "lcp": 2224,
+        "ready": 1673.699999988079
+      },
+      "apiCalls": 0,
+      "slowest": null,
+      "apiFailed": [],
+      "blockedWrites": 0,
+      "errors": []
+    },
+    {
+      "profile": "mobile",
+      "page": "/blog/goodreads-alternative",
+      "name": "Blog post",
+      "finalPath": "/blog/goodreads-alternative",
+      "cold": {
+        "ttfb": 92.09999999403954,
+        "fcp": 1912,
+        "lcp": 2472,
+        "ready": 1776,
+        "jsBytes": 209896
+      },
+      "warm": {
+        "fcp": 1804,
+        "lcp": 2192,
+        "ready": 1681.0999999940395
+      },
+      "apiCalls": 0,
+      "slowest": null,
+      "apiFailed": [],
+      "blockedWrites": 0,
+      "errors": []
+    },
+    {
+      "profile": "mobile",
+      "page": "/this-page-does-not-exist",
+      "name": "404",
+      "finalPath": "/",
+      "cold": {
+        "ttfb": 100.30000001192093,
+        "fcp": 1928,
+        "lcp": 2384,
+        "ready": 1766.5,
+        "jsBytes": 209896
+      },
+      "warm": {
+        "fcp": 1808,
+        "lcp": 2320,
+        "ready": 1707.0999999940395
+      },
+      "apiCalls": 0,
+      "slowest": null,
+      "apiFailed": [],
+      "blockedWrites": 0,
+      "errors": []
+    },
+    {
+      "profile": "mobile",
+      "page": "/home",
+      "name": "Home feed",
+      "finalPath": "/home",
+      "cold": {
+        "ttfb": 115.40000000596046,
+        "fcp": 1948,
+        "lcp": 8092,
+        "ready": 8140,
+        "jsBytes": 209896
+      },
+      "warm": {
+        "fcp": 1788,
+        "lcp": 8256,
+        "ready": 7763
+      },
+      "apiCalls": 7,
+      "slowest": {
+        "call": "GET /books/recommendations",
+        "ms": 3318
+      },
+      "apiFailed": [],
+      "blockedWrites": 0,
+      "errors": []
+    },
+    {
+      "profile": "mobile",
+      "page": "/library",
+      "name": "Library",
+      "finalPath": "/library",
+      "cold": {
+        "ttfb": 134.2000000178814,
+        "fcp": 2052,
+        "lcp": 3952,
+        "ready": 5135,
+        "jsBytes": 209896
+      },
+      "warm": {
+        "fcp": 1824,
+        "lcp": 3668,
+        "ready": 4832
+      },
+      "apiCalls": 4,
+      "slowest": {
+        "call": "GET /profile/me",
+        "ms": 1545
+      },
+      "apiFailed": [],
+      "blockedWrites": 0,
+      "errors": []
+    },
+    {
+      "profile": "mobile",
+      "page": "/library/book/856",
+      "name": "Book detail",
+      "finalPath": "/library/book/856",
+      "cold": {
+        "ttfb": 156.09999999403954,
+        "fcp": 1904,
+        "lcp": 7728,
+        "ready": 7236,
+        "jsBytes": 209896
+      },
+      "warm": {
+        "fcp": 1732,
+        "lcp": 5952,
+        "ready": 6704
+      },
+      "apiCalls": 4,
+      "slowest": {
+        "call": "GET /notes/userbook/856",
+        "ms": 1658
+      },
+      "apiFailed": [],
+      "blockedWrites": 0,
+      "errors": []
+    },
+    {
+      "profile": "mobile",
+      "page": "/search",
+      "name": "Search",
+      "finalPath": "/search",
+      "cold": {
+        "ttfb": 116.5,
+        "fcp": 1896,
+        "lcp": 3900,
+        "ready": 4877,
+        "jsBytes": 209896
+      },
+      "warm": {
+        "fcp": 1864,
+        "lcp": 3756,
+        "ready": 4709
+      },
+      "apiCalls": 2,
+      "slowest": {
+        "call": "GET /profile/me",
+        "ms": 1559
+      },
+      "apiFailed": [],
+      "blockedWrites": 0,
+      "errors": []
+    },
+    {
+      "profile": "mobile",
+      "page": "/groups",
+      "name": "Circles",
+      "finalPath": "/groups",
+      "cold": {
+        "ttfb": 150.09999999403954,
+        "fcp": 1972,
+        "lcp": 3772,
+        "ready": 5742,
+        "jsBytes": 209896
+      },
+      "warm": {
+        "fcp": 1924,
+        "lcp": 3648,
+        "ready": 5361
+      },
+      "apiCalls": 6,
+      "slowest": {
+        "call": "GET /groups/my",
+        "ms": 1944
+      },
+      "apiFailed": [],
+      "blockedWrites": 0,
+      "errors": []
+    },
+    {
+      "profile": "mobile",
+      "page": "/groups/7",
+      "name": "Circle detail",
+      "finalPath": "/groups/7",
+      "cold": {
+        "ttfb": 174.09999999403954,
+        "fcp": 2104,
+        "lcp": 9668,
+        "ready": 8889,
+        "jsBytes": 209896
+      },
+      "warm": {
+        "fcp": 1832,
+        "lcp": 3644,
+        "ready": 8164
+      },
+      "apiCalls": 9,
+      "slowest": {
+        "call": "GET /groups/7/leaderboard",
+        "ms": 2042
+      },
+      "apiFailed": [],
+      "blockedWrites": 0,
+      "errors": []
+    },
+    {
+      "profile": "mobile",
+      "page": "/groups/new",
+      "name": "New circle",
+      "finalPath": "/groups/new",
+      "cold": {
+        "ttfb": 145.10000002384186,
+        "fcp": 1956,
+        "lcp": 4164,
+        "ready": 5194,
+        "jsBytes": 209896
+      },
+      "warm": {
+        "fcp": 1848,
+        "lcp": 4032,
+        "ready": 4981
+      },
+      "apiCalls": 2,
+      "slowest": {
+        "call": "GET /profile/me",
+        "ms": 1521
+      },
+      "apiFailed": [],
+      "blockedWrites": 0,
+      "errors": []
+    },
+    {
+      "profile": "mobile",
+      "page": "/join/UwjDrfsDmiI",
+      "name": "Join via invite",
+      "finalPath": "/join/UwjDrfsDmiI",
+      "cold": {
+        "ttfb": 122.30000001192093,
+        "fcp": 2008,
+        "lcp": 4028,
+        "ready": 4820,
+        "jsBytes": 209896
+      },
+      "warm": {
+        "fcp": 1828,
+        "lcp": 4664,
+        "ready": 5508
+      },
+      "apiCalls": 3,
+      "slowest": {
+        "call": "GET /profile/me",
+        "ms": 1531
+      },
+      "apiFailed": [
+        "POST /groups/join/UwjDrfsDmiI"
+      ],
+      "blockedWrites": 0,
+      "errors": []
+    },
+    {
+      "profile": "mobile",
+      "page": "/insights",
+      "name": "Insights",
+      "finalPath": "/insights",
+      "cold": {
+        "ttfb": 88.2999999821186,
+        "fcp": 2036,
+        "lcp": 5708,
+        "ready": 5154,
+        "jsBytes": 209896
+      },
+      "warm": {
+        "fcp": 2060,
+        "lcp": 5764,
+        "ready": 5160
+      },
+      "apiCalls": 3,
+      "slowest": {
+        "call": "GET /profile/me",
+        "ms": 1508
+      },
+      "apiFailed": [],
+      "blockedWrites": 0,
+      "errors": []
+    },
+    {
+      "profile": "mobile",
+      "page": "/notifications",
+      "name": "Notifications",
+      "finalPath": "/notifications",
+      "cold": {
+        "ttfb": 97.19999998807907,
+        "fcp": 1900,
+        "lcp": 3696,
+        "ready": 4704,
+        "jsBytes": 209896
+      },
+      "warm": {
+        "fcp": 1872,
+        "lcp": 3592,
+        "ready": 4607
+      },
+      "apiCalls": 3,
+      "slowest": {
+        "call": "GET /profile/me",
+        "ms": 1532
+      },
+      "apiFailed": [],
+      "blockedWrites": 0,
+      "errors": []
+    },
+    {
+      "profile": "mobile",
+      "page": "/profile",
+      "name": "My profile",
+      "finalPath": "/profile",
+      "cold": {
+        "ttfb": 165.2999999821186,
+        "fcp": 2124,
+        "lcp": 7108,
+        "ready": 6359,
+        "jsBytes": 209896
+      },
+      "warm": {
+        "fcp": 1860,
+        "lcp": 6208,
+        "ready": 5626
+      },
+      "apiCalls": 7,
+      "slowest": {
+        "call": "GET /reading-activity/daily",
+        "ms": 2327
+      },
+      "apiFailed": [],
+      "blockedWrites": 0,
+      "errors": []
+    },
+    {
+      "profile": "mobile",
+      "page": "/profile/111",
+      "name": "Friend's profile",
+      "finalPath": "/profile/111",
+      "cold": {
+        "ttfb": 175.19999998807907,
+        "fcp": 1932,
+        "lcp": 8300,
+        "ready": 7790,
+        "jsBytes": 209896
+      },
+      "warm": {
+        "fcp": 1820,
+        "lcp": 8468,
+        "ready": 7641
+      },
+      "apiCalls": 8,
+      "slowest": {
+        "call": "GET /notes/user/111",
+        "ms": 2206
+      },
+      "apiFailed": [],
+      "blockedWrites": 0,
+      "errors": []
+    },
+    {
+      "profile": "mobile",
+      "page": "/settings",
+      "name": "Settings",
+      "finalPath": "/settings",
+      "cold": {
+        "ttfb": 183.59999999403954,
+        "fcp": 1996,
+        "lcp": 4376,
+        "ready": 5871,
+        "jsBytes": 209896
+      },
+      "warm": {
+        "fcp": 1996,
+        "lcp": 4184,
+        "ready": 5706
+      },
+      "apiCalls": 4,
+      "slowest": {
+        "call": "GET /profile/me",
+        "ms": 1609
+      },
+      "apiFailed": [],
+      "blockedWrites": 0,
+      "errors": []
+    },
+    {
+      "profile": "mobile",
+      "page": "/onboarding",
+      "name": "Onboarding",
+      "finalPath": "/onboarding",
+      "cold": {
+        "ttfb": 152.19999998807907,
+        "fcp": 2036,
+        "lcp": 3964,
+        "ready": 3636,
+        "jsBytes": 209896
+      },
+      "warm": {
+        "fcp": 1820,
+        "lcp": 3956,
+        "ready": 3377
+      },
+      "apiCalls": 1,
+      "slowest": {
+        "call": "GET /profile/me",
+        "ms": 1588
+      },
+      "apiFailed": [],
+      "blockedWrites": 0,
+      "errors": []
+    },
+    {
+      "profile": "mobile",
+      "page": "/admin",
+      "name": "Admin (non-admin user)",
+      "finalPath": "/home",
+      "cold": {
+        "ttfb": 131.39999997615814,
+        "fcp": 2044,
+        "lcp": 7892,
+        "ready": 8012,
+        "jsBytes": 209896
+      },
+      "warm": {
+        "fcp": 1824,
+        "lcp": 7440,
+        "ready": 7510
+      },
+      "apiCalls": 7,
+      "slowest": {
+        "call": "GET /books/recommendations",
+        "ms": 3366
+      },
+      "apiFailed": [],
+      "blockedWrites": 0,
+      "errors": []
+    }
+  ]
+}

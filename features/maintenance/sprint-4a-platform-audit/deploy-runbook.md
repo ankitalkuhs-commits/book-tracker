@@ -6,6 +6,13 @@
 
 Every SQL step below lives in a committed file. Paste from the file, not from this page, so the runbook can never drift from the SQL that was reviewed.
 
+> ### ⚠️ Status 2026-09-20: 4A is already live. Pushing to `master` is the deploy.
+> Render (backend) and Vercel (web) **auto-deploy on every push to `master`**. This runbook assumed a manual deploy after the SQL, but every 4A commit went live as it was pushed. Production served `6213ea0` when this was found.
+> - **No breakage:** `qa/live_checks.py` passed **15/15** on the live 4A build. 4A's only model change is unique constraints, not columns, and nothing creates tables at startup, so the absent constraints crash nothing.
+> - **What is still missing is protection, not uptime.** Until F-53 STEP 3 runs, a race can still create duplicate `userbook` / `like` / `follow` rows.
+> - **So steps 3 and 4 below are done.** Run steps 1, 2 and 5 **now**, in the order written. STEP 2 is idempotent. If live traffic slips a new duplicate in between STEP 2 and STEP 3, STEP 3 fails loudly; then re-run STEP 2 and STEP 3.
+> - **For Sprint 4C and anything else that adds a column:** the SQL must run **before the merge is pushed**, because the push itself is the deploy.
+
 ---
 
 ## 0. Before anything — Claude
