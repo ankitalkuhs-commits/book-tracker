@@ -233,19 +233,22 @@ export default function UserProfilePage() {
     if (isOwnProfile) { navigate('/profile', { replace: true }); return }
 
     const safe = (p) => p.catch(() => null)
+    // F-70c: the content needs only the id in the URL, so it starts with the profile, not after it. Each call
+    // has the same private-profile gate as /profile/{id}: a locked profile gets 403s, and they are discarded below.
+    const content = () => Promise.all([
+      safe(getUserBooks(userId)),
+      safe(getUserNotes(userId)),
+      safe(getUserActivity(userId, 30)),
+      safe(getUserActivity(userId, 90)),
+      safe(getUserStats(userId)),
+    ])
+    const early = content()
 
     getPublicProfile(userId).then(p => {
       setProfile(p)
       setIsFollowing(p.is_following || false)
-      // If profile is locked, don't bother fetching books/notes/activity
-      if (p.locked) { setLoading(false); return }
-      return Promise.all([
-        safe(getUserBooks(userId)),
-        safe(getUserNotes(userId)),
-        safe(getUserActivity(userId, 30)),
-        safe(getUserActivity(userId, 90)),
-        safe(getUserStats(userId)),
-      ]).then(([b, n, a30, a90, s]) => {
+      if (p.locked) { setLoading(false); return }     // unchanged: nothing from `early` is used
+      return (early || content()).then(([b, n, a30, a90, s]) => {
         setBooks(b || [])
         setNotes(n || [])
         setActivity30(a30 || [])
@@ -318,7 +321,7 @@ export default function UserProfilePage() {
     setFollowLoading(false)
   }
 
-  if (loading) {
+  if (loading || !me) {
     return (
       <main className="max-w-screen-xl mx-auto px-4 md:px-8 pt-8 pb-16 space-y-6">
         <div className="h-56 bg-surface-container-lowest rounded-3xl animate-pulse" />
