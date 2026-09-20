@@ -6,7 +6,7 @@ import { useToast } from '../components/Toast'
 import VisibilityToggle from '../components/VisibilityToggle'
 import { readNoteVisibility } from '../utils/noteVisibility'
 import {
-  getMyProfile, getMyNotes, getMyActivity, getUserBooks,
+  getMyProfile, getMyNotes, getMyActivity,
   createNote, deleteNote, updateNote, updateMyProfile, getMyBooks,
   getReadingInsights, uploadProfilePicture,
 } from '../services/api'
@@ -227,7 +227,7 @@ function NewNoteModal({ onClose, onPosted }) {
 
 function EditBioModal({ profile, onClose, onSaved }) {
   const { t } = useTranslation()
-  const { user, login } = useAuth()
+  const { user, updateUser } = useAuth()
   const toast = useToast()
   const [bio, setBio] = useState(profile?.bio || '')
   const [name, setName] = useState(profile?.name || user?.name || '')
@@ -238,7 +238,7 @@ function EditBioModal({ profile, onClose, onSaved }) {
     setSaving(true)
     try {
       const updated = await updateMyProfile({ name: name.trim(), bio: bio.trim() || null })
-      login({ ...user, name: updated.name, bio: updated.bio })
+      updateUser({ name: updated.name, bio: updated.bio })
       toast('Profile updated!', 'success')
       onSaved(updated)
       onClose()
@@ -442,7 +442,7 @@ function NoteCard({ note, onDelete, onEdit }) {
 
 export default function ProfilePage() {
   const { t } = useTranslation()
-  const { user, login, logout } = useAuth()
+  const { user, updateUser, logout } = useAuth()
   const navigate = useNavigate()
   const toast = useToast()
   const avatarInputRef = useRef()
@@ -459,7 +459,8 @@ export default function ProfilePage() {
   const load = () => Promise.all([
     getMyProfile(),
     getMyNotes(),
-    getUserBooks(user?.id),
+    getMyBooks(),        // was getUserBooks keyed off the signed-in id: the same rows for your own
+                         // account, and it needs no identity, so it can start at once (F-69)
     getMyActivity(30),
     getReadingInsights(),
   ]).then(([p, n, b, a, ins]) => {
@@ -470,7 +471,7 @@ export default function ProfilePage() {
     setInsights(ins || null)
   }).catch(() => {}).finally(() => setLoading(false))
 
-  useEffect(() => { load() }, [user?.id])
+  useEffect(() => { load() }, [])
 
   const handleDeleteNote = async (noteId) => {
     if (!window.confirm('Delete this note?')) return
@@ -493,7 +494,7 @@ export default function ProfilePage() {
     setUploadingAvatar(true)
     try {
       const { profile_picture } = await uploadProfilePicture(file)
-      login({ ...user, profile_picture })
+      updateUser({ profile_picture })
       setProfile(prev => prev ? { ...prev, profile_picture } : prev)
       toast('Profile picture updated!', 'success')
     } catch (e) {

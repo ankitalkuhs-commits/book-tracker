@@ -1,5 +1,5 @@
-import { createContext, useContext, useState, useEffect } from 'react';
-import { getToken, clearToken, getMyProfile, getVapidPublicKey, webSubscribe, webUnsubscribe } from '../services/api';
+import { createContext, useContext, useState, useEffect, useRef } from 'react';
+import { getToken, clearToken, cacheClear, getMyProfile, getVapidPublicKey, webSubscribe, webUnsubscribe } from '../services/api';
 import { NOTE_VISIBILITY_KEY } from '../utils/noteVisibility';
 
 const AuthContext = createContext(null);
@@ -43,39 +43,56 @@ async function unregisterWebPush(token) {
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+  // true only while a stored token is being checked by /profile/me. Signed-in pages no longer wait
+  // for it (F-69): only /admin and /onboarding do. With no token it starts false, so "/" never
+  // sends a signed-out visitor to /home.
+  const [loading, setLoading] = useState(() => !!getToken());
+  const answered = useRef(!getToken());   // has this load's /profile/me answered?
+  const earlyPatch = useRef(null);        // profile edits saved before it answered (R-04)
 
   useEffect(() => {
-    const token = getToken();
-    if (token) {
-      getMyProfile()
-        .then((data) => {
-          setUser(data);
-          registerWebPush();
-        })
-        .catch(() => clearToken())
-        .finally(() => setLoading(false));
-    } else {
-      setLoading(false);
-    }
+    if (!getToken()) return;
+    // K-02: React StrictMode double-invokes this effect in dev, sending two /profile/me. `ignore`
+    // is set by this invocation's own cleanup, so only the live invocation's answer is ever applied —
+    // a stale duplicate can never overwrite a newer edit.
+    let ignore = false;
+    getMyProfile()
+      .then((data) => {
+        if (ignore) return;
+        answered.current = true;
+        setUser(data && earlyPatch.current ? { ...data, ...earlyPatch.current } : data);
+        earlyPatch.current = null;
+        registerWebPush();
+      })
+      .catch(() => { if (!ignore) clearToken(); })      // unchanged: a failed check signs out (E-5)
+      .finally(() => { if (!ignore) { answered.current = true; setLoading(false); } });
+    return () => { ignore = true; };
   }, []);
 
   const login = (userData) => {
+    cacheClear();                                     // F-71: nothing cached before this sign-in is served to it
     setUser(userData);
-    // Register web push after login
     setTimeout(registerWebPush, 500);
+  };
+
+  // A saved profile edit (name, bio, yearly_goal, profile_picture). Never creates a user object:
+  // before /profile/me answers, the edit is held and laid over its answer.
+  const updateUser = (patch) => {
+    if (!answered.current) earlyPatch.current = { ...(earlyPatch.current || {}), ...patch };
+    setUser((prev) => (prev ? { ...prev, ...patch } : prev));
   };
 
   const logout = () => {
     const token = getToken();                          // F-03 web: capture before clearing
     clearToken();
+    cacheClear();                                      // F-71: the next account in this tab must not get this one's GETs
     localStorage.removeItem(NOTE_VISIBILITY_KEY);      // E2: the next account must start at "Only me"
     setUser(null);
-    unregisterWebPush(token);                          // fire-and-forget
+    unregisterWebPush(token);                          // fire-and-forget; DELETE is never cached
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, updateUser }}>
       {children}
     </AuthContext.Provider>
   );
