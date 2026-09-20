@@ -124,15 +124,17 @@ export default function BookDetailPage() {
       .finally(() => setLoadingBook(false))
   }, [userbookId]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Fetch notes once userbook is available
+  // F-70b: notes need only the id in the URL, so they load alongside the userbook, not after it.
+  // /notes/userbook/{id} is owner-only (404 otherwise); a foreign id is sent back to /library by the effect above.
   useEffect(() => {
-    if (!userbook?.id) return
+    const id = parseInt(userbookId, 10)
+    if (!id) return
     setLoadingNotes(true)
-    getNotesForBook(userbook.id)
+    getNotesForBook(id)
       .then(data => setNotes(data || []))
       .catch(() => {})
       .finally(() => setLoadingNotes(false))
-  }, [userbook?.id])
+  }, [userbookId])
 
   const STATUS_SEGMENTS = [
     { key: 'to-read',  label: t('status.wantToRead') },

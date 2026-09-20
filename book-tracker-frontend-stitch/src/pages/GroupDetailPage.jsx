@@ -521,31 +521,32 @@ export default function GroupDetailPage() {
   const isCurator = group?.membership_role === 'curator'
   const isMember = group?.membership_status === 'active'
 
-  const safe = (fn, label) => fn.catch(e => { console.warn('[Group]', label, e?.message); return null; })
+  const safe = (fn, label) => fn.catch(e => { if (import.meta.env.DEV) console.warn('[Group]', label, e?.message); return null; })
 
   const load = async () => {
     setLoading(true)
+    const id = parseInt(groupId)
+    // F-70: the five sections need only the id, so they start with the circle, not after it. Each has the
+    // same private-circle gate as GET /groups/{id}; if the circle is refused they are simply never shown.
+    const sections = () => Promise.all([
+      safe(getGroupMembers(id), 'members'),
+      safe(getGroupLeaderboard(id, leaderPeriod), 'leaderboard'),
+      safe(getGroupGoal(id), 'goal'),
+      safe(getGroupPosts(id), 'posts'),
+      safe(apiFetch(`/groups/${id}/activity`), 'activity'),
+    ])
+    const early = sections()
     try {
-      const g = await getGroup(parseInt(groupId))
+      const g = await getGroup(id)
+      const pend = g?.membership_role === 'curator' ? safe(getPendingMembers(id)) : null   // curators only, as today
+      const [m, lb, gl, p, act] = await (early || sections())
       setGroup(g)
-
-      const [m, lb, gl, p, act] = await Promise.all([
-        safe(getGroupMembers(parseInt(groupId)), 'members'),
-        safe(getGroupLeaderboard(parseInt(groupId), leaderPeriod), 'leaderboard'),
-        safe(getGroupGoal(parseInt(groupId)), 'goal'),
-        safe(getGroupPosts(parseInt(groupId)), 'posts'),
-        safe(apiFetch(`/groups/${parseInt(groupId)}/activity`), 'activity'),
-      ])
       setMembers(m || [])
       setLeaderboard(lb || [])
       setGoal(gl || null)
       setPosts(p || [])
       setActivity(act || [])
-
-      if (g?.membership_role === 'curator') {
-        const pend = await safe(getPendingMembers(parseInt(groupId)))
-        setPending(pend || [])
-      }
+      if (pend) setPending((await pend) || [])
     } catch (e) {
       toast(e.message || 'Group not found', 'error')
       navigate('/groups')
@@ -931,7 +932,7 @@ export default function GroupDetailPage() {
                     key={post.id}
                     post={post}
                     isCurator={isCurator}
-                    isOwn={post.user?.id === user?.id}
+                    isOwn={user?.id != null && post.user?.id === user.id}
                     onDelete={handleDeletePost}
                     onUserClick={(uid) => navigate(`/profile/${uid}`)}
                   />
