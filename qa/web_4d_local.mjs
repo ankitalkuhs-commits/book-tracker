@@ -39,6 +39,12 @@ const argv = process.argv.slice(2);
 const arg = (n, d) => { const i = argv.indexOf(`--${n}`); return i >= 0 && argv[i + 1] ? argv[i + 1] : d; };
 const WEB = arg('web', 'http://127.0.0.1:5174').replace(/\/$/, '');
 const API = arg('api', 'http://127.0.0.1:8765').replace(/\/$/, '');
+const API_ORIGIN = new URL(API).origin;
+// Route predicates must match the API origin, never the app's own origin. Several SPA routes have
+// the same path as an API endpoint (`/groups/1`, `/profile/123`), so a path-only predicate also
+// caught the page's own HTML navigation and held it: L-4D-11 and L-4D-14 then could not pass
+// however correct the product was, and mutating the product changed nothing (PM, 2026-09-20).
+const isApi = u => { try { return new URL(u).origin === API_ORIGIN; } catch { return false; } };
 const ONLY = arg('only', null)?.split(',').map(s => s.trim()).filter(Boolean) || null;
 const SECRET_FILE = arg('secret-file', path.join(REPO, '.env.review'));
 const TS = Date.now().toString(36);
@@ -246,7 +252,7 @@ function makeTimeline(page, t0) {
 // ---------- hold: fetch-first, deliver late. Returns a handle the case asserts H1-H3 on. ----------
 async function hold(context, test, ms, { modify } = {}) {
   const h = { entries: [] };
-  await context.route(u => test(new URL(u)), async route => {
+  await context.route(u => isApi(u) && test(new URL(u)), async route => {
     if (route.request().method() !== 'GET') return route.continue();
     const e = { url: route.request().url(), enteredAt: Date.now() };
     h.entries.push(e);
@@ -622,11 +628,11 @@ async function main() {
           await withPage(async (page, context) => {
             await seedOnce(page, READER);
             let joinStatus = null;
-            await context.route(u => new URL(u).pathname === '/profile/me', route_ => {
+            await context.route(u => isApi(u) && new URL(u).pathname === '/profile/me', route_ => {
               if (variant === '500') return route_.fulfill({ status: 500, contentType: 'application/json', body: JSON.stringify({ detail: 'Internal Server Error' }) });
               return route_.abort('failed');
             });
-            await context.route(u => new URL(u).pathname === `/groups/join/${CODE}`, async route_ => {
+            await context.route(u => isApi(u) && new URL(u).pathname === `/groups/join/${CODE}`, async route_ => {
               const resp = await route_.fetch().catch(() => null);
               if (resp) joinStatus = resp.status();
               if (resp) await route_.fulfill({ response: resp }); else await route_.continue();
@@ -756,7 +762,7 @@ async function main() {
       const A = { ...template, id: 990000001, text: `QA 4D authorless ${TS}`, user: null, user_id: 999999 };
       const B = { ...template, id: 990000002, text: `QA 4D own ${TS}`, user: { id: READER_ID, name: pre.reader.user.name }, user_id: READER_ID };
       const C = { ...template, id: 990000003, text: `QA 4D other ${TS}`, user: { id: FRIEND_ID, name: pre.friend.user.name }, user_id: FRIEND_ID };
-      await context.route(u => new URL(u).pathname === '/notes/feed', route_ => route_.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([A, B, C]) }));
+      await context.route(u => isApi(u) && new URL(u).pathname === '/notes/feed', route_ => route_.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([A, B, C]) }));
       await installWatcher(page, [
         { id: 'menu-A', type: 'iconInContainer', containerSelector: 'article', containerText: A.text, icon: 'more_horiz' },
         { id: 'menu-C', type: 'iconInContainer', containerSelector: 'article', containerText: C.text, icon: 'more_horiz' },
@@ -785,7 +791,7 @@ async function main() {
       const template = (postsRes.json || [])[0] || { id: 1, text: 'x', created_at: new Date().toISOString() };
       const A = { ...template, id: 990000011, text: `QA 4D circle-authorless ${TS}`, user: null, user_id: 999999 };
       const B = { ...template, id: 990000012, text: `QA 4D circle-own ${TS}`, user: { id: FRIEND_ID, name: pre.friend.user.name }, user_id: FRIEND_ID };
-      await context.route(u => new URL(u).pathname === `/groups/${CIRCLE}/posts`, route_ => route_.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([A, B]) }));
+      await context.route(u => isApi(u) && new URL(u).pathname === `/groups/${CIRCLE}/posts`, route_ => route_.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([A, B]) }));
       await installWatcher(page, [
         { id: 'delete-A', type: 'iconInContainer', containerSelector: 'div, article', containerText: A.text, icon: 'delete' },
       ]);
@@ -813,7 +819,7 @@ async function main() {
         await api(READER, 'PUT', '/profile/me', { name: 'Qa Reader', bio: '4d-09 bio', yearly_goal: 24 });
         await seedAuth(context, READER);
         const park = makePark();
-        await context.route(u => new URL(u).pathname === '/profile/me', park.handler);
+        await context.route(u => isApi(u) && new URL(u).pathname === '/profile/me', park.handler);
         await page.goto(WEB + '/settings', { waitUntil: 'domcontentloaded' });
         const nameInput = page.locator('input').first();
         let releases = 0;
@@ -917,8 +923,8 @@ async function main() {
           Object.defineProperty(navigator.serviceWorker, 'ready', { value: Promise.resolve(fakeReg), configurable: true });
         });
         let webSubscribeCount = 0;
-        await context.route(u => new URL(u).pathname === '/notifications/vapid-public-key', r => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ public_key: 'BA'.padEnd(88, 'A') }) }));
-        await context.route(u => new URL(u).pathname === '/notifications/web-subscribe', r => { webSubscribeCount++; return r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ message: 'ok' }) }); });
+        await context.route(u => isApi(u) && new URL(u).pathname === '/notifications/vapid-public-key', r => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ public_key: 'BA'.padEnd(88, 'A') }) }));
+        await context.route(u => isApi(u) && new URL(u).pathname === '/notifications/web-subscribe', r => { webSubscribeCount++; return r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ message: 'ok' }) }); });
         await page.goto(WEB + '/settings', { waitUntil: 'domcontentloaded' });
         await page.waitForResponse(r => new URL(r.url()).pathname === '/profile/me', { timeout: 20000 }).catch(() => {});
         await page.waitForTimeout(1500);
@@ -978,7 +984,7 @@ async function main() {
           } };
         ` });
       });
-      await context.route(u => new URL(u).pathname === '/auth/google', route_ => route_.fulfill({
+      await context.route(u => isApi(u) && new URL(u).pathname === '/auth/google', route_ => route_.fulfill({
         status: 200, contentType: 'application/json',
         body: JSON.stringify({ access_token: FRIEND, is_new: false, user: { id: pre.friend.user.id, name: pre.friend.user.name, email: pre.friend.user.email } }),
       }));
@@ -988,7 +994,7 @@ async function main() {
       await idle.waitIdle(500);
 
       const park1 = makePark();
-      await context.route(u => new URL(u).pathname === '/userbooks/', park1.handler);
+      await context.route(u => isApi(u) && new URL(u).pathname === '/userbooks/', park1.handler);
       const p1 = callApi(page, 'getMyBooks');
       await page.waitForTimeout(300);
       assert(park1.count() === 1, `expected exactly 1 request parked in step 3, saw ${park1.count()}`);
@@ -1006,7 +1012,7 @@ async function main() {
 
       await context.unroute(u => new URL(u).pathname === '/userbooks/').catch(() => {});
       const park2 = makePark();
-      await context.route(u => new URL(u).pathname === '/userbooks/', park2.handler);
+      await context.route(u => isApi(u) && new URL(u).pathname === '/userbooks/', park2.handler);
 
       await page.evaluate(() => window.__gsi && window.__gsi({ credential: 'qa-fake', select_by: 'btn' }));
       const p2 = callApi(page, 'getMyBooks');
