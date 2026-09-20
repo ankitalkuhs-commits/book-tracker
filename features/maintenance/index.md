@@ -13,6 +13,7 @@ Home for correctness and hygiene sprints that fix bugs across several features a
 |---|---|---|
 | Sprint 2 — seven audit bugs + git hygiene | tested | [sprint-2-audit-bugs/](sprint-2-audit-bugs/) |
 | Sprint 4A — platform audit (api + web; decision-free subset + PM decisions + live probes) | in-progress (architecture complete) | [sprint-4a-platform-audit/](sprint-4a-platform-audit/) |
+| Sprint 4D — page load speed (web only; F-69, F-70 + same-pattern F-70b/c, privacy fix F-71 proposed) | planned (architecture complete, spec awaiting PM approval) | [sprint-4d-page-speed/](sprint-4d-page-speed/) |
 
 ## Cross-Feature Dependencies
 - depends_on: features/community (notes, feed, push), features/reading-stats (insights), features/auth (profile)
