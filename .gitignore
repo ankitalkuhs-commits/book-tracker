@@ -67,3 +67,6 @@ qa/screenshots/
 
 # Claude Code local settings and agent worktrees — machine-specific, never commit
 .claude/
+
+# service id written by the migration steps (not a secret, but machine-local)
+.render-sg-service-id

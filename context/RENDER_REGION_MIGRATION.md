@@ -46,6 +46,44 @@ Two new ones this migration uses (both off unless set, tests in `tests/test_regi
 
 ---
 
+## Status 2026-09-21: the Singapore service exists, is verified, and is parked
+
+| | |
+|---|---|
+| service | `book-tracker-sg`, id `srv-daomsk8473hc73d1gh0g`, region **singapore**, plan starter |
+| URL | `https://book-tracker-sg.onrender.com` |
+| built from | `master` @ `02bb9e3`, same repo, same build/start commands as Oregon |
+| env | all **16** variables copied from Oregon (the runbook's earlier list of 12 was incomplete: it missed `ACCESS_TOKEN_EXPIRE_MINUTES`, `ALGORITHM`, `GEMINI_API_KEY`, `NYT_API_KEY`), plus `RUN_SCHEDULER` |
+| health check | `/version` (Oregon has none; a failed start now fails the deploy instead of going live broken) |
+| state | **suspended** — suspended services are not billed, and the build is kept |
+
+**Verified before parking** (`qa/verify_new_service.py`, 7/7):
+
+| | Oregon | Singapore |
+|---|---|---|
+| per database query | 275 ms | **3 ms** |
+| `/profile/me` end to end | 1464 ms | **151 ms** |
+| `/version` (no database) | 0.81 s | **0.23 s** |
+
+Same commit, same database, a token issued by Oregon is accepted (so `SECRET_KEY` matches), and the web-push keys are identical.
+
+**Why it is parked:** the PM does not want two paid services running. Singapore cannot take over until the web app points at it, and that value comes from **Vercel's environment**, not this repo — `book-tracker-frontend-stitch/.env` is gitignored, so editing it changes nothing in production.
+
+**The redirect cannot serve the website.** Browsers refuse to follow a redirect on a CORS preflight, and the `Authorization` header triggers one. So `API_REDIRECT_BASE` on Oregon is only for installed Android apps, which do not preflight.
+
+### To finish (about 5 minutes, in this order)
+
+1. **Vercel:** set `VITE_API_BASE_URL=https://book-tracker-sg.onrender.com` and redeploy. (Or hand Claude a Vercel token the way the Render key was handed over, and it does steps 1–5.)
+2. **Resume Singapore** (`POST /v1/services/{id}/resume`), wait for `/version`.
+3. **Move the reminders**: Singapore `RUN_SCHEDULER=1`, Oregon `RUN_SCHEDULER=0`. Never both at 1.
+4. **Oregon**: set `API_REDIRECT_BASE=https://book-tracker-sg.onrender.com` so installed apps keep working.
+5. **Oregon cost**: downgrade it to **free** — it is only forwarding, so its cold starts cost old-app readers about a minute occasionally, and total spend stays at one paid service. Suspending it instead is free too, but then old apps fail outright until their readers update.
+6. Re-measure with `qa/page_perf.mjs` and record the new baseline.
+
+Later: point `api.trackmyread.com` at Singapore and ship Android 2.2.3 against that name, so the next move needs no app release.
+
+---
+
 ## Step 1 — create the Singapore service (nothing changes for readers)
 
 - New Web Service, same repo and branch (`master`), **region Singapore**, same plan, same build and start commands.
