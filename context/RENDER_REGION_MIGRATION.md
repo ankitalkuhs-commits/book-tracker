@@ -26,8 +26,6 @@ Moving the database to Mumbai would be a **regression against this plan**: same-
 
 ---
 
----
-
 ## Two settings that must be copied exactly
 
 Both are already supported by the code; they only need the same values on the new service.
