@@ -19,6 +19,10 @@ book_tracker.db
 .env
 .env.local
 .env.*
+# ...except the local-API override, which holds only a loopback URL. It was ignored, so it
+# never existed in a fresh worktree and every agent had to recreate it on a different port;
+# the QA harness then refused to run (its own precondition). No secrets belong in this file.
+!book-tracker-frontend-stitch/.env.localapi
 
 # IDEs
 .vscode/
@@ -63,3 +67,6 @@ qa/screenshots/
 
 # Claude Code local settings and agent worktrees — machine-specific, never commit
 .claude/
+
+# service id written by the migration steps (not a secret, but machine-local)
+.render-sg-service-id

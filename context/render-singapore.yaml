@@ -1,0 +1,57 @@
+# Blueprint for the Singapore API service (F-68 region migration).
+#
+# Deliberately NOT at the repo root: a file named render.yaml there can be picked up as a
+# Blueprint and start managing existing services. To use it, in Render choose
+# New > Blueprint, point it at this repo, and paste this file's contents — or copy it to
+# render.yaml on a branch you create the Blueprint from, then delete it afterwards.
+#
+# You can equally create the service by hand (New > Web Service). This file only exists so the
+# settings are written down and reviewable rather than retyped from memory.
+#
+# Confirm buildCommand/startCommand against the existing Oregon service's settings before
+# creating: they are configured in the dashboard, not in this repo, so the values below are the
+# conventional ones for this app and not a record of what is set today.
+
+services:
+  - type: web
+    name: book-tracker-sg          # temporary; the address readers use will be api.trackmyread.com
+    runtime: python
+    region: singapore              # the whole point: same region as the Supabase database
+    plan: starter                  # match the current Oregon plan; free would sleep after 15 min
+    branch: master
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /version      # answers without touching the database
+    autoDeploy: true               # same as today: a push to master deploys
+    envVars:
+      # sync: false = Render asks for the value; secrets never enter this repo.
+      # Copy each from the Oregon service. SECRET_KEY and the VAPID pair must match exactly:
+      # a new SECRET_KEY signs every reader out, and new VAPID keys silently kill web push.
+      - key: DATABASE_URL
+        sync: false
+      - key: SECRET_KEY
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
+      - key: GOOGLE_BOOKS_API_KEY
+        sync: false
+      - key: VAPID_PUBLIC_KEY
+        sync: false
+      - key: VAPID_PRIVATE_KEY
+        sync: false
+      - key: VAPID_CONTACT_EMAIL
+        sync: false
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+      - key: REVIEW_LOGIN_SECRET
+        sync: false
+      - key: REVIEW_LOGIN_EMAILS
+        sync: false
+      # Only Oregon sends reminders until the cutover (step 4). Two services scheduling on one
+      # database means every reader gets each reminder twice.
+      - key: RUN_SCHEDULER
+        value: "0"

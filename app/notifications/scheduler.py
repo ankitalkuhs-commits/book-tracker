@@ -4,7 +4,9 @@ Inactivity reminder (Sprint 4C, D-6): every 15 minutes, remind readers whose OWN
 20:00–21:59, who have not been active on their local today and have not been reminded on it.
 Idempotent across restarts and Render sleep: "already reminded" is the NotificationLog table.
 """
-from datetime import timedelta
+
+import os
+from datetime import date, datetime, timedelta
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
@@ -70,10 +72,18 @@ def _send_inactivity_reminders() -> None:
 def start_scheduler() -> None:
     """Register jobs and start the background scheduler. Call once at app startup.
 
+    RUN_SCHEDULER=0 stops this service scheduling anything. During the region move two services
+    run against one database, and exactly one may send the reminders — otherwise every reader
+    gets each reminder twice (F-68).
+
     Idempotent even before the scheduler has ever started: APScheduler's own
-    `replace_existing=True` only reliably dedupes once the jobstore is running, so a
-    second call (dev --reload, or a duplicate startup event) would otherwise register a
-    second job. Removing any existing job by id first makes a repeat call a no-op."""
+    `replace_existing=True` only reliably dedupes once the jobstore is running, so a second call
+    (dev --reload, or a duplicate startup event) would otherwise register a second job. Removing
+    any existing job by id first makes a repeat call a no-op.
+    """
+    if (os.getenv("RUN_SCHEDULER", "1") or "").strip().lower() in ("0", "false", "no", "off"):
+        print("[scheduler] Not started: RUN_SCHEDULER is off for this service.")
+        return
     if scheduler.get_job("inactivity_reminder"):
         scheduler.remove_job("inactivity_reminder")
     scheduler.add_job(

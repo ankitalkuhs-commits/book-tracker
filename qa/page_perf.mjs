@@ -25,7 +25,7 @@
 import { chromium } from 'playwright';
 import fs from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const argv = process.argv.slice(2);
@@ -37,6 +37,75 @@ const PROFILES = arg('profiles', 'desktop,mobile').split(',');
 const ONLY = arg('only', null);
 const SECRET_FILE = arg('secret-file', path.join(REPO, '.env.review'));
 const IDLE_MS = 1000, READY_CAP_MS = 30000;
+
+// ---------------------------------------------------------------------------
+// Waterfall verdict (K-05, section 6.1). Pure functions — unit-tested by
+// qa/unit/pagePerfWaterfall.test.mjs — so the release gate is itself tested.
+// ---------------------------------------------------------------------------
+
+// Today's check was `/blockedbyclient/i`, which never matches Chromium's real abort text
+// `net::ERR_BLOCKED_BY_CLIENT` (the word is split by underscores), so a blocked write was never
+// actually counted. Matches both spellings.
+export function isBlocked(errorText) {
+  return /blocked_?by_?client/i.test(errorText || '');
+}
+
+// calls: [{method, path, start, end, status}], path is the pathname only, status may be the
+// string 'blocked' for a write the read-only guard aborted (it still counts as a page call).
+// ME = the GET /profile/me with the lowest start. Own calls = every other call except
+// GET /notifications/unread-count.
+export function waterfallVerdict(calls) {
+  const mes = (calls || []).filter(c => c.method === 'GET' && c.path === '/profile/me');
+  if (!mes.length) return '—';
+  const me = mes.slice().sort((a, b) => a.start - b.start)[0];
+  const own = calls.filter(c => c !== me && !(c.method === 'GET' && c.path === '/notifications/unread-count'));
+  if (own.length) return own.some(c => c.start < me.end) ? 'parallel' : 'SERIAL';
+  const unread = calls.filter(c => c.method === 'GET' && c.path === '/notifications/unread-count').sort((a, b) => a.start - b.start);
+  if (!unread.length) return '—';
+  return unread[0].start < me.end ? 'parallel (nav)' : 'SERIAL (nav)';
+}
+
+// rows: [{page, profile, meStart, meEnd, ownStart, verdict, meTotalMs, meQueries}]. Never a token,
+// secret or Authorization value — paths and timings only.
+export function renderWaterfall(rows) {
+  const lines = ['## Waterfall (first visit)', '',
+    'Note: `/admin` and `/onboarding` are expected to read `SERIAL` / `—` (own gates, never parallel).', '',
+    '| page | profile | profile/me | first own call | verdict | profile/me total | profile/me queries |',
+    '|---|---|---:|---:|---|---:|---:|'];
+  for (const r of (rows || [])) {
+    const me = r.meStart != null && r.meEnd != null ? `${r.meStart}–${r.meEnd} ms` : '—';
+    const own = r.ownStart == null ? '—' : `${r.ownStart} ms`;
+    const total = r.meTotalMs == null ? '—' : `${r.meTotalMs} ms`;
+    const queries = r.meQueries == null ? '—' : `${r.meQueries}`;
+    lines.push(`| ${r.page} | ${r.profile} | ${me} | ${own} | ${r.verdict} | ${total} | ${queries} |`);
+  }
+  return lines.join('\n') + '\n';
+}
+
+// Server-Timing: `db;dur=12.3;desc="5 queries", total;dur=45.6`
+function parseServerTiming(header) {
+  if (!header) return null;
+  const parts = {};
+  for (const chunk of header.split(',')) {
+    const [namePart, ...paramParts] = chunk.trim().split(';');
+    const name = namePart.trim();
+    if (!name) continue;
+    const entry = { name };
+    for (const p of paramParts) {
+      const [k, ...vRest] = p.split('=');
+      const v = vRest.join('=').trim().replace(/^"(.*)"$/, '$1');
+      entry[k.trim()] = v;
+    }
+    parts[name] = entry;
+  }
+  const db = parts.db, total = parts.total;
+  const queries = db && db.desc ? parseInt((db.desc.match(/(\d+)/) || [])[1], 10) : null;
+  return {
+    dbMs: db ? parseFloat(db.dur) : null,
+    queries: Number.isFinite(queries) ? queries : null,
+    totalMs: total ? parseFloat(total.dur) : null,
+  };
+}
 
 function readSecret() {
   if (process.env.REVIEW_LOGIN_SECRET) return process.env.REVIEW_LOGIN_SECRET.trim();
@@ -90,12 +159,24 @@ async function measure(page, url) {
     if (!inflight.has(q)) return;
     const start = inflight.get(q); inflight.delete(q); lastActivity = Date.now();
     const failure = q.failure();
-    if (failure && /blockedbyclient/i.test(failure.errorText)) { blocked++; return; }
-    done.push({ method: q.method(), path: new URL(q.url()).pathname, ms: Date.now() - start, end: Date.now(), failed: !!failure, status: q.__status });
+    const nowAbs = Date.now();
+    const pathname = new URL(q.url()).pathname;
+    if (failure && isBlocked(failure.errorText)) {
+      // A write the read-only guard aborted still counts as a page call for the waterfall (K-05).
+      blocked++;
+      done.push({ method: q.method(), path: pathname, ms: nowAbs - start, end: nowAbs, relStart: start - navStart, relEnd: nowAbs - navStart, failed: false, status: 'blocked', st: null });
+      return;
+    }
+    done.push({ method: q.method(), path: pathname, ms: nowAbs - start, end: nowAbs, relStart: start - navStart, relEnd: nowAbs - navStart, failed: !!failure, status: q.__status, st: q.__st || null });
   };
-  // A response arrives before its request is marked finished, so record the status on the
-  // request object here and read it in onEnd.
-  const onResp = resp => { const q = resp.request(); if (q.url().startsWith(API)) q.__status = resp.status(); };
+  // A response arrives before its request is marked finished, so record the status (and any
+  // Server-Timing header) on the request object here and read it in onEnd.
+  const onResp = resp => {
+    const q = resp.request();
+    if (!q.url().startsWith(API)) return;
+    q.__status = resp.status();
+    q.__st = parseServerTiming(resp.headers()['server-timing']);
+  };
   page.on('request', onReq); page.on('requestfinished', onEnd); page.on('requestfailed', onEnd); page.on('response', onResp);
   const navStart = Date.now();
   let error = null;
@@ -125,6 +206,7 @@ async function measure(page, url) {
     ready: apiEnd ? Math.max(apiEnd - navStart, t.load ?? 0) : (t.load ?? null),
     apiCalls: done.length, apiFailed: done.filter(d => d.failed || (d.status >= 400)).map(d => `${d.method} ${d.path}${d.status ? ' ' + d.status : ''}`),
     slowest: slowest ? { call: `${slowest.method} ${slowest.path}`, ms: slowest.ms } : null,
+    calls: done.map(d => ({ method: d.method, path: d.path, start: d.relStart, end: d.relEnd, status: d.status, st: d.st })),
   };
 }
 
@@ -194,6 +276,7 @@ async function main() {
         warm: warm.length ? { fcp: median(warm.map(r => r.fcp)), lcp: median(warm.map(r => r.lcp)), ready: median(warm.map(r => r.ready)) } : null,
         apiCalls: cold.apiCalls, slowest: cold.slowest, apiFailed: [...new Set(runs.flatMap(r => r.apiFailed))],
         blockedWrites: cold.blocked, errors: runs.map(r => r.error).filter(Boolean),
+        calls: pg.auth ? cold.calls : undefined,
       };
       results.push(row);
       console.log(`${profile.padEnd(7)} ${pg.p.padEnd(34)} ready cold ${sec(row.cold.ready).padStart(8)} warm ${sec(row.warm?.ready).padStart(8)}  LCP ${sec(row.cold.lcp).padStart(8)}  api ${String(row.apiCalls).padStart(2)}  slowest ${row.slowest ? row.slowest.call + ' ' + sec(row.slowest.ms) : '—'}${row.errors.length ? '  ERROR ' + row.errors[0] : ''}`);
@@ -201,7 +284,10 @@ async function main() {
   }
   await browser.close();
 
-  const date = new Date().toISOString().slice(0, 10);
+  // Date AND time: a second run on the same day silently overwrote the first one, and the
+  // earlier round had to be recovered from git (2026-09-21).
+  const stamp = new Date().toISOString().slice(0, 16).replace('T', '-').replace(':', '');
+  const date = stamp;
   const dir = path.join(REPO, 'qa', 'reports'); fs.mkdirSync(dir, { recursive: true });
   const meta = { date, web: WEB, api: API, runs: RUNS, apiWake: wake };
   fs.writeFileSync(path.join(dir, `page-perf-${date}.json`), JSON.stringify({ meta, results }, null, 2));
@@ -221,8 +307,25 @@ async function main() {
     }
     md.push('');
   }
+
+  const waterfallRows = results.filter(r => r.calls).map(r => {
+    const mes = r.calls.filter(c => c.method === 'GET' && c.path === '/profile/me');
+    const me = mes.length ? mes.slice().sort((a, b) => a.start - b.start)[0] : null;
+    const own = me ? r.calls.filter(c => c !== me && !(c.method === 'GET' && c.path === '/notifications/unread-count')) : [];
+    const ownStart = own.length ? Math.min(...own.map(c => c.start)) : null;
+    return {
+      page: `${r.name} \`${r.page.replace(/\/join\/.+/, '/join/…')}\``, profile: r.profile,
+      meStart: me?.start ?? null, meEnd: me?.end ?? null, ownStart,
+      verdict: waterfallVerdict(r.calls),
+      meTotalMs: me?.st?.totalMs ?? null, meQueries: me?.st?.queries ?? null,
+    };
+  });
+  md.push(renderWaterfall(waterfallRows));
+
   fs.writeFileSync(path.join(dir, `page-perf-${date}.md`), md.join('\n') + '\n');
   console.log(`\nwrote qa/reports/page-perf-${date}.md`);
 }
 
-main().catch(e => { console.error(e.message); process.exit(1); });
+if (import.meta.url === pathToFileURL(process.argv[1] || '').href) {
+  main().catch(e => { console.error(e.message); process.exit(1); });
+}
