@@ -73,6 +73,15 @@ Ten. **K-01, K-02, K-04, K-05 and K-06 need an answer before the relevant packag
 
 ---
 
+### PM resolutions of section 0 (2026-09-21)
+
+- **K-02 is withdrawn — its premise is wrong.** The interpreter that runs this suite is `.venv\Scripts\python.exe`, and it has **pytest 9.0.2 installed** and **exactly the pinned versions**: `fastapi 0.95.2`, `starlette 0.27.0`, `SQLAlchemy 1.4.41`, `sqlmodel 0.0.8`, matching `requirements.txt` (UTF-16). The QA agent inspected a different Python, found no pytest there, and inferred a version mismatch that does not exist. **Build for FastAPI 0.95.2 semantics** — in particular, a dependency's `yield` teardown runs *after* background tasks on this version, the opposite of 0.106+. Every count in the architecture was measured on the stack production runs. Always run tests as `C:/Users/sonal/Documents/projects/book-tracker/.venv/Scripts/python.exe -m pytest`.
+- **K-01 accepted, and it is the most valuable find in this plan.** `GET /userbooks/user/{id}` has no test anywhere, and P4 rewrites its private-profile gate: deleting that `raise` today leaves the whole suite green while a private reader's shelf goes public. L-4E-24 / M-24 are mandatory, and P4 does not merge until M-24 is demonstrated red.
+- **K-03 accepted.** The budget tests own their engine, with G-4E-05 checking it does not leak.
+- **K-04 accepted, and M-35 blocks the sprint if it stays green.** `groups_router.py:936-957` swallows leaderboard failures into `{}`, so a `UNION ALL` that is valid on SQLite and invalid on PostgreSQL would serve a leaderboard of zeros with the key set and ranks intact — and every existing test would pass.
+- **K-05 accepted as written.** `/admin/stats`'s `books_completed` and `books_wishlist` filter on `completed` / `want_to_read`, which this app never writes, so both are structurally 0. **4E must not change the vocabulary**: its job is to cut queries, and the present values are the contract. Logged separately as F-77 for a product decision.
+- **K-06..K-10 accepted** as resolved in this plan.
+
 ## 1. Summary
 
 | Package | Files it owns | New cases | Where they live | Gate |
