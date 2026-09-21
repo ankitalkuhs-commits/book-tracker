@@ -8,6 +8,24 @@
 
 **Expected result.** Signed-in pages roughly **3–6 s → 0.4–0.6 s**: queries drop from ~200 ms to 1–2 ms each, and India-to-Singapore is ~60–80 ms against ~290 ms to Oregon.
 
+## Why Singapore, and why the database stays put (asked 2026-09-21)
+
+**Render has no India region.** Its regions are Oregon, Ohio, Virginia, Frankfurt and Singapore ([docs](https://render.com/docs/regions)). Singapore is its closest to India.
+
+**Supabase is already in Singapore**, so the nearest location both can share needs only the API to move. Do **not** move the database.
+
+| setup | per query | reader → API | signed-in page |
+|---|---|---|---|
+| today: API Oregon, DB Singapore | ~200 ms × 5–12 | ~290 ms | 3–6 s |
+| **API Singapore, DB Singapore** | **1–2 ms** | ~60–80 ms | **~0.4–0.6 s** |
+| API Singapore, DB Mumbai | ~50–70 ms × 5–12 | ~60–80 ms | ~1–1.5 s |
+
+Moving the database to Mumbai would be a **regression against this plan**: same-region is what collapses the query cost, and Singapore↔Mumbai puts a cross-region hop back on every query.
+
+**Mumbai for both** would need a different host. Fly.io has a Mumbai region, worth roughly 0.1–0.2 s per page over Singapore (readers ~20–30 ms from the API instead of ~60–80 ms), at the cost of a platform migration, a database migration, and a region with reported operational problems ([1](https://community.fly.io/t/region-bom-not-operational/27588), [2](https://community.fly.io/t/unable-to-scale-machines-to-region-bom/23142)). Not recommended for that margin; revisit only if leaving Render for other reasons.
+
+---
+
 ---
 
 ## Two settings that must be copied exactly
