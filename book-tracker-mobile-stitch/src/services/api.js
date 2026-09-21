@@ -5,7 +5,10 @@ import { isAuthExpiredError, isRetryableRequest } from './httpPolicy';
 import { deviceTimeZone } from './localDate';
 
 // Stitch backend
-const API_BASE_URL = 'https://book-tracker-stitch.onrender.com';
+// api.trackmyread.com, not a service's own onrender.com address: an installed app cannot be
+// changed, and a Render service can never move region or name. Pointing at a domain we own
+// means the next move is a DNS change instead of a forced app release (F-68).
+const API_BASE_URL = 'https://api.trackmyread.com';
 
 const DEFAULT_TIMEOUT = 30000;
 const COLD_START_TIMEOUT = 45000;
