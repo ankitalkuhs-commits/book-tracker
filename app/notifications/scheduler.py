@@ -6,6 +6,7 @@ Runs once per day at 14:30 UTC (8 PM IST).
 Finds users who have not been active today and sends a reading reminder push.
 """
 
+import os
 from datetime import date, datetime
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -55,7 +56,15 @@ def _send_inactivity_reminders() -> None:
 
 
 def start_scheduler() -> None:
-    """Register jobs and start the background scheduler. Call once at app startup."""
+    """Register jobs and start the background scheduler. Call once at app startup.
+
+    RUN_SCHEDULER=0 stops this service scheduling anything. During the region move two services
+    run against one database, and exactly one may send the reminders — otherwise every reader
+    gets each reminder twice (F-68).
+    """
+    if (os.getenv("RUN_SCHEDULER", "1") or "").strip().lower() in ("0", "false", "no", "off"):
+        print("[scheduler] Not started: RUN_SCHEDULER is off for this service.")
+        return
     scheduler.add_job(
         _send_inactivity_reminders,
         CronTrigger(hour=14, minute=30, timezone="UTC"),   # 14:30 UTC = 8:00 PM IST

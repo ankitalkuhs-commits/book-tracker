@@ -3,6 +3,7 @@ import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .server_timing import ServerTimingMiddleware
+from .redirect_mode import RedirectModeMiddleware
 from fastapi.staticfiles import StaticFiles
 from starlette.responses import JSONResponse
 from pathlib import Path
@@ -124,6 +125,7 @@ app.add_middleware(
 
 app.add_middleware(SecurityHeadersMiddleware)        # 3rd → outermost: every response, preflights included
 app.add_middleware(ServerTimingMiddleware)           # 4th → outermost: times the whole request (F-68 diagnosis)
+app.add_middleware(RedirectModeMiddleware)           # 5th → outermost: off unless API_REDIRECT_BASE is set (F-68 migration)
 
 # ---------------------
 # Step 4: Register all routers
