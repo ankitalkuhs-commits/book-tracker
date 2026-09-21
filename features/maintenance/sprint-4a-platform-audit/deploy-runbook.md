@@ -6,6 +6,9 @@
 
 Every SQL step below lives in a committed file. Paste from the file, not from this page, so the runbook can never drift from the SQL that was reviewed.
 
+> ### Status 2026-09-21: Sprint 4D is also live (`7635aca`).
+> Web only, no API or database change: pages fetch alongside `/profile/me` (F-69), the circle, book-detail and friend-profile sections load in parallel (F-70/b/c), and the GET cache is cleared on sign-out and sign-in (F-71, privacy). `qa/live_checks.py` passed 15/15 immediately after. Still unshipped and waiting on the PM: **4C** (needs its migration SQL first — its startup guard refuses to start without the columns) and **4E** (design only).
+>
 > ### ⚠️ Status 2026-09-20: 4A is already live. Pushing to `master` is the deploy.
 > Render (backend) and Vercel (web) **auto-deploy on every push to `master`**. This runbook assumed a manual deploy after the SQL, but every 4A commit went live as it was pushed. Production served `6213ea0` when this was found.
 > - **No breakage:** `qa/live_checks.py` passed **15/15** on the live 4A build. 4A's only model change is unique constraints, not columns, and nothing creates tables at startup, so the absent constraints crash nothing.
