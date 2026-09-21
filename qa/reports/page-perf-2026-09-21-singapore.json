@@ -1,0 +1,2852 @@
+{
+  "meta": {
+    "date": "2026-09-21",
+    "web": "https://www.trackmyread.com",
+    "api": "https://book-tracker-sg.onrender.com",
+    "runs": 3,
+    "apiWake": {
+      "ms": 228,
+      "version": {
+        "commit": "90b0c271388a7b225c64e4a8d6fb7384f5ad72a0",
+        "service": "book-tracker-sg",
+        "branch": "master"
+      }
+    }
+  },
+  "results": [
+    {
+      "profile": "desktop",
+      "page": "/",
+      "name": "Landing",
+      "finalPath": "/",
+      "cold": {
+        "ttfb": 96.79999995231628,
+        "fcp": 560,
+        "lcp": 560,
+        "ready": 320.0999999642372,
+        "jsBytes": 210073
+      },
+      "warm": {
+        "fcp": 336,
+        "lcp": 336,
+        "ready": 172.89999997615814
+      },
+      "apiCalls": 0,
+      "slowest": null,
+      "apiFailed": [],
+      "blockedWrites": 0,
+      "errors": []
+    },
+    {
+      "profile": "desktop",
+      "page": "/about",
+      "name": "About",
+      "finalPath": "/about",
+      "cold": {
+        "ttfb": 106.69999998807907,
+        "fcp": 380,
+        "lcp": 380,
+        "ready": 270.5999999642372,
+        "jsBytes": 210073
+      },
+      "warm": {
+        "fcp": 236,
+        "lcp": 236,
+        "ready": 149.5
+      },
+      "apiCalls": 0,
+      "slowest": null,
+      "apiFailed": [],
+      "blockedWrites": 0,
+      "errors": []
+    },
+    {
+      "profile": "desktop",
+      "page": "/privacy",
+      "name": "Privacy",
+      "finalPath": "/privacy",
+      "cold": {
+        "ttfb": 151,
+        "fcp": 444,
+        "lcp": 444,
+        "ready": 369.30000001192093,
+        "jsBytes": 210073
+      },
+      "warm": {
+        "fcp": 260,
+        "lcp": 260,
+        "ready": 193.19999998807907
+      },
+      "apiCalls": 0,
+      "slowest": null,
+      "apiFailed": [],
+      "blockedWrites": 0,
+      "errors": []
+    },
+    {
+      "profile": "desktop",
+      "page": "/terms",
+      "name": "Terms",
+      "finalPath": "/terms",
+      "cold": {
+        "ttfb": 123.80000001192093,
+        "fcp": 468,
+        "lcp": 468,
+        "ready": 405.89999997615814,
+        "jsBytes": 210073
+      },
+      "warm": {
+        "fcp": 280,
+        "lcp": 280,
+        "ready": 221.0999999642372
+      },
+      "apiCalls": 0,
+      "slowest": null,
+      "apiFailed": [],
+      "blockedWrites": 0,
+      "errors": []
+    },
+    {
+      "profile": "desktop",
+      "page": "/blog",
+      "name": "Blog index",
+      "finalPath": "/blog",
+      "cold": {
+        "ttfb": 149.60000002384186,
+        "fcp": 476,
+        "lcp": 476,
+        "ready": 375.69999998807907,
+        "jsBytes": 210073
+      },
+      "warm": {
+        "fcp": 392,
+        "lcp": 392,
+        "ready": 249.89999997615814
+      },
+      "apiCalls": 0,
+      "slowest": null,
+      "apiFailed": [],
+      "blockedWrites": 0,
+      "errors": []
+    },
+    {
+      "profile": "desktop",
+      "page": "/blog/goodreads-alternative",
+      "name": "Blog post",
+      "finalPath": "/blog/goodreads-alternative",
+      "cold": {
+        "ttfb": 133.10000002384186,
+        "fcp": 448,
+        "lcp": 448,
+        "ready": 333.2000000476837,
+        "jsBytes": 210073
+      },
+      "warm": {
+        "fcp": 272,
+        "lcp": 272,
+        "ready": 185.39999997615814
+      },
+      "apiCalls": 0,
+      "slowest": null,
+      "apiFailed": [],
+      "blockedWrites": 0,
+      "errors": []
+    },
+    {
+      "profile": "desktop",
+      "page": "/this-page-does-not-exist",
+      "name": "404",
+      "finalPath": "/",
+      "cold": {
+        "ttfb": 126.5,
+        "fcp": 440,
+        "lcp": 572,
+        "ready": 334.10000002384186,
+        "jsBytes": 210073
+      },
+      "warm": {
+        "fcp": 452,
+        "lcp": 540,
+        "ready": 220.29999995231628
+      },
+      "apiCalls": 0,
+      "slowest": null,
+      "apiFailed": [],
+      "blockedWrites": 0,
+      "errors": []
+    },
+    {
+      "profile": "desktop",
+      "page": "/home",
+      "name": "Home feed",
+      "finalPath": "/home",
+      "cold": {
+        "ttfb": 111.90000003576279,
+        "fcp": 696,
+        "lcp": 1388,
+        "ready": 1104,
+        "jsBytes": 210073
+      },
+      "warm": {
+        "fcp": 432,
+        "lcp": 760,
+        "ready": 562
+      },
+      "apiCalls": 7,
+      "slowest": {
+        "call": "GET /notes/feed",
+        "ms": 485
+      },
+      "apiFailed": [],
+      "blockedWrites": 0,
+      "errors": [],
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/userbooks/",
+          "start": 616,
+          "end": 862,
+          "status": 200,
+          "st": {
+            "dbMs": 7.254,
+            "queries": 3,
+            "totalMs": 13.64
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/users/following",
+          "start": 617,
+          "end": 862,
+          "status": 200,
+          "st": {
+            "dbMs": 15.391,
+            "queries": 4,
+            "totalMs": 81.61
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/notifications/unread-count",
+          "start": 612,
+          "end": 955,
+          "status": 200,
+          "st": {
+            "dbMs": 12.759,
+            "queries": 2,
+            "totalMs": 81.578
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/profile/me",
+          "start": 619,
+          "end": 955,
+          "status": 200,
+          "st": {
+            "dbMs": 17.578,
+            "queries": 5,
+            "totalMs": 87.08
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/userbooks/friends/currently-reading",
+          "start": 618,
+          "end": 955,
+          "status": 200,
+          "st": {
+            "dbMs": 18.971,
+            "queries": 6,
+            "totalMs": 90.597
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/books/recommendations",
+          "start": 617,
+          "end": 996,
+          "status": 200,
+          "st": {
+            "dbMs": 137.274,
+            "queries": 12,
+            "totalMs": 156.505
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/notes/feed",
+          "start": 619,
+          "end": 1104,
+          "status": 200,
+          "st": {
+            "dbMs": 39.959,
+            "queries": 8,
+            "totalMs": 179.724
+          }
+        }
+      ]
+    },
+    {
+      "profile": "desktop",
+      "page": "/library",
+      "name": "Library",
+      "finalPath": "/library",
+      "cold": {
+        "ttfb": 131.0999999642372,
+        "fcp": 400,
+        "lcp": 400,
+        "ready": 564,
+        "jsBytes": 210073
+      },
+      "warm": {
+        "fcp": 252,
+        "lcp": 252,
+        "ready": 358
+      },
+      "apiCalls": 4,
+      "slowest": {
+        "call": "GET /profile/me",
+        "ms": 169
+      },
+      "apiFailed": [],
+      "blockedWrites": 0,
+      "errors": [],
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/reading-activity/daily",
+          "start": 395,
+          "end": 552,
+          "status": 200,
+          "st": {
+            "dbMs": 7.75,
+            "queries": 2,
+            "totalMs": 18.091
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/notifications/unread-count",
+          "start": 392,
+          "end": 558,
+          "status": 200,
+          "st": {
+            "dbMs": 10.267,
+            "queries": 2,
+            "totalMs": 17.536
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/userbooks/",
+          "start": 395,
+          "end": 560,
+          "status": 200,
+          "st": {
+            "dbMs": 10.379,
+            "queries": 3,
+            "totalMs": 18.784
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/profile/me",
+          "start": 395,
+          "end": 564,
+          "status": 200,
+          "st": {
+            "dbMs": 14.43,
+            "queries": 5,
+            "totalMs": 23.964
+          }
+        }
+      ]
+    },
+    {
+      "profile": "desktop",
+      "page": "/library/book/856",
+      "name": "Book detail",
+      "finalPath": "/library/book/856",
+      "cold": {
+        "ttfb": 135.69999998807907,
+        "fcp": 452,
+        "lcp": 732,
+        "ready": 664,
+        "jsBytes": 210073
+      },
+      "warm": {
+        "fcp": 252,
+        "lcp": 420,
+        "ready": 354
+      },
+      "apiCalls": 4,
+      "slowest": {
+        "call": "GET /notes/userbook/856",
+        "ms": 206
+      },
+      "apiFailed": [],
+      "blockedWrites": 0,
+      "errors": [],
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/notifications/unread-count",
+          "start": 456,
+          "end": 610,
+          "status": 200,
+          "st": {
+            "dbMs": 6.365,
+            "queries": 2,
+            "totalMs": 12.58
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/userbooks/",
+          "start": 457,
+          "end": 614,
+          "status": 200,
+          "st": {
+            "dbMs": 7.57,
+            "queries": 3,
+            "totalMs": 14.487
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/profile/me",
+          "start": 459,
+          "end": 664,
+          "status": 200,
+          "st": {
+            "dbMs": 12.865,
+            "queries": 5,
+            "totalMs": 19.666
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/notes/userbook/856",
+          "start": 458,
+          "end": 664,
+          "status": 200,
+          "st": {
+            "dbMs": 14.348,
+            "queries": 6,
+            "totalMs": 23.401
+          }
+        }
+      ]
+    },
+    {
+      "profile": "desktop",
+      "page": "/search",
+      "name": "Search",
+      "finalPath": "/search",
+      "cold": {
+        "ttfb": 124.80000001192093,
+        "fcp": 432,
+        "lcp": 432,
+        "ready": 591,
+        "jsBytes": 210073
+      },
+      "warm": {
+        "fcp": 220,
+        "lcp": 220,
+        "ready": 316
+      },
+      "apiCalls": 2,
+      "slowest": {
+        "call": "GET /profile/me",
+        "ms": 162
+      },
+      "apiFailed": [],
+      "blockedWrites": 0,
+      "errors": [],
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/notifications/unread-count",
+          "start": 427,
+          "end": 587,
+          "status": 200,
+          "st": {
+            "dbMs": 5.865,
+            "queries": 2,
+            "totalMs": 10.937
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/profile/me",
+          "start": 429,
+          "end": 591,
+          "status": 200,
+          "st": {
+            "dbMs": 11.799,
+            "queries": 5,
+            "totalMs": 18.497
+          }
+        }
+      ]
+    },
+    {
+      "profile": "desktop",
+      "page": "/groups",
+      "name": "Circles",
+      "finalPath": "/groups",
+      "cold": {
+        "ttfb": 124.19999998807907,
+        "fcp": 632,
+        "lcp": 632,
+        "ready": 872,
+        "jsBytes": 210073
+      },
+      "warm": {
+        "fcp": 212,
+        "lcp": 212,
+        "ready": 361
+      },
+      "apiCalls": 6,
+      "slowest": {
+        "call": "GET /groups/discover",
+        "ms": 212
+      },
+      "apiFailed": [],
+      "blockedWrites": 0,
+      "errors": [],
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/groups/invites/pending",
+          "start": 664,
+          "end": 843,
+          "status": 200,
+          "st": {
+            "dbMs": 7.115,
+            "queries": 2,
+            "totalMs": 14.781
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/notifications/unread-count",
+          "start": 645,
+          "end": 852,
+          "status": 200,
+          "st": {
+            "dbMs": 8.229,
+            "queries": 2,
+            "totalMs": 18.232
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/groups/my",
+          "start": 646,
+          "end": 855,
+          "status": 200,
+          "st": {
+            "dbMs": 14.466,
+            "queries": 5,
+            "totalMs": 25.89
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/groups/discover",
+          "start": 646,
+          "end": 858,
+          "status": 200,
+          "st": {
+            "dbMs": 16.983,
+            "queries": 6,
+            "totalMs": 28.665
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/profile/me",
+          "start": 669,
+          "end": 859,
+          "status": 200,
+          "st": {
+            "dbMs": 13.262,
+            "queries": 5,
+            "totalMs": 27.055
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/groups/my/pending",
+          "start": 667,
+          "end": 872,
+          "status": 200,
+          "st": {
+            "dbMs": 5.689,
+            "queries": 2,
+            "totalMs": 38.979
+          }
+        }
+      ]
+    },
+    {
+      "profile": "desktop",
+      "page": "/groups/7",
+      "name": "Circle detail",
+      "finalPath": "/groups/7",
+      "cold": {
+        "ttfb": 113.30000001192093,
+        "fcp": 340,
+        "lcp": 708,
+        "ready": 605,
+        "jsBytes": 210073
+      },
+      "warm": {
+        "fcp": 1080,
+        "lcp": 1420,
+        "ready": 1336
+      },
+      "apiCalls": 9,
+      "slowest": {
+        "call": "GET /groups/7/members",
+        "ms": 264
+      },
+      "apiFailed": [],
+      "blockedWrites": 0,
+      "errors": [],
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/groups/7/goal",
+          "start": 342,
+          "end": 477,
+          "status": 200,
+          "st": {
+            "dbMs": 9.099,
+            "queries": 2,
+            "totalMs": 17.327
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/groups/7",
+          "start": 343,
+          "end": 492,
+          "status": 200,
+          "st": {
+            "dbMs": 12.801,
+            "queries": 4,
+            "totalMs": 25.485
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/groups/7/activity",
+          "start": 343,
+          "end": 492,
+          "status": 200,
+          "st": {
+            "dbMs": 13.044,
+            "queries": 4,
+            "totalMs": 26.107
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/groups/7/posts",
+          "start": 342,
+          "end": 578,
+          "status": 200,
+          "st": {
+            "dbMs": 21.925,
+            "queries": 6,
+            "totalMs": 117.023
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/groups/7/leaderboard",
+          "start": 342,
+          "end": 590,
+          "status": 200,
+          "st": {
+            "dbMs": 112.726,
+            "queries": 8,
+            "totalMs": 130.305
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/notifications/unread-count",
+          "start": 339,
+          "end": 590,
+          "status": 200,
+          "st": {
+            "dbMs": 10.304,
+            "queries": 2,
+            "totalMs": 128.769
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/groups/7/members",
+          "start": 341,
+          "end": 605,
+          "status": 200,
+          "st": {
+            "dbMs": 13.042,
+            "queries": 4,
+            "totalMs": 134.402
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/groups/7/pending",
+          "start": 493,
+          "end": 605,
+          "status": 200,
+          "st": {
+            "dbMs": 8.419,
+            "queries": 3,
+            "totalMs": 17.268
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/profile/me",
+          "start": 345,
+          "end": 605,
+          "status": 200,
+          "st": {
+            "dbMs": 17.986,
+            "queries": 5,
+            "totalMs": 139.346
+          }
+        }
+      ]
+    },
+    {
+      "profile": "desktop",
+      "page": "/groups/new",
+      "name": "New circle",
+      "finalPath": "/groups/new",
+      "cold": {
+        "ttfb": 124.19999998807907,
+        "fcp": 1840,
+        "lcp": 1840,
+        "ready": 2003,
+        "jsBytes": 210073
+      },
+      "warm": {
+        "fcp": 304,
+        "lcp": 304,
+        "ready": 375
+      },
+      "apiCalls": 2,
+      "slowest": {
+        "call": "GET /profile/me",
+        "ms": 168
+      },
+      "apiFailed": [],
+      "blockedWrites": 0,
+      "errors": [],
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/notifications/unread-count",
+          "start": 1835,
+          "end": 1997,
+          "status": 200,
+          "st": {
+            "dbMs": 5.419,
+            "queries": 2,
+            "totalMs": 10.98
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/profile/me",
+          "start": 1835,
+          "end": 2003,
+          "status": 200,
+          "st": {
+            "dbMs": 13.679,
+            "queries": 5,
+            "totalMs": 20.826
+          }
+        }
+      ]
+    },
+    {
+      "profile": "desktop",
+      "page": "/join/UwjDrfsDmiI",
+      "name": "Join via invite",
+      "finalPath": "/join/UwjDrfsDmiI",
+      "cold": {
+        "ttfb": 126.60000002384186,
+        "fcp": 368,
+        "lcp": 396,
+        "ready": 545,
+        "jsBytes": 210073
+      },
+      "warm": {
+        "fcp": 184,
+        "lcp": 208,
+        "ready": 274
+      },
+      "apiCalls": 3,
+      "slowest": {
+        "call": "GET /notifications/unread-count",
+        "ms": 174
+      },
+      "apiFailed": [],
+      "blockedWrites": 1,
+      "errors": [],
+      "calls": [
+        {
+          "method": "POST",
+          "path": "/groups/join/UwjDrfsDmiI",
+          "start": 369,
+          "end": 374,
+          "status": "blocked",
+          "st": null
+        },
+        {
+          "method": "GET",
+          "path": "/notifications/unread-count",
+          "start": 368,
+          "end": 542,
+          "status": 200,
+          "st": {
+            "dbMs": 6.037,
+            "queries": 2,
+            "totalMs": 10.077
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/profile/me",
+          "start": 371,
+          "end": 545,
+          "status": 200,
+          "st": {
+            "dbMs": 12.594,
+            "queries": 5,
+            "totalMs": 18.298
+          }
+        }
+      ]
+    },
+    {
+      "profile": "desktop",
+      "page": "/insights",
+      "name": "Insights",
+      "finalPath": "/insights",
+      "cold": {
+        "ttfb": 100.20000004768372,
+        "fcp": 364,
+        "lcp": 592,
+        "ready": 523,
+        "jsBytes": 210073
+      },
+      "warm": {
+        "fcp": 196,
+        "lcp": 352,
+        "ready": 308
+      },
+      "apiCalls": 3,
+      "slowest": {
+        "call": "GET /reading-activity/insights",
+        "ms": 159
+      },
+      "apiFailed": [],
+      "blockedWrites": 0,
+      "errors": [],
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/notifications/unread-count",
+          "start": 364,
+          "end": 512,
+          "status": 200,
+          "st": {
+            "dbMs": 6.204,
+            "queries": 2,
+            "totalMs": 13.29
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/reading-activity/insights",
+          "start": 364,
+          "end": 523,
+          "status": 200,
+          "st": {
+            "dbMs": 11.426,
+            "queries": 4,
+            "totalMs": 18.24
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/profile/me",
+          "start": 365,
+          "end": 523,
+          "status": 200,
+          "st": {
+            "dbMs": 12.332,
+            "queries": 5,
+            "totalMs": 20.593
+          }
+        }
+      ]
+    },
+    {
+      "profile": "desktop",
+      "page": "/notifications",
+      "name": "Notifications",
+      "finalPath": "/notifications",
+      "cold": {
+        "ttfb": 149.5999999642372,
+        "fcp": 412,
+        "lcp": 412,
+        "ready": 608,
+        "jsBytes": 210073
+      },
+      "warm": {
+        "fcp": 208,
+        "lcp": 208,
+        "ready": 310
+      },
+      "apiCalls": 3,
+      "slowest": {
+        "call": "GET /profile/me",
+        "ms": 194
+      },
+      "apiFailed": [],
+      "blockedWrites": 0,
+      "errors": [],
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/notifications/unread-count",
+          "start": 411,
+          "end": 553,
+          "status": 200,
+          "st": {
+            "dbMs": 7.16,
+            "queries": 2,
+            "totalMs": 12.765
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/notifications/history",
+          "start": 414,
+          "end": 553,
+          "status": 200,
+          "st": {
+            "dbMs": 10.143,
+            "queries": 2,
+            "totalMs": 16.796
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/profile/me",
+          "start": 414,
+          "end": 608,
+          "status": 200,
+          "st": {
+            "dbMs": 14.703,
+            "queries": 5,
+            "totalMs": 21.867
+          }
+        }
+      ]
+    },
+    {
+      "profile": "desktop",
+      "page": "/profile",
+      "name": "My profile",
+      "finalPath": "/profile",
+      "cold": {
+        "ttfb": 125.69999998807907,
+        "fcp": 352,
+        "lcp": 704,
+        "ready": 627,
+        "jsBytes": 210073
+      },
+      "warm": {
+        "fcp": 192,
+        "lcp": 356,
+        "ready": 298
+      },
+      "apiCalls": 7,
+      "slowest": {
+        "call": "GET /notes/me",
+        "ms": 274
+      },
+      "apiFailed": [],
+      "blockedWrites": 0,
+      "errors": [],
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/notifications/unread-count",
+          "start": 352,
+          "end": 528,
+          "status": 200,
+          "st": {
+            "dbMs": 6.111,
+            "queries": 2,
+            "totalMs": 11.307
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/reading-activity/daily",
+          "start": 354,
+          "end": 540,
+          "status": 200,
+          "st": {
+            "dbMs": 8.074,
+            "queries": 2,
+            "totalMs": 13.188
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/userbooks/",
+          "start": 354,
+          "end": 541,
+          "status": 200,
+          "st": {
+            "dbMs": 7.986,
+            "queries": 3,
+            "totalMs": 14.016
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/profile/me",
+          "start": 352,
+          "end": 549,
+          "status": 200,
+          "st": {
+            "dbMs": 13.436,
+            "queries": 5,
+            "totalMs": 21.142
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/reading-activity/insights",
+          "start": 355,
+          "end": 611,
+          "status": 200,
+          "st": {
+            "dbMs": 15.019,
+            "queries": 4,
+            "totalMs": 79.767
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/profile/me",
+          "start": 356,
+          "end": 614,
+          "status": 200,
+          "st": {
+            "dbMs": 20.305,
+            "queries": 5,
+            "totalMs": 82.958
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/notes/me",
+          "start": 353,
+          "end": 627,
+          "status": 200,
+          "st": {
+            "dbMs": 24.155,
+            "queries": 8,
+            "totalMs": 96.476
+          }
+        }
+      ]
+    },
+    {
+      "profile": "desktop",
+      "page": "/profile/111",
+      "name": "Friend's profile",
+      "finalPath": "/profile/111",
+      "cold": {
+        "ttfb": 94.19999998807907,
+        "fcp": 308,
+        "lcp": 656,
+        "ready": 597,
+        "jsBytes": 210073
+      },
+      "warm": {
+        "fcp": 200,
+        "lcp": 396,
+        "ready": 343
+      },
+      "apiCalls": 8,
+      "slowest": {
+        "call": "GET /notes/user/111",
+        "ms": 288
+      },
+      "apiFailed": [],
+      "blockedWrites": 0,
+      "errors": [],
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/users/111/stats",
+          "start": 313,
+          "end": 496,
+          "status": 200,
+          "st": {
+            "dbMs": 11.256,
+            "queries": 4,
+            "totalMs": 21.411
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/reading-activity/user/111/daily",
+          "start": 311,
+          "end": 508,
+          "status": 200,
+          "st": {
+            "dbMs": 9.618,
+            "queries": 3,
+            "totalMs": 19.403
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/profile/me",
+          "start": 314,
+          "end": 509,
+          "status": 200,
+          "st": {
+            "dbMs": 17.355,
+            "queries": 5,
+            "totalMs": 23.575
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/reading-activity/user/111/daily",
+          "start": 313,
+          "end": 522,
+          "status": 200,
+          "st": {
+            "dbMs": 11.026,
+            "queries": 3,
+            "totalMs": 19.745
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/userbooks/user/111",
+          "start": 308,
+          "end": 522,
+          "status": 200,
+          "st": {
+            "dbMs": 15.041,
+            "queries": 4,
+            "totalMs": 21.972
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/profile/111",
+          "start": 314,
+          "end": 522,
+          "status": 200,
+          "st": {
+            "dbMs": 16.949,
+            "queries": 7,
+            "totalMs": 28.189
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/notifications/unread-count",
+          "start": 307,
+          "end": 560,
+          "status": 200,
+          "st": {
+            "dbMs": 5.456,
+            "queries": 2,
+            "totalMs": 9.849
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/notes/user/111",
+          "start": 309,
+          "end": 597,
+          "status": 200,
+          "st": {
+            "dbMs": 23.021,
+            "queries": 9,
+            "totalMs": 32.189
+          }
+        }
+      ]
+    },
+    {
+      "profile": "desktop",
+      "page": "/settings",
+      "name": "Settings",
+      "finalPath": "/settings",
+      "cold": {
+        "ttfb": 131.19999998807907,
+        "fcp": 476,
+        "lcp": 476,
+        "ready": 611,
+        "jsBytes": 210073
+      },
+      "warm": {
+        "fcp": 240,
+        "lcp": 240,
+        "ready": 341
+      },
+      "apiCalls": 4,
+      "slowest": {
+        "call": "GET /notifications/unread-count",
+        "ms": 139
+      },
+      "apiFailed": [],
+      "blockedWrites": 0,
+      "errors": [],
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/notifications/prefs",
+          "start": 473,
+          "end": 598,
+          "status": 200,
+          "st": {
+            "dbMs": 4.112,
+            "queries": 1,
+            "totalMs": 8.48
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/notifications/unread-count",
+          "start": 471,
+          "end": 610,
+          "status": 200,
+          "st": {
+            "dbMs": 5.847,
+            "queries": 2,
+            "totalMs": 12.517
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/profile/me",
+          "start": 474,
+          "end": 611,
+          "status": 200,
+          "st": {
+            "dbMs": 12.693,
+            "queries": 5,
+            "totalMs": 19.295
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/profile/me",
+          "start": 472,
+          "end": 611,
+          "status": 200,
+          "st": {
+            "dbMs": 12.115,
+            "queries": 5,
+            "totalMs": 17.74
+          }
+        }
+      ]
+    },
+    {
+      "profile": "desktop",
+      "page": "/onboarding",
+      "name": "Onboarding",
+      "finalPath": "/onboarding",
+      "cold": {
+        "ttfb": 124.70000004768372,
+        "fcp": 344,
+        "lcp": 584,
+        "ready": 511,
+        "jsBytes": 210073
+      },
+      "warm": {
+        "fcp": 172,
+        "lcp": 320,
+        "ready": 264
+      },
+      "apiCalls": 1,
+      "slowest": {
+        "call": "GET /profile/me",
+        "ms": 165
+      },
+      "apiFailed": [],
+      "blockedWrites": 0,
+      "errors": [],
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/profile/me",
+          "start": 346,
+          "end": 511,
+          "status": 200,
+          "st": {
+            "dbMs": 11.87,
+            "queries": 5,
+            "totalMs": 18.121
+          }
+        }
+      ]
+    },
+    {
+      "profile": "desktop",
+      "page": "/admin",
+      "name": "Admin (non-admin user)",
+      "finalPath": "/home",
+      "cold": {
+        "ttfb": 105.19999998807907,
+        "fcp": 340,
+        "lcp": 1308,
+        "ready": 738,
+        "jsBytes": 210073
+      },
+      "warm": {
+        "fcp": 176,
+        "lcp": 640,
+        "ready": 478
+      },
+      "apiCalls": 7,
+      "slowest": {
+        "call": "GET /books/recommendations",
+        "ms": 199
+      },
+      "apiFailed": [],
+      "blockedWrites": 0,
+      "errors": [],
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/profile/me",
+          "start": 340,
+          "end": 521,
+          "status": 200,
+          "st": {
+            "dbMs": 13.651,
+            "queries": 5,
+            "totalMs": 20.17
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/notifications/unread-count",
+          "start": 537,
+          "end": 640,
+          "status": 200,
+          "st": {
+            "dbMs": 6.674,
+            "queries": 2,
+            "totalMs": 12.46
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/userbooks/friends/currently-reading",
+          "start": 540,
+          "end": 646,
+          "status": 200,
+          "st": {
+            "dbMs": 15.917,
+            "queries": 6,
+            "totalMs": 23.874
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/users/following",
+          "start": 540,
+          "end": 661,
+          "status": 200,
+          "st": {
+            "dbMs": 10.149,
+            "queries": 4,
+            "totalMs": 29.824
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/notes/feed",
+          "start": 541,
+          "end": 664,
+          "status": 200,
+          "st": {
+            "dbMs": 18.375,
+            "queries": 8,
+            "totalMs": 34.493
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/userbooks/",
+          "start": 538,
+          "end": 664,
+          "status": 200,
+          "st": {
+            "dbMs": 9.506,
+            "queries": 3,
+            "totalMs": 40.251
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/books/recommendations",
+          "start": 539,
+          "end": 738,
+          "status": 200,
+          "st": {
+            "dbMs": 40.127,
+            "queries": 12,
+            "totalMs": 51.648
+          }
+        }
+      ]
+    },
+    {
+      "profile": "mobile",
+      "page": "/",
+      "name": "Landing",
+      "finalPath": "/",
+      "cold": {
+        "ttfb": 115,
+        "fcp": 2272,
+        "lcp": 2272,
+        "ready": 1862.5,
+        "jsBytes": 210073
+      },
+      "warm": {
+        "fcp": 2028,
+        "lcp": 2028,
+        "ready": 1612.699999988079
+      },
+      "apiCalls": 0,
+      "slowest": null,
+      "apiFailed": [],
+      "blockedWrites": 0,
+      "errors": []
+    },
+    {
+      "profile": "mobile",
+      "page": "/about",
+      "name": "About",
+      "finalPath": "/about",
+      "cold": {
+        "ttfb": 125,
+        "fcp": 2148,
+        "lcp": 2148,
+        "ready": 1752.5,
+        "jsBytes": 210073
+      },
+      "warm": {
+        "fcp": 1996,
+        "lcp": 1996,
+        "ready": 1661.2999999523163
+      },
+      "apiCalls": 0,
+      "slowest": null,
+      "apiFailed": [],
+      "blockedWrites": 0,
+      "errors": []
+    },
+    {
+      "profile": "mobile",
+      "page": "/privacy",
+      "name": "Privacy",
+      "finalPath": "/privacy",
+      "cold": {
+        "ttfb": 110,
+        "fcp": 2128,
+        "lcp": 2128,
+        "ready": 1782,
+        "jsBytes": 210073
+      },
+      "warm": {
+        "fcp": 2208,
+        "lcp": 2208,
+        "ready": 1818.300000011921
+      },
+      "apiCalls": 0,
+      "slowest": null,
+      "apiFailed": [],
+      "blockedWrites": 0,
+      "errors": []
+    },
+    {
+      "profile": "mobile",
+      "page": "/terms",
+      "name": "Terms",
+      "finalPath": "/terms",
+      "cold": {
+        "ttfb": 107.79999995231628,
+        "fcp": 2188,
+        "lcp": 2188,
+        "ready": 1800.5999999642372,
+        "jsBytes": 210073
+      },
+      "warm": {
+        "fcp": 1868,
+        "lcp": 1868,
+        "ready": 1661.699999988079
+      },
+      "apiCalls": 0,
+      "slowest": null,
+      "apiFailed": [],
+      "blockedWrites": 0,
+      "errors": []
+    },
+    {
+      "profile": "mobile",
+      "page": "/blog",
+      "name": "Blog index",
+      "finalPath": "/blog",
+      "cold": {
+        "ttfb": 101.40000003576279,
+        "fcp": 2108,
+        "lcp": 2108,
+        "ready": 1738.5,
+        "jsBytes": 210073
+      },
+      "warm": {
+        "fcp": 1980,
+        "lcp": 1980,
+        "ready": 1604.800000011921
+      },
+      "apiCalls": 0,
+      "slowest": null,
+      "apiFailed": [],
+      "blockedWrites": 0,
+      "errors": []
+    },
+    {
+      "profile": "mobile",
+      "page": "/blog/goodreads-alternative",
+      "name": "Blog post",
+      "finalPath": "/blog/goodreads-alternative",
+      "cold": {
+        "ttfb": 112.40000003576279,
+        "fcp": 2104,
+        "lcp": 2104,
+        "ready": 1734.7000000476837,
+        "jsBytes": 210073
+      },
+      "warm": {
+        "fcp": 2024,
+        "lcp": 2024,
+        "ready": 1635.5
+      },
+      "apiCalls": 0,
+      "slowest": null,
+      "apiFailed": [],
+      "blockedWrites": 0,
+      "errors": []
+    },
+    {
+      "profile": "mobile",
+      "page": "/this-page-does-not-exist",
+      "name": "404",
+      "finalPath": "/",
+      "cold": {
+        "ttfb": 103.39999997615814,
+        "fcp": 2220,
+        "lcp": 2220,
+        "ready": 1737.800000011921,
+        "jsBytes": 210073
+      },
+      "warm": {
+        "fcp": 2124,
+        "lcp": 2124,
+        "ready": 1654.0999999642372
+      },
+      "apiCalls": 0,
+      "slowest": null,
+      "apiFailed": [],
+      "blockedWrites": 0,
+      "errors": []
+    },
+    {
+      "profile": "mobile",
+      "page": "/home",
+      "name": "Home feed",
+      "finalPath": "/home",
+      "cold": {
+        "ttfb": 124.19999998807907,
+        "fcp": 2320,
+        "lcp": 3428,
+        "ready": 2821,
+        "jsBytes": 210073
+      },
+      "warm": {
+        "fcp": 2196,
+        "lcp": 3420,
+        "ready": 2667
+      },
+      "apiCalls": 7,
+      "slowest": {
+        "call": "GET /notes/feed",
+        "ms": 460
+      },
+      "apiFailed": [],
+      "blockedWrites": 0,
+      "errors": [],
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/users/following",
+          "start": 2360,
+          "end": 2620,
+          "status": 200,
+          "st": {
+            "dbMs": 14.041,
+            "queries": 4,
+            "totalMs": 21.906
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/profile/me",
+          "start": 2362,
+          "end": 2650,
+          "status": 200,
+          "st": {
+            "dbMs": 17.172,
+            "queries": 5,
+            "totalMs": 22.247
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/userbooks/",
+          "start": 2357,
+          "end": 2685,
+          "status": 200,
+          "st": {
+            "dbMs": 10.014,
+            "queries": 3,
+            "totalMs": 19.017
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/notifications/unread-count",
+          "start": 2357,
+          "end": 2690,
+          "status": 200,
+          "st": {
+            "dbMs": 6.454,
+            "queries": 2,
+            "totalMs": 11.241
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/userbooks/friends/currently-reading",
+          "start": 2360,
+          "end": 2696,
+          "status": 200,
+          "st": {
+            "dbMs": 15.917,
+            "queries": 6,
+            "totalMs": 23.508
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/books/recommendations",
+          "start": 2359,
+          "end": 2727,
+          "status": 200,
+          "st": {
+            "dbMs": 40.955,
+            "queries": 12,
+            "totalMs": 49.759
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/notes/feed",
+          "start": 2361,
+          "end": 2821,
+          "status": 200,
+          "st": {
+            "dbMs": 18.985,
+            "queries": 8,
+            "totalMs": 37.683
+          }
+        }
+      ]
+    },
+    {
+      "profile": "mobile",
+      "page": "/library",
+      "name": "Library",
+      "finalPath": "/library",
+      "cold": {
+        "ttfb": 124.5,
+        "fcp": 2032,
+        "lcp": 2032,
+        "ready": 2366,
+        "jsBytes": 210073
+      },
+      "warm": {
+        "fcp": 1996,
+        "lcp": 1996,
+        "ready": 2244
+      },
+      "apiCalls": 4,
+      "slowest": {
+        "call": "GET /notifications/unread-count",
+        "ms": 316
+      },
+      "apiFailed": [],
+      "blockedWrites": 0,
+      "errors": [],
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/reading-activity/daily",
+          "start": 2051,
+          "end": 2340,
+          "status": 200,
+          "st": {
+            "dbMs": 7.872,
+            "queries": 2,
+            "totalMs": 14.132
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/userbooks/",
+          "start": 2052,
+          "end": 2361,
+          "status": 200,
+          "st": {
+            "dbMs": 8.997,
+            "queries": 3,
+            "totalMs": 14.693
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/notifications/unread-count",
+          "start": 2050,
+          "end": 2366,
+          "status": 200,
+          "st": {
+            "dbMs": 5.607,
+            "queries": 2,
+            "totalMs": 10.489
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/profile/me",
+          "start": 2052,
+          "end": 2366,
+          "status": 200,
+          "st": {
+            "dbMs": 15.389,
+            "queries": 5,
+            "totalMs": 21.68
+          }
+        }
+      ]
+    },
+    {
+      "profile": "mobile",
+      "page": "/library/book/856",
+      "name": "Book detail",
+      "finalPath": "/library/book/856",
+      "cold": {
+        "ttfb": 104.60000002384186,
+        "fcp": 2104,
+        "lcp": 2104,
+        "ready": 2459,
+        "jsBytes": 210073
+      },
+      "warm": {
+        "fcp": 1944,
+        "lcp": 1984,
+        "ready": 2243
+      },
+      "apiCalls": 4,
+      "slowest": {
+        "call": "GET /profile/me",
+        "ms": 334
+      },
+      "apiFailed": [],
+      "blockedWrites": 0,
+      "errors": [],
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/notes/userbook/856",
+          "start": 2124,
+          "end": 2397,
+          "status": 200,
+          "st": {
+            "dbMs": 12.761,
+            "queries": 6,
+            "totalMs": 19.877
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/notifications/unread-count",
+          "start": 2123,
+          "end": 2424,
+          "status": 200,
+          "st": {
+            "dbMs": 7.017,
+            "queries": 2,
+            "totalMs": 12.589
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/userbooks/",
+          "start": 2124,
+          "end": 2454,
+          "status": 200,
+          "st": {
+            "dbMs": 8.245,
+            "queries": 3,
+            "totalMs": 13.655
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/profile/me",
+          "start": 2125,
+          "end": 2459,
+          "status": 200,
+          "st": {
+            "dbMs": 14.265,
+            "queries": 5,
+            "totalMs": 19.958
+          }
+        }
+      ]
+    },
+    {
+      "profile": "mobile",
+      "page": "/search",
+      "name": "Search",
+      "finalPath": "/search",
+      "cold": {
+        "ttfb": 125.5,
+        "fcp": 2248,
+        "lcp": 2248,
+        "ready": 2574,
+        "jsBytes": 210073
+      },
+      "warm": {
+        "fcp": 2100,
+        "lcp": 2100,
+        "ready": 2333
+      },
+      "apiCalls": 2,
+      "slowest": {
+        "call": "GET /notifications/unread-count",
+        "ms": 303
+      },
+      "apiFailed": [],
+      "blockedWrites": 0,
+      "errors": [],
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/profile/me",
+          "start": 2272,
+          "end": 2544,
+          "status": 200,
+          "st": {
+            "dbMs": 14.423,
+            "queries": 5,
+            "totalMs": 23.875
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/notifications/unread-count",
+          "start": 2271,
+          "end": 2574,
+          "status": 200,
+          "st": {
+            "dbMs": 5.399,
+            "queries": 2,
+            "totalMs": 9.879
+          }
+        }
+      ]
+    },
+    {
+      "profile": "mobile",
+      "page": "/groups",
+      "name": "Circles",
+      "finalPath": "/groups",
+      "cold": {
+        "ttfb": 189,
+        "fcp": 2184,
+        "lcp": 2184,
+        "ready": 2614,
+        "jsBytes": 210073
+      },
+      "warm": {
+        "fcp": 2008,
+        "lcp": 2008,
+        "ready": 2301
+      },
+      "apiCalls": 6,
+      "slowest": {
+        "call": "GET /groups/discover",
+        "ms": 348
+      },
+      "apiFailed": [],
+      "blockedWrites": 0,
+      "errors": [],
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/notifications/unread-count",
+          "start": 2264,
+          "end": 2564,
+          "status": 200,
+          "st": {
+            "dbMs": 5.964,
+            "queries": 2,
+            "totalMs": 14.814
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/groups/my",
+          "start": 2265,
+          "end": 2604,
+          "status": 200,
+          "st": {
+            "dbMs": 15.353,
+            "queries": 5,
+            "totalMs": 25.639
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/groups/my/pending",
+          "start": 2266,
+          "end": 2612,
+          "status": 200,
+          "st": {
+            "dbMs": 8.698,
+            "queries": 2,
+            "totalMs": 21.823
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/profile/me",
+          "start": 2267,
+          "end": 2612,
+          "status": 200,
+          "st": {
+            "dbMs": 18.729,
+            "queries": 5,
+            "totalMs": 29.392
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/groups/discover",
+          "start": 2265,
+          "end": 2613,
+          "status": 200,
+          "st": {
+            "dbMs": 20.254,
+            "queries": 6,
+            "totalMs": 35.367
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/groups/invites/pending",
+          "start": 2266,
+          "end": 2614,
+          "status": 200,
+          "st": {
+            "dbMs": 7.523,
+            "queries": 2,
+            "totalMs": 38.598
+          }
+        }
+      ]
+    },
+    {
+      "profile": "mobile",
+      "page": "/groups/7",
+      "name": "Circle detail",
+      "finalPath": "/groups/7",
+      "cold": {
+        "ttfb": 131.80000001192093,
+        "fcp": 2008,
+        "lcp": 3068,
+        "ready": 2543,
+        "jsBytes": 210073
+      },
+      "warm": {
+        "fcp": 1944,
+        "lcp": 2972,
+        "ready": 2398
+      },
+      "apiCalls": 9,
+      "slowest": {
+        "call": "GET /groups/7/leaderboard",
+        "ms": 335
+      },
+      "apiFailed": [],
+      "blockedWrites": 0,
+      "errors": [],
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/groups/7/goal",
+          "start": 2045,
+          "end": 2317,
+          "status": 200,
+          "st": {
+            "dbMs": 9.51,
+            "queries": 2,
+            "totalMs": 18.007
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/profile/me",
+          "start": 2047,
+          "end": 2336,
+          "status": 200,
+          "st": {
+            "dbMs": 16.396,
+            "queries": 5,
+            "totalMs": 22.046
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/groups/7",
+          "start": 2046,
+          "end": 2336,
+          "status": 200,
+          "st": {
+            "dbMs": 13.171,
+            "queries": 4,
+            "totalMs": 24.767
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/groups/7/activity",
+          "start": 2046,
+          "end": 2337,
+          "status": 200,
+          "st": {
+            "dbMs": 12.264,
+            "queries": 4,
+            "totalMs": 22.847
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/groups/7/members",
+          "start": 2044,
+          "end": 2373,
+          "status": 200,
+          "st": {
+            "dbMs": 14.442,
+            "queries": 4,
+            "totalMs": 22.955
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/notifications/unread-count",
+          "start": 2042,
+          "end": 2374,
+          "status": 200,
+          "st": {
+            "dbMs": 8.584,
+            "queries": 2,
+            "totalMs": 34.192
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/groups/7/leaderboard",
+          "start": 2044,
+          "end": 2379,
+          "status": 200,
+          "st": {
+            "dbMs": 21.447,
+            "queries": 8,
+            "totalMs": 49.674
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/groups/7/posts",
+          "start": 2046,
+          "end": 2380,
+          "status": 200,
+          "st": {
+            "dbMs": 18.085,
+            "queries": 6,
+            "totalMs": 43.767
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/groups/7/pending",
+          "start": 2349,
+          "end": 2543,
+          "status": 200,
+          "st": {
+            "dbMs": 8.884,
+            "queries": 3,
+            "totalMs": 16.081
+          }
+        }
+      ]
+    },
+    {
+      "profile": "mobile",
+      "page": "/groups/new",
+      "name": "New circle",
+      "finalPath": "/groups/new",
+      "cold": {
+        "ttfb": 125.69999998807907,
+        "fcp": 2340,
+        "lcp": 2340,
+        "ready": 2639,
+        "jsBytes": 210073
+      },
+      "warm": {
+        "fcp": 2048,
+        "lcp": 2048,
+        "ready": 2288
+      },
+      "apiCalls": 2,
+      "slowest": {
+        "call": "GET /profile/me",
+        "ms": 274
+      },
+      "apiFailed": [],
+      "blockedWrites": 0,
+      "errors": [],
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/notifications/unread-count",
+          "start": 2363,
+          "end": 2630,
+          "status": 200,
+          "st": {
+            "dbMs": 6.69,
+            "queries": 2,
+            "totalMs": 10.84
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/profile/me",
+          "start": 2365,
+          "end": 2639,
+          "status": 200,
+          "st": {
+            "dbMs": 12.253,
+            "queries": 5,
+            "totalMs": 18.374
+          }
+        }
+      ]
+    },
+    {
+      "profile": "mobile",
+      "page": "/join/UwjDrfsDmiI",
+      "name": "Join via invite",
+      "finalPath": "/join/UwjDrfsDmiI",
+      "cold": {
+        "ttfb": 153.5,
+        "fcp": 2160,
+        "lcp": 2352,
+        "ready": 2525,
+        "jsBytes": 210073
+      },
+      "warm": {
+        "fcp": 1964,
+        "lcp": 2132,
+        "ready": 2198
+      },
+      "apiCalls": 3,
+      "slowest": {
+        "call": "GET /profile/me",
+        "ms": 310
+      },
+      "apiFailed": [],
+      "blockedWrites": 1,
+      "errors": [],
+      "calls": [
+        {
+          "method": "POST",
+          "path": "/groups/join/UwjDrfsDmiI",
+          "start": 2214,
+          "end": 2227,
+          "status": "blocked",
+          "st": null
+        },
+        {
+          "method": "GET",
+          "path": "/notifications/unread-count",
+          "start": 2213,
+          "end": 2519,
+          "status": 200,
+          "st": {
+            "dbMs": 5.411,
+            "queries": 2,
+            "totalMs": 10.06
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/profile/me",
+          "start": 2215,
+          "end": 2525,
+          "status": 200,
+          "st": {
+            "dbMs": 13.335,
+            "queries": 5,
+            "totalMs": 19.98
+          }
+        }
+      ]
+    },
+    {
+      "profile": "mobile",
+      "page": "/insights",
+      "name": "Insights",
+      "finalPath": "/insights",
+      "cold": {
+        "ttfb": 140.10000002384186,
+        "fcp": 2104,
+        "lcp": 2796,
+        "ready": 2781,
+        "jsBytes": 210073
+      },
+      "warm": {
+        "fcp": 1956,
+        "lcp": 2584,
+        "ready": 2191
+      },
+      "apiCalls": 3,
+      "slowest": {
+        "call": "GET /notifications/unread-count",
+        "ms": 624
+      },
+      "apiFailed": [],
+      "blockedWrites": 0,
+      "errors": [],
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/profile/me",
+          "start": 2158,
+          "end": 2429,
+          "status": 200,
+          "st": {
+            "dbMs": 13.784,
+            "queries": 5,
+            "totalMs": 20.406
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/reading-activity/insights",
+          "start": 2158,
+          "end": 2430,
+          "status": 200,
+          "st": {
+            "dbMs": 11.794,
+            "queries": 4,
+            "totalMs": 18.514
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/notifications/unread-count",
+          "start": 2157,
+          "end": 2781,
+          "status": 200,
+          "st": {
+            "dbMs": 5.731,
+            "queries": 2,
+            "totalMs": 10.379
+          }
+        }
+      ]
+    },
+    {
+      "profile": "mobile",
+      "page": "/notifications",
+      "name": "Notifications",
+      "finalPath": "/notifications",
+      "cold": {
+        "ttfb": 140.80000001192093,
+        "fcp": 2288,
+        "lcp": 2288,
+        "ready": 2572,
+        "jsBytes": 210073
+      },
+      "warm": {
+        "fcp": 2088,
+        "lcp": 2088,
+        "ready": 2326
+      },
+      "apiCalls": 3,
+      "slowest": {
+        "call": "GET /profile/me",
+        "ms": 264
+      },
+      "apiFailed": [],
+      "blockedWrites": 0,
+      "errors": [],
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/notifications/unread-count",
+          "start": 2306,
+          "end": 2537,
+          "status": 200,
+          "st": {
+            "dbMs": 7.793,
+            "queries": 2,
+            "totalMs": 12.655
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/notifications/history",
+          "start": 2308,
+          "end": 2571,
+          "status": 200,
+          "st": {
+            "dbMs": 7.328,
+            "queries": 2,
+            "totalMs": 14.215
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/profile/me",
+          "start": 2308,
+          "end": 2572,
+          "status": 200,
+          "st": {
+            "dbMs": 13.915,
+            "queries": 5,
+            "totalMs": 19.336
+          }
+        }
+      ]
+    },
+    {
+      "profile": "mobile",
+      "page": "/profile",
+      "name": "My profile",
+      "finalPath": "/profile",
+      "cold": {
+        "ttfb": 99.69999998807907,
+        "fcp": 2052,
+        "lcp": 2908,
+        "ready": 2390,
+        "jsBytes": 210073
+      },
+      "warm": {
+        "fcp": 1980,
+        "lcp": 2756,
+        "ready": 2296
+      },
+      "apiCalls": 7,
+      "slowest": {
+        "call": "GET /profile/me",
+        "ms": 298
+      },
+      "apiFailed": [],
+      "blockedWrites": 0,
+      "errors": [],
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/notifications/unread-count",
+          "start": 2090,
+          "end": 2339,
+          "status": 200,
+          "st": {
+            "dbMs": 5.559,
+            "queries": 2,
+            "totalMs": 13.187
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/userbooks/",
+          "start": 2094,
+          "end": 2370,
+          "status": 200,
+          "st": {
+            "dbMs": 9.132,
+            "queries": 3,
+            "totalMs": 16.239
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/reading-activity/daily",
+          "start": 2095,
+          "end": 2373,
+          "status": 200,
+          "st": {
+            "dbMs": 7.497,
+            "queries": 2,
+            "totalMs": 16.901
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/reading-activity/insights",
+          "start": 2095,
+          "end": 2375,
+          "status": 200,
+          "st": {
+            "dbMs": 12.082,
+            "queries": 4,
+            "totalMs": 22.027
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/notes/me",
+          "start": 2092,
+          "end": 2377,
+          "status": 200,
+          "st": {
+            "dbMs": 18.612,
+            "queries": 8,
+            "totalMs": 29.381
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/profile/me",
+          "start": 2095,
+          "end": 2389,
+          "status": 200,
+          "st": {
+            "dbMs": 10.743,
+            "queries": 5,
+            "totalMs": 33.45
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/profile/me",
+          "start": 2092,
+          "end": 2390,
+          "status": 200,
+          "st": {
+            "dbMs": 10.892,
+            "queries": 5,
+            "totalMs": 33.077
+          }
+        }
+      ]
+    },
+    {
+      "profile": "mobile",
+      "page": "/profile/111",
+      "name": "Friend's profile",
+      "finalPath": "/profile/111",
+      "cold": {
+        "ttfb": 159.79999995231628,
+        "fcp": 2184,
+        "lcp": 3092,
+        "ready": 2628,
+        "jsBytes": 210073
+      },
+      "warm": {
+        "fcp": 2128,
+        "lcp": 2872,
+        "ready": 2448
+      },
+      "apiCalls": 8,
+      "slowest": {
+        "call": "GET /reading-activity/user/111/daily",
+        "ms": 375
+      },
+      "apiFailed": [],
+      "blockedWrites": 0,
+      "errors": [],
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/notifications/unread-count",
+          "start": 2249,
+          "end": 2534,
+          "status": 200,
+          "st": {
+            "dbMs": 5.724,
+            "queries": 2,
+            "totalMs": 13.213
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/reading-activity/user/111/daily",
+          "start": 2254,
+          "end": 2534,
+          "status": 200,
+          "st": {
+            "dbMs": 8.144,
+            "queries": 3,
+            "totalMs": 17.945
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/profile/me",
+          "start": 2257,
+          "end": 2569,
+          "status": 200,
+          "st": {
+            "dbMs": 12.517,
+            "queries": 5,
+            "totalMs": 23.373
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/profile/111",
+          "start": 2257,
+          "end": 2591,
+          "status": 200,
+          "st": {
+            "dbMs": 19.758,
+            "queries": 7,
+            "totalMs": 29.765
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/users/111/stats",
+          "start": 2255,
+          "end": 2591,
+          "status": 200,
+          "st": {
+            "dbMs": 10.291,
+            "queries": 4,
+            "totalMs": 31.612
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/notes/user/111",
+          "start": 2253,
+          "end": 2612,
+          "status": 200,
+          "st": {
+            "dbMs": 19.495,
+            "queries": 9,
+            "totalMs": 45.389
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/userbooks/user/111",
+          "start": 2251,
+          "end": 2621,
+          "status": 200,
+          "st": {
+            "dbMs": 14.288,
+            "queries": 4,
+            "totalMs": 25.253
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/reading-activity/user/111/daily",
+          "start": 2253,
+          "end": 2628,
+          "status": 200,
+          "st": {
+            "dbMs": 8.256,
+            "queries": 3,
+            "totalMs": 13.66
+          }
+        }
+      ]
+    },
+    {
+      "profile": "mobile",
+      "page": "/settings",
+      "name": "Settings",
+      "finalPath": "/settings",
+      "cold": {
+        "ttfb": 99.80000001192093,
+        "fcp": 2360,
+        "lcp": 2360,
+        "ready": 2766,
+        "jsBytes": 210073
+      },
+      "warm": {
+        "fcp": 2212,
+        "lcp": 2212,
+        "ready": 2485
+      },
+      "apiCalls": 4,
+      "slowest": {
+        "call": "GET /profile/me",
+        "ms": 350
+      },
+      "apiFailed": [],
+      "blockedWrites": 0,
+      "errors": [],
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/notifications/prefs",
+          "start": 2415,
+          "end": 2725,
+          "status": 200,
+          "st": {
+            "dbMs": 3.611,
+            "queries": 1,
+            "totalMs": 8.714
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/notifications/unread-count",
+          "start": 2414,
+          "end": 2763,
+          "status": 200,
+          "st": {
+            "dbMs": 6.577,
+            "queries": 2,
+            "totalMs": 11.597
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/profile/me",
+          "start": 2415,
+          "end": 2765,
+          "status": 200,
+          "st": {
+            "dbMs": 12.314,
+            "queries": 5,
+            "totalMs": 17.586
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/profile/me",
+          "start": 2416,
+          "end": 2766,
+          "status": 200,
+          "st": {
+            "dbMs": 12.493,
+            "queries": 5,
+            "totalMs": 18.663
+          }
+        }
+      ]
+    },
+    {
+      "profile": "mobile",
+      "page": "/onboarding",
+      "name": "Onboarding",
+      "finalPath": "/onboarding",
+      "cold": {
+        "ttfb": 161.89999997615814,
+        "fcp": 1916,
+        "lcp": 2512,
+        "ready": 2170,
+        "jsBytes": 210073
+      },
+      "warm": {
+        "fcp": 1812,
+        "lcp": 2352,
+        "ready": 2010
+      },
+      "apiCalls": 1,
+      "slowest": {
+        "call": "GET /profile/me",
+        "ms": 245
+      },
+      "apiFailed": [],
+      "blockedWrites": 0,
+      "errors": [],
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/profile/me",
+          "start": 1925,
+          "end": 2170,
+          "status": 200,
+          "st": {
+            "dbMs": 12.138,
+            "queries": 5,
+            "totalMs": 19.7
+          }
+        }
+      ]
+    },
+    {
+      "profile": "mobile",
+      "page": "/admin",
+      "name": "Admin (non-admin user)",
+      "finalPath": "/home",
+      "cold": {
+        "ttfb": 152.5,
+        "fcp": 2008,
+        "lcp": 3720,
+        "ready": 3092,
+        "jsBytes": 210073
+      },
+      "warm": {
+        "fcp": 1908,
+        "lcp": 3184,
+        "ready": 3832
+      },
+      "apiCalls": 7,
+      "slowest": {
+        "call": "GET /notes/feed",
+        "ms": 319
+      },
+      "apiFailed": [],
+      "blockedWrites": 0,
+      "errors": [],
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/profile/me",
+          "start": 2015,
+          "end": 2256,
+          "status": 200,
+          "st": {
+            "dbMs": 13.078,
+            "queries": 5,
+            "totalMs": 20.258
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/userbooks/",
+          "start": 2769,
+          "end": 2947,
+          "status": 200,
+          "st": {
+            "dbMs": 10.05,
+            "queries": 3,
+            "totalMs": 17.456
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/notifications/unread-count",
+          "start": 2769,
+          "end": 2948,
+          "status": 200,
+          "st": {
+            "dbMs": 6.858,
+            "queries": 2,
+            "totalMs": 11.988
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/users/following",
+          "start": 2772,
+          "end": 2969,
+          "status": 200,
+          "st": {
+            "dbMs": 12.133,
+            "queries": 4,
+            "totalMs": 17.797
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/books/recommendations",
+          "start": 2771,
+          "end": 2995,
+          "status": 200,
+          "st": {
+            "dbMs": 37.152,
+            "queries": 12,
+            "totalMs": 49.174
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/userbooks/friends/currently-reading",
+          "start": 2773,
+          "end": 3005,
+          "status": 200,
+          "st": {
+            "dbMs": 17.579,
+            "queries": 6,
+            "totalMs": 42.973
+          }
+        },
+        {
+          "method": "GET",
+          "path": "/notes/feed",
+          "start": 2773,
+          "end": 3092,
+          "status": 200,
+          "st": {
+            "dbMs": 22.7,
+            "queries": 8,
+            "totalMs": 38.174
+          }
+        }
+      ]
+    }
+  ]
+}

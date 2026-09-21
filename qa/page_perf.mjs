@@ -284,7 +284,10 @@ async function main() {
   }
   await browser.close();
 
-  const date = new Date().toISOString().slice(0, 10);
+  // Date AND time: a second run on the same day silently overwrote the first one, and the
+  // earlier round had to be recovered from git (2026-09-21).
+  const stamp = new Date().toISOString().slice(0, 16).replace('T', '-').replace(':', '');
+  const date = stamp;
   const dir = path.join(REPO, 'qa', 'reports'); fs.mkdirSync(dir, { recursive: true });
   const meta = { date, web: WEB, api: API, runs: RUNS, apiWake: wake };
   fs.writeFileSync(path.join(dir, `page-perf-${date}.json`), JSON.stringify({ meta, results }, null, 2));
