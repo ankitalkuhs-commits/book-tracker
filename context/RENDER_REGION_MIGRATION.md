@@ -46,6 +46,32 @@ Two new ones this migration uses (both off unless set, tests in `tests/test_regi
 
 ---
 
+## Correction 2026-09-21: forwarding does NOT keep installed apps working
+
+`API_REDIRECT_BASE` was switched on for Oregon and then **switched straight back off**, because a redirect loses the reader's credentials:
+
+```
+Oregon /profile/me with a valid token     -> 307, location: https://book-tracker-sg.onrender.com/profile/me
+following it the way a cautious client does -> 401   (Authorization dropped on a cross-host redirect)
+following it with the header preserved      -> 200
+```
+
+Dropping `Authorization` when a redirect crosses hosts is standard client behaviour, and Android's HTTP stack (OkHttp, under React Native) does exactly that. So a forwarded app request arrives unauthenticated and the reader looks signed out. The earlier claim in this runbook — "installed apps keep working: their requests are forwarded, method and body intact" — was wrong about credentials, and was caught by testing it rather than reasoning about it.
+
+**So Oregon keeps serving the API normally** until Android 2.2.3 ships and readers update. `app/redirect_mode.py` stays in the codebase: it is correct for unauthenticated traffic, and harmless while unset.
+
+**Render's API will not downgrade a paid plan.** `PATCH /v1/services/{id}` with `serviceDetails.plan = free` returns a 500 every time, though the schema allows the field. Changing to Free is a dashboard action: **Settings → Instance Type → Free**.
+
+### Where this leaves the cost question
+
+| option | cost | installed Android apps |
+|---|---|---|
+| Oregon on **Free** (dashboard) | **no extra spend** | keep working; occasionally wait ~1 min after the service sleeps |
+| Oregon on Starter | ~$7/month | keep working, unchanged |
+| Oregon **suspended** | no extra spend | **break** until each reader updates to 2.2.3 |
+
+Recommended: **Free**, until 2.2.3 has spread; then suspend, then delete.
+
 ## Status 2026-09-21: the Singapore service exists, is verified, and is parked
 
 | | |
