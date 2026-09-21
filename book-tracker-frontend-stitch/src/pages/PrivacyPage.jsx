@@ -17,7 +17,7 @@ export default function PrivacyPage() {
       </button>
 
       <h1 className="font-serif text-3xl font-bold text-on-surface mb-2">Privacy Policy</h1>
-      <p className="text-sm text-on-surface-variant mb-8">Last updated: May 2026</p>
+      <p className="text-sm text-on-surface-variant mb-8">Last updated: September 2026</p>
 
       <div className="space-y-6">
         <section className="bg-surface-container-lowest rounded-3xl p-6 space-y-3">
@@ -28,6 +28,9 @@ export default function PrivacyPage() {
             <li><strong className="text-on-surface">Social data</strong> — followers, following, group memberships, and posts</li>
             <li><strong className="text-on-surface">Device tokens</strong> — for push notifications (Android/web)</li>
           </ul>
+          <p className="text-sm text-on-surface-variant leading-relaxed">
+            We store your device's time zone to work out your reading days and when to send reminders.
+          </p>
         </section>
 
         <section className="bg-surface-container-lowest rounded-3xl p-6 space-y-3">

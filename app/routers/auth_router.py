@@ -10,7 +10,7 @@ from google.oauth2 import id_token
 from google.auth.transport import requests
 from ..database import get_session
 from ..deps import get_db, get_current_user
-from .. import crud, auth, models
+from .. import crud, auth, models, localday
 from pydantic import BaseModel
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -34,7 +34,6 @@ def google_auth(payload: GoogleAuthIn, db: Session = Depends(get_session)):
     Verify Google OAuth token and create/login user.
     Accepts tokens from both Web and Android clients.
     """
-    from datetime import datetime, date
     import os
     
     # Accept both Web and Android client IDs
@@ -87,13 +86,11 @@ def google_auth(payload: GoogleAuthIn, db: Session = Depends(get_session)):
             user = crud.create_user(db, name=name, email=email, password_hash=hashed)
             is_new_user = True
         
-        # Update last_active only if date has changed
-        today = date.today()
-        if user.last_active is None or user.last_active.date() != today:
-            user.last_active = datetime.utcnow()
-            db.add(user)
-            db.commit()
-            db.refresh(user)
+        # Login is activity on the reader's day, whatever their zone (R-10). No date comparison.
+        user.last_active = localday.utcnow()
+        db.add(user)
+        db.commit()
+        db.refresh(user)
 
         # Create access token
         token = auth.create_access_token({"sub": user.email})
@@ -129,8 +126,6 @@ def review_login(payload: ReviewLoginIn, db: Session = Depends(get_session)):
     Returns 404 unless BOTH REVIEW_LOGIN_SECRET and REVIEW_LOGIN_EMAILS are set,
     so the route is unusable in local dev, in tests, and in any fork.
     """
-    from datetime import datetime, date
-
     configured_secret, allowlist = _review_login_config()
 
     # 1. Not opted in -> the route behaves as if it does not exist.
@@ -159,13 +154,11 @@ def review_login(payload: ReviewLoginIn, db: Session = Depends(get_session)):
         user = crud.create_user(db, name=name, email=email, password_hash=hashed)
         is_new_user = True
 
-    # last_active once per day — copied from google_auth (auth_router.py:129-135)
-    today = date.today()
-    if user.last_active is None or user.last_active.date() != today:
-        user.last_active = datetime.utcnow()
-        db.add(user)
-        db.commit()
-        db.refresh(user)
+    # Login is activity on the reader's day, whatever their zone (R-10). No date comparison.
+    user.last_active = localday.utcnow()
+    db.add(user)
+    db.commit()
+    db.refresh(user)
 
     token = auth.create_access_token({"sub": user.email})
     return {

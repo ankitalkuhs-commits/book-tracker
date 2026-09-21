@@ -4,10 +4,10 @@ from typing import Optional, Literal
 from sqlmodel import Session, select
 from sqlalchemy.exc import IntegrityError
 from ..deps import get_db, get_current_user
-from .. import crud, models
+from .. import crud, models, localday
 from typing import List
 from ..models import UserBook, Book, Follow   # adjust import path if different
-from datetime import datetime
+from datetime import datetime, timedelta
 from pydantic import BaseModel, conint, root_validator
 from app.models import UserBookProgress
 from app.database import get_db
@@ -82,25 +82,27 @@ def update_progress(userbook_id: int, data: UserBookProgress, background_tasks: 
         userbook.status = "reading"
         _fire_completed = False
 
+    now = localday.utcnow()
     # ✅ Always update timestamp
-    userbook.updated_at = datetime.utcnow()
+    userbook.updated_at = now
 
-    # ✅ Log reading activity if pages increased
+    # ✅ Log reading activity if pages increased — on the reader's LOCAL day (R-01, R-02)
     if new_page > old_page:
-        from ..models import ReadingActivity
         pages_read = new_page - old_page
-        today = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
-        
-        # Check if activity for today already exists
+        label = localday.day_label(localday.local_today(localday.zone_of(current_user), now))
+
+        # Check if activity for the local day already exists (half-open range: tolerates
+        # non-midnight values and stops a write merging into a FUTURE pre-4C row — D-4)
         existing_activity = db.exec(
             select(models.ReadingActivity)
             .where(models.ReadingActivity.user_id == userbook.user_id)
             .where(models.ReadingActivity.userbook_id == userbook_id)
-            .where(models.ReadingActivity.date >= today)
+            .where(models.ReadingActivity.date >= label)
+            .where(models.ReadingActivity.date < label + timedelta(days=1))
         ).first()
-        
+
         if existing_activity:
-            # Update existing activity
+            # Update existing activity — an old (local_day NULL) row keeps its flag (D-5 depends on it)
             existing_activity.pages_read = (existing_activity.pages_read or 0) + pages_read
             existing_activity.current_page = new_page
             db.add(existing_activity)
@@ -109,9 +111,11 @@ def update_progress(userbook_id: int, data: UserBookProgress, background_tasks: 
             activity = models.ReadingActivity(
                 user_id=userbook.user_id,
                 userbook_id=userbook_id,
-                date=today,
+                date=label,
                 pages_read=pages_read,
                 current_page=new_page,
+                local_day=True,
+                created_at=now,
             )
             db.add(activity)
 

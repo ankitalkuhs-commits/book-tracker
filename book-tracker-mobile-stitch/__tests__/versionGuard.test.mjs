@@ -93,8 +93,13 @@ test('always_prints_compared_values', () => {
 test('committed_tree_passes_strict', () => {
   const r = spawnSync(process.execPath, ['scripts/check-version-bump.js', '--strict'], { cwd: MOBILE_ROOT, encoding: 'utf8' });
   assert.equal(r.status, 0, r.stdout + r.stderr);
-  assert.match(r.stdout, /61/);
-  assert.match(r.stdout, /60/);
+  // Sprint 4C (K-11): the committed versionCode/lastVersionCode move with every
+  // release, so read the expected numbers from the two committed JSON files
+  // instead of hard-coding them.
+  const appJson = JSON.parse(readMobile('app.json'));
+  const lastReleased = JSON.parse(readMobile('release/last-released.json'));
+  assert.match(r.stdout, new RegExp(String(appJson.expo.android.versionCode)));
+  assert.match(r.stdout, new RegExp(String(lastReleased.versionCode)));
 });
 
 test('script_uses_no_network_env_or_child_process', () => {
