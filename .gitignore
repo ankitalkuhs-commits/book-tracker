@@ -70,3 +70,7 @@ qa/screenshots/
 
 # service id written by the migration steps (not a secret, but machine-local)
 .render-sg-service-id
+
+# Google Play service-account key (publishing); never commit
+.play-service-account.json
+play-service-account*.json
