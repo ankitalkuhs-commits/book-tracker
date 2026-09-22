@@ -48,6 +48,14 @@ Social layer of TrackMyRead: feed of notes/reflections, follows, likes, comments
 
 ---
 
+## Screens / sprints
+
+| Node | Status | What it covers |
+|---|---|---|
+| [`sprint-4f-activity-engine/`](sprint-4f-activity-engine/) | planned (spec + architecture drafted 2026-09-22, escalations open) | Openly labelled bot accounts that post on a schedule: `user.is_bot` and the badge on every author surface, `POST /auth/bot-login`, `deny_bot_actor` on follow/like/comment, GitHub Actions replacing the paid Render cron, the per-bot daily cap and the `BOT_ENABLED` kill switch, and bot exclusion from `/admin/stats`. Replaces `editorial_bot.py`'s direct `INSERT INTO note`. |
+
+---
+
 ## Notes / Posts
 
 The primary social objects are `Note` records (table: `note`). They are NOT called "journals" — that's the old system.
