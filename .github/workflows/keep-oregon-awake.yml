@@ -1,0 +1,37 @@
+name: Keep Oregon awake (old app versions)
+
+# Why this exists
+# ---------------
+# The Oregon service (book-tracker-stitch) is on Render's Free plan, which spins a service down
+# after 15 minutes without traffic and then takes about a minute to wake. Installed Android apps
+# before 2.2.3 call that service and have no cold-start retry, so a reader opening the app after a
+# quiet spell simply sees login fail. That happened on 2026-09-22: last request 06:59, shutdown
+# 07:14, back at 07:53.
+#
+# A ping every 10 minutes keeps it awake at no cost. Render's free tier includes 750 instance-hours
+# a month, enough for one service running continuously; Render does not document this approach, so
+# treat it as a stopgap rather than a guarantee.
+#
+# DELETE THIS WORKFLOW once Android 2.2.3 has spread: from then on, apps call
+# api.trackmyread.com (Singapore) and Oregon can sleep or be suspended.
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'    # GitHub may delay scheduled runs under load; 10 min leaves headroom
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wake the Oregon service
+        run: |
+          for attempt in 1 2 3; do
+            code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 90 \
+                   https://book-tracker-stitch.onrender.com/version || true)
+            echo "attempt $attempt -> HTTP $code"
+            if [ "$code" = "200" ]; then exit 0; fi
+            sleep 20
+          done
+          echo "::warning::Oregon did not answer 200 after 3 attempts; old app versions may be seeing cold starts"
+          exit 0            # never fail the workflow: this is a keep-alive, not a health gate
