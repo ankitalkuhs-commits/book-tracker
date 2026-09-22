@@ -1,9 +1,10 @@
 ---
 screen: sprint-4f-activity-engine
 feature: community
-status: architecture-complete, escalations open
-last_verified: 2026-09-22
+status: architecture-complete, all nine escalations decided
+last_verified: 2026-09-23
 architect_verified: 2026-09-22 — every file:line in this document was read on branch sprint-4f-community-activity (base master @ b98228a). Line numbers are from that commit; Sprint 4E rewrites several of the same functions (see "Merge order").
+revised: 2026-09-23 @ 3065172 — E-5/E-7 replaced the direct-connection dedup with an API-side atomic dedup. The files read for that revision, on this branch: `app/routers/notes_router.py:46-61` (`NoteCreateSchema`), `:133-199` (`create_note`), `app/crud.py:112-131` (`crud.create_note`), `app/database.py:60-68` (`get_db`), `app/routers/follow_router.py:37-44` (the IntegrityError → error-response precedent), `app/models.py:30-43` (`User`), `app/main.py:133-148` (router registration). Every other line number in this document is unchanged from the 2026-09-22 verification.
 depends_on: Sprint 4C (shipped code, unshipped release — `app/localday.py`, `app/schema_guard.py`), Sprint 4E (in build — heavy file overlap in `notes_router.py`)
 ---
 
@@ -12,11 +13,12 @@ depends_on: Sprint 4C (shipped code, unshipped release — `app/localday.py`, `a
 | Risk | Where it bites | What this design does |
 |---|---|---|
 | **A reader mistakes a bot for a person.** The regulated failure mode, and the reason the "ordinary readers" idea is refused. | Feed, profile, search, comments | Two independent labels: a database flag surfaced in every API author object and badged by both clients (R-01..R-04), plus a fixed line inside the post text that every client, every cache state and every screen reader gets for free (R-05a). |
-| **Android cannot be updated remotely.** No OTA channel; last Play release is 2.2.1. The badge reaches installed apps only when readers update. | Android feed and profile | R-05a is the floor. E-1 asks the PM whether the bots wait for the store build or start behind the text label. |
+| **Android cannot be updated remotely.** No OTA channel; last Play release is 2.2.1. The badge reaches installed apps only when readers update. | Android feed and profile | R-05a is the floor, and the PM accepted it as the label Android readers get for some weeks (E-1). The bots start now; the badge arrives as an upgrade. |
 | **The bot token is a normal reader token.** If it leaks it can act as that account. | Anything `POST`-able | The account owns no reader data; every engagement endpoint 403s on `is_bot` (R-05); the token lives 15 minutes; only a shared secret is stored, and clearing it on Render revokes everything. |
+| **A production database credential in a world-readable CI.** The repository is verified **PUBLIC**. | GitHub Actions | The bot holds no database credential. `DATABASE_URL` is never an Actions secret (E-5/E-7). Dedup moved into the API, inside the note's own transaction. |
 | **Moving to the API introduces the bot into reader metrics.** `deps.py:87` stamps `last_active` on every authenticated request. Today's SQL bot never authenticates. | `/admin/stats`, admin user list | R-16 excludes bots from the counts and reports them separately. This is a cost of doing the right thing, not an accident. |
-| **The circle roundup aggregates other readers' reading.** | `@TMRCircles` posts | Public circles only, aggregate counts only, a k-anonymity floor, and E-3 in front of the PM before a single such post goes out. |
-| **Quotes from in-copyright books.** | `@TMRQuotes` posts | Public-domain pool only until E-6 is answered. |
+| **The circle roundup aggregates other readers' reading.** | `@TMRCircles` posts | Public circles only, aggregate counts only, and the k-anonymity floor the PM confirmed in E-3 (≥3 readers across ≥2 public circles). Below the floor the slot posts a second prompt. |
+| **Quotes from in-copyright books.** | `@TMRQuotes` posts | Public-domain pool only, checked into the repository, decided (E-6). |
 | **File overlap with Sprint 4E.** 4E's package P3 rewrites the same functions this sprint edits. | `notes_router.py`, `likes_comments.py`, `crud.py`, `admin_router.py`, `deps.py` | 4F merges after 4E. See "Merge order". |
 
 ---
@@ -68,7 +70,8 @@ Line numbers are master @ b98228a.
 | File:line | Today | After |
 |---|---|---|
 | `app/models.py:36` (`User`) | `is_admin`, `is_private_profile`, … | `+ is_bot: bool = Field(default=False, index=True)`. Indexed because R-16's counts filter on it on every `/admin/stats` call |
-| `app/schema_guard.py:11` `REQUIRED_COLUMNS` | 2 entries (4C) | `+ ("user", "is_bot")` — **added in the deploy that follows the migration, never in the same push.** The guard exits the process at startup when a column is missing (`:30`), which is the intended behaviour and is why the ordering in "Deploy order" is not negotiable |
+| `app/models.py` (new class) | — | `BotPost` — the SQLModel for the `bot_post` table below. It has to exist as a model, not just a table, because the API now writes it (E-5) inside `create_note`'s session |
+| `app/schema_guard.py:11` `REQUIRED_COLUMNS` | 2 entries (4C) | `+ ("user", "is_bot")` and `+ ("bot_post", "dedup_key")` — **added in the deploy that follows the migration, never in the same push.** The guard exits the process at startup when a column is missing (`schema_guard.py:31-34`), which is the intended behaviour and is why the ordering in "Deploy order" is not negotiable. A *missing table* produces no `information_schema` row either, so the same entry covers it. On SQLite the guard returns immediately (`:17-18`) and `create_all` builds `bot_post` for the test suite |
 | `app/routers/auth_router.py:122` `review_login` | the pattern to copy | unchanged |
 | `app/routers/auth_router.py` (new, after `:169`) | — | `POST /auth/bot-login`. Env-gated 404, allowlist + domain + `is_bot` + constant-time secret, all evaluated before one 401. **Never creates a user.** Returns `create_access_token({"sub": user.email}, expires_delta=timedelta(minutes=15))` |
 | `app/deps.py` (new, after `get_admin_user` at `:129`) | — | `deny_bot_actor(current_user = Depends(get_current_user))` → 403 `"Automated accounts cannot interact with readers' posts"` when `current_user.is_bot`. Reads the row, not a claim |
@@ -89,7 +92,12 @@ Line numbers are master @ b98228a.
 | `profile_router.py:228` (`base`) | public profile | `+ "is_bot"` |
 | `users_router.py:15` `UserSearchResult` | typed model | `+ is_bot: bool = False` |
 | `groups_router.py:844`, `:883`, `:1129` | group post / member author | `+ "is_bot"`. A bot cannot post here; the field exists so an accident renders visibly |
+| `notes_router.py:46` `NoteCreateSchema` | 8 optional fields | `+ dedup_key: Optional[str] = None`. The schema is shared with `PUT /notes/{id}` (`:54`'s own comment says so), which simply never reads the field |
 | `notes_router.py:134` `create_note` | no cap | after `get_current_user`, `if current_user.is_bot:` count that user's notes in the last 24 h and raise **429** above 2. One query, bots only |
+| `notes_router.py:161` (the `crud.create_note` call) | one `db.commit()` inside `crud.create_note` (`crud.py:129`) | the bot-dedup path calls it with `commit=False` and commits once itself, with the `BotPost` row in the same transaction. See "Atomic dedup" below |
+| `app/crud.py:112` `create_note` | `db.add` → `db.commit` → `db.refresh` (`:128-130`) | `+ commit: bool = True`. When false: `db.add(note)`, `db.flush()` (which assigns the `SERIAL` id), return — no commit, no refresh. `notes_router.py:161` is its **only** caller in `app/`, so the default keeps every existing path byte-identical |
+| `app/routers/bots_router.py` (new) | — | `GET /bots/posted?content_type=…&since=…` → `{"dedup_keys": [...]}`. `Depends(get_current_user)`, then 403 unless `current_user.is_bot`. Read-only, no reader data, one indexed query on `ix_bot_post_posted` |
+| `app/main.py:148` | 16 `include_router` calls | `+ app.include_router(bots_router.router)` |
 | `admin_router.py:91`, `:95`, `:100` | `count(User.id)` | `+ .where(User.is_bot == False)` |
 | `admin_router.py:127` | `count(Note.id)` | `+ join User, .where(User.is_bot == False)` |
 | `admin_router.py:23` `PlatformStats` | 14 fields | `+ bot_users: int = 0`, `+ bot_notes: int = 0` |
@@ -123,7 +131,7 @@ Line numbers are master @ b98228a.
 
 | File | Change |
 |---|---|
-| `bots/` (new package) | `bots/common.py` (login, post, cap handling, dedup, the R-05a line), `bots/bestsellers.py` (the NYT + Gemini logic lifted from `editorial_bot.py`), `bots/prompts.py`, `bots/quotes.py`, `bots/circles.py`, `bots/content/prompts.json`, `bots/content/quotes.json` |
+| `bots/` (new package) | `bots/common.py` (login, `GET /bots/posted`, post, cap/409 handling, the R-05a line), `bots/bestsellers.py` (the NYT + Gemini logic lifted from `editorial_bot.py`, **minus** its `create_engine` / `INSERT` — `editorial_bot.py:287-290`), `bots/prompts.py`, `bots/quotes.py`, `bots/circles.py` (falls through to `bots/prompts.py` below the k-floor, E-3), `bots/content/prompts.json`, `bots/content/quotes.json`. **No `sqlalchemy` import anywhere in `bots/`, and a test asserts that** |
 | `editorial_bot.py` | **deleted** once `bots/bestsellers.py` has posted successfully twice in production. Not before — it is the only working implementation of the cover-lookup chain and the Gemini fallback |
 | `.github/workflows/tmr-bots.yml` (new) | one workflow, seven cron entries, a `content_type` chosen from the day, plus `workflow_dispatch` with a `type` input |
 | `context/deployment/README.md` | the new env vars, both kill switches with the click path, and the note that the Render cron job is deleted |
@@ -149,6 +157,16 @@ UPDATE "user" SET is_bot = true
  WHERE email IN ('tmrbot@trackmyread.com','tmrprompts@trackmyread.com',
                  'tmrquotes@trackmyread.com','tmrcircles@trackmyread.com');
 
+-- E-9: rename @TMRBot and give every bot a bio that opens "Automated account."
+-- Same session, same step. The other three bios are set by add_bot_accounts.py at creation.
+UPDATE "user"
+   SET name = 'TrackMyRead Bestsellers',
+       bio  = 'Automated account. Weekly picks from the New York Times bestseller lists.'
+ WHERE email = 'tmrbot@trackmyread.com';
+
+-- verify: must return 0
+SELECT count(*) FROM "user" WHERE is_bot AND COALESCE(bio,'') NOT LIKE 'Automated account.%';
+
 -- verify: must return exactly 4 rows, every is_bot true, every is_admin false
 SELECT id, email, username, is_bot, is_admin FROM "user" WHERE is_bot;
 -- verify: must return 0
@@ -172,17 +190,52 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_bot_post ON bot_post (content_type, dedup_k
 CREATE INDEX IF NOT EXISTS ix_bot_post_posted ON bot_post (content_type, posted_at DESC);
 ```
 
-Bestsellers read **both** tables when deciding what is already posted, so no book that `@TMRBot` has ever posted comes back. New bestseller rows are written to `bot_post` only; `editorial_post` becomes read-only history.
+**Only the API ever touches this table** (E-5). The bot reads it through `GET /bots/posted` and never writes it at all — the write is the server's, inside the note's transaction. `note_id` stays nullable because it is audit information, not the dedup key; correctness lives entirely in `uq_bot_post`.
+
+Bestsellers read **both** tables when deciding what is already posted, so no book that `@TMRBot` has ever posted comes back. `GET /bots/posted?content_type=bestseller` therefore returns the union of `bot_post.dedup_key` and `editorial_post.nyt_isbn` — the union is computed server-side, in one place, rather than by every caller. New bestseller rows are written to `bot_post` only; `editorial_post` becomes read-only history.
 
 Both statements are additive, re-runnable and touch no existing row. **Neither is run by this sprint.** They go into `context/PM_SQL_QUEUE.md` as new steps 4 and 5, in that order, and the PM runs them.
+
+### Atomic dedup — verified buildable
+
+This is the part of E-5's decision that could have failed, so it was checked against the code rather than assumed.
+
+`crud.create_note` (`app/crud.py:112-131`) is a plain `db.add(note)` / `db.commit()` / `db.refresh(note)` — no nested transaction, no `begin()`, no savepoint — and `notes_router.py:161` is its **only** caller in `app/` (verified by grep over `app/`). `get_db` (`app/database.py:60-68`) yields one `Session` per request and only closes it; it never commits or begins on the caller's behalf. So the request handler owns the transaction boundary outright, and the note's `INSERT` and the `bot_post` `INSERT` can share one commit:
+
+```python
+# notes_router.py, create_note — the bot branch only
+dedup = payload.dedup_key if current_user.is_bot else None   # reader: silently ignored
+note = crud.create_note(db, ..., commit=(dedup is None))
+if dedup is not None:
+    db.add(models.BotPost(bot_email=current_user.email, content_type=...,
+                          dedup_key=dedup, note_id=note.id))   # note.id exists: flush assigned it
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()          # the note goes with it — nothing was committed
+        raise HTTPException(status_code=409, detail="Already posted")
+    db.refresh(note)
+```
+
+Three things make this correct rather than merely plausible:
+
+- `db.flush()` inside the `commit=False` branch assigns the `SERIAL` primary key without ending the transaction, so `note_id` is real and the row is still rollback-able.
+- The `IntegrityError` rollback discards the **whole** transaction, which is why a 409 creates no note. That is the required semantics, not a side effect to be worked around.
+- The `except IntegrityError: db.rollback(); raise HTTPException(...)` shape is already how this codebase turns a unique-index collision into an error response — `follow_router.py:39-44` does exactly this for the `follow` unique constraint.
+
+**Placement.** The block goes immediately after the `crud.create_note` call (`notes_router.py:161-173`) and **before** the group-activity hook and the response-shape block that follow it, so a 409 raises before `background_tasks.add_task` is reached. Both of those blocks then read a committed note, exactly as they do today. (In practice the hook is a no-op for a bot — it posts no `userbook_id` and is in no circle — but the ordering should not depend on that.)
+
+The `commit` keyword is the only change to `crud.py`, it defaults to the present behaviour, and the single existing call site does not pass it. **The two-endpoint fallback (`GET`/`POST /bots/dedup`) is therefore not needed and is not specified.**
+
+**One field, not two.** `bot_post` needs a `content_type` as well as a key, but adding a second request field to a schema shared with `PUT` is worse than namespacing the one. The bot sends `dedup_key` as `"<content_type>:<id>"` — `bestseller:9780593321447`, `prompt:41`, `quote:12`, `circles:2026-W39` — and the server splits on the first colon. A `dedup_key` whose prefix is not one of the four known content types is a **422**: unlike the reader case above, this field is bot-only and there is no old-client compatibility to protect, so failing loudly is free.
 
 ### Deploy order (not negotiable)
 
 1. PM runs the `is_bot` SQL and returns the verification output.
 2. PM runs the `bot_post` SQL.
-3. Deploy the API **with** `("user","is_bot")` in `schema_guard.REQUIRED_COLUMNS`. If step 1 were skipped, Render fails the deploy and the previous version keeps serving — which is the guard doing its job (`schema_guard.py:6-8`).
+3. Deploy the API **with** `("user","is_bot")` and `("bot_post","dedup_key")` in `schema_guard.REQUIRED_COLUMNS`. If step 1 or 2 were skipped, Render fails the deploy and the previous version keeps serving — which is the guard doing its job (`schema_guard.py:2-6`).
 4. Set `BOT_LOGIN_SECRET` and `BOT_LOGIN_EMAILS` on the API service. Until this moment `/auth/bot-login` is a 404 and no bot can post.
-5. Add the GitHub secrets and the `BOT_ENABLED` repository variable (`true`).
+5. Add the GitHub Actions secrets — **`BOT_LOGIN_SECRET`, `NYT_API_KEY`, `GEMINI_API_KEY`, and nothing else** — and the `BOT_ENABLED` repository variable (`true`). **`DATABASE_URL` is not on that list and must never be added** (E-5/E-7).
 6. Deploy web.
 7. Delete the Render cron job "TMR bot Cron Job".
 8. Android 2.2.4 ships on its own timeline (E-1).
@@ -199,21 +252,27 @@ GitHub Actions cron (UTC)
        ├─ POST https://api.trackmyread.com/auth/bot-login {email, secret}   -> 15-min token
        │     404 -> the route is not enabled on this service: fail loudly
        │     401 -> wrong secret / not a bot row: fail loudly, never retry
+       ├─ GET /bots/posted?content_type=<type>&since=<window>  -> ["bestseller:978…", …]
+       │     the keys already used. Filter the candidate pool BEFORE composing,
+       │     so no Gemini call is spent on something that would 409
        ├─ build content
-       │     bestseller: NYT list of the day -> drop ISBNs in editorial_post ∪ bot_post
+       │     bestseller: NYT list of the day -> drop ISBNs already returned above
+       │                 (the server's answer is editorial_post ∪ bot_post)
        │                 -> Gemini teaser (fallback: first sentence of the NYT description)
        │     prompt:     next unused id from bots/content/prompts.json (60-day window)
        │     quote:      next unused id from bots/content/quotes.json  (180-day window)
-       │     circles:    GET /groups/public aggregate; k-floor; skip if unmet
+       │     circles:    GET /groups/public aggregate; k-floor;
+       │                 below the floor -> fall through to a prompt (E-3)
        │     -> append the R-05a line
-       ├─ POST /notes/  {text, quote?, image_url?, is_public: true}
-       │     429 -> the server cap. Fail the run. Never retry
-       │     4xx/5xx -> fail the run. Write no dedup row
-       └─ INSERT INTO bot_post (…, note_id from the response)
-             failure here -> fail loudly, printing the note id that went unrecorded
+       └─ POST /notes/  {text, quote?, image_url?, is_public: true, dedup_key: "<type>:<id>"}
+             201 -> the note AND its bot_post row were committed together. Done
+             409 -> the key was taken between the GET and the POST. No note was created.
+                    Fail the run. Never retry
+             429 -> the server cap. Fail the run. Never retry
+             4xx/5xx -> fail the run. Nothing was written
 ```
 
-The bot's only database connection is the final `INSERT` and the dedup `SELECT`. E-5 offers a version with no database connection at all.
+**The bot opens no database connection at all, and the run ends at the `POST`.** There is no second write for a run to die between, which is why spec R-15 no longer has a "posted but unrecorded" failure mode to describe.
 
 ---
 
@@ -241,8 +300,9 @@ Notes that matter:
 - **Cron is UTC and has no DST.** India does not observe DST, so 13:30 UTC is 18:30 IST all year. No drift, unlike a US- or Europe-anchored schedule.
 - **GitHub delays scheduled runs under load** — sometimes by tens of minutes, and it drops them entirely at peak. `keep-oregon-awake.yml` already carries that warning in its header comment. A bot post is not time-critical, so the delay is acceptable and a drop is a skipped day.
 - **The jitter is a `sleep` before the work, not a cron trick.** 0–25 minutes, uniform. Combined with GitHub's own delay, posts land across a wide band and never on the half hour.
-- **Missed run: nothing.** No catch-up branch, no "post two today", no queue. The dedup tables make this safe: an unposted bestseller was never marked, so it is still eligible tomorrow.
-- **Cost.** Scheduled workflows are free on public repositories and consume Actions minutes on private ones. `keep-oregon-awake.yml` runs every 10 minutes — about 4,300 runs a month, well past the 2,000-minute free allowance for a private repo — which strongly implies this repository is public. **That needs confirming, and it matters for more than cost:** on a public repository the workflow file, its logs and every `echo` in it are public. Secrets are masked in logs, but a bot that printed a response body could leak one. See E-7.
+- **Missed run: nothing.** No catch-up branch, no "post two today", no queue. The dedup table makes this safe: an unposted bestseller was never marked, so it is still eligible tomorrow.
+- **The secrets this workflow holds, in full:** `BOT_LOGIN_SECRET`, `NYT_API_KEY`, `GEMINI_API_KEY`. The repository variable `BOT_ENABLED` is not a secret. **`DATABASE_URL` is not on this list and must never be added to it** — the bot has no database credential and no direct database access (E-5/E-7). If a future change appears to need one, that is a new escalation, not a workflow edit.
+- **Cost is not a constraint.** The repository is verified **PUBLIC** (`gh repo view --json visibility` → `{"visibility":"PUBLIC"}`, recorded in `pm-decisions.md`), and public repositories get unlimited GitHub-hosted Actions minutes. The keep-alive's ~4,300 runs a month and these seven runs a week cost nothing. What being public *does* cost is confidentiality: the workflow file, its logs and every `echo` in it are world-readable. See Security review §6.
 
 ---
 
@@ -263,6 +323,8 @@ What a leaked bot token reaches, endpoint by endpoint:
 | Anything under `/admin/*` | **No** | `get_admin_user` (`deps.py:129`) |
 | Follow / like / comment | **No** | `deny_bot_actor` 403s before any row is written (R-05) |
 | Post to the public feed | **Yes, capped** | 2 posts / 24 h, server-enforced (R-13) |
+| Read `GET /bots/posted` | **Yes** | It returns ISBNs, prompt ids and quote ids the bots have already used. No reader data, no reader identifier |
+| Reach the database directly | **No** | The bot holds no database credential at all (E-5). This is the capability the old design had and this one does not |
 | Read the public feed and public profiles | **Yes** | The same as any signed-in reader |
 | Build a library, post privately | **Yes** | Harmless and unused. Closing it would mean a capability model the codebase does not have; noted, not built |
 
@@ -291,17 +353,30 @@ It is a FastAPI dependency, so it runs **before** the handler body — before th
 
 It deliberately does **not** guard `POST /notes/` (a bot must post) or any `GET` (a bot reads the public feed to build the circle roundup).
 
+`GET /bots/posted` takes the **opposite** guard — 403 unless `current_user.is_bot` — so it is a separate three-line check in the route, not `deny_bot_actor` inverted. Two dependencies with opposite senses and similar names would be a mistake waiting to happen.
+
 ### 5. Privacy of the circle roundup
 
-The only content type that touches other readers' data. Rules, all enforced in `bots/circles.py` and re-stated in E-3 for the PM:
+The only content type that touches other readers' data. Rules, all enforced in `bots/circles.py`, all confirmed by the PM in E-3:
 - Public circles only. A private circle contributes nothing, not even to a count.
 - Aggregate counts only. No reader name, no username, no profile link, no circle name unless the circle is public.
-- A k-anonymity floor: a title is named only when at least 3 readers across at least 2 circles are reading it. Below the floor, the post is skipped entirely rather than reworded.
+- A k-anonymity floor: a title is named only when at least 3 readers across at least 2 circles are reading it. Below the floor, the roundup is not written at all — the slot posts a prompt instead, rather than a reworded roundup.
 - The bot reads this through the same API it posts with, as an ordinary signed-in account, so it can only see what any reader can see. It does not query the database for it.
 
 ### 6. Secrets in a public repository
 
-If the repository is public (see "Scheduling"), the workflow, its logs and the prompt text are all public. GitHub masks secret values in logs, but masking is best-effort: it does not survive base64, JSON-escaping, or a secret echoed as part of a larger string. Therefore `bots/common.py` never prints a response body, never prints a header, and prints only a status code and a note id. E-7 asks the PM to confirm the repository's visibility before the secret is created.
+**The repository is public. Verified, not inferred:** `gh repo view --json visibility` returned `{"visibility":"PUBLIC"}` for `ankitalkuhs-commits/book-tracker` (E-7, recorded in `pm-decisions.md`). Everything below follows from that fact rather than from the Actions-minutes guess the earlier draft made.
+
+Two consequences, in opposite directions.
+
+**The minutes concern is withdrawn.** Public repositories get unlimited GitHub-hosted Actions minutes. The keep-alive's ~4,300 runs a month and the seven bot runs a week cost nothing, and no part of this design needs to be trimmed for budget. E-7's "if private, confirm the minutes budget" branch is dead.
+
+**The credential concern is real and is what changed the design.** The workflow file, every run log and every `echo` in it are world-readable. So:
+
+- **No `DATABASE_URL`.** It is not created as an Actions secret, not for this sprint, not temporarily, not behind a comment saying it will be removed later. A production database URL in a public repository's CI is a credential whose disclosure is total and unrecoverable — the reason dedup moved into the API (E-5). The whole of the bot's database access is now `POST /notes/` and `GET /bots/posted`, both of which need only a 15-minute bot token.
+- The three secrets that do exist are each survivable. `BOT_LOGIN_SECRET` buys a 15-minute token for an account that owns no reader data and cannot follow, like or comment (§1); revoking it is one Render env edit. `NYT_API_KEY` and `GEMINI_API_KEY` are third-party read keys, rotatable, already in use.
+- **Masking is not a control.** GitHub masks secret values in logs on a best-effort basis: it does not survive base64, JSON-escaping, or a secret echoed as part of a larger string. So `bots/common.py` never prints a response body, never prints a header, and prints only a status code, a content type and a note id. Test C-12 enforces it, and runs its detector against a deliberately leaking call to prove the detector works.
+- The prompt and quote pools being public is harmless, and slightly good: a reader who finds `bots/content/prompts.json` learns exactly what the account is.
 
 ### 7. What is deliberately removed
 
@@ -343,23 +418,30 @@ House rule: every Critical and Major case names the **one-line product change th
 | B-22 | The streak-reminder query never selects a bot | Major | Remove `.where(User.is_bot == False)` from the scheduler |
 | B-23 | Every existing test in `tests/` passes **unedited** | Crit | Rename any existing key in a `user` dict |
 | B-24 | `POST /admin/bot/trigger` returns 404 | Minor | Restore the route |
-| B-25 | `schema_guard.REQUIRED_COLUMNS` contains `("user","is_bot")` | Major | Remove the entry (this is what makes a pre-migration deploy fail loudly) |
+| B-25 | `schema_guard.REQUIRED_COLUMNS` contains `("user","is_bot")` and `("bot_post","dedup_key")` | Major | Remove either entry (this is what makes a pre-migration deploy fail loudly) |
+| B-26 | A bot posting with a fresh `dedup_key` → 201, and exactly one `bot_post` row exists with that key and the returned note id | Crit | Drop the `db.add(BotPost(...))` |
+| B-27 | A bot posting with a `dedup_key` already used → **409, and `count(Note)` is unchanged** | Crit | Catch the `IntegrityError` without `db.rollback()`, so the note survives the collision |
+| B-28 | A **reader** posting with a `dedup_key` → 201, no `bot_post` row, no error | Crit | Honour the field without the `current_user.is_bot` condition |
+| B-29 | `GET /bots/posted` → 403 for a reader token, 200 for a bot token; the `bestseller` response includes an id present only in `editorial_post` | Crit | Read only `bot_post` for the union; or drop the `is_bot` check |
+| B-30 | `crud.create_note` called without `commit=` still commits (every existing note test passes unedited) | Crit | Flip the default to `commit=False` |
 
 ### The bot package (pytest, `tests/test_bot_content.py` — new file, no network)
 
 | # | Case | Sev | Mutation |
 |---|---|---|---|
-| C-01 | Every generated post ends with the exact R-05a line for its account | Crit | Make the line optional for one content type |
+| C-01 | Every generated post ends with the exact E-2 string for its account, compared character-for-character (em dash, lower-case "automated", the handle, no trailing punctuation) | Crit | Make the line optional for one content type, or change the em dash to a hyphen |
 | C-02 | The R-05a line is appended after model output, so a model that returns nothing still yields a labelled post | Crit | Move the append before generation |
 | C-03 | `is_public: true` is in the `POST /notes/` body for every type | Crit | Drop the key (F-17 would make every post private) |
-| C-04 | A non-2xx post response writes **no** `bot_post` row | Crit | Write the dedup row before checking the status |
-| C-05 | A 429 fails the run and does not retry | Major | Add a retry loop |
+| C-04 | Every `POST /notes/` body carries a `dedup_key` of the form `<content_type>:<id>` | Crit | Omit the key for one content type (the post would then be undeduplicated) |
+| C-04a | `bots/` imports no database driver — no `sqlalchemy`, no `psycopg2`, no `create_engine`, and no code reads `DATABASE_URL` | Crit | Re-add `editorial_bot.py:287-290`'s engine to `bots/common.py` |
+| C-05 | A 429 **or a 409** fails the run and does not retry | Major | Add a retry loop |
+| C-05a | Candidates returned by `GET /bots/posted` are filtered out **before** the Gemini call | Major | Move the filter after content generation (correct, but it burns a model call per skip) |
 | C-06 | Gemini raising still produces a bestseller post, via the description fallback | Major | Remove the `except` around `generate_post_text` |
 | C-07 | NYT raising produces **no** post and exit code 0 (a skipped day, not a fabricated one) | Major | Substitute placeholder book data on failure |
 | C-08 | Prompts do not repeat inside 60 days; quotes inside 180 | Major | Ignore `bot_post` when choosing |
-| C-09 | A bestseller already in **`editorial_post`** (not `bot_post`) is not re-posted | Crit | Read only `bot_post` |
+| C-09 | A bestseller already in **`editorial_post`** (not `bot_post`) is not re-posted — the bot honours what `GET /bots/posted` returned | Crit | Ignore the response and post the first NYT entry |
 | C-10 | The circle roundup names no reader and no private circle | Crit | Include the top reader's name in the text |
-| C-11 | Below the k-floor, the roundup posts nothing | Crit | Lower the floor to 1 |
+| C-11 | Below the k-floor, the roundup posts **a prompt**, never a softened roundup | Crit | Lower the floor to 1 |
 | C-12 | No log line contains the secret, a token, or a response body | Crit | `print(response.text)` on error |
 
 ### Clients
@@ -382,6 +464,8 @@ House rule: every Critical and Major case names the **one-line product change th
 | P-04 | `BOT_ENABLED=false` → the next run exits at step 1, and the log says why |
 | P-05 | An old `@TMRBot` post, made before this sprint, shows the badge on web |
 | P-06 | `/admin/stats` before and after a bot post: reader figures identical, `bot_notes` +1 |
+| P-07 | Settings → Secrets and variables → Actions lists **exactly** `BOT_LOGIN_SECRET`, `NYT_API_KEY`, `GEMINI_API_KEY` for these workflows, and **no `DATABASE_URL`** (E-5/E-7) |
+| P-08 | Re-dispatch a bestseller run for an already-posted key: 409 in the log, and `count(*)` on `note` for that bot is unchanged |
 
 ### Non-vacuity rules (from 4C, K-08 onward)
 
@@ -397,8 +481,8 @@ Five. File sets are disjoint. P1 must land before P2 (P2 reads the column P1 dec
 
 | # | Package | Files (exclusive) | Requirements |
 |---|---|---|---|
-| **P1** | Flag, token, guards | `app/models.py`, `app/schema_guard.py`, `app/routers/auth_router.py`, `app/deps.py`, `app/routers/follow_router.py`, `app/notifications/dispatcher.py`, `app/notifications/scheduler.py`, `migrations/add_bot_accounts.py` (new), `tests/test_bots.py` (B-01..B-12, B-21..B-25) | R-01, R-05, R-08 |
-| **P2** | Serialisation, cap, metrics | `app/routers/notes_router.py`, `app/routers/likes_comments.py`, `app/routers/profile_router.py`, `app/routers/users_router.py`, `app/routers/groups_router.py`, `app/routers/admin_router.py`, `tests/test_bots.py` (B-13..B-20) | R-02, R-13, R-16 |
+| **P1** | Flag, models, token, guards | `app/models.py` (`User.is_bot` **and** the `BotPost` model), `app/schema_guard.py`, `app/routers/auth_router.py`, `app/deps.py`, `app/routers/follow_router.py`, `app/notifications/dispatcher.py`, `app/notifications/scheduler.py`, `migrations/add_bot_accounts.py` (new), `tests/test_bots.py` (B-01..B-12, B-21..B-25) | R-01, R-05, R-08 |
+| **P2** | Serialisation, cap, metrics, dedup | `app/routers/notes_router.py`, `app/crud.py` (the `commit=` kwarg **only**), `app/routers/bots_router.py` (new), `app/main.py` (one `include_router`), `app/routers/likes_comments.py`, `app/routers/profile_router.py`, `app/routers/users_router.py`, `app/routers/groups_router.py`, `app/routers/admin_router.py`, `tests/test_bots.py` (B-13..B-20, B-26..B-30) | R-02, R-07, R-13, R-15, R-16 |
 | **P3** | Web | `book-tracker-frontend-stitch/src/components/BotBadge.jsx` (new), `HomePage.jsx`, `UserProfilePage.jsx`, `GroupDetailPage.jsx`, `AdminPage.jsx`, `src/services/api.js` | R-03, R-16 (admin UI) |
 | **P4** | Android | `book-tracker-mobile-stitch/src/components/BotBadge.js` (new), `FeedScreen.js`, `GroupDetailScreen.js`, `UserProfileScreen.js`, `app.json` | R-04 |
 | **P5** | Bot + CI + docs | `bots/**` (new), `.github/workflows/tmr-bots.yml` (new), `tests/test_bot_content.py` (new), `context/deployment/README.md`, `context/PM_SQL_QUEUE.md`, `features/community/index.md` | R-05a, R-07, R-09..R-12, R-14, R-15 |
@@ -406,6 +490,15 @@ Five. File sets are disjoint. P1 must land before P2 (P2 reads the column P1 dec
 `likes_comments.py` appears in **both** P1 (the `deny_bot_actor` dependency on three routes) and P2 (`is_bot` in two author dicts). Rather than split a small file across two builders, **P1 owns `likes_comments.py` entirely** and makes both changes; P2 treats it as read-only. That is the only file that would otherwise collide.
 
 `editorial_bot.py` is deleted by P5, but **only after two successful production runs of `bots/bestsellers.py`**. Until then it stays in the tree, unused and unscheduled.
+
+### Estimate after E-5
+
+Still **4–6 days**, unchanged. The dedup decision moved work rather than adding it:
+
+- **P2 gains about half a day** — one optional field, the `commit=` kwarg on `crud.create_note`, the `BotPost` insert and its 409 branch, one small read route, and B-26..B-30.
+- **P5 loses about as much** — no `create_engine`, no connection handling, no `INSERT`, no "the post landed but the dedup row didn't" recovery path to write or test, and one fewer secret to plumb through the workflow.
+
+The one-endpoint-plus-one-field shape the PM specified is also cheaper than the two-endpoint `GET`/`POST /bots/dedup` form the old E-5 costed at half a day, because the write is a side effect of a request the bot was already making.
 
 ---
 
@@ -417,7 +510,7 @@ Five. File sets are disjoint. P1 must land before P2 (P2 reads the column P1 dec
 |---|---|---|---|
 | `app/routers/notes_router.py` | P3 | Rewrites `_note_relations` (deletes it for list routes), replaces the three engagement queries with `note_engagement()`, rewrites the `user` dict construction at every feed site | **Direct.** 4F adds a key to the same dicts 4E rebuilds. Trivial to reconcile by hand, ugly as a merge |
 | `app/routers/likes_comments.py` | P3 | Rewrites the comments query to `comment JOIN user` | Direct at `:192` |
-| `app/crud.py` | P3 | `get_notes_feed` gains joins | 4F does not touch `crud.py` — no collision |
+| `app/crud.py` | P3 | `get_notes_feed` gains joins | **New since E-5:** 4F now adds a `commit: bool = True` kwarg to `crud.create_note` (`crud.py:112-131`). 4E touches `get_notes_feed` (`:134`), a different function in the same file. Low |
 | `app/routers/admin_router.py` | P6 | Query reductions; imports `note_engagement` | Same file, different functions. Low |
 | `app/deps.py` | P1 | Moves the `last_active` write to after the response | Same file, different function. 4F appends `deny_bot_actor`. Low — **but note that 4E's move makes R-16's `last_active` observation slightly worse, not better: the write still happens, just later** |
 | `app/routers/profile_router.py`, `users_router.py`, `groups_router.py` | P2, P5 | Query reductions | Same files, different lines. Low |
@@ -430,60 +523,70 @@ Sprint 4C is a dependency of both and is code-complete, blocked on its own migra
 
 ## Escalations
 
-### E-1 — Android cannot be updated remotely. *Recommendation: start the bots behind the text label; do not wait.*
+**All nine are answered. `features/community/sprint-4f-activity-engine/pm-decisions.md` (2026-09-23) is the binding record; the body of this document and of `spec.md` already reflect every decision.** The reasoning below is kept because it is why each answer is the right one and what would have to change for it to be revisited — but none of these is an open question, and nothing downstream waits on them.
+
+### E-1 — Android cannot be updated remotely. **DECIDED: (b), ship now behind the in-text label.** (`pm-decisions.md` §Accepted as recommended, E-1)
 
 The badge in R-04 reaches a reader only when they install a new build. There is no `expo-updates` channel (`eas.json`, `appVersionSource: "local"`), releases are a manual `workflow_dispatch` AAB plus a manual Play upload, and the last shipped release is **2.2.1 / versionCode 60** while 2.2.3 / 62 is built but unshipped. Play rollout to an existing base typically takes weeks and never reaches everyone.
 
 Options: (a) hold the bots until 2.2.4 adoption crosses a threshold — weeks of delay, and the threshold is never reached; (b) ship the API and web now, start the bots, and rely on R-05a's in-text line for Android until 2.2.4 spreads; (c) ship a server-side text label only and drop the badge — refused, the PM requirement is explicit that a name or text convention alone is not enough.
 
-**Recommendation: (b).** The in-text line is a real label: every Android version shows it, it survives caching and screen readers, and it names the account. The badge then arrives as an upgrade rather than a gate. This is a PM decision because it means that, for a period, some readers see the label only as text.
+**(b) was taken.** The in-text line is a real label: every Android version shows it, it survives caching and screen readers, and it names the account. The badge arrives as an upgrade rather than a gate. The PM accepted explicitly that, for some weeks, some readers see the label only as text.
 
-### E-2 — The exact wording of the in-text label. *Recommendation: the trailing form.*
+### E-2 — The exact wording of the in-text label. **DECIDED: the trailing named form, `— automated post from @<handle>`.** (`pm-decisions.md` §Accepted as recommended, E-2)
 
 Draft: a final line, `— automated post from @TMRPrompts`. Alternatives: a leading line (`🤖 Automated post`), which is more visible and uglier on every card; or a shorter `— automated`, which does not name the account.
 
-**Recommendation: the trailing named form.** It names the account (so a reader can go and look at it), it does not fight the first line of the post for attention, and it is short enough not to dominate a two-line quote. The PM owns the wording; the requirement that *some* fixed, non-generated line exists is not negotiable.
+**The trailing named form was taken**, em dash and lower-case "automated", fixed string, never model-generated, asserted character-for-character by C-01. It names the account (so a reader can go and look at it), it does not fight the first line of the post for attention, and it is short enough not to dominate a two-line quote.
 
-### E-3 — The circle roundup's privacy floor. *Recommendation: 3 readers across 2 circles, public circles only.*
+### E-3 — The circle roundup's privacy floor. **DECIDED: the floor stays at ≥3 readers across ≥2 public circles; Thursday falls back to a second prompt.** (`pm-decisions.md` §Accepted as recommended, E-3)
 
 This is the only content type that aggregates other readers' behaviour. With a small user base, "the book most read in circles this week" can easily mean one person. The draft floor is: a title is named only when at least 3 readers across at least 2 public circles are reading it; below that, nothing is posted.
 
-The PM may reasonably say the floor is too high for the current user base and the roundup will never fire. If so, **the answer is to drop the content type, not to lower the floor** — the alternative is a post that effectively announces what one identifiable reader is reading. **Recommendation: keep the floor; accept that the roundup is silent some weeks; revisit when circles are busier.** If the PM wants a weekly Thursday post regardless, substitute a second prompt.
+**The floor was kept, and the Thursday slot substitutes a second prompt when it is not met.** The PM's words: lowering the floor "is not an option that exists". If the roundup turns out never to fire, the answer is to drop the content type — the alternative is a post that effectively announces what one identifiable reader is reading.
 
-### E-4 — Should the bot token carry a scope claim? *Recommendation: no.*
+### E-4 — Should the bot token carry a scope claim? **DECIDED: no claim. `user.is_bot` is the single authority.** (`pm-decisions.md` §Accepted as recommended, E-4)
 
 A `scope: "bot"` claim in the JWT would let the API reject bot tokens without a database read. But it creates two authorities that must agree, and `get_current_user` already loads the row on every request (`deps.py:60-95`), so the flag costs nothing extra. A claim would also be the thing an attacker who obtained `SECRET_KEY` could forge, whereas the row cannot be forged and revocation is one `UPDATE`.
 
-**Recommendation: no claim. `user.is_bot` is the single authority.** Revisit only if the API ever gains a token type that does not resolve to a user row.
+**No claim was added.** A `scope: "bot"` claim would create two authorities that must agree, and `get_current_user` already loads the row on every request (`deps.py:60-95`), so the flag costs nothing extra. A claim would also be the thing an attacker with `SECRET_KEY` could forge, whereas the row cannot be forged and revocation is one `UPDATE`. Revisit only if the API ever gains a token type that does not resolve to a user row.
 
-### E-5 — Should the bot have a database connection at all? *Recommendation: yes, for now.*
+### E-5 — Should the bot have a database connection at all? **DECIDED: no. Zero direct access, and `DATABASE_URL` is never an Actions secret.** (`pm-decisions.md` §"The one that changed the design")
 
-The design keeps one direct connection, for the dedup table. It could be removed by adding `GET/POST /bots/dedup` endpoints, giving a bot **zero** database access — a meaningfully smaller blast radius, and it would mean `DATABASE_URL` never reaches GitHub Actions.
+**This is the one escalation whose answer changed the design.** The draft kept one direct connection for the dedup table, on the explicit condition that E-7 came back private. E-7 came back **public**, so the condition failed and the endpoint option was taken — and simplified while being taken.
 
-Against: two new endpoints that exist only for the bot, each needing its own authorisation, for a table that holds no reader data.
+The PM specified **one endpoint plus one field**, not the two endpoints the draft costed:
 
-**Recommendation: keep the direct connection for this sprint, and revisit if a fifth bot appears.** The PM should know the trade explicitly, because it means **the production database URL is a GitHub Actions secret**. If the repository is public (E-7), that is a secret whose exposure would be total — and that, not elegance, is the reason this escalation exists. *If the PM is uncomfortable with `DATABASE_URL` in Actions at all, take the endpoint option; it is about half a day.*
+- `POST /notes/` takes an optional `dedup_key`, honoured only for a bot caller, written in the same transaction as the note. A duplicate is a 409 and no note is created.
+- `GET /bots/posted` returns the keys already used, so a run filters before it composes.
 
-### E-6 — Quote copyright. *Recommendation: public domain only until answered.*
+That is smaller than the draft *and* strictly safer: it deletes the draft's own stated failure mode — "the post succeeds and the dedup write then fails" — because there is no longer a window between the two writes. Spec R-15 has been rewritten to say so rather than to describe a failure mode that no longer exists.
+
+**The fallback was not needed.** The PM asked for a plain statement if the atomic form did not fit the existing `create_note` transaction boundary. It does fit: see "Atomic dedup — verified buildable" above for the evidence (`crud.py:112-131`, `database.py:60-68`, `follow_router.py:39-44`). So the two-endpoint `GET`/`POST /bots/dedup` form is not specified anywhere in this document. Under no circumstance does either form fall back to `DATABASE_URL` in Actions.
+
+### E-6 — Quote copyright. **DECIDED: public-domain pool only, checked into the repository.** (`pm-decisions.md` §Accepted as recommended, E-6)
 
 A "quote card" bot posting lines from in-copyright books is reproduction, not commentary, and the app carries affiliate tags, so it is commercial reproduction. Short attributed quotations may be defensible, but the volume (one a week, indefinitely, from a single account whose whole purpose is quoting) is what makes it a pattern rather than an incident.
 
-**Recommendation: the quote pool is a checked-in list of public-domain works only** (pre-1929 US, plus anything explicitly licensed). That is a narrow, slightly old-fashioned voice, which is fine — "Margin Notes" can lean into it. If the PM wants contemporary quotes, that needs an answer from someone qualified, and the content type waits.
+**The pool is a checked-in list of public-domain works only** (pre-1929 US, plus anything explicitly licensed), never model output. That is a narrow, slightly old-fashioned voice, and "Margin Notes" leans into it. Contemporary quotes are a separate question with a separate answer, and are not in this sprint.
 
-### E-7 — Is the repository public? *Recommendation: confirm before creating any secret.*
+### E-7 — Is the repository public? **DECIDED: yes, verified.** (`pm-decisions.md` §"The one that changed the design")
 
-`keep-oregon-awake.yml` runs 4,300 times a month, which would exhaust a private repository's free Actions minutes several times over — so the repository is almost certainly public. If it is, then: the workflow and all its logs are world-readable; `DATABASE_URL` as an Actions secret (E-5) is a production database credential one careless `echo` away from disclosure; and the prompt and quote pools are public, which is harmless.
+`gh repo view --json visibility` returned `{"visibility":"PUBLIC"}` for `ankitalkuhs-commits/book-tracker`. The draft inferred this from the keep-alive's ~4,300 runs a month; it is now checked rather than inferred, which matters because it flipped E-5.
 
-**Recommendation: the PM confirms visibility before step 5 of the deploy order.** If public, take E-5's endpoint option and keep `DATABASE_URL` out of Actions entirely. If private, confirm the Actions minutes budget can carry seven more runs a week on top of the keep-alive.
+Both consequences:
 
-### E-8 — Seven posts a week is a guess. *Recommendation: start there, cut the inventory types first.*
+- **The minutes concern is withdrawn.** Public repositories have unlimited GitHub-hosted Actions minutes. Neither the keep-alive nor the seven bot runs a week cost anything, and the draft's "if private, confirm the minutes budget" branch is dead.
+- **Workflow files and every run log are world-readable.** Fine for the prompt and quote pools. Not fine for a production database credential — hence E-5. Security review §6 carries the full consequence.
+
+### E-8 — Seven posts a week is a guess. **DECIDED: ship seven, review after four weeks.** (`pm-decisions.md` §Accepted as recommended, E-8)
 
 Nothing in the data says seven is right. It is two "teaching" posts (prompt, roundup), three inventory posts (bestsellers) and one quote, which felt like a heartbeat without feeling like a feed takeover on a page that currently gets a handful of reader posts a week.
 
-**Recommendation: ship seven, measure after four weeks.** If bot posts outnumber reader posts in the feed, cut the bestsellers to one a week — they are the least instructive. The cap in R-13 (2/bot/day) is a safety limit, not a target, and it must not be treated as headroom.
+**Seven ships, and is measured after four weeks.** If bot posts outnumber reader posts in the feed, the bestsellers drop to one a week — they are the least instructive. The cap in R-13 (2/bot/day) is a safety limit, not a target, and the PM restated that it must never be read as headroom.
 
-### E-9 — `@TMRBot`'s display name. *Recommendation: rename it.*
+### E-9 — `@TMRBot`'s display name. **DECIDED: rename to *TrackMyRead Bestsellers*; every bio begins "Automated account."** (`pm-decisions.md` §Accepted as recommended, E-9)
 
 It is currently "TrackMyRead Bot" with the bio "📚 Your daily editorial picks…" (`migrations/add_editorial_bot.py:18-20`). With three sibling accounts it needs a voice name — *TrackMyRead Bestsellers* — and each new account needs a bio that says plainly what it is and that it is automated. That is a one-row `UPDATE` per account, in the same PM SQL step.
 
-**Recommendation: rename, and write each bio to begin with "Automated account."** The name is not a control (that is what the badge is for), but four accounts called "Bot" would be confusing, and the bio is the first thing on the profile a curious reader opens.
+**Renamed, and every bot bio begins with the words "Automated account."** One `UPDATE` per account, in the same PM SQL step as the `is_bot` flag. The name is not a control (that is what the badge is for), but four accounts called "Bot" would be confusing, and the bio is the first thing on the profile a curious reader opens.
