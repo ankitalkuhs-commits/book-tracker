@@ -393,7 +393,7 @@ Parsed with `yaml.safe_load` in pytest (the Python side) and by `__tests__/_ast.
 
 **Static (ST-4F), run from the repo root of the worktree:**
 
-- **ST-4F-01 (no database credential in CI):** `grep -rn "DATABASE_URL" .github/` → **no output**. Duplicates C-21 deliberately: one is a test, one is a command a human can run in five seconds during review.
+- **ST-4F-01 (no database credential in CI):** `grep -rnE "DATABASE_URL\s*[:=]|(secrets|vars|env)\.DATABASE_URL" .github/workflows/` → **no output**. Duplicates C-21 deliberately: one is a test, one is a command a human can run in five seconds during review. *(Corrected 2026-09-23 by the P5 Builder: the original bare `grep -rn "DATABASE_URL" .github/` can never be empty — `.github/copilot-instructions.md:23` has named it since before this sprint — and satisfying it would mean deleting the workflow comment that documents the prohibition. The rule is a **use** check, not a mention check.)*
 - **ST-4F-02 (no driver in the bot package):** `grep -rniE "sqlalchemy|psycopg|sqlmodel|create_engine|DATABASE_URL" bots/` → **no output**.
 - **ST-4F-03 (package disjointness):** every path in `git diff --name-only origin/master...HEAD` belongs to exactly one package list in architecture §Work packages, plus this plan's `tests/conftest.py` (K-10), `tests/test_sql_artifacts.py` (K-15), `__tests__/workflows.test.mjs` (K-02) and the 14 files in K-01.
 - **ST-4F-04 (the dead trigger is gone):** `grep -rn "bot/trigger\|triggerBot\|editorial_bot" app/ book-tracker-frontend-stitch/src/ .github/` → **no output**.
@@ -411,7 +411,7 @@ Parsed with `yaml.safe_load` in pytest (the Python side) and by `__tests__/_ast.
 | G-4F-04 | Static | same tree | ST-4F-01..05 | empty / empty / one package per file / empty / empty | Critical P0 |
 | G-4F-05 | Web build and lint | same tree | ST-4F-06 | exit 0; no new lint problem | Major P0 |
 | G-4F-06 | Web unit (K-03) | after `npm ci --prefix qa` **in the worktree** | `node --test "qa/unit/*.test.mjs"` | **`# tests 38`**, `# pass 38`, `# fail 0` (34 + W-04..W-07) | Critical P0 |
-| G-4F-07 | Android node (K-02) | after `npm ci` in `book-tracker-mobile-stitch/` | `node --test "__tests__/*.test.mjs"` | **`# tests 120`**, `# pass 120`, `# fail 0`, `# skipped 0` (113 + A-01, A-01a, A-02..A-06, with `build_android_yml_absent` fixed by C-20) | Critical P0 |
+| G-4F-07 | Android node (K-02) | after `npm ci` in `book-tracker-mobile-stitch/` | `node --test "__tests__/*.test.mjs"` | **`# tests 121`**, `# pass 121`, `# fail 0`, `# skipped 0` (113 + A-01, A-01a, A-02..A-06 from P4, + C-20 from P5; measured on the integrated branch 2026-09-23) | Critical P0 |
 | G-4F-08 | Web behaviour, locally | local API on this tree + the dev server on `--mode localapi` | `node qa/web_4f_local.mjs`; then `node qa/web_4d_local.mjs`; then `node qa/web_4a_local.mjs` | `4F web local: 5 passed, 0 failed`; 4D and 4A at their current counts, unchanged; all exit 0 | Critical P0 |
 | G-4F-09 | **Mutation proof** | before the merge | section 10 | every row filled: red line recorded, `caught = yes`, restored, suite green again. **An uncaught row blocks the merge** | Critical P0 |
 | G-4F-10 | PM SQL, in order | before the deploy | architecture §Deploy order steps 1–2 | the `is_bot` verification returns **exactly 4 rows**, all `is_bot = true`, none `is_admin`; the `bot_post` table and both indexes exist; the bio query returns **0** (K-12 / P-4F-09). **The PM sends the output** | Critical P0 |
