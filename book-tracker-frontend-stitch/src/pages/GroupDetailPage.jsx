@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../components/Toast'
 import BookPreviewModal from '../components/BookPreviewModal'
+import BotBadge from '../components/BotBadge'
 import {
   getGroup, getGroupMembers, getGroupLeaderboard, getGroupGoal,
   getGroupPosts, createGroupPost, deleteGroupPost,
@@ -108,7 +109,7 @@ function PostCard({ post, isCurator, isOwn, onDelete, onUserClick }) {
         </button>
         <div className="flex-1 min-w-0">
           <div className="flex items-baseline gap-2 flex-wrap">
-            <button onClick={() => post.user?.id && onUserClick?.(post.user.id)} className="font-bold text-sm text-on-surface hover:text-primary transition-colors">{post.user?.name}</button>
+            <button onClick={() => post.user?.id && onUserClick?.(post.user.id)} className="font-bold text-sm text-on-surface hover:text-primary transition-colors">{post.user?.name}<BotBadge user={post.user} /></button>
             <span className="text-xs text-on-surface-faint">{timeAgo(post.created_at)}</span>
           </div>
           {post.quote && (
@@ -963,6 +964,7 @@ export default function GroupDetailPage() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5">
                       <p className="text-sm font-bold text-on-surface truncate">{m.name}</p>
+                      <BotBadge user={m} />
                       {m.role === 'curator' && (
                         <span className="text-xs font-bold uppercase tracking-wider text-secondary bg-secondary/10 px-1.5 py-0.5 rounded-full shrink-0">{t('groups.curatorBadge')}</span>
                       )}

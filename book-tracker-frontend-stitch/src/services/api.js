@@ -353,8 +353,8 @@ export const sendTestPush = (userId) =>
   apiFetch(`/admin/push/test/${userId}`, { method: 'POST' });
 export const broadcastPush = (data) =>
   apiFetch('/admin/push/broadcast', { method: 'POST', body: JSON.stringify(data) });
-export const triggerBot = () => apiFetch('/admin/bot/trigger', { method: 'POST' })
-  .then(r => { invalidateFeed(); return r; });
+// Sprint 4F: the on-demand admin bot control is deleted along with its endpoint. The bots post on
+// their own schedule through the public API (R-07), so there is nothing here to trigger.
 export const getAdminNotes = (limit = 50) => apiFetch(`/admin/content/notes?limit=${limit}`);
 export const getAdminComments = (limit = 100) => apiFetch(`/admin/content/comments?limit=${limit}`);
 export const adminDeleteNote = (id) => apiFetch(`/admin/content/note/${id}`, { method: 'DELETE' })
