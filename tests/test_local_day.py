@@ -13,6 +13,7 @@ Pytest conventions (binding, per tests.md):
 import ast
 import importlib
 import os
+import re
 import subprocess
 import sys
 import time as _time_mod
@@ -545,6 +546,278 @@ class TestLastActive:
         stmt_counter.reset()
         client.get("/profile/me", headers=H(u, "Asia/Kolkata"))
         assert stmt_counter.updates_user == 0
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# Sprint 4E P1 (R-01): the once-a-day touch leaves the request path
+# tests.md cases L-4E-01..06. TestLastActive above (4C) is NOT edited.
+# ══════════════════════════════════════════════════════════════════════════
+
+_UPDATE_USER = re.compile(r'^\s*UPDATE\s+"?user"?\s', re.IGNORECASE)
+
+
+class _TouchRecorder:
+    """Statements and pool checkouts on the test engine, split at the background task.
+
+    The deferred write is real work on the same engine, and Starlette's TestClient runs
+    background tasks inside the client.get() call — so a counter that simply wraps the call
+    would charge the reader for a write that happens after the response. `app.deps.
+    _persist_user_touch` is wrapped to record where the request phase ends; everything before
+    that index is what the reader actually paid for.
+    """
+
+    def __init__(self):
+        self.reset()
+
+    def reset(self):
+        self.statements = []
+        self.checkouts = 0
+        self.task_at = None      # (n_statements, n_checkouts) when the task started
+        self.task_calls = 0
+
+    def mark_task(self):
+        self.task_calls += 1
+        if self.task_at is None:
+            self.task_at = (len(self.statements), self.checkouts)
+
+    @property
+    def request_statements(self):
+        return self.statements[: self.task_at[0]] if self.task_at else list(self.statements)
+
+    @property
+    def request_checkouts(self):
+        return self.task_at[1] if self.task_at else self.checkouts
+
+    def _before_cursor_execute(self, conn, cursor, statement, parameters, context, executemany):
+        self.statements.append(" ".join(statement.split())[:160])
+
+    def _checkout(self, dbapi_conn, record, proxy):
+        self.checkouts += 1
+
+
+@pytest.fixture()
+def touch_recorder(monkeypatch):
+    from sqlalchemy import event
+    import app.deps as deps
+
+    rec = _TouchRecorder()
+    real_task = deps._persist_user_touch
+
+    def _wrapped(*args, **kwargs):
+        rec.mark_task()
+        return real_task(*args, **kwargs)
+
+    monkeypatch.setattr(deps, "_persist_user_touch", _wrapped)
+    event.listen(test_engine, "before_cursor_execute", rec._before_cursor_execute)
+    event.listen(test_engine, "checkout", rec._checkout)
+    try:
+        yield rec
+    finally:
+        event.remove(test_engine, "before_cursor_execute", rec._before_cursor_execute)
+        event.remove(test_engine, "checkout", rec._checkout)
+
+
+def _set_last_active(db, user, when):
+    u = db.get(models.User, user.id)
+    u.last_active = when
+    db.add(u)
+    db.commit()
+    db.expire_all()
+
+
+def _reread(user_id):
+    """Read the row back through a brand-new Session — never the request's."""
+    from sqlmodel import Session as _S
+    with _S(test_engine) as s:
+        u = s.get(models.User, user_id)
+        s.expunge(u)
+        return u
+
+
+class TestLastActiveDeferred:
+    def test_first_request_of_the_local_day_costs_the_same_as_the_second(
+        self, client, db, freeze_at, touch_recorder
+    ):
+        """L-4E-01: no extra statement and no second pool checkout on the first request."""
+        u = _make_user(db, email="4e-p1-01@example.com")
+        _set_zone(db, u, "Asia/Kolkata")
+        _set_last_active(db, u, datetime(2026, 9, 20, 6, 0))   # yesterday, IST
+        freeze_at("2026-09-21T06:00:00")
+
+        touch_recorder.reset()
+        assert client.get("/profile/me", headers=H(u)).status_code == 200
+        first_stmts, first_checkouts = touch_recorder.request_statements, touch_recorder.request_checkouts
+        first_task_calls = touch_recorder.task_calls
+
+        touch_recorder.reset()
+        assert client.get("/profile/me", headers=H(u)).status_code == 200
+        second_stmts, second_checkouts = touch_recorder.request_statements, touch_recorder.request_checkouts
+        second_task_calls = touch_recorder.task_calls
+
+        assert (len(first_stmts), first_checkouts) == (len(second_stmts), second_checkouts), (
+            f"first request of the local day ran {len(first_stmts)} statements and "
+            f"{first_checkouts} checkouts, second ran {len(second_stmts)} and {second_checkouts} "
+            f"(must be equal)\nfirst: {first_stmts}"
+        )
+        assert first_checkouts == 1 and second_checkouts == 1, (
+            f"one connection per request, got {first_checkouts} then {second_checkouts}"
+        )
+        for label, stmts in (("first", first_stmts), ("second", second_stmts)):
+            assert not [s for s in stmts if _UPDATE_USER.match(s)], (
+                f"{label} request wrote the user row inside the request: {stmts}"
+            )
+        assert first_task_calls == 1, "the first request of the local day must defer a write"
+        assert second_task_calls == 0, "the second request of the day must defer nothing"
+
+    def test_touch_is_persisted_after_the_response(self, client, db, freeze_at, touch_recorder):
+        """L-4E-02: deferred, but still written — once per local day, again the next day."""
+        zone = localday.ZoneInfo("Asia/Kolkata")
+        u = _make_user(db, email="4e-p1-02@example.com")
+        _set_zone(db, u, "Asia/Kolkata")
+        _set_last_active(db, u, datetime(2026, 9, 20, 6, 0))
+        now = freeze_at("2026-09-21T06:00:00")
+
+        r = client.get("/notifications/unread-count", headers=H(u))
+        assert r.status_code == 200 and set(r.json()) == {"unread"}
+
+        persisted = _reread(u.id)
+        assert persisted.last_active == datetime(2026, 9, 21, 6, 0), (
+            f"last_active in the database is {persisted.last_active}, expected {now}"
+        )
+        assert localday.local_date(persisted.last_active, zone) == localday.local_today(zone, now)
+
+        touch_recorder.reset()
+        assert client.get("/notifications/unread-count", headers=H(u)).status_code == 200
+        assert touch_recorder.task_calls == 0
+        assert not [s for s in touch_recorder.statements if _UPDATE_USER.match(s)], (
+            "a second request the same local day wrote the user row"
+        )
+
+        freeze_at("2026-09-22T06:00:00")
+        assert client.get("/notifications/unread-count", headers=H(u)).status_code == 200
+        assert _reread(u.id).last_active == datetime(2026, 9, 22, 6, 0)
+
+    def test_reported_zone_is_used_by_the_same_request_that_reported_it(
+        self, client, db, freeze_at, touch_recorder
+    ):
+        """L-4E-03: 4C's D-1 ordering survives the move. The body is computed in the new zone."""
+        u = _make_user(db, email="4e-p1-03@example.com")
+        _set_zone(db, u, "UTC")
+        freeze_at("2026-09-17T19:00:00")      # 2026-09-18 00:30 IST
+
+        r = client.get("/reading-activity/daily?days=2", headers=H(u, "Asia/Kolkata"))
+        assert r.status_code == 200
+        buckets = [d["date"] for d in r.json()["data"]]
+        assert buckets == ["2026-09-17", "2026-09-18"], (
+            f"day buckets computed for UTC, expected Asia/Kolkata "
+            f"(last bucket {buckets[-1]}, expected 2026-09-18)"
+        )
+        assert _reread(u.id).timezone == "Asia/Kolkata"
+
+    def test_the_task_uses_its_own_session_not_the_requests(self, client, db, freeze_at, monkeypatch):
+        """L-4E-04 / A-2: the write must not ride on a session FastAPI may already have closed."""
+        import app.deps as deps
+        from sqlmodel import Session as _S
+        from app.database import get_db as _get_db
+        from app.main import app as _app
+
+        request_sessions, task_sessions = [], []
+
+        def _recording_override():
+            with _S(test_engine) as session:
+                request_sessions.append(session)
+                yield session
+
+        real_session_cls = deps.Session
+
+        def _recording_session(bind=None, *a, **kw):
+            s = real_session_cls(bind, *a, **kw)
+            task_sessions.append(s)
+            return s
+
+        previous = _app.dependency_overrides.get(_get_db)
+        _app.dependency_overrides[_get_db] = _recording_override
+        monkeypatch.setattr(deps, "Session", _recording_session)
+        try:
+            u = _make_user(db, email="4e-p1-04@example.com")
+            _set_zone(db, u, "Asia/Kolkata")
+            _set_last_active(db, u, datetime(2026, 9, 20, 6, 0))
+            freeze_at("2026-09-21T06:00:00")
+            assert client.get("/profile/me", headers=H(u)).status_code == 200
+        finally:
+            if previous is None:
+                _app.dependency_overrides.pop(_get_db, None)
+            else:
+                _app.dependency_overrides[_get_db] = previous
+
+        assert _reread(u.id).last_active == datetime(2026, 9, 21, 6, 0)
+        assert len(task_sessions) == 1, "the background task must open exactly one Session of its own"
+        assert request_sessions, "the request did not go through the recording override"
+        for req_session in request_sessions:
+            assert task_sessions[0] is not req_session, "background task used the request session"
+            assert id(task_sessions[0]) != id(req_session), (
+                f"background task used the request session (id match: {id(req_session)})"
+            )
+
+        # …and it still works when the request's session is long gone (FastAPI >= 0.106 order).
+        v = _make_user(db, email="4e-p1-04b@example.com")
+        _set_zone(db, v, "Asia/Kolkata")
+        _set_last_active(db, v, datetime(2026, 9, 20, 6, 0))
+        closed = _S(test_engine)
+        closed.get(models.User, v.id)
+        closed.close()
+        deps._persist_user_touch(test_engine, v.id, None, datetime(2026, 9, 21, 6, 0))
+        assert _reread(v.id).last_active == datetime(2026, 9, 21, 6, 0)
+
+    def test_task_never_moves_last_active_backwards(self, client, db, freeze_at):
+        """L-4E-05: the row may have moved on between the response and the task."""
+        import app.deps as deps
+
+        u = _make_user(db, email="4e-p1-05@example.com")
+        _set_zone(db, u, "Asia/Kolkata")
+        _set_last_active(db, u, datetime(2026, 9, 20, 6, 0))
+        computed = datetime(2026, 9, 21, 6, 0)
+
+        # another session gets there first, with a LATER instant on the same local day
+        _set_zone(db, u, "Europe/Berlin")
+        _set_last_active(db, u, datetime(2026, 9, 21, 9, 0))
+
+        deps._persist_user_touch(test_engine, u.id, "Asia/Kolkata", computed)   # must not raise
+
+        after = _reread(u.id)
+        assert after.timezone == "Asia/Kolkata", "the reported zone is written unconditionally"
+        assert after.last_active == datetime(2026, 9, 21, 9, 0), (
+            f"last_active moved backwards: 2026-09-21T09:00:00 -> {after.last_active}"
+        )
+
+        # two first-of-day writes racing: one value, no exception
+        _set_last_active(db, u, datetime(2026, 9, 20, 6, 0))
+        deps._persist_user_touch(test_engine, u.id, "Asia/Kolkata", computed)
+        deps._persist_user_touch(test_engine, u.id, "Asia/Kolkata", computed)
+        assert _reread(u.id).last_active == computed
+
+    def test_login_still_writes_last_active_inline(self, client, db, monkeypatch, pinned_now, touch_recorder):
+        """L-4E-06: R-01 does not reach the login routes — they write inline, unconditionally."""
+        email = "4e-p1-06@trackmyread.com"
+        monkeypatch.setenv("REVIEW_LOGIN_SECRET", "test-review-secret-value")
+        monkeypatch.setenv("REVIEW_LOGIN_EMAILS", email)
+        u = _make_user(db, email=email, name="Review")
+        _set_last_active(db, u, pinned_now - timedelta(hours=5))   # already today, earlier
+
+        touch_recorder.reset()
+        r = client.post(
+            "/auth/review-login",
+            json={"email": email, "secret": "test-review-secret-value"},
+        )
+        assert r.status_code == 200, r.text
+
+        assert _reread(u.id).last_active == pinned_now, (
+            "last_active unchanged immediately after POST /auth/review-login"
+        )
+        assert touch_recorder.task_calls == 0, "login must not defer its write to a background task"
+        assert [s for s in touch_recorder.request_statements if _UPDATE_USER.match(s)], (
+            "login did not write the user row inside the request"
+        )
 
 
 # ══════════════════════════════════════════════════════════════════════════

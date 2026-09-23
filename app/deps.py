@@ -1,10 +1,12 @@
 # app/deps.py
+from datetime import datetime
 from typing import Generator, Optional
-from fastapi import Depends, HTTPException, Request, status
+from fastapi import BackgroundTasks, Depends, HTTPException, Request, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from sqlalchemy.orm.attributes import set_committed_value
 from sqlmodel import Session
 from .database import get_session
-from . import crud, auth, localday
+from . import crud, auth, localday, models
 
 # Use HTTPBearer to parse the Authorization header (Bearer token)
 bearer_scheme = HTTPBearer(auto_error=False)
@@ -40,8 +42,40 @@ def _extract_token(credentials: Optional[HTTPAuthorizationCredentials]) -> Optio
     return credentials.credentials
 
 
+def _persist_user_touch(
+    bind,
+    user_id: int,
+    timezone: Optional[str],
+    last_active: Optional[datetime],
+) -> None:
+    """Sprint 4E (R-01): write the once-a-day touch AFTER the response, off the request path.
+
+    Runs as a FastAPI BackgroundTask. It opens its OWN Session on the same engine the request
+    used — never the request's Session, which FastAPI may already have torn down (and does, on
+    FastAPI >= 0.106; on the pinned 0.95.2 teardown runs after background tasks, so this is
+    written to be correct on either).
+
+    Safe if the row moved on in the meantime: `timezone` is what the device reported and is
+    written unconditionally; `last_active` is written only if the stored value is still behind
+    the local day the request computed, so a newer touch is never moved backwards.
+    """
+    with Session(bind) as session:
+        user = session.get(models.User, user_id)
+        if user is None:          # account deleted between the response and this task
+            return
+        if timezone is not None:
+            user.timezone = timezone
+        if last_active is not None:
+            zone = localday.zone_of(user)
+            if user.last_active is None or localday.local_date(user.last_active, zone) < localday.local_date(last_active, zone):
+                user.last_active = last_active
+        session.add(user)
+        session.commit()
+
+
 def get_current_user(
     request: Request,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     creds: Optional[HTTPAuthorizationCredentials] = Depends(bearer_scheme)
 ):
@@ -76,20 +110,27 @@ def get_current_user(
     if user is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
 
-    # Sprint 4C (R-07, R-10): the device zone, then last_active once per LOCAL day — one commit.
+    # Sprint 4C (R-07, R-10): the device zone, then last_active once per LOCAL day.
+    # Sprint 4E (R-01): the same computation, but the request pays nothing for it. The new values
+    # are written into the in-memory `user` with set_committed_value() — visible to the rest of
+    # this request (4C's D-1 ordering: the reported zone is in place BEFORE the last_active
+    # comparison) but NOT dirty, so no autoflush or later db.commit() in the handler turns them
+    # into an in-request UPDATE. The persist is a background task, after the response.
     now = localday.utcnow()
-    dirty = False
     reported = localday.valid_zone(request.headers.get(localday.ZONE_HEADER))
+    new_timezone = None
     if reported and reported != user.timezone:
-        user.timezone = reported
-        dirty = True
+        set_committed_value(user, "timezone", reported)
+        new_timezone = reported
     zone = localday.zone_of(user)
+    new_last_active = None
     if user.last_active is None or localday.local_date(user.last_active, zone) < localday.local_date(now, zone):
-        user.last_active = now
-        dirty = True
-    if dirty:
-        db.add(user)
-        db.commit()
+        set_committed_value(user, "last_active", now)
+        new_last_active = now
+    if new_timezone is not None or new_last_active is not None:
+        background_tasks.add_task(
+            _persist_user_touch, db.get_bind(), user.id, new_timezone, new_last_active
+        )
 
     return user
 
