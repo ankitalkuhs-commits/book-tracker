@@ -69,8 +69,11 @@ test('aab_guard_strict_apk_guard_warn_only', () => {
 
 test('build_android_yml_absent', () => {
   assert.equal(fs.existsSync(path.join(WORKFLOWS_DIR, 'build-android.yml')), false);
-  const files = fs.readdirSync(WORKFLOWS_DIR).sort();
-  assert.deepEqual(files, [AAB_FILE, APK_FILE].sort());
+  // Only the build workflows are this test's business. The directory also holds unrelated
+  // workflows (keep-oregon-awake.yml), so matching the whole listing made an operational
+  // change fail an Android build test — it went red on master when that file landed.
+  const builds = fs.readdirSync(WORKFLOWS_DIR).filter((f) => f.startsWith('build-')).sort();
+  assert.deepEqual(builds, [AAB_FILE, APK_FILE].sort());
 });
 
 test('workflows_manual_dispatch_only_and_checkout_master', () => {
