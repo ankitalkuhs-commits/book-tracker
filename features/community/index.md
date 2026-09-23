@@ -29,6 +29,18 @@ Social layer of TrackMyRead: feed of notes/reflections, follows, likes, comments
 | `app/routers/profile_router.py` | GET/PUT profile, upload picture, public profile (locked for private profiles) |
 | `app/routers/groups_router.py` | Groups CRUD, membership, posts, leaderboard, activity feed |
 | `app/notifications/dispatcher.py` | `fire_event()` — ALWAYS use this, never `send_push_notification_to_user` |
+| `app/routers/bots_router.py` | `GET /bots/posted` — the dedup keys a bot has already used (4F). Bot-only: 403 for a reader |
+
+### Bots (Sprint 4F)
+| File | Purpose |
+|---|---|
+| `bots/common.py` | The R-05a label constant, bot-login, `GET /bots/posted`, `POST /notes/`. No database access anywhere in `bots/`, and a test asserts it |
+| `bots/bestsellers.py` | `@TMRBot` — NYT list + Gemini teaser + cover chain, lifted from `editorial_bot.py` minus its direct INSERT |
+| `bots/prompts.py` | `@TMRPrompts` — one question from `bots/content/prompts.json`, 60-day no-repeat window |
+| `bots/quotes.py` | `@TMRQuotes` — one public-domain quote from `bots/content/quotes.json`, 180-day window |
+| `bots/circles.py` | `@TMRCircles` — aggregate roundup from `GET /groups/discover`; below the k-floor it posts a prompt instead |
+| `.github/workflows/tmr-bots.yml` | Seven crons, 0–25 min jitter, `workflow_dispatch`, and the `BOT_ENABLED` kill switch as step 0 |
+| `.github/workflows/ci-tests.yml` | pytest + both Node suites on every push/PR, with pinned test-count floors |
 
 ### Web
 | File | Purpose |
@@ -52,7 +64,7 @@ Social layer of TrackMyRead: feed of notes/reflections, follows, likes, comments
 
 | Node | Status | What it covers |
 |---|---|---|
-| [`sprint-4f-activity-engine/`](sprint-4f-activity-engine/) | **in build** (spec approved 2026-09-23, all nine escalations decided; **P1, P3, P4 merged · P2 in build · P5 not started**) | Openly labelled bot accounts that post on a schedule: `user.is_bot` and the badge on every author surface, `POST /auth/bot-login`, `deny_bot_actor` on follow/like/comment, GitHub Actions replacing the paid Render cron, the per-bot daily cap and the `BOT_ENABLED` kill switch, and bot exclusion from `/admin/stats`. Replaces `editorial_bot.py`'s direct `INSERT INTO note`. **Blocked on two PM SQL steps** (`user.is_bot`, `bot_post`) before P2 can deploy. |
+| [`sprint-4f-activity-engine/`](sprint-4f-activity-engine/) | **in build** (spec approved 2026-09-23, all nine escalations decided; **P1, P2, P3, P4 merged · P5 built**) | Openly labelled bot accounts that post on a schedule: `user.is_bot` and the badge on every author surface, `POST /auth/bot-login`, `deny_bot_actor` on follow/like/comment, GitHub Actions replacing the paid Render cron, the per-bot daily cap and the `BOT_ENABLED` kill switch, and bot exclusion from `/admin/stats`. Replaces `editorial_bot.py`'s direct `INSERT INTO note`. **Blocked on two PM SQL steps** (`user.is_bot`, `bot_post`) before P2 can deploy. |
 
 ---
 

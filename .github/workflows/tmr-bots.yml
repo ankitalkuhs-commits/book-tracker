@@ -1,0 +1,135 @@
+# TrackMyRead editorial bots (Sprint 4F, R-09/R-14).
+#
+# THIS FILE AND EVERY RUN LOG IT PRODUCES ARE WORLD-READABLE. The repository is public
+# (verified: `gh repo view --json visibility` -> PUBLIC). Two rules follow from that and
+# neither is negotiable:
+#
+#   1. `DATABASE_URL` is NOT a secret of this repository and must never become one. The bot
+#      holds no database credential at all; it posts through `POST /notes/` and reads
+#      `GET /bots/posted`, both with a 15-minute token (E-5/E-7). If a change appears to
+#      need a database connection here, that is an escalation, not a workflow edit.
+#   2. Nothing echoes a secret, a token, a header or a response body. There is no `set -x`
+#      anywhere in this file, and the bot itself prints only status codes and note ids.
+#
+# The secrets this workflow holds, in full: BOT_LOGIN_SECRET, NYT_API_KEY, GEMINI_API_KEY.
+# The kill switch `BOT_ENABLED` is a repository *variable*, not a secret, so the PM can set
+# it from the GitHub UI and it takes effect on the next run with no deploy (R-14).
+
+name: TMR bots
+
+on:
+  schedule:
+    # Cron is UTC and has no DST. India does not observe DST, so 13:30 UTC is 18:30 IST all
+    # year round and 05:30 UTC is 10:30 IST. 18:30 IST sits clear of the 20:00 IST streak
+    # reminder. GitHub delays scheduled runs under load and drops them at peak; a missed run
+    # is simply a skipped day, never made up (R-09) - the dedup table never marked it, so
+    # the candidate is still eligible tomorrow.
+    - cron: '30 13 * * 1'   # Mon 18:30 IST - bestseller  (@TMRBot)
+    - cron: '30 13 * * 2'   # Tue 18:30 IST - prompt      (@TMRPrompts)
+    - cron: '30 13 * * 3'   # Wed 18:30 IST - bestseller  (@TMRBot)
+    - cron: '30 13 * * 4'   # Thu 18:30 IST - circles     (@TMRCircles, falls back to a prompt)
+    - cron: '30 13 * * 5'   # Fri 18:30 IST - bestseller  (@TMRBot)
+    - cron: '30 05 * * 6'   # Sat 10:30 IST - prompt      (@TMRPrompts)
+    - cron: '30 05 * * 0'   # Sun 10:30 IST - quote       (@TMRQuotes)
+  workflow_dispatch:
+    inputs:
+      type:
+        description: 'bestseller | prompt | quote | circles'
+        required: true
+        default: 'prompt'
+
+permissions:
+  contents: read
+
+concurrency:
+  # Two runs of the same voice at once would race for the same dedup_key and one would 409.
+  group: tmr-bots
+  cancel-in-progress: false
+
+jobs:
+  post:
+    runs-on: ubuntu-latest
+    steps:
+      # ── STEP 0: the kill switch (R-14). This must stay the first step. ───────────────
+      # Setting the repository variable BOT_ENABLED to anything other than 'true' stops the
+      # run here, before checkout, before any dependency is installed and long before a
+      # token is minted. It fails the run deliberately: a kill switch that leaves a green
+      # tick is a kill switch somebody forgets is on.
+      #
+      # Click path: repository -> Settings -> Secrets and variables -> Actions ->
+      #             Variables tab -> BOT_ENABLED -> Edit -> false -> Update variable.
+      - name: Kill switch - BOT_ENABLED is not true
+        if: vars.BOT_ENABLED != 'true'
+        run: |
+          echo "BOT_ENABLED is not 'true' (repository variable). Stopping before any post."
+          echo "Set it back to 'true' in Settings > Secrets and variables > Actions > Variables."
+          exit 1
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install requests google-generativeai
+
+      - name: Choose today's content type
+        id: pick
+        env:
+          # Through the environment, never interpolated into the script: a `${{ }}` holding
+          # a dispatch input inside a `run:` block is a shell-injection seam.
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_TYPE: ${{ github.event.inputs.type }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            TYPE="$INPUT_TYPE"
+          else
+            # date -u +%u: Monday=1 .. Sunday=7. The R-09 table, one line per day.
+            case "$(date -u +%u)" in
+              1) TYPE=bestseller ;;
+              2) TYPE=prompt ;;
+              3) TYPE=bestseller ;;
+              4) TYPE=circles ;;
+              5) TYPE=bestseller ;;
+              6) TYPE=prompt ;;
+              7) TYPE=quote ;;
+            esac
+          fi
+          case "$TYPE" in
+            bestseller|prompt|quote|circles) ;;
+            *) echo "unknown content type"; exit 1 ;;
+          esac
+          echo "type=$TYPE" >> "$GITHUB_OUTPUT"
+          echo "Content type for this run: $TYPE"
+
+      - name: Jitter - sleep 0-25 minutes
+        # R-09: posts must not all land on the half hour. Uniform 0-1500 seconds, taken
+        # before the work rather than by a cron trick. Skipped for a manual dispatch,
+        # where the clustering this exists to prevent cannot happen and the PM is waiting.
+        if: github.event_name == 'schedule'
+        run: |
+          set -euo pipefail
+          SECS=$(( RANDOM % 1500 ))
+          echo "Sleeping ${SECS}s before posting."
+          sleep "$SECS"
+
+      - name: Post
+        env:
+          # The complete list. No DATABASE_URL, now or ever.
+          BOT_LOGIN_SECRET: ${{ secrets.BOT_LOGIN_SECRET }}
+          NYT_API_KEY: ${{ secrets.NYT_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          RUN_TYPE: ${{ steps.pick.outputs.type }}
+        run: |
+          set -euo pipefail
+          case "$RUN_TYPE" in
+            bestseller) python -m bots.bestsellers ;;
+            prompt)     python -m bots.prompts ;;
+            quote)      python -m bots.quotes ;;
+            circles)    python -m bots.circles ;;
+            *) echo "unknown content type"; exit 1 ;;
+          esac

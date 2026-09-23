@@ -52,7 +52,13 @@ VAPID_PUBLIC_KEY=
 VAPID_CLAIMS_SUB=
 REVIEW_LOGIN_SECRET=                          # see "Review accounts" below
 REVIEW_LOGIN_EMAILS=review.reader@trackmyread.com,review.friend@trackmyread.com
+BOT_LOGIN_SECRET=                             # see "Editorial bots" below (Sprint 4F)
+BOT_LOGIN_EMAILS=tmrbot@trackmyread.com,tmrprompts@trackmyread.com,tmrquotes@trackmyread.com,tmrcircles@trackmyread.com
 ```
+
+`BOT_LOGIN_SECRET` and `BOT_LOGIN_EMAILS` are **both** required for `POST /auth/bot-login`
+to exist at all. With either unset the route returns 404, so it does not exist locally, in
+tests, or in a fork.
 
 ### Web frontend (`.env`)
 ```
@@ -225,6 +231,103 @@ All file uploads (profile pictures + note images) go to **Cloudinary** — no lo
 - Note/post images: `POST /notes/upload-image` → Cloudinary → returns `image_url`
 
 Cloudinary validates image format server-side; no local validation needed.
+
+---
+
+## Editorial bots (Sprint 4F)
+
+Four automated accounts post seven times a week to the community feed. They run on GitHub
+Actions (`.github/workflows/tmr-bots.yml`), not on Render — the paid "TMR bot Cron Job"
+Render service is **deleted**, not suspended, and the old `editorial_bot.py` is unscheduled.
+
+### The bots hold no database credential
+
+The repository is **public** (`gh repo view --json visibility` -> `PUBLIC`). Workflow files
+and every run log are world-readable, so a production connection string in Actions would be
+an unrecoverable disclosure. The bots therefore have **zero** direct database access: they
+post with `POST /notes/` and read `GET /bots/posted`, both with a 15-minute token.
+
+> **`DATABASE_URL` must never be created as a GitHub Actions secret.** Not temporarily, not
+> "just for dedup", not behind a comment saying it will be removed. If something appears to
+> need one, that is an escalation, not a workflow edit. Check it by name after every change:
+> Settings -> Secrets and variables -> Actions. There must be no `DATABASE_URL` in the list.
+
+### What the PM must create
+
+**GitHub repository secrets** — Settings -> Secrets and variables -> Actions -> *Secrets*
+tab -> **New repository secret**:
+
+| Name | Value |
+|---|---|
+| `BOT_LOGIN_SECRET` | a long random string; the **same** value set on the Render API service |
+| `NYT_API_KEY` | existing NYT Books API key (already held for `editorial_bot.py`) |
+| `GEMINI_API_KEY` | existing Gemini key (already held for `editorial_bot.py`) |
+
+**GitHub repository variable** — same page, ***Variables* tab** -> **New repository
+variable**:
+
+| Name | Value |
+|---|---|
+| `BOT_ENABLED` | `true` to let the bots post; anything else stops every run |
+
+`BOT_ENABLED` is a *variable*, not a secret, so its value is visible — which is the point:
+anyone can see at a glance whether the bots are on.
+
+**Render, on the API service** — Environment -> Add Environment Variable:
+
+| Name | Value |
+|---|---|
+| `BOT_LOGIN_SECRET` | the same string as the GitHub secret |
+| `BOT_LOGIN_EMAILS` | `tmrbot@trackmyread.com,tmrprompts@trackmyread.com,tmrquotes@trackmyread.com,tmrcircles@trackmyread.com` |
+
+### Kill switch 1 — `BOT_ENABLED` (no deploy, no restart)
+
+This is the first lever. It stops the next scheduled run at its **first step**, before
+checkout, before any dependency is installed and long before a token is minted.
+
+1. Open the repository on github.com.
+2. **Settings** (top tab bar of the repository, not your account settings).
+3. In the left sidebar, **Secrets and variables** -> **Actions**.
+4. Choose the **Variables** tab (next to *Secrets*).
+5. Click the pencil / **Edit** on `BOT_ENABLED`.
+6. Set the value to `false`. Click **Update variable**.
+
+Effect: the next run reaches step 1, prints
+
+```
+BOT_ENABLED is not 'true' (repository variable). Stopping before any post.
+Set it back to 'true' in Settings > Secrets and variables > Actions > Variables.
+```
+
+and stops there with a failed run. The failure is deliberate: a kill switch that leaves a
+green tick is a kill switch somebody forgets is on. No post is made, no token is minted, and
+nothing has to be deployed or restarted. Reverse it by setting the value back to `true`.
+
+### Kill switch 2 — clear `BOT_LOGIN_SECRET` on Render (emergency)
+
+This revokes the ability to log in at all, for every bot, immediately. It restarts the API
+service, so it is the **second** lever, not the first.
+
+1. Render dashboard -> the API service -> **Environment**.
+2. Delete the `BOT_LOGIN_SECRET` variable (or blank its value).
+3. **Save Changes** — the service restarts.
+
+With either `BOT_LOGIN_SECRET` or `BOT_LOGIN_EMAILS` unset, `POST /auth/bot-login` returns
+404 and no bot can obtain a token. Readers are unaffected: the route is bot-only and no
+reader credential passes through it.
+
+### Manual post
+
+Actions -> **TMR bots** -> **Run workflow** -> pick `bestseller | prompt | quote | circles`.
+A manual dispatch skips the 0-25 minute jitter (the clustering it prevents cannot happen for
+a one-off run). `BOT_ENABLED` still gates it.
+
+### Deploy order
+
+Unchanged from the P1/P2 build notes: the PM runs `PM_SQL_QUEUE.md` step 6, then step 7,
+**then** the API is deployed, then `BOT_LOGIN_SECRET` / `BOT_LOGIN_EMAILS` are set on Render,
+then `python -m migrations.add_bot_accounts` is run against production. Only after all of
+that is `BOT_ENABLED` set to `true`.
 
 ---
 
