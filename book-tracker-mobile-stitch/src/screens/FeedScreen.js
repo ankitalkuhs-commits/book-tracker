@@ -11,6 +11,7 @@ import { useTranslation } from 'react-i18next';
 import { notesAPI, userbooksAPI, userAPI, booksAPI } from '../services/api';
 import AppHeader from '../components/AppHeader';
 import VisibilityToggle, { useNoteVisibility } from '../components/VisibilityToggle';
+import BotBadge, { userBadge, userBadgeText } from '../components/BotBadge';
 import { PreloadContext } from '../../App';
 import { formatTimeAgo } from '../utils/bookUtils';
 import { colors, radius, shadow, type } from '../theme';
@@ -592,6 +593,7 @@ const FeedScreen = ({ navigation }) => {
         <View style={styles.userInfoColumn}>
           <View style={styles.userNameRow}>
             <Text style={styles.userNameText}>{displayName}</Text>
+            <BotBadge isBot={user.is_bot} />
             {user.is_mutual && <View style={styles.userBadge}><Text style={styles.userBadgeText}>Mutual</Text></View>}
             {user.follows_you && !user.is_mutual && <View style={[styles.userBadge, styles.userBadgeSecondary]}><Text style={styles.userBadgeText}>{t('profile.followsYou')}</Text></View>}
           </View>
@@ -657,7 +659,10 @@ const FeedScreen = ({ navigation }) => {
                   {post.book.title?.toUpperCase()}
                 </Text>
               )}
-              <Text style={styles.userName}>{userName}</Text>
+              <View style={styles.userNameRow}>
+                <Text style={styles.userName}>{userName}</Text>
+                <BotBadge isBot={post.user?.is_bot} />
+              </View>
               <Text style={styles.timeAgo}>{timeAgo}</Text>
             </View>
           </TouchableOpacity>
@@ -699,6 +704,7 @@ const FeedScreen = ({ navigation }) => {
                 <Text style={styles.emotionHighlight}>{post.emotion}</Text>
                 {bookName ? <Text> while reading <Text style={styles.emotionHighlight}>{bookName}</Text></Text> : null}
               </Text>
+              <BotBadge isBot={post.user?.is_bot} />
             </View>
           );
         })()}
@@ -748,7 +754,10 @@ const FeedScreen = ({ navigation }) => {
                     <Text style={styles.commentAvatarText}>{(c.user?.name?.[0] || c.user?.email?.[0] || 'U').toUpperCase()}</Text>
                   </View>
                   <View style={[styles.commentBubble, { flex: 1 }]}>
-                    <Text style={styles.commentName}>{c.user?.name || c.user?.username || 'Reader'}</Text>
+                    <View style={styles.userNameRow}>
+                      <Text style={styles.commentName}>{c.user?.name || c.user?.username || 'Reader'}</Text>
+                      <BotBadge isBot={c.user?.is_bot} />
+                    </View>
                     <Text style={styles.commentText}>{c.text}</Text>
                   </View>
                   {isAdmin && c.id && (
@@ -971,7 +980,7 @@ const styles = StyleSheet.create({
   postBookCover: { width: 44, height: 66, borderRadius: 6, backgroundColor: colors.surfaceContainerHigh },
   postBookCoverFallback: { justifyContent: 'center', alignItems: 'center' },
   postBookLabel: { ...type.eyebrow, color: colors.secondary, letterSpacing: 0.5, marginBottom: 1 },
-  userName: { ...type.body, fontFamily: 'Manrope_600SemiBold', fontWeight: '600', color: colors.onSurface },
+  userName: { ...type.body, fontFamily: 'Manrope_600SemiBold', fontWeight: '600', color: colors.onSurface, marginRight: 6 },
   timeAgo: { ...type.caption, color: colors.outline, marginTop: 1 },
   menuButton: { padding: 4, paddingHorizontal: 8 },
   menuDots: { ...type.titleLg, color: colors.onSurfaceVariant, letterSpacing: 2 },
@@ -989,8 +998,8 @@ const styles = StyleSheet.create({
   emotionChipTextActive: { color: colors.onSecondaryContainer, fontFamily: 'Manrope_700Bold', fontWeight: '700' },
 
   // Emotion sentence (post display)
-  emotionLine: { backgroundColor: colors.secondaryContainer + '55', borderRadius: radius.md, paddingHorizontal: 12, paddingVertical: 8, marginBottom: 10 },
-  emotionLineText: { ...type.bodySm, color: colors.onSurfaceVariant },
+  emotionLine: { backgroundColor: colors.secondaryContainer + '55', borderRadius: radius.md, paddingHorizontal: 12, paddingVertical: 8, marginBottom: 10, flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap' },
+  emotionLineText: { ...type.bodySm, color: colors.onSurfaceVariant, flexShrink: 1, marginRight: 6 },
   emotionHighlight: { fontFamily: 'Manrope_700Bold', fontWeight: '700', color: colors.secondary },
 
   noteText: { ...type.body, color: colors.onSurface, marginBottom: 10 },
@@ -1007,7 +1016,7 @@ const styles = StyleSheet.create({
   commentAvatar: { width: 28, height: 28, borderRadius: 14, backgroundColor: colors.primaryContainer, justifyContent: 'center', alignItems: 'center', flexShrink: 0 },
   commentAvatarText: { ...type.caption, color: colors.onPrimary, fontFamily: 'Manrope_700Bold', fontWeight: '700' },
   commentBubble: { flex: 1, backgroundColor: colors.surfaceContainerLow, borderRadius: radius.md, paddingHorizontal: 10, paddingVertical: 6 },
-  commentName: { ...type.caption, fontFamily: 'Manrope_700Bold', fontWeight: '700', color: colors.onSurface, marginBottom: 2 },
+  commentName: { ...type.caption, fontFamily: 'Manrope_700Bold', fontWeight: '700', color: colors.onSurface, marginBottom: 2, marginRight: 6 },
   commentText: { ...type.bodySm, color: colors.onSurface },
   commentInputRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 },
   commentInput: { flex: 1, ...type.bodySm, backgroundColor: colors.surfaceContainerLow, borderRadius: radius.full, paddingHorizontal: 14, paddingVertical: 8, color: colors.onSurface },
@@ -1052,9 +1061,9 @@ const styles = StyleSheet.create({
   userInfoColumn: { flex: 1 },
   userNameRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', marginBottom: 2 },
   userNameText: { ...type.body, fontFamily: 'Manrope_600SemiBold', fontWeight: '600', color: colors.onSurface, marginRight: 6 },
-  userBadge: { backgroundColor: colors.tertiaryContainer, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10, marginRight: 4 },
+  userBadge,          // the Mutual / Follows-you / BOT pill — defined once in components/BotBadge.js
   userBadgeSecondary: { backgroundColor: colors.primary + '20' },
-  userBadgeText: { ...type.eyebrow, color: colors.tertiary, textTransform: 'none', letterSpacing: 0 },
+  userBadgeText,      // same pill, its label
   userUsername: { ...type.bodySm, color: colors.onSurfaceVariant },
   followButton: { paddingHorizontal: 16, paddingVertical: 6, borderRadius: radius.md, minWidth: 84, alignItems: 'center' },
   followButtonInactive: { backgroundColor: colors.primary },

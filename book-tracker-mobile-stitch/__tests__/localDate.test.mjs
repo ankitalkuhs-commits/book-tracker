@@ -214,8 +214,19 @@ test('local_date_module_is_import_free', () => {
 });
 
 // ── M-12 ─────────────────────────────────────────────────────────────────────
-test('app_json_is_2_2_3_62', () => {
+// 4C shipped at 2.2.3 / 62 and pinned both numbers as literals here. Sprint 4F
+// bumps app.json to 2.2.4 / 63 (spec R-04), which broke the pin — the same
+// "no sprint after this one may ever bump" defect tests.md records as K-01a
+// for REQUIRED_COLUMNS. Scoped to a floor instead, so it never needs editing
+// again: 4C's numbers may not be walked back, and the exact current numbers
+// are pinned once, by the sprint that sets them
+// (botBadge.test.mjs::app_json_is_2_2_4_63).
+test('app_json_not_behind_the_4c_release', () => {
   const appJson = JSON.parse(readMobile('app.json'));
-  assert.equal(appJson.expo.version, '2.2.3');
-  assert.equal(appJson.expo.android.versionCode, 62);
+  assert.ok(appJson.expo.android.versionCode >= 62,
+    `versionCode ${appJson.expo.android.versionCode} is behind 4C's released 62`);
+  const parts = String(appJson.expo.version).split('.').map(Number);
+  assert.equal(parts.length, 3, `app.json version is not x.y.z: ${appJson.expo.version}`);
+  const asNumber = (parts[0] * 1e6) + (parts[1] * 1e3) + parts[2];
+  assert.ok(asNumber >= 2002003, `version ${appJson.expo.version} is behind 4C's released 2.2.3`);
 });
