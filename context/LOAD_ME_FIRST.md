@@ -11,10 +11,10 @@
 | **Product** | TrackMyRead — social book tracking platform |
 | **Web** | [www.trackmyread.com](https://www.trackmyread.com) — React + Vite + TailwindCSS |
 | **Mobile** | Android app on Play Store — React Native (Expo SDK, EAS builds) |
-| **Backend** | FastAPI (Python) → `https://book-tracker-stitch.onrender.com` |
-| **Database** | PostgreSQL on Supabase (prod) / SQLite (local dev) |
+| **Backend** | FastAPI (Python) → **`https://api.trackmyread.com`** — Render **Singapore** (`book-tracker-sg`) since 2026-09-22. `https://book-tracker-stitch.onrender.com` is the old **Oregon** service: still up, on the free plan, only to serve installed Android apps older than 2.2.3, kept awake by `.github/workflows/keep-oregon-awake.yml`. Do not point anything new at it. |
+| **Database** | PostgreSQL on Supabase, **Singapore** (prod) / SQLite (local dev) — API and database are now in the same region, and a query costs **~3 ms** instead of ~275 ms |
 | **Branch** | Everything on `master` — `stitch-experiment` was deleted |
-| **Version** | 2.2.1 (versionCode 60) |
+| **Version** | `app.json` in the tree is **2.2.4 / versionCode 63**; the last release on Play is 2.2.1 / 60 (2.2.3 / 62 built, unshipped) |
 
 ---
 
@@ -68,21 +68,25 @@ book-tracker/
 ### Confirm a deploy
 Deploy verification is unauthenticated and does not depend on login working:
 ```bash
-curl -s https://book-tracker-stitch.onrender.com/version
-# Expected: {"commit":"<GIT_SHA>","service":"book-tracker-stitch","branch":"master"}
+curl -s https://api.trackmyread.com/version
+# Expected: {"commit":"<GIT_SHA>","service":"<RENDER_SERVICE_NAME>","branch":"master"}
+# service is whatever Render calls the service — `book-tracker-sg` for Singapore
+# (context/RENDER_REGION_MIGRATION.md), `book-tracker-stitch` for old Oregon.
 # Compare commit against: git rev-parse HEAD
 ```
+`api.trackmyread.com` is the live API (Singapore). Check `book-tracker-stitch.onrender.com/version`
+only when you are specifically checking the legacy Oregon service for pre-2.2.3 apps.
 
 ### QA login (review accounts)
 For screenshots and post-deploy checks (no UI — endpoint only):
 ```bash
 # Get a token (secret in .env.review or env var REVIEW_LOGIN_SECRET):
-curl -X POST https://book-tracker-stitch.onrender.com/auth/review-login \
+curl -X POST https://api.trackmyread.com/auth/review-login \
   -H "Content-Type: application/json" \
   -d '{"email":"review.reader@trackmyread.com","secret":"<SECRET>"}'
 
 # Seed accounts (idempotent):
-python scripts/seed_review_accounts.py --base-url https://book-tracker-stitch.onrender.com
+python scripts/seed_review_accounts.py --base-url https://api.trackmyread.com
 
 # Log browser in:
 localStorage.setItem('bt_token', '<access_token>'); location.href = '/home';
@@ -130,11 +134,70 @@ The correct key names (backend + frontend must match):
 
 ---
 
+## Recently Shipped (September 22–23, 2026 — Singapore, Sprint 4E, Sprint 4F in flight)
+
+### The API moved to Singapore (F-68) — 2026-09-22
+
+The API ran in Oregon while the database sat in Singapore, so every query crossed the Pacific.
+Both are now in Singapore. **Per database query: 275 ms → 3 ms** (`context/RENDER_REGION_MIGRATION.md`).
+The live API is `https://api.trackmyread.com`; Android 2.2.3+ calls that name, not an `onrender.com`
+address, so the next region move is a DNS change instead of a forced app release. Oregon stays up on
+the free plan purely for installed apps older than 2.2.3, kept awake by
+`.github/workflows/keep-oregon-awake.yml` — delete that workflow when those versions are gone.
+
+**This invalidated premises elsewhere, and that is the lesson worth keeping.** Sprint 4E was
+justified by "a removed query saves ~60 ms"; after the migration a query costs 3 ms, and the whole
+sprint was re-costed and cut. Before quoting a latency number from any document, check whether it
+predates 2026-09-22.
+
+### Sprint 4E — query budget: **complete**, descoped from seven packages to three
+
+Approved 2026-09-23 (`features/maintenance/sprint-4e-query-budget/pm-decisions.md`), on branch
+`sprint-4e-query-budget`. What shipped:
+
+- **P1** — the once-a-day `last_active` write moved off the request path (`app/deps.py`, `app/database.py`).
+- **The two N+1 loops only** — `GET /users/{id}/stats` and `GET /groups/my/pending`, both now flat at
+  3 queries. These survived the cut because their cost is not a constant: it grows with the reader's data.
+- **P7 — the query-budget guard** (`tests/test_query_budget.py`): **67 rows over 44 endpoints**, of
+  which **3 are targets** (`/users/{id}/stats`, `/groups/my/pending` × 2 branches) and the other 64
+  are **ratchets**. A ratchet means "no worse than measured today", **not** "optimised" — do not
+  read the budget file as evidence the work was done. A count that drops later is a chance to lower
+  the budget, not a failure.
+- `pytest tests -q`: **546 → 620 passed**, 0 failed.
+- **Dropped:** P2 (less the N+1), P3, P4, P5 (less the N+1), P6 — the bulk micro-optimisation. Not
+  cancelled on merit; the measurements in 4E's `architecture.md` stay valid if it is re-opened.
+
+### Sprint 4F — community activity engine: **in flight**
+
+Openly labelled bot accounts that post on a schedule (`features/community/sprint-4f-activity-engine/`).
+
+| Package | State |
+|---|---|
+| **P1** — `user.is_bot`, `POST /auth/bot-login`, `deny_bot_actor` on follow/like/comment | **merged** |
+| **P3** — the web BOT badge (7 sites) + the admin reader/bot split | **merged** |
+| **P4** — the Android BOT badge (6 sites), `app.json` → 2.2.4 / 63 | **merged** |
+| **P2** — serialisation (`is_bot` everywhere), the 2-per-day cap, reader-only metrics, atomic dedup | **in build** |
+| **P5** — the `bots/` package and its GitHub Actions workflow | **not started** |
+
+**4F no longer waits for 4E.** That constraint existed only because 4E's P3 rewrote the same
+`notes_router.py` functions, and P3 was dropped in the descope. One file overlap remains to check in
+the diff at merge time: 4E's N+1 fixes touched `users_router.py` and `groups_router.py`, which 4F's
+P2 also edits — different functions, but confirm it rather than trusting a document.
+
+**Two PM SQL steps are still pending** and gate P2's deploy: the `user.is_bot` column and the
+`bot_post` table. They go into `context/PM_SQL_QUEUE.md` as **steps 6 and 7** (4 and 5 are already
+taken). `app/schema_guard.py` exits at startup on a missing column, so the migration runs **before**
+the deploy that declares it, never in the same push.
+
+---
+
 ## Recently Shipped (September 13, 2026 — Review login + /version)
 
 **Production verified 2026-09-13 17:25 IST:** Render `REVIEW_LOGIN_*` keys live; seed created 19 items; 8 prod screenshots all logged-in with 0 failed API calls; `python qa/live_checks.py` 15/15 (self-cleaning).
 
 **Post-deploy routine:** `curl https://book-tracker-stitch.onrender.com/version` (commit = `git rev-parse HEAD`) → `node qa/screenshots.mjs --web https://www.trackmyread.com --api https://book-tracker-stitch.onrender.com --out qa/screenshots/<date>-prod` → `python qa/live_checks.py`.
+> **Stale since 2026-09-22:** both URLs above are the old Oregon service. Run the routine against
+> `https://api.trackmyread.com`.
 
 ### QA login + deploy verification endpoints (pytest 252/252, 5 BLOCKED live checks)
 

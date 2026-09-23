@@ -3,9 +3,9 @@ screen: sprint-4f-activity-engine
 feature: community
 status: architecture-complete, all nine escalations decided
 last_verified: 2026-09-23
-architect_verified: 2026-09-22 — every file:line in this document was read on branch sprint-4f-community-activity (base master @ b98228a). Line numbers are from that commit; Sprint 4E rewrites several of the same functions (see "Merge order").
+architect_verified: 2026-09-22 — every file:line in this document was read on branch sprint-4f-community-activity (base master @ b98228a). Line numbers are from that commit unless a line says otherwise; the P3 and P4 sections now carry this branch's numbers as well, because those packages have merged and the files have moved.
 revised: 2026-09-23 @ 3065172 — E-5/E-7 replaced the direct-connection dedup with an API-side atomic dedup. The files read for that revision, on this branch: `app/routers/notes_router.py:46-61` (`NoteCreateSchema`), `:133-199` (`create_note`), `app/crud.py:112-131` (`crud.create_note`), `app/database.py:60-68` (`get_db`), `app/routers/follow_router.py:37-44` (the IntegrityError → error-response precedent), `app/models.py:30-43` (`User`), `app/main.py:133-148` (router registration). Every other line number in this document is unchanged from the 2026-09-22 verification.
-depends_on: Sprint 4C (shipped code, unshipped release — `app/localday.py`, `app/schema_guard.py`), Sprint 4E (in build — heavy file overlap in `notes_router.py`)
+depends_on: Sprint 4C (shipped code, unshipped release — `app/localday.py`, `app/schema_guard.py`). **Sprint 4E is no longer a dependency** — it completed 2026-09-23 descoped to three packages, and the package that overlapped `notes_router.py` (its P3) was dropped.
 ---
 
 ## Risk summary (for the PM)
@@ -19,7 +19,7 @@ depends_on: Sprint 4C (shipped code, unshipped release — `app/localday.py`, `a
 | **Moving to the API introduces the bot into reader metrics.** `deps.py:87` stamps `last_active` on every authenticated request. Today's SQL bot never authenticates. | `/admin/stats`, admin user list | R-16 excludes bots from the counts and reports them separately. This is a cost of doing the right thing, not an accident. |
 | **The circle roundup aggregates other readers' reading.** | `@TMRCircles` posts | Public circles only, aggregate counts only, and the k-anonymity floor the PM confirmed in E-3 (≥3 readers across ≥2 public circles). Below the floor the slot posts a second prompt. |
 | **Quotes from in-copyright books.** | `@TMRQuotes` posts | Public-domain pool only, checked into the repository, decided (E-6). |
-| **File overlap with Sprint 4E.** 4E's package P3 rewrites the same functions this sprint edits. | `notes_router.py`, `likes_comments.py`, `crud.py`, `admin_router.py`, `deps.py` | 4F merges after 4E. See "Merge order". |
+| **File overlap with Sprint 4E.** ~~4E's package P3 rewrites the same functions this sprint edits.~~ **Mostly gone: 4E's P3 was dropped in the 2026-09-23 descope.** | What is left: `users_router.py`, `groups_router.py` (4E's two N+1 fixes, different functions from 4F's P2) | **4F no longer merges after 4E.** The merger checks those two files in the diff. See "Merge order". |
 
 ---
 
@@ -45,7 +45,7 @@ Neither client has a shared author component — both have two independent local
 
 - **Web:** a `<BotBadge />` in `src/components/BotBadge.jsx` (new file, owned by package P3) rendered next to the name. Styling copies the Curator pill verbatim (`GroupDetailPage.jsx:967`): `text-xs font-bold uppercase tracking-wider text-secondary bg-secondary/10 px-1.5 py-0.5 rounded-full shrink-0`. It renders `null` when `is_bot` is falsy, so call sites need no conditional and a reader's card gains no whitespace.
 - **Android:** a `BotBadge` in `src/components/BotBadge.js` (new file, owned by P4) reusing `FeedScreen.js` `userBadge` / `userBadgeText` (`:1055-1057`, the existing Mutual pill). `FeedScreen.js:654-662` wraps the name in a bare `<View style={{flex:1}}>`, so the feed card needs the `userNameRow` pattern from `:593` before the badge fits beside the name.
-- `GroupDetailScreen.js:42-49` defines a local initials-only `Avatar`. It is the single best insertion point for that screen, but it takes a `name` string, not a user object — it gains an `isBot` prop rather than being rewritten.
+- `GroupDetailScreen.js` defines a local initials-only `Avatar` (`:42-49` at `b98228a`, `:43-50` on this branch after P4). **This paragraph used to call it "the single best insertion point for that screen"; it is not, and that wording contradicted the test plan.** tests.md **A-01** requires the badge in the same JSX parent as the `Text` that prints the name, anchored on `styles.postAuthor` — which sits inside `styles.postMeta`, a **sibling** of the `Avatar`, not inside it. A badge drawn inside `Avatar` fails A-01; drawing it in both places puts two BOT pills on one post header. **The PM accepted P4's resolution (`build-notes-4f-p4.md` F-3): the badge sits beside `postAuthor`, and `Avatar`'s `isBot` prop tints the circle instead** — `<View style={[styles.avatar, isBot && styles.avatarBot, …]}>` at `GroupDetailScreen.js:46`, with `avatarBot` at `:1134` set to `colors.tertiaryContainer` — the pill's own background (`components/BotBadge.js:16`), so the two read as one label rather than two. `Avatar` still takes a `name` string rather than a user object, so it is given the boolean and not rewritten. That tint is the smallest non-dead use of the prop; if the badge is ever moved into `Avatar` after all, A-01's `GroupDetailScreen` anchor has to change with it and the tint comes out.
 
 ### Where a badge is impossible, and what happens instead
 
@@ -63,7 +63,8 @@ These are the reason R-05's prohibitions are enforced **server-side** rather tha
 
 ## Call sites
 
-Line numbers are master @ b98228a.
+Line numbers are master @ b98228a, **except** where a row says otherwise — P1, P3 and P4 have since
+merged, so files those packages touched have moved. Re-read before you trust a number here.
 
 ### P1 — the flag, the token, the guards (API, security-bearing)
 
@@ -110,11 +111,25 @@ Line numbers are master @ b98228a.
 | File:line | Change |
 |---|---|
 | `src/components/BotBadge.jsx` (new) | the badge; renders `null` unless `user?.is_bot` |
-| `HomePage.jsx:175`, `:291`, `:641`, `:655`, `:704` | badge beside the name |
+| `HomePage.jsx:175`, `:291`, `:641`, `:655` | badge beside the name |
 | `UserProfilePage.jsx:386` | badge beside the `<h1>` |
 | `GroupDetailPage.jsx:111`, `:965` | badge beside the name (defence in depth) |
 | `AdminPage.jsx:281-312` | `is_bot` column in the users table; overview figures relabelled as readers, with `bot_users` / `bot_notes` shown beside them |
 | `AdminPage.jsx:454` + `src/services/api.js:356` `triggerBot()` | remove the "trigger editorial bot" control — its endpoint is deleted |
+
+**`HomePage.jsx:704` was in this list and was removed (tests.md K-05, 2026-09-23).** That line —
+`<p className="text-xs text-on-surface-muted">{item.user?.name}</p>`, read at `:704` on master
+`b98228a` and at `:705` on this branch after P3 — is the "friends are reading" strip, and it is fed
+by `GET /userbooks/friends/currently-reading`. That endpoint is **not** one of R-02's seven
+serialising sites, and its author dict is built at `userbooks_router.py:600-606` as
+`{id, username, name, is_mutual, profile_picture}` with no `is_bot` — pinned from the other side by
+`tests/test_books.py:717`. A `<BotBadge user={item.user} />` there would read `undefined` and render
+`null` for ever, and the case asserting it would be structurally vacuous: green, and proving
+nothing. **Dropping it is not the same as deciding the strip should never be badged** — if the PM
+wants it, the change is `is_bot` on that endpoint in P2 plus one more edited key-set assertion, a
+real change rather than a freebie. P3 did not badge it and left a tripwire so the decision is not
+quietly reversed: `qa/unit/botBadge.test.mjs:162-168` (`W-04`) asserts the strip carries **no**
+badge and that `HomePage.jsx` holds exactly four, with the reason written into the file at `:43-49`.
 
 ### P4 — Android
 
@@ -123,7 +138,7 @@ Line numbers are master @ b98228a.
 | `src/components/BotBadge.js` (new) | the badge |
 | `FeedScreen.js:654-662` | wrap the name in a `userNameRow` (pattern at `:593`), then the badge |
 | `FeedScreen.js:697`, `:751`, `:593` | badge beside the name |
-| `GroupDetailScreen.js:42-49` `Avatar`, `:724` | `isBot` prop; badge beside the post author |
+| `GroupDetailScreen.js` `Avatar` and the group post header | `isBot` prop on `Avatar` tints the circle; the **badge** goes beside `styles.postAuthor` — see §"Where the badge is drawn". Line numbers, re-read on this branch after P4: `Avatar` `:43-50`, the `<Avatar …>` call `:722`, the `postAuthor` `<Text>` `:726`. At `b98228a` those were `:42-49`, `:721` and `:724` — P4's `BotBadge` import moved everything below it down one, and the new `postAuthorRow` wrapper moved `postAuthor` down one more |
 | `UserProfileScreen.js:303` | badge beside the display name |
 | `app.json` | `version` → 2.2.4, `android.versionCode` → 63 (`scripts/check-version-bump.js --strict` fails the AAB build otherwise) |
 
@@ -194,7 +209,9 @@ CREATE INDEX IF NOT EXISTS ix_bot_post_posted ON bot_post (content_type, posted_
 
 Bestsellers read **both** tables when deciding what is already posted, so no book that `@TMRBot` has ever posted comes back. `GET /bots/posted?content_type=bestseller` therefore returns the union of `bot_post.dedup_key` and `editorial_post.nyt_isbn` — the union is computed server-side, in one place, rather than by every caller. New bestseller rows are written to `bot_post` only; `editorial_post` becomes read-only history.
 
-Both statements are additive, re-runnable and touch no existing row. **Neither is run by this sprint.** They go into `context/PM_SQL_QUEUE.md` as new steps 4 and 5, in that order, and the PM runs them.
+Both statements are additive, re-runnable and touch no existing row. **Neither is run by this sprint.** They go into `context/PM_SQL_QUEUE.md` as new steps **6 and 7**, in that order, and the PM runs them.
+
+*Corrected 2026-09-23: this said "new steps 4 and 5". Steps 4 and 5 already exist and are somebody else's work — `context/PM_SQL_QUEUE.md:69` `## 4. Rating-reset repair — READ ONLY first (finding F-16)` and `:79` `## 5. One leftover from QA — WRITES, tiny`. Appending at 6 and 7 is what keeps the numbering the PM works from stable. P5 owns the edit to that file; this document must not be the thing that renumbers someone else's step.*
 
 ### Atomic dedup — verified buildable
 
@@ -504,18 +521,42 @@ The one-endpoint-plus-one-field shape the PM specified is also cheaper than the 
 
 ## Merge order and file overlap
 
-**4F merges after 4E.** The overlap is not incidental:
+> **The constraint is LIFTED (2026-09-23).** Sprint 4E was descoped from seven packages to three
+> (`features/maintenance/sprint-4e-query-budget/pm-decisions.md`, approved 2026-09-23), and **4E's
+> P3 is one of the dropped packages**. P3 was the sole reason for ordering the two sprints: it was
+> what rewrote `_note_relations`, the engagement queries and the `user` dict at every feed site in
+> `notes_router.py`, plus the comments query in `likes_comments.py`. With P3 gone that collision
+> does not exist, and 4F no longer waits for anything. What 4E actually ships is P1 (`app/deps.py`,
+> `app/database.py`), the two N+1 fixes, and P7 (the query-budget guard, `tests/test_query_budget.py`).
+>
+> **One overlap survives, and it is a file overlap rather than a function one.** 4E's N+1 commit
+> (`4b0df5c`, `perf(4e): remove the two N+1 loops`) changed `app/routers/users_router.py` and
+> `app/routers/groups_router.py` — the shelf fetch behind `GET /users/{id}/stats` and the pending
+> counts behind `GET /groups/my/pending`. 4F's **P2** edits both files too, for `is_bot` on the
+> author dicts (`users_router.py` `UserSearchResult`; `groups_router.py`'s group-post and member
+> authors). Different functions, so git should merge them cleanly — **but the merger confirms that
+> in the diff rather than trusting this paragraph.** `app/crud.py` is now 4F's alone: 4F adds the
+> `commit=` kwarg to `create_note` and 4E no longer touches the file at all.
+>
+> The table below is kept as the record of what the overlap *was* before the descope, because it is
+> also the map of what comes back if the dropped packages are ever re-opened.
 
-| File | 4E package | What 4E does | Collision |
-|---|---|---|---|
-| `app/routers/notes_router.py` | P3 | Rewrites `_note_relations` (deletes it for list routes), replaces the three engagement queries with `note_engagement()`, rewrites the `user` dict construction at every feed site | **Direct.** 4F adds a key to the same dicts 4E rebuilds. Trivial to reconcile by hand, ugly as a merge |
-| `app/routers/likes_comments.py` | P3 | Rewrites the comments query to `comment JOIN user` | Direct at `:192` |
-| `app/crud.py` | P3 | `get_notes_feed` gains joins | **New since E-5:** 4F now adds a `commit: bool = True` kwarg to `crud.create_note` (`crud.py:112-131`). 4E touches `get_notes_feed` (`:134`), a different function in the same file. Low |
-| `app/routers/admin_router.py` | P6 | Query reductions; imports `note_engagement` | Same file, different functions. Low |
-| `app/deps.py` | P1 | Moves the `last_active` write to after the response | Same file, different function. 4F appends `deny_bot_actor`. Low — **but note that 4E's move makes R-16's `last_active` observation slightly worse, not better: the write still happens, just later** |
-| `app/routers/profile_router.py`, `users_router.py`, `groups_router.py` | P2, P5 | Query reductions | Same files, different lines. Low |
+**4F was to merge after 4E.** The overlap was not incidental:
 
-If the PM wants 4F first, it is possible but the cost lands on 4E: 4E's P3 would rewrite functions that 4F has just edited, and the `is_bot` key would have to be re-added by hand at each rebuilt site. **Recommendation: 4E first.** 4F's client and CI packages (P3, P4, P5) have no overlap with 4E at all and can start immediately in parallel; only P1 and P2 wait.
+| File | 4E package | What 4E does | Collision | After the descope |
+|---|---|---|---|---|
+| `app/routers/notes_router.py` | P3 | Rewrites `_note_relations` (deletes it for list routes), replaces the three engagement queries with `note_engagement()`, rewrites the `user` dict construction at every feed site | **Direct.** 4F adds a key to the same dicts 4E rebuilds. Trivial to reconcile by hand, ugly as a merge | **Gone** — P3 dropped; 4E does not touch this file |
+| `app/routers/likes_comments.py` | P3 | Rewrites the comments query to `comment JOIN user` | Direct at `:192` | **Gone** — P3 dropped |
+| `app/crud.py` | P3 | `get_notes_feed` gains joins | **New since E-5:** 4F now adds a `commit: bool = True` kwarg to `crud.create_note` (`crud.py:112-131`). 4E touches `get_notes_feed` (`:134`), a different function in the same file. Low | **Gone** — P3 dropped; the file is 4F's alone |
+| `app/routers/admin_router.py` | P6 | Query reductions; imports `note_engagement` | Same file, different functions. Low | **Gone** — P6 dropped |
+| `app/deps.py` | P1 | Moves the `last_active` write to after the response | Same file, different function. 4F appends `deny_bot_actor`. Low — **but note that 4E's move makes R-16's `last_active` observation slightly worse, not better: the write still happens, just later** | **Shipped** (`6f37946`). Still low, and the R-16 caveat still holds |
+| `app/routers/profile_router.py`, `users_router.py`, `groups_router.py` | P2, P5 | Query reductions | Same files, different lines. Low | `profile_router.py` **gone**. `users_router.py` / `groups_router.py` **remain**: the two N+1 loops shipped (`4b0df5c`). Different functions from 4F's P2 — confirm in the diff |
+
+**The ordering recommendation below is superseded by the box above; it is kept because it is still
+what happens if 4E's dropped packages are re-opened.** If the PM wants 4F first, it is possible but
+the cost lands on 4E: 4E's P3 would rewrite functions that 4F has just edited, and the `is_bot` key
+would have to be re-added by hand at each rebuilt site. 4F's client and CI packages (P3, P4, P5)
+have no overlap with 4E at all and can start immediately in parallel.
 
 Sprint 4C is a dependency of both and is code-complete, blocked on its own migration.
 
