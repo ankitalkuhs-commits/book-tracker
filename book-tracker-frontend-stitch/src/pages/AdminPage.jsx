@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { getAdminStats, getAdminUsers, sendTestPush, broadcastPush, setAdminRole, triggerBot, getAdminNotes, getAdminComments, adminDeleteNote, adminDeleteComment } from '../services/api'
+import { getAdminStats, getAdminUsers, sendTestPush, broadcastPush, setAdminRole, getAdminNotes, getAdminComments, adminDeleteNote, adminDeleteComment } from '../services/api'
 import { useToast } from '../components/Toast'
 
 function StatCard({ label, value, sub }) {
@@ -29,10 +29,6 @@ export default function AdminPage() {
   const [testUserId, setTestUserId] = useState('')
   const [testLoading, setTestLoading] = useState(false)
   const [testResult, setTestResult] = useState(null)
-
-  // Bot trigger
-  const [botLoading, setBotLoading] = useState(false)
-  const [botResult, setBotResult] = useState(null)
 
   // Content moderation
   const [notes, setNotes]               = useState([])
@@ -89,18 +85,6 @@ export default function AdminPage() {
       toast(e.message || 'Could not grant admin', 'error')
     }
     setMakingAdmin(null)
-  }
-
-  const handleBotTrigger = async () => {
-    setBotLoading(true)
-    setBotResult(null)
-    try {
-      const res = await triggerBot()
-      setBotResult({ ok: true, msg: res.message || 'Bot triggered!' })
-    } catch (e) {
-      setBotResult({ ok: false, msg: e.message })
-    }
-    setBotLoading(false)
   }
 
   const handleTestPush = async () => {
@@ -189,11 +173,13 @@ export default function AdminPage() {
         <div className="space-y-6">
           {/* Users */}
           <div>
-            <h2 className="text-xs font-bold uppercase tracking-wider text-on-surface-variant mb-3">Users</h2>
+            <h2 className="text-xs font-bold uppercase tracking-wider text-on-surface-variant mb-3">Readers</h2>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-              <StatCard label="Total Users" value={stats.total_users} />
-              <StatCard label="New This Week" value={stats.new_users_this_week} />
-              <StatCard label="New This Month" value={stats.new_users_this_month} />
+              {/* R-16: these three count readers only. bot_users is the excluded figure, beside them. */}
+              <StatCard label="Total Readers" value={stats.total_users} sub="excludes bot accounts" />
+              <StatCard label="New Readers This Week" value={stats.new_users_this_week} />
+              <StatCard label="New Readers This Month" value={stats.new_users_this_month} />
+              <StatCard label="Bot Accounts" value={stats.bot_users} sub="excluded from Total Readers" />
             </div>
           </div>
 
@@ -212,7 +198,9 @@ export default function AdminPage() {
           <div>
             <h2 className="text-xs font-bold uppercase tracking-wider text-on-surface-variant mb-3">Social</h2>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-              <StatCard label="Notes" value={stats.total_notes} />
+              {/* R-16: total_notes counts readers' notes only; bot_notes is the excluded figure. */}
+              <StatCard label="Reader Notes" value={stats.total_notes} sub="excludes bot posts" />
+              <StatCard label="Bot Notes" value={stats.bot_notes} sub="excluded from Reader Notes" />
               <StatCard label="Likes" value={stats.total_likes} />
               <StatCard label="Comments" value={stats.total_comments} />
               <StatCard label="Follows" value={stats.total_follows} />
@@ -270,7 +258,7 @@ export default function AdminPage() {
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="border-b border-outline-variant/15">
-                          {['Name', 'Email', 'Books', 'Followers', 'Admin', 'Joined', ''].map(h => (
+                          {['Name', 'Email', 'Books', 'Followers', 'Admin', 'Bot', 'Joined', ''].map(h => (
                             <th key={h} className="text-left px-5 py-3 text-xs font-bold uppercase tracking-wider text-on-surface-variant">
                               {h}
                             </th>
@@ -292,6 +280,14 @@ export default function AdminPage() {
                       <td className="px-5 py-3">
                         {u.is_admin ? (
                           <span className="text-xs font-bold px-2 py-0.5 bg-primary/10 text-primary rounded-full">Admin</span>
+                        ) : (
+                          <span className="text-xs text-on-surface-faint">—</span>
+                        )}
+                      </td>
+                      {/* R-16: /admin/users carries is_bot per row so a bot account is visible here */}
+                      <td className="px-5 py-3">
+                        {u.is_bot ? (
+                          <span className="text-xs font-bold uppercase tracking-wider text-secondary bg-secondary/10 px-1.5 py-0.5 rounded-full shrink-0">BOT</span>
                         ) : (
                           <span className="text-xs text-on-surface-faint">—</span>
                         )}
@@ -446,27 +442,6 @@ export default function AdminPage() {
       {!loading && activeTab === 'push' && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
-          {/* Bot trigger */}
-          <section className="bg-surface-container-lowest rounded-3xl p-6 space-y-4 md:col-span-2">
-            <div className="flex items-center justify-between flex-wrap gap-3">
-              <div>
-                <h2 className="font-serif text-lg font-bold text-primary">Editorial Bot</h2>
-                <p className="text-sm text-on-surface-variant">Manually trigger the editorial bot to post community content.</p>
-              </div>
-              <button
-                onClick={handleBotTrigger}
-                disabled={botLoading}
-                className="btn-primary px-6 py-2.5 text-sm rounded-xl"
-              >
-                {botLoading ? 'Triggering...' : 'Trigger Bot'}
-              </button>
-            </div>
-            {botResult && (
-              <p className={`text-sm ${botResult.ok ? 'text-secondary' : 'text-error'}`}>
-                {botResult.msg}
-              </p>
-            )}
-          </section>
           {/* Broadcast */}
           <section className="bg-surface-container-lowest rounded-3xl p-6 space-y-4">
             <h2 className="font-serif text-lg font-bold text-primary">Broadcast Push</h2>
