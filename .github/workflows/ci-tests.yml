@@ -1,0 +1,162 @@
+# Every test suite in this repository, on every push and every pull request.
+#
+# WHY THIS FILE EXISTS
+# --------------------
+# Three times in one day a whole test file vanished from a run without anyone noticing.
+# A test file that fails to *load* - one bad import, one renamed symbol - is reported by
+# both pytest and `node --test` as a single error, while every assertion inside it silently
+# stops running. The output looks like one ordinary failure. It is not: it is a hundred
+# assertions that are no longer being made.
+#
+# The Node suites made this worse by not being in CI at all. They ran only where somebody
+# had happened to install that directory's dependencies, so a broken file could sit unnoticed
+# indefinitely. They run here now.
+#
+# So this workflow does not only check that tests pass. It checks that the NUMBER of tests
+# that ran has not dropped. That is the assertion the vanishing-file failure mode needs,
+# because a file that fails to load lowers the count without failing anything.
+#
+# THE PINNED COUNTS BELOW ARE A FLOOR, TO BE RAISED AND NEVER LOWERED.
+# They are the numbers measured on the branch that added this file. Adding tests means
+# raising the floor in the same commit. If a number here ever needs to go DOWN, that is
+# either tests being deleted - which needs saying out loud in the commit message and in the
+# review - or a file that stopped loading, which is the bug this file is here to catch.
+# Lowering a floor to make CI green is the exact move this workflow exists to prevent.
+#
+# Public repositories get unlimited GitHub-hosted Actions minutes, so running all three
+# suites on every push costs nothing.
+#
+# No secrets. No DATABASE_URL. The pytest suite runs entirely on in-memory SQLite
+# (tests/conftest.py), and the Node suites read source files. Nothing here touches a
+# production service.
+
+name: Tests
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  pytest:
+    name: pytest tests
+    runs-on: ubuntu-latest
+    env:
+      # Floor, not a target. Raise it when you add tests; never lower it to go green.
+      EXPECTED_MIN_TESTS: 623
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          # Not in requirements.txt, which is the runtime list: the test suite needs these.
+          pip install pytest pyyaml
+
+      - name: Run the suite and check the count has not dropped
+        run: |
+          set -uo pipefail
+          # The suite's own exit code is kept, but it must not abort the step: the count
+          # check below is the more informative of the two and has to get a chance to run.
+          python -m pytest tests -q 2>&1 | tee pytest.log
+          STATUS=${PIPESTATUS[0]}
+          PASSED="$(grep -oE '[0-9]+ passed' pytest.log | tail -1 | cut -d' ' -f1)"
+          if [ -z "$PASSED" ]; then
+            echo "::error::Could not read a passed-count from the pytest output."
+            exit 1
+          fi
+          echo "pytest passed: $PASSED (floor: $EXPECTED_MIN_TESTS), pytest exit $STATUS"
+          if [ "$PASSED" -lt "$EXPECTED_MIN_TESTS" ]; then
+            echo "::error::Only $PASSED tests passed; the floor is $EXPECTED_MIN_TESTS."
+            echo "::error::A drop usually means a test file failed to LOAD - its assertions"
+            echo "::error::disappeared and the run reported one error instead of many."
+            exit 1
+          fi
+          exit "$STATUS"
+
+  node-qa:
+    name: node --test qa/unit
+    runs-on: ubuntu-latest
+    env:
+      # Floor, not a target. See the header.
+      EXPECTED_MIN_TESTS: 38
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install qa dependencies
+        run: npm ci --prefix qa
+
+      - name: Run the suite and check the count has not dropped
+        run: |
+          set -uo pipefail
+          # `node --test` exits non-zero on a failure; that must not abort the step before
+          # the count check, which is the one that catches a file that failed to load.
+          node --test "qa/unit/*.test.mjs" 2>&1 | tee node-qa.log
+          PASS="$(grep -oE '^# pass [0-9]+' node-qa.log | tail -1 | awk '{print $3}')"
+          FAIL="$(grep -oE '^# fail [0-9]+' node-qa.log | tail -1 | awk '{print $3}')"
+          if [ -z "$PASS" ] || [ -z "$FAIL" ]; then
+            echo "::error::Could not read the test counts from the node --test output."
+            exit 1
+          fi
+          echo "qa/unit pass: $PASS fail: $FAIL (floor: $EXPECTED_MIN_TESTS)"
+          if [ "$FAIL" -ne 0 ]; then
+            echo "::error::$FAIL qa/unit test(s) failed."
+            exit 1
+          fi
+          if [ "$PASS" -lt "$EXPECTED_MIN_TESTS" ]; then
+            echo "::error::Only $PASS qa/unit tests passed; the floor is $EXPECTED_MIN_TESTS."
+            echo "::error::A drop usually means a test file failed to LOAD."
+            exit 1
+          fi
+
+  node-android:
+    name: node --test book-tracker-mobile-stitch/__tests__
+    runs-on: ubuntu-latest
+    env:
+      # Floor, not a target. See the header.
+      EXPECTED_MIN_TESTS: 121
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install mobile dependencies
+        working-directory: book-tracker-mobile-stitch
+        run: npm ci
+
+      - name: Run the suite and check the count has not dropped
+        working-directory: book-tracker-mobile-stitch
+        run: |
+          set -uo pipefail
+          # Same reason as the qa/unit job: keep the step alive long enough to compare counts.
+          node --test "__tests__/*.test.mjs" 2>&1 | tee node-android.log
+          PASS="$(grep -oE '^# pass [0-9]+' node-android.log | tail -1 | awk '{print $3}')"
+          FAIL="$(grep -oE '^# fail [0-9]+' node-android.log | tail -1 | awk '{print $3}')"
+          if [ -z "$PASS" ] || [ -z "$FAIL" ]; then
+            echo "::error::Could not read the test counts from the node --test output."
+            exit 1
+          fi
+          echo "__tests__ pass: $PASS fail: $FAIL (floor: $EXPECTED_MIN_TESTS)"
+          if [ "$FAIL" -ne 0 ]; then
+            echo "::error::$FAIL Android test(s) failed."
+            exit 1
+          fi
+          if [ "$PASS" -lt "$EXPECTED_MIN_TESTS" ]; then
+            echo "::error::Only $PASS Android tests passed; the floor is $EXPECTED_MIN_TESTS."
+            echo "::error::A drop usually means a test file failed to LOAD."
+            exit 1
+          fi
