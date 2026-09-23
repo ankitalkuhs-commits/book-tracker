@@ -392,3 +392,106 @@ class TestGroupsRegression:
         assert client.get(f"/groups/{gid}/leaderboard", headers=ho).status_code == 403
         assert client.get(f"/groups/{gid}/posts", headers=ho).status_code == 403
         assert client.get(f"/groups/{gid}/activity", headers=ho).status_code == 403
+
+
+# ── Sprint 4E · L-4E-34 — GET /groups/my/pending is no longer O(pending circles) ──
+
+class TestPendingGroupsQueryCount:
+    """The per-circle member `count(*)` inside the list comprehension is the N+1.
+
+    Scope is that loop only; `group_context` (L-4E-31..33) is not part of the
+    descoped sprint.
+    """
+
+    @staticmethod
+    def _counter():
+        import tests.conftest as _tc
+        from sqlalchemy import event
+        state = {"n": 0, "statements": []}
+
+        def _count(conn, cursor, statement, parameters, context, executemany):
+            state["n"] += 1
+            state["statements"].append(" ".join(statement.split())[:160])
+
+        event.listen(_tc.engine, "before_cursor_execute", _count)
+        return state, (lambda: event.remove(_tc.engine, "before_cursor_execute", _count))
+
+    @staticmethod
+    def _circle(db, creator_id, name, active_members, pending_members=0):
+        """A circle with `active_members` active and `pending_members` pending members."""
+        from app import models
+        g = models.ReadingGroup(name=name, is_private=True, created_by=creator_id)
+        db.add(g)
+        db.commit()
+        db.refresh(g)
+        for i in range(active_members):
+            u = _make_user(db, email=f"{name.lower().replace(' ', '')}_a{i}@example.com")
+            db.add(models.GroupMember(group_id=g.id, user_id=u.id, status="active"))
+        for i in range(pending_members):
+            u = _make_user(db, email=f"{name.lower().replace(' ', '')}_p{i}@example.com")
+            db.add(models.GroupMember(group_id=g.id, user_id=u.id, status="pending"))
+        db.commit()
+        return g
+
+    def test_member_counts_and_flat_query_count(self, client, db):
+        from app import models
+
+        owner = _make_user(db, email="l4e34_owner@example.com", name="L4E34 Owner")
+        reader = _make_user(db, email="l4e34_reader@example.com", name="L4E34 Reader")
+        headers = _auth(reader)
+
+        # Four circles the reader has asked to join: 2, 5, 9 and 0 active members.
+        # Each also carries pending members, which must not be counted.
+        seeded = {}
+        for name, active in (("L4E34 Two", 2), ("L4E34 Five", 5), ("L4E34 Nine", 9), ("L4E34 Zero", 0)):
+            g = self._circle(db, owner.id, name, active, pending_members=2)
+            db.add(models.GroupMember(group_id=g.id, user_id=reader.id, status="pending", invited_by=None))
+            seeded[g.id] = active
+        # (e) a pending INVITE must not appear in this list
+        invited = self._circle(db, owner.id, "L4E34 Invite", 3)
+        db.add(models.GroupMember(group_id=invited.id, user_id=reader.id,
+                                  status="pending", invited_by=owner.id))
+        db.commit()
+
+        state, unlisten = self._counter()
+        try:
+            # prime — absorbs the once-per-local-day last_active UPDATE
+            assert client.get("/groups/my/pending", headers=headers).status_code == 200
+            state["n"] = 0
+            state["statements"].clear()
+            r_small = client.get("/groups/my/pending", headers=headers)
+            n_small = state["n"]
+            assert r_small.status_code == 200, r_small.text
+            rows = {g["id"]: g for g in r_small.json()}
+
+            # (e) the invite is absent; (c)+(d) the counts are the active members only
+            assert invited.id not in rows, "a pending invite leaked into /groups/my/pending"
+            assert set(rows) == set(seeded), f"got circles {sorted(rows)}, expected {sorted(seeded)}"
+            for gid, active in seeded.items():
+                assert rows[gid]["member_count"] == active, (
+                    f"circle {gid} member_count == {rows[gid]['member_count']}, expected {active}"
+                )
+
+            # 25 more pending self-joins
+            for i in range(25):
+                g = self._circle(db, owner.id, f"L4E34 Bulk {i}", 1)
+                db.add(models.GroupMember(group_id=g.id, user_id=reader.id,
+                                          status="pending", invited_by=None))
+            db.commit()
+
+            state["n"] = 0
+            state["statements"].clear()
+            r_large = client.get("/groups/my/pending", headers=headers)
+            n_large = state["n"]
+            stmts = list(state["statements"])
+        finally:
+            unlisten()
+
+        assert r_large.status_code == 200
+        assert len(r_large.json()) == len(seeded) + 25, "the large seed was not served"
+        assert n_small == n_large, (
+            f"{len(seeded)} pending circles cost {n_small} queries, "
+            f"{len(seeded) + 25} cost {n_large} (must be equal)\n"
+            + "\n".join(f"  {i + 1}. {s}" for i, s in enumerate(stmts[:8]))
+        )
+        assert n_large <= 3, f"GET /groups/my/pending ran {n_large} queries, budget 3"
