@@ -35,6 +35,10 @@ class User(SQLModel, table=True):
     yearly_goal: Optional[int] = None          # target books per year
     is_admin: bool = Field(default=False)
     is_private_profile: bool = Field(default=False)
+    # Sprint 4F (R-01): an openly-labelled automated account. The row is the single authority —
+    # no token claim carries it (E-4), so revoking a bot is one UPDATE. Indexed because R-16's
+    # /admin/stats counts filter on it on every call.
+    is_bot: bool = Field(default=False, index=True)
     notification_prefs: Optional[str] = Field(default=None)  # JSON: {"new_follower": true, ...}
     created_at: datetime = Field(default_factory=datetime.utcnow)
     last_active: Optional[datetime] = None
@@ -195,6 +199,24 @@ class ReadingActivity(SQLModel, table=True):
     current_page: Optional[int] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
     local_day: Optional[bool] = None          # Sprint 4C: True = labelled with the reader's local day. NULL = pre-4C (UTC day).
+
+
+class BotPost(SQLModel, table=True):
+    """Sprint 4F (R-15): what a bot account has already posted, so nothing is posted twice.
+
+    Written by the API only, inside the note's own transaction (E-5) — the bot holds no
+    database credential and never writes this table itself. `note_id` is audit information;
+    correctness lives entirely in the unique index on (content_type, dedup_key).
+    """
+    __tablename__ = "bot_post"
+    __table_args__ = (UniqueConstraint("content_type", "dedup_key", name="uq_bot_post"),)
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    bot_email: str = Field(nullable=False)
+    content_type: str = Field(nullable=False, index=True)   # bestseller | prompt | quote | circles
+    dedup_key: str = Field(nullable=False)                  # ISBN, prompt id, quote id, or ISO week
+    note_id: Optional[int] = None
+    posted_at: datetime = Field(default_factory=datetime.utcnow, index=True)
 
 
 from typing import Optional

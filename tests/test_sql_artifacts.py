@@ -307,5 +307,11 @@ class TestMigration4C:
         step1 = section[section.index(C4_STEP_1):section.index(C4_STEP_2)]
         m = re.search(r"VARCHAR\((\d+)\)", step1)
         assert m and int(m.group(1)) == localday.MAX_ZONE_LEN == 64
-        for table, column in REQUIRED_COLUMNS:
+        # Sprint 4F: scoped to the 4C pairs. REQUIRED_COLUMNS is appended to by every future
+        # migration (schema_guard.py's own docstring says so), so walking ALL of it against the
+        # 4C section asserted that no sprint after 4C may ever add a column. Each sprint's own
+        # section owns its own columns; 4F's two live in context/PM_SQL_QUEUE.md (P5).
+        C4_PAIRS = (("user", "timezone"), ("reading_activity", "local_day"))
+        assert set(C4_PAIRS) <= set(REQUIRED_COLUMNS)
+        for table, column in C4_PAIRS:
             assert column in step1

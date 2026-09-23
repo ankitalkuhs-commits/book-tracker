@@ -96,6 +96,9 @@ def _user_wants_event(db: Session, user_id: int, event_type: str) -> bool:
     import json
     from ..models import User
     user = db.get(User, user_id)
+    # Sprint 4F (R-05): an automated account has no inbox. Never deliver to one.
+    if user is not None and getattr(user, "is_bot", False):
+        return False
     if not user or not getattr(user, "notification_prefs", None):
         return True  # no prefs set = all enabled
     try:
@@ -141,6 +144,16 @@ def fire_event(
     if not config.get("is_active", True):
         print(f"[Notify] Event '{event_type}' is disabled in config — skipping")
         return {"sent": 0, "disabled": True}
+
+    # Sprint 4F (R-05): a bot is never named as the actor of a notification. Defence in depth —
+    # deny_bot_actor means no product path can reach here with a bot actor. actor_id 0 is the
+    # scheduler's "TrackMyRead", not a user row, and looks up as None.
+    from ..models import User as _User
+    _actor = db.get(_User, actor_id) if actor_id else None
+    if _actor is not None and getattr(_actor, "is_bot", False):
+        print(f"[Notify] Actor {actor_id} is an automated account — no delivery")
+        return {"sent": 0, "skipped_self": 0, "skipped_cap": 0, "dry_run": dry_run,
+                "bot_actor": True}
 
     template_vars = {"actor": actor_name, **(extra or {})}
     title = _render_template(config["title"], template_vars)

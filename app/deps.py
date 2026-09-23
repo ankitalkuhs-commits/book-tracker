@@ -142,3 +142,29 @@ def get_admin_user(
             detail="Admin access required"
         )
     return current_user
+
+
+BOT_ACTOR_DENIED = "Automated accounts cannot interact with readers' posts"
+
+
+def deny_bot_actor(
+    current_user = Depends(get_current_user)
+):
+    """Sprint 4F (R-05): an automated account may post, and may read. It may not follow, like,
+    unlike or comment.
+
+    This is a dependency and not a check inside the four handlers on purpose: FastAPI resolves
+    dependencies BEFORE the handler body runs, so the 403 lands before any row is added and
+    before any `background_tasks.add_task(fire_event, ...)` is registered. That ordering is the
+    requirement, not a side effect of it.
+
+    The decision is read from `current_user.is_bot` — the database row `get_current_user` just
+    loaded — and never from a token claim (E-4). Revoking a bot is therefore one UPDATE and not
+    a token-expiry problem.
+    """
+    if current_user.is_bot:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=BOT_ACTOR_DENIED,
+        )
+    return current_user
