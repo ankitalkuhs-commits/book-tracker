@@ -36,7 +36,13 @@ def _send_inactivity_reminders() -> None:
         user_ids = db.exec(select(models.PushToken.user_id).distinct()).all()
         if not user_ids:
             return
-        users = db.exec(select(models.User).where(models.User.id.in_(user_ids))).all()
+        # Sprint 4F (R-05): never remind an automated account. A bot holds no push token today,
+        # so nothing would be delivered — but the query should not depend on that staying true.
+        users = db.exec(
+            select(models.User)
+            .where(models.User.id.in_(user_ids))
+            .where(models.User.is_bot == False)          # noqa: E712 — SQL, not Python truthiness
+        ).all()
 
         due = {}                                   # user_id -> (zone, local today)
         for user in users:

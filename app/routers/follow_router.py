@@ -4,14 +4,14 @@ from sqlalchemy.exc import IntegrityError
 from sqlmodel import select
 from sqlmodel import Session
 from ..database import get_session
-from ..deps import get_current_user
+from ..deps import get_current_user, deny_bot_actor
 from .. import models
 from ..notifications.dispatcher import fire_event
 
 router = APIRouter(prefix="/follow", tags=["follow"])
 
 @router.post("/{followed_id}")
-def follow_user(followed_id: int, background_tasks: BackgroundTasks, db: Session = Depends(get_session), user = Depends(get_current_user)):
+def follow_user(followed_id: int, background_tasks: BackgroundTasks, db: Session = Depends(get_session), user = Depends(get_current_user), _: None = Depends(deny_bot_actor)):
     if followed_id == user.id:
         raise HTTPException(status_code=400, detail="Cannot follow yourself")
     target = db.exec(select(models.User).where(models.User.id == followed_id)).first()

@@ -10,6 +10,13 @@ from sqlalchemy import text
 REQUIRED_COLUMNS = (
     ("user", "timezone"),              # Sprint 4C
     ("reading_activity", "local_day"), # Sprint 4C
+    # Sprint 4F. DEPLOY ORDER IS NOT NEGOTIABLE (architecture.md §"Deploy order"): the PM runs
+    # the `is_bot` SQL and the `bot_post` SQL FIRST, and only then is this commit deployed. A
+    # missing table produces no information_schema row either, so ("bot_post","dedup_key")
+    # covers the whole table. Deploying this ahead of the SQL fails the deploy on purpose and
+    # the previous version keeps serving.
+    ("user", "is_bot"),                # Sprint 4F
+    ("bot_post", "dedup_key"),         # Sprint 4F
 )
 
 

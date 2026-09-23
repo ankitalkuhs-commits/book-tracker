@@ -2,6 +2,7 @@
 import hmac
 import os
 import secrets
+from datetime import timedelta
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -20,6 +21,10 @@ class GoogleAuthIn(BaseModel):
     token: str
 
 class ReviewLoginIn(BaseModel):
+    email: str
+    secret: str
+
+class BotLoginIn(BaseModel):
     email: str
     secret: str
 
@@ -165,6 +170,69 @@ def review_login(payload: ReviewLoginIn, db: Session = Depends(get_session)):
         "access_token": token,
         "is_new": is_new_user,
         "user": {"id": user.id, "name": user.name, "email": user.email},
+    }
+
+
+def _bot_login_config() -> tuple[Optional[str], list[str]]:
+    """Read the bot-login env vars on every request, for the same two reasons
+    `_review_login_config` does: tests monkeypatch them, and clearing BOT_LOGIN_SECRET on
+    Render is the emergency stop (R-14) and must not need a code deploy."""
+    secret = (os.getenv("BOT_LOGIN_SECRET") or "").strip()
+    raw = os.getenv("BOT_LOGIN_EMAILS") or ""
+    allowlist = [e.strip().lower() for e in raw.split(",") if e.strip()]
+    return (secret or None), allowlist
+
+
+BOT_LOGIN_TOKEN_MINUTES = 15
+
+
+@router.post("/bot-login", include_in_schema=False)
+def bot_login(payload: BotLoginIn, db: Session = Depends(get_session)):
+    """
+    Sprint 4F (R-08). Exchange the shared BOT_LOGIN_SECRET for a 15-minute token for one
+    allowlisted @trackmyread.com account whose row already has is_bot = true.
+
+    Modelled on /auth/review-login and then tightened in two ways that matter:
+      * it NEVER creates a user — review_login's find-or-create block is deliberately absent,
+        because a login route that can conjure an account, driven by an env var an operator
+        edits, is a different risk class (architecture §Security review 3.5);
+      * it never writes last_active (R-12), so posting through the API does not make a bot
+        look like an active reader.
+
+    The token it mints is an ordinary user token and carries no scope claim (E-4). `user.is_bot`
+    on the row is the single authority for everything the bot may and may not do.
+    """
+    configured_secret, allowlist = _bot_login_config()
+
+    # 1. Not opted in -> the route behaves as if it does not exist. Local dev, CI and forks
+    #    never have both set, so /auth/bot-login does not exist there.
+    if not configured_secret or not allowlist:
+        raise HTTPException(status_code=404, detail="Not Found")
+
+    # 2. Domain guard, allowlist membership, the row's existence, the row's is_bot flag and the
+    #    secret are ALL evaluated before a single 401 is raised, so the response cannot separate
+    #    "unknown account" from "wrong secret".
+    #    The domain guard is applied to the REQUEST, independently of the allowlist, so a
+    #    typo'd BOT_LOGIN_EMAILS cannot admit an address outside the company domain.
+    email = payload.email.strip().lower()
+    email_ok = email in set(allowlist) and email.endswith(TRACKMYREAD_DOMAIN)
+    user = crud.get_user_by_email(db, email) if email_ok else None
+    row_ok = user is not None and bool(user.is_bot)
+    secret_ok = hmac.compare_digest(
+        payload.secret.encode("utf-8"), configured_secret.encode("utf-8")
+    )
+    if not (email_ok and row_ok and secret_ok):
+        raise HTTPException(status_code=401, detail="Invalid bot credentials")
+
+    # 3. No find-or-create. No last_active write. Just the short-lived token.
+    token = auth.create_access_token(
+        {"sub": user.email},
+        expires_delta=timedelta(minutes=BOT_LOGIN_TOKEN_MINUTES),
+    )
+    return {
+        "access_token": token,
+        "expires_in": BOT_LOGIN_TOKEN_MINUTES * 60,
+        "user": {"id": user.id, "email": user.email},
     }
 
 
