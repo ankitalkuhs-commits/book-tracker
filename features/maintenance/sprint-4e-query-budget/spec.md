@@ -11,6 +11,13 @@ base_branch: sprint-4c-local-day (NOT master — 4C is code-complete and edits m
 
 ## What It Does
 
+> **This section's premise expired on 2026-09-22, and the sprint was cut because of it.** The API
+> moved to Singapore, beside the database, and a query now costs **3 ms** — not the ~60 ms this
+> section predicted for co-location. Six of the seven packages were dropped on that arithmetic;
+> see `pm-decisions.md` in this folder for what shipped and why. The text below is kept as written
+> because it is the analysis that identified the region problem in the first place, and because
+> the measured query counts in it are still correct. **Do not quote its millisecond figures.**
+
 Every database query this API makes crosses the Pacific: the API runs in Oregon, the database
 in Singapore. Measured from the `Server-Timing` header on production, **one query costs
 180–250 ms**, and a page's wait grows almost exactly in line with how many queries it makes.
