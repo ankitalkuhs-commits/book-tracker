@@ -8,6 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { userAPI, userbooksAPI, activityAPI, notesAPI, booksAPI, profileAPI } from '../services/api';
 import { PreloadContext } from '../../App';
+import BotBadge from '../components/BotBadge';
 import { colors, radius, shadow, type } from '../theme';
 
 const SCREEN_W   = Dimensions.get('window').width;
@@ -300,7 +301,10 @@ export default function UserProfileScreen({ route, navigation }) {
               <Text style={styles.avatarText}>{getInitials(name)}</Text>
             </View>
           )}
-          <Text style={styles.userName}>{name}</Text>
+          <View style={styles.userNameRow}>
+            <Text style={styles.userName}>{name}</Text>
+            <BotBadge isBot={user?.is_bot} />
+          </View>
           {user?.username && <Text style={styles.heroUsername}>@{user.username}</Text>}
           {user?.bio && <Text style={styles.userBio}>{user.bio}</Text>}
           {joinedDate && (
@@ -589,6 +593,7 @@ const styles = StyleSheet.create({
   avatarImg:      { width: 96, height: 96, borderRadius: 14, borderWidth: 3, borderColor: colors.primary, marginBottom: 14 },
   avatarFallback: { width: 96, height: 96, borderRadius: 14, backgroundColor: colors.primaryContainer, alignItems: 'center', justifyContent: 'center', marginBottom: 14, borderWidth: 3, borderColor: colors.primary },
   avatarText:     { fontFamily: 'NotoSerif_700Bold', fontSize: 34, fontWeight: '700', color: colors.primary },
+  userNameRow:    { flexDirection: 'row', alignItems: 'center', gap: 6 },
   userName:       { ...type.titleLg, color: colors.onSurface, marginBottom: 2 },
   heroUsername:   { ...type.bodySm, color: colors.onSurfaceVariant, marginBottom: 6 },
   userBio:        { ...type.body, color: colors.onSurfaceVariant, textAlign: 'center', marginBottom: 14, paddingHorizontal: 16 },

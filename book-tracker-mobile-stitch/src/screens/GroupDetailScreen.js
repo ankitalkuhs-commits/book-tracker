@@ -9,6 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { groupsAPI, booksAPI, userAPI, userbooksAPI } from '../services/api';
+import BotBadge from '../components/BotBadge';
 import { colors, radius, shadow, type } from '../theme';
 
 const WEB_APP_URL = 'https://www.trackmyread.com';
@@ -39,10 +40,10 @@ function timeAgo(dateStr) {
   return `${Math.floor(diff / 86400)}d ago`;
 }
 
-function Avatar({ name, size = 40 }) {
+function Avatar({ name, size = 40, isBot = false }) {
   const ini = name ? name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() : '?';
   return (
-    <View style={[styles.avatar, { width: size, height: size, borderRadius: size / 2 }]}>
+    <View style={[styles.avatar, isBot && styles.avatarBot, { width: size, height: size, borderRadius: size / 2 }]}>
       <Text style={[styles.avatarText, { fontSize: size * 0.36 }]}>{ini}</Text>
     </View>
   );
@@ -718,10 +719,13 @@ export default function GroupDetailScreen({ route, navigation }) {
                     accessibilityRole="button"
                     accessibilityLabel={t('a11y.openUserProfile', { name: post.user?.name })}
                   >
-                    <Avatar name={post.user?.name} size={36} />
+                    <Avatar name={post.user?.name} size={36} isBot={post.user?.is_bot} />
                   </TouchableOpacity>
                   <View style={styles.postMeta}>
-                    <Text style={styles.postAuthor}>{post.user?.name || 'Member'}</Text>
+                    <View style={styles.postAuthorRow}>
+                      <Text style={styles.postAuthor}>{post.user?.name || 'Member'}</Text>
+                      <BotBadge isBot={post.user?.is_bot} />
+                    </View>
                     <Text style={styles.postTime}>{timeAgo(post.created_at)}</Text>
                   </View>
                   {isCurator && (
@@ -1108,6 +1112,7 @@ const styles = StyleSheet.create({
   postCard:   { backgroundColor: colors.surfaceContainerLow, borderRadius: radius.md, padding: 14, marginBottom: 10 },
   postHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10 },
   postMeta:   { flex: 1 },
+  postAuthorRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   postAuthor: { ...type.body, fontFamily: 'Manrope_700Bold', fontWeight: '700', color: colors.onSurface },
   postTime:   { ...type.caption, color: colors.outline, marginTop: 1 },
   postText:   { ...type.body, color: colors.onSurface },
@@ -1126,6 +1131,7 @@ const styles = StyleSheet.create({
   removeBtn:      { padding: 4 },
 
   avatar:     { backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  avatarBot:  { backgroundColor: colors.tertiaryContainer },
   avatarText: { color: colors.onPrimary, fontFamily: 'Manrope_700Bold', fontWeight: '700' },
 
   composerRoot:   { flex: 1, backgroundColor: colors.surfaceContainerLowest },
