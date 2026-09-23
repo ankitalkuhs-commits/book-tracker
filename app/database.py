@@ -30,6 +30,16 @@ else:
     engine = create_engine(
         DATABASE_URL,
         echo=False,  # Set to False in production for cleaner logs
+        # Sprint 4E R-02 / E-3 — this is a decision, not a default. KEEP IT.
+        # Measured cost: one SELECT 1 per connection checkout, 170-200 ms on production (server
+        #   total minus DB time, on every endpoint including /version, which runs no query). It
+        #   is per REQUEST, not per query, so it never grows with page weight.
+        # Why it stays: Supabase closes idle connections, and pool_recycle=300 below discards a
+        #   connection by AGE, not by idle time — a 299-second-old connection idle for 299
+        #   seconds is handed out unrecycled. Pre-ping is what catches it; without it the reader
+        #   gets a 500 instead of a slow page, the worse failure.
+        # Revisit when: the API and the database are co-located. Re-measure then; if the ping is
+        #   under 5 ms, this decision needs no further thought.
         pool_pre_ping=True,  # Verify connections before using them
         pool_recycle=300,  # Recycle connections after 5 minutes
         pool_size=5,  # Reduced pool size for better stability
