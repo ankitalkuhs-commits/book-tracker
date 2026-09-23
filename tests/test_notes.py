@@ -1103,11 +1103,11 @@ class TestNoteQueryCount:
             assert set(row.keys()) == top_keys
 
         assert feed["created_at"].endswith("Z")
-        assert set(feed["user"].keys()) == {"id", "name", "profile_picture", "username"}
-        assert set(me["user"].keys()) == {"id", "name", "profile_picture", "username"}
-        assert set(ff["user"].keys()) == {"id", "is_mutual", "name", "profile_picture", "username"}
-        assert set(by_user["user"].keys()) == {"id", "name"}
-        assert set(by_ub["user"].keys()) == {"id", "name"}
+        assert set(feed["user"].keys()) == {"id", "name", "profile_picture", "username", "is_bot"}
+        assert set(me["user"].keys()) == {"id", "name", "profile_picture", "username", "is_bot"}
+        assert set(ff["user"].keys()) == {"id", "is_mutual", "name", "profile_picture", "username", "is_bot"}
+        assert set(by_user["user"].keys()) == {"id", "name", "is_bot"}
+        assert set(by_ub["user"].keys()) == {"id", "name", "is_bot"}
 
         assert feed["liked_by_me"] == feed["user_has_liked"] is True
         assert feed["likes_count"] == 1
@@ -1139,7 +1139,7 @@ class TestNoteShapeRegression:
         assert set(n.keys()) == self.TOP_KEYS
         assert n["created_at"].endswith("Z")
         assert n["liked_by_me"] == n["user_has_liked"] is False
-        assert set(n["user"].keys()) == {"id", "name", "profile_picture", "username"}
+        assert set(n["user"].keys()) == {"id", "name", "profile_picture", "username", "is_bot"}
 
     def test_me_keeps_updated_at_and_like_keys(self, client, db):
         """R-02: /notes/me is the endpoint whose handler actually computes a real
@@ -1200,7 +1200,7 @@ class TestNoteShapeRegression:
         assert as_carol["R03 liked"]["user_has_liked"] is False
         assert as_carol["R03 liked"]["likes_count"] == 1
         # the asymmetry that does hold: `user` is only {id, name} here
-        assert as_bob["R03 liked"]["user"] == {"id": alice.id, "name": alice.name}
+        assert as_bob["R03 liked"]["user"] == {"id": alice.id, "name": alice.name, "is_bot": alice.is_bot}
 
         # private-profile gate still applies to a non-follower
         client.put("/profile/me", json={"is_private_profile": True}, headers=_auth(alice))

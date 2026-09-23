@@ -87,7 +87,7 @@ class TestAdminAccess:
             "books_being_read", "books_completed", "books_wishlist", "new_users_this_month",
             "new_users_this_week", "total_books", "total_comments", "total_follows",
             "total_journals", "total_likes", "total_notes", "total_userbooks", "total_users",
-            "push_subscribed_users",
+            "push_subscribed_users", "bot_users", "bot_notes",
         }
         assert data["push_subscribed_users"] == expected
 
@@ -108,15 +108,15 @@ class TestAdminRegression:
         "books_being_read", "books_completed", "books_wishlist", "new_users_this_month",
         "new_users_this_week", "total_books", "total_comments", "total_follows",
         "total_journals", "total_likes", "total_notes", "total_userbooks", "total_users",
-        "push_subscribed_users",
+        "push_subscribed_users", "bot_users", "bot_notes",
     }
-    USER_KEYS = {"id", "name", "username", "email", "is_admin", "books_count",
+    USER_KEYS = {"id", "name", "username", "email", "is_admin", "is_bot", "books_count",
                  "followers_count", "following_count", "created_at", "last_active",
                  "deletion_requested_at", "deletion_reason"}
     BOOK_KEYS = {"id", "title", "author", "users_reading", "users_completed",
                  "total_users", "added_by_users"}
     FOLLOW_KEYS = {"follower_id", "follower_name", "followed_id", "followed_name", "created_at"}
-    NOTE_KEYS = {"id", "user_id", "user_name", "text", "quote", "emotion",
+    NOTE_KEYS = {"id", "user_id", "user_name", "is_bot", "text", "quote", "emotion",
                  "is_public", "created_at", "likes_count", "comments_count"}
     COMMENT_KEYS = {"id", "note_id", "user_id", "user_name", "text", "created_at"}
 

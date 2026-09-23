@@ -842,7 +842,8 @@ def get_group_posts(
             "image_url": p.image_url,
             "created_at": p.created_at.isoformat(),
             "user": {"id": user.id, "name": user.name,
-                     "profile_picture": getattr(user, "profile_picture", None)} if user else None,
+                     "profile_picture": getattr(user, "profile_picture", None),
+                     "is_bot": bool(user.is_bot)} if user else None,
             "book": {"id": book.id, "title": book.title,
                      "cover_url": book.cover_url} if book else None,
         })
@@ -881,7 +882,8 @@ def create_group_post(
         "emotion": p.emotion, "image_url": p.image_url,
         "created_at": p.created_at.isoformat(),
         "user": {"id": user.id, "name": user.name,
-                 "profile_picture": getattr(user, "profile_picture", None)},
+                 "profile_picture": getattr(user, "profile_picture", None),
+                 "is_bot": bool(user.is_bot)},
         "book": None,
     }
 
@@ -1131,6 +1133,7 @@ def get_group_activity(
                 "name": user.name or user.username,
                 "username": user.username,
                 "avatar_url": getattr(user, "avatar_url", None),
+                "is_bot": bool(user.is_bot),
             } if user else None,
         })
     return result

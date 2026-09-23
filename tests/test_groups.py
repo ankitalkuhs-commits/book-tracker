@@ -382,7 +382,7 @@ class TestGroupsRegression:
         a_keys = {"id", "event_type", "payload", "created_at", "user"}
         assert all(set(row.keys()) == a_keys for row in activity.json())
         assert all(
-            set(row["user"].keys()) == {"id", "name", "username", "avatar_url"}
+            set(row["user"].keys()) == {"id", "name", "username", "avatar_url", "is_bot"}
             for row in activity.json() if row.get("user")
         )
 

@@ -86,6 +86,78 @@ UPDATE "user" SET deletion_requested_at = NULL, deletion_reason = NULL WHERE id 
 
 ---
 
+## 6. Sprint 4F — the `is_bot` column — WRITES, and it gates the 4F deploy
+
+Run this **before** the Sprint 4F API deploy. `app/schema_guard.py` refuses to start when a
+column it requires is absent, so skipping this turns into a failed deploy (the previous version
+keeps serving) rather than a service that boots and then 500s on every `User` query.
+
+```sql
+ALTER TABLE "user" ADD COLUMN IF NOT EXISTS is_bot BOOLEAN NOT NULL DEFAULT false;
+CREATE INDEX IF NOT EXISTS ix_user_is_bot ON "user" (is_bot);
+
+UPDATE "user" SET is_bot = true
+ WHERE email IN ('tmrbot@trackmyread.com','tmrprompts@trackmyread.com',
+                 'tmrquotes@trackmyread.com','tmrcircles@trackmyread.com');
+
+-- E-9: rename @TMRBot and give it a bio that opens "Automated account."
+UPDATE "user"
+   SET name = 'TrackMyRead Bestsellers',
+       bio  = 'Automated account. Weekly picks from the New York Times bestseller lists.'
+ WHERE email = 'tmrbot@trackmyread.com';
+```
+
+The `ALTER` is metadata-only on every supported PostgreSQL version (a non-volatile default does
+not rewrite the table). The index is its own statement because creating indexes is never
+bundled in this project — you decide it.
+
+**Verify — send the output back.**
+
+```sql
+-- 1 row now (@TMRBot only); exactly 4 rows after migrations/add_bot_accounts.py has run
+SELECT id, email, username, is_bot, is_admin FROM "user" WHERE is_bot;
+-- must return 0 — a bot is never an admin (R-01)
+SELECT count(*) FROM "user" WHERE is_bot AND is_admin;
+-- must return 0 — every bot bio opens "Automated account." (E-9)
+SELECT count(*) FROM "user" WHERE is_bot AND COALESCE(bio,'') NOT LIKE 'Automated account.%';
+```
+
+---
+
+## 7. Sprint 4F — the `bot_post` table — WRITES, additive
+
+Run this straight after step 6, and still before the deploy: `schema_guard` requires
+`bot_post.dedup_key`, and a missing table produces no `information_schema.columns` row either.
+
+```sql
+CREATE TABLE IF NOT EXISTS bot_post (
+    id           SERIAL PRIMARY KEY,
+    bot_email    VARCHAR(255) NOT NULL,
+    content_type VARCHAR(32)  NOT NULL,
+    dedup_key    VARCHAR(255) NOT NULL,
+    note_id      INTEGER,
+    posted_at    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_bot_post ON bot_post (content_type, dedup_key);
+CREATE INDEX IF NOT EXISTS ix_bot_post_posted ON bot_post (content_type, posted_at DESC);
+```
+
+`uq_bot_post` is where dedup correctness lives: the API writes this row inside the note's own
+transaction, so a collision rolls the note back with it and no post is created.
+
+**Verify — send the output back.**
+
+```sql
+SELECT column_name FROM information_schema.columns
+ WHERE table_schema = current_schema() AND table_name = 'bot_post' AND column_name = 'dedup_key';
+SELECT indexname FROM pg_indexes WHERE tablename = 'bot_post';
+```
+
+Steps 6 and 7 are additive, re-runnable, and touch no existing row of any other table.
+`editorial_post` is left exactly as it is — it becomes read-only history (R-14).
+
+---
+
 ## What Claude does with each answer
 
 | You send | Claude does |
@@ -94,3 +166,5 @@ UPDATE "user" SET deletion_requested_at = NULL, deletion_reason = NULL WHERE id 
 | 2. duplicate counts | confirms whether 2b is needed, then verifies the constraints exist afterwards |
 | 3. verify output | merges Sprint 4C (deploys it), then checks `/version` and re-runs the live checks |
 | 4. three counts | reviews (a) against (a3) and recommends whether to widen the date before (b)/(c) |
+| 6. bot rows + 0/0 | merges Sprint 4F's API package, which deploys it, then checks `/version` |
+| 7. dedup_key + both index names | confirms `schema_guard` will pass, then runs `migrations/add_bot_accounts.py` |

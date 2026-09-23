@@ -157,7 +157,8 @@ def create_comment(
         "id": comment.id,
         "text": comment.text,
         "created_at": comment.created_at.isoformat() + 'Z',
-        "user": {"id": current_user.id, "name": current_user.name}
+        "user": {"id": current_user.id, "name": current_user.name,
+                 "is_bot": bool(current_user.is_bot)}   # R-02
     }
 
 
@@ -197,6 +198,7 @@ def get_comments(
                 "name": user.name,
                 "username": getattr(user, "username", None),
                 "profile_picture": getattr(user, "profile_picture", None),
+                "is_bot": bool(user.is_bot),   # R-02
             } if user else None
         })
 

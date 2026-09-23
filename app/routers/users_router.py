@@ -21,6 +21,7 @@ class UserSearchResult(BaseModel):
     is_following: bool
     follows_you: bool
     is_mutual: bool
+    is_bot: bool = False        # Sprint 4F R-02: always present, always boolean
 
 
 class FollowingUser(BaseModel):
@@ -102,7 +103,8 @@ def search_users(
             bio=user.bio,
             is_following=is_following,
             follows_you=follows_you,
-            is_mutual=is_following and follows_you
+            is_mutual=is_following and follows_you,
+            is_bot=bool(user.is_bot)
         ))
     
     return results
