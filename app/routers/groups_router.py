@@ -609,6 +609,11 @@ def get_members(
                 "user_id": u.id, "name": u.name, "username": u.username,
                 "profile_picture": getattr(u, "profile_picture", None),
                 "role": m.role, "joined_at": m.joined_at.isoformat(),
+                # Sprint 4F R-02. A bot is in no circle (R-05) and cannot reach this list, but
+                # R-03 badges this row *by name* so that a future mistake is visible rather
+                # than silent. A badge with no field behind it is a claim the code does not
+                # keep, so the field is here (PM ruling, 2026-09-23).
+                "is_bot": bool(u.is_bot),
             })
     return result
 

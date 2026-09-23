@@ -60,6 +60,8 @@ Instants are UTC unless marked otherwise. "Bot account" means a `user` row with 
     - `GET /profile/{user_id}` returns `is_bot` (`profile_router.py:228`).
     - `GET /users/search` results carry `is_bot` (`users_router.py:15` `UserSearchResult`, route at `:37`).
     - Comment author objects carry `is_bot` (`likes_comments.py:157`, `:192`).
+    - `GET /users/following` results carry `is_bot` (`users_router.py` `FollowingUser`). **PM, 2026-09-23:** R-05 permits a reader to follow a bot account, so a bot genuinely appears in the sidebar following list that R-03 badges (`HomePage.jsx:655`). Without the field that badge reads `undefined` and never fires.
+    - `GET /groups/{group_id}/members` rows carry `is_bot` (`groups_router.py:585-613`). **PM, 2026-09-23:** a bot can never be a circle member (R-05), but R-03 badges this row at `GroupDetailPage.jsx:965` *with its reason attached* — "so that a future mistake is visible rather than silent". A defence-in-depth claim the code does not keep is worse than no claim, so the field is required here rather than incidental.
     - The value is always present and boolean — never absent, never null — so a client can branch on it without a fallback.
     - No existing key changes name, type or value. The response-shape regression tests stay green unedited.
 - [ ] **R-03 Every web surface that shows a bot's name shows the badge next to it.**

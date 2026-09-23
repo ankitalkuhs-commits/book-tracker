@@ -1112,7 +1112,7 @@ PRE_4F_USER_KEYS = {
 }
 
 
-# The eight NON-note author objects R-02 requires. Written out as a literal so a site that is
+# The nine NON-note author objects R-02 requires. Written out as a literal so a site that is
 # silently dropped from the walk fails the count before anything is checked about contents
 # (rules 2 and 4) — a sub-case that quietly stops running would otherwise pass.
 #
@@ -1121,6 +1121,13 @@ PRE_4F_USER_KEYS = {
 # R-05 explicitly permits a reader to follow a bot — "the prohibition is one-directional". So a
 # bot genuinely appears there, and without the field the badge would read undefined forever.
 # That is the opposite resolution to K-05's HomePage.jsx:704, where a bot can never appear.
+#
+# `GET /groups/{group_id}/members` is here on the same PM's ruling of 2026-09-23. A bot can
+# never reach a circle (R-05, and spec §"Not building"), so on its own that would be a K-05
+# "drop the badge" case — but R-03 commissions the badge at GroupDetailPage.jsx:965 *with its
+# reason attached*: "the badge is added so that a future mistake is visible rather than
+# silent". A defence-in-depth claim the code does not keep is worse than no claim, because the
+# next reader believes the document. One boolean is the whole cost of honouring it.
 OTHER_AUTHOR_SITES = (
     "GET /profile/{user_id}",
     "GET /users/search",
@@ -1130,6 +1137,7 @@ OTHER_AUTHOR_SITES = (
     "GET /groups/{group_id}/posts",
     "POST /groups/{group_id}/posts",
     "GET /groups/{group_id}/activity",
+    "GET /groups/{group_id}/members",
 )
 
 
@@ -1311,10 +1319,22 @@ class TestSerialisation:
                 record("GET /groups/{group_id}/activity", row["user"],
                        row["user"]["id"] == bot.id)
 
+        # (9) the circle member row (groups_router.py:585-613). The bot was inserted as a
+        # member directly above, which is the only way it can be one — R-05 keeps it out of
+        # every circle. That is exactly the "future mistake" R-03's badge at
+        # GroupDetailPage.jsx:965 exists to render visibly. Note the row keys the caller by
+        # `user_id`, not `id`.
+        members = client.get("/groups/" + str(gid) + "/members", headers=rh).json()
+        assert len(members) == 2, members
+        member_ids = {m["user_id"] for m in members}
+        assert member_ids == {bot.id, reader.id}, member_ids
+        for row in members:
+            record("GET /groups/{group_id}/members", row, row["user_id"] == bot.id)
+
         # ── the inventory, BEFORE any value is checked ──────────────────────
-        assert len(OTHER_AUTHOR_SITES) == 8
-        assert len(found) == 8, \
-            "reached %d of the 8 author sites: missing %s" % (
+        assert len(OTHER_AUTHOR_SITES) == 9
+        assert len(found) == 9, \
+            "reached %d of the 9 author sites: missing %s" % (
                 len(found), sorted(set(OTHER_AUTHOR_SITES) - set(found)))
         assert sorted(found) == sorted(OTHER_AUTHOR_SITES)
 

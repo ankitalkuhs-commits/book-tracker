@@ -18,14 +18,14 @@ requirements: R-02, R-07, R-13, R-15, R-16
 | `app/routers/likes_comments.py` | `is_bot` on both comment-author dicts (create at `:157`, list at `:192`). The P1 guard dependencies were not touched |
 | `app/routers/profile_router.py` | `is_bot` on `GET /profile/{user_id}`'s `base` dict. `GET /profile/me` is a **different handler** and is unchanged, so `tests/test_follow_profile.py:318` stays green |
 | `app/routers/users_router.py` | `UserSearchResult` **and `FollowingUser`** gain `is_bot: bool = False`, set from the row. `FollowingUser` is a PM ruling on Finding 9, below |
-| `app/routers/groups_router.py` | `is_bot` on the group-post list author (`:844`), the group-post create author (`:883`) and the group-activity author (`:1129`) |
+| `app/routers/groups_router.py` | `is_bot` on the group-post list author (`:844`), the group-post create author (`:883`), the group-activity author (`:1129`) **and the circle member row (`:585-613`)** — the last on a PM ruling, see Finding 9b |
 | `app/routers/admin_router.py` | `PlatformStats` gains `bot_users` / `bot_notes`; `total_users`, `new_users_this_week`, `new_users_this_month` and `total_notes` filter `User.is_bot == False`; `UserSummary` and `NoteAdminView` gain `is_bot`; **`POST /admin/bot/trigger` deleted** |
 | `app/routers/bots_router.py` | **new.** `GET /bots/posted?content_type=…&since=…`, 403 unless `current_user.is_bot`, unioning `bot_post.dedup_key` with `editorial_post.nyt_isbn` prefixed `bestseller:` |
 | `app/main.py` | one import and one `include_router` |
 | `context/PM_SQL_QUEUE.md` | the two PM SQL steps, as **6 and 7** (see Finding 1) |
 | `tests/test_bots.py` | **+27 cases** (B-13..B-20 with suffixes, B-24, B-26..B-33) and two amendments to P1's own cases (Findings 5 and 6) |
 | `tests/test_sql_artifacts.py` | **+1 case**, `TestBotSQL` (B-25b) |
-| `tests/test_notes.py`, `tests/test_admin.py`, `tests/test_groups.py` | the 12 K-01 key-set assertions, amended in place |
+| `tests/test_notes.py`, `tests/test_admin.py`, `tests/test_groups.py` | **13** key-set assertions amended in place — K-01's twelve, plus `tests/test_groups.py:361`, which K-01 does not list (Finding 7a) |
 
 ### Suite numbers
 
@@ -168,7 +168,10 @@ product tree after the run is identical to the commit (`git diff --stat` empty f
 | 35 | `profile_router.py` | remove `is_bot` from `base` | B-17 | RED | `E KeyError: 'is_bot'` |
 | 35b | `users_router.py` | drop `is_bot=` from the `FollowingUser(...)` call (the pydantic default `False` stands, so the **bot** row reports False) | B-17 | RED | `E AssertionError: GET /users/following` |
 | 35c | `users_router.py` | remove `is_bot` from the `FollowingUser` model (pydantic v1 ignores the extra kwarg, so the key is **absent**) | B-17 | RED | `E AssertionError: ('GET /users/following', ['bio', 'followed_at', 'id', 'is_following', 'is_mutual', 'name', ...])` |
-| 35d | `tests/test_bots.py` | drop the site from `OTHER_AUTHOR_SITES` — proves the count guard fires **before** any value is read | B-17 | RED | `E AssertionError: assert 7 == 8` |
+| 35d | `tests/test_bots.py` | drop the following-list site from `OTHER_AUTHOR_SITES` — proves the count guard fires **before** any value is read | B-17 | RED | `E AssertionError: assert 7 == 8` |
+| 35e | `groups_router.py` | the member row emits the literal `False` | B-17 | RED | `E AssertionError: GET /groups/{group_id}/members` |
+| 35f | `groups_router.py` | remove the key from the member row entirely | B-17 | RED | `E AssertionError: ('GET /groups/{group_id}/members', ['joined_at', 'name', 'profile_picture', 'role', 'user_id', 'username'])` |
+| 35g | `tests/test_bots.py` | drop the member site from `OTHER_AUTHOR_SITES` | B-17 | RED | `E AssertionError: assert 8 == 9` |
 | 36 | `notes_router.py` | `getattr(user, "is_bot_absent", None)` | B-18 | RED | `E AssertionError: (('POST', '/notes/'), 'None')` |
 | 37 | `notes_router.py` | emit the literal `False` | B-18a | RED | `E AssertionError: (('POST', '/notes/'), 'False')` |
 | 38 | `notes_router.py` | `username` → `user_name` on `/notes/feed` | B-32 | RED | `E AssertionError: ('GET', '/notes/feed')` |
@@ -287,7 +290,23 @@ K-01's prose says fourteen; its list is `tests/test_notes.py:1106-1110` (5), `:1
 `tests/test_admin.py:86`, `:129`, `:133`, `:145`, `tests/test_groups.py:385` — **twelve**.
 Twelve is what actually broke and twelve is what was amended. `K01_MAX_CHANGED_ASSERTIONS = 14`
 is a per-file ceiling in B-23' and is unaffected, but the number in the finding should be
-corrected so a later reader does not go hunting for two missing edits.
+corrected so a later reader does not go hunting for two missing edits. **Corrected in
+tests.md K-01.**
+
+### Finding 7a (Major) — K-01's list is a floor, not an inventory
+
+It has now been found incomplete **three separate times**: P1 found three assertions in
+`tests/test_local_day.py` and `tests/test_sql_artifacts.py` that read
+`schema_guard.REQUIRED_COLUMNS` (hence `SCHEMA_GUARD_EXEMPT`), and P2 found
+`tests/test_groups.py:361` — `m_keys` on `/groups/{id}/members` — the moment the PM ruled
+that row carries `is_bot`. That makes **thirteen** amended assertions against a list of
+twelve.
+
+The list was hand-written, and nothing derives it. A Builder who adds a response key must
+re-derive the set (`grep -rn "keys()) ==" tests/`, plus the typed response models) rather
+than trust the row. Deriving it mechanically once would retire the problem; until someone
+does, every count in K-01 is a lower bound. Written into tests.md K-01 in those words, at
+the PM's instruction.
 
 ### Finding 8 (Minor) — one K-01 amendment could not be written the obvious way
 
@@ -329,7 +348,7 @@ endpoint's serialiser was checked.
 | R-03 | `HomePage.jsx:655` following list | `GET /users/following` | **was missing → added** | **yes** (R-05, one-directional) |
 | R-03 | `UserProfilePage.jsx:386` profile name | `GET /profile/{user_id}` | yes (P2) | yes |
 | R-03 | `GroupDetailPage.jsx:111` group post header | `GET /groups/{id}/posts` | yes (P2) | no — defence in depth, and it works |
-| R-03 | **`GroupDetailPage.jsx:965` member row** | **`GET /groups/{id}/members`** | **no — ESCALATED** | no — see below |
+| R-03 | `GroupDetailPage.jsx:965` member row | `GET /groups/{id}/members` | **was missing → added** | no — defence in depth, now real (Finding 9b) |
 | R-04 | `FeedScreen.js:660` feed post name | `/notes/feed`, `/notes/friends-feed` | yes (P2) | yes |
 | R-04 | `FeedScreen.js:697` "is feeling…" line | same post object | yes (P2) | yes |
 | R-04 | `FeedScreen.js:751` comment row | `GET /notes/{id}/comments` | yes (P2) | yes |
@@ -337,31 +356,37 @@ endpoint's serialiser was checked.
 | R-04 | `GroupDetailScreen.js:724` group post | `GET /groups/{id}/posts` | yes (P2) | no — defence in depth |
 | R-04 | `UserProfileScreen.js:303` profile header | `GET /profile/{userId}` (`getPublicProfile`) | yes (P2) | yes |
 
-Twelve of the thirteen are sound. Every mobile site is sound — R-04 badges no member list, so
-the one gap is web-only.
+**All thirteen are now backed by a serialised field.** Two were not when the sweep was run — `HomePage.jsx:655` and `GroupDetailPage.jsx:965`, both web — and both were resolved by PM ruling in favour of adding the field. Every mobile site was sound already: R-04 badges no following list and no member list.
 
-**ESCALATION — `GroupDetailPage.jsx:965`, the circle member row.** `GET /groups/{group_id}/members`
-(`groups_router.py:585-613`) returns `{user_id, name, username, profile_picture, role,
-joined_at}` and carries no `is_bot`. It is not in spec R-02's list and not in architecture P2's
-call-site table (which names `:844`, `:883`, `:1129` only). A bot **cannot** genuinely appear
-there — spec §"Not building" rules out bots joining circles, and R-05 keeps them out — so by
-the rule given this is a "drop the badge" case, and I have **not** decided it. But dropping
-contradicts spec R-03, which commissions this badge **by name and with a stated reason**: "A
-bot can never appear here (R-05), but the badge is added so that a future mistake is visible
-rather than silent." The same sentence covers `:111`, and `:111` works only because P2 added
-the field to `/groups/{id}/posts`.
+### Finding 9b (Major) — `GroupDetailPage.jsx:965`, the circle member row. **PM-ruled 2026-09-23: option (a).**
 
-So the two honest options are:
+`GET /groups/{group_id}/members` (`groups_router.py:585-613`) returned
+`{user_id, name, username, profile_picture, role, joined_at}` and carried no `is_bot`. It was in
+neither spec R-02's list nor architecture P2's call-site table (`:844`, `:883`, `:1129` only). A
+bot can **never** be a circle member — spec §"Not building" rules out bots joining circles and
+R-05 keeps them out — so on K-05's rule this was a "drop the badge" case, and it was escalated
+rather than decided.
 
-- **(a) add `is_bot` to the members row**, which makes R-03's stated defence-in-depth real and
-  costs one more K-01-style assertion edit — `tests/test_groups.py:361` pins
-  `{"user_id","name","username","profile_picture","role","joined_at"}` and is **not** in K-01's
-  list of twelve; or
-- **(b) drop `:965` from R-03's site inventory**, which contradicts R-03 as written and leaves
-  the defence-in-depth claim in the spec untrue.
+**PM ruling: add the field; the badge stays.** On the record, because the reasoning is the
+other side of the K-05 asymmetry:
 
-Either is one small change. Both are decisions above a Builder, and P3 cannot proceed on `:965`
-until one is taken.
+- R-03 commissions this badge *with its reason attached* — "a bot can never appear here (R-05),
+  but the badge is added so that a future mistake is visible rather than silent." The same
+  sentence covers `:111`, which works **only** because P2 added the field to
+  `/groups/{id}/posts`.
+- Half-implemented defence in depth is worse than none: the document asserts a guarantee the
+  code does not provide, and the next person reads the claim rather than the code.
+- K-05's `:704` was dropped because a badge there could never fire **and nothing claimed it
+  would**. `:965` carries an explicit written claim that it fires if something goes wrong.
+- Cost of honouring it: one boolean and one key-set edit. Cost of not: a bot rendered as an
+  ordinary member on the exact screen a reader uses to see who they share a circle with.
+
+Built: the row gains `"is_bot": bool(u.is_bot)`, always present, always boolean. Added to spec
+R-02 so it is required rather than incidental; B-17's inventory literal goes 8 → **9**;
+`tests/test_groups.py:361` is K-01 amendment **thirteen**. Recorded in tests.md as **K-05b**.
+
+The test inserts the bot as a `GroupMember` directly — the only way it can be one — which is
+precisely the "future mistake" the badge exists to render visibly.
 
 ### Finding 10 (Informational) — `editorial_post` has no SQLModel, so the union is raw SQL
 

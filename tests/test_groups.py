@@ -358,7 +358,7 @@ class TestGroupsRegression:
 
         members = client.get(f"/groups/{gid}/members", headers=hc)
         assert members.status_code == 200
-        m_keys = {"user_id", "name", "username", "profile_picture", "role", "joined_at"}
+        m_keys = {"user_id", "name", "username", "profile_picture", "role", "joined_at", "is_bot"}
         assert all(set(row.keys()) == m_keys for row in members.json())
 
         pending = client.get(f"/groups/{gid}/pending", headers=hc)
