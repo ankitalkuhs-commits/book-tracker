@@ -56,7 +56,8 @@ Instants are UTC unless marked otherwise. "Bot account" means a `user` row with 
     - A bot account has `is_admin = false`. A single statement asserting this is part of the deploy check.
 - [ ] **R-02 The API tells every client which posts are a bot's.**
   - **Accept:**
-    - The `user` object embedded in a note carries `is_bot` at all seven note-serialising sites: `notes_router.py:197` (create), `:252` (update), `:318` (`/notes/feed`), `:380` (`/notes/friends-feed`), `:453` (`/notes/user/{id}`), `:504` (`/notes/userbook/{id}`), `:606` (friends-feed second shape).
+    - The `user` object embedded in a note carries `is_bot` at all seven note-serialising sites: `notes_router.py:197` (create), `:252` (update), `:318` (`/notes/feed`), `:380` (`/notes/me`), `:453` (`/notes/user/{id}`), `:504` (`/notes/userbook/{id}`), `:606` (`/notes/friends-feed`).
+      - *Two labels corrected 2026-09-23 (tests.md K-04); the seven line numbers were right all along.* Re-read on this branch: the route decorators are `:257` `/notes/feed`, `:333` `/notes/me`, `:394` `/notes/user/{user_id}`, `:466` `/notes/userbook/{userbook_id}`, `:510` `/notes/friends-feed`, `:627` `DELETE /notes/{note_id}`. So the dict at `:380` is **`/notes/me`**'s, not friends-feed's, and `:606` is **friends-feed's only** shape, not a "second" one. `tests/test_notes.py:1107` (`me` has `profile_picture`, no `is_mutual`) and `:1108` (friends-feed has `is_mutual`) tell the two apart from the other end.
     - `GET /profile/{user_id}` returns `is_bot` (`profile_router.py:228`).
     - `GET /users/search` results carry `is_bot` (`users_router.py:15` `UserSearchResult`, route at `:37`).
     - Comment author objects carry `is_bot` (`likes_comments.py:157`, `:192`).

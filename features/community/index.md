@@ -2,7 +2,7 @@
 feature: community
 status: production
 repos: api, web, mobile
-last_verified: 2026-05-03
+last_verified: 2026-09-23 (sprint table only — the rest of this file was last checked 2026-05-03)
 migrated_from: context/community/README.md (2026-09-12)
 ---
 
@@ -52,7 +52,7 @@ Social layer of TrackMyRead: feed of notes/reflections, follows, likes, comments
 
 | Node | Status | What it covers |
 |---|---|---|
-| [`sprint-4f-activity-engine/`](sprint-4f-activity-engine/) | planned (spec + architecture drafted 2026-09-22, escalations open) | Openly labelled bot accounts that post on a schedule: `user.is_bot` and the badge on every author surface, `POST /auth/bot-login`, `deny_bot_actor` on follow/like/comment, GitHub Actions replacing the paid Render cron, the per-bot daily cap and the `BOT_ENABLED` kill switch, and bot exclusion from `/admin/stats`. Replaces `editorial_bot.py`'s direct `INSERT INTO note`. |
+| [`sprint-4f-activity-engine/`](sprint-4f-activity-engine/) | **in build** (spec approved 2026-09-23, all nine escalations decided; **P1, P3, P4 merged · P2 in build · P5 not started**) | Openly labelled bot accounts that post on a schedule: `user.is_bot` and the badge on every author surface, `POST /auth/bot-login`, `deny_bot_actor` on follow/like/comment, GitHub Actions replacing the paid Render cron, the per-bot daily cap and the `BOT_ENABLED` kill switch, and bot exclusion from `/admin/stats`. Replaces `editorial_bot.py`'s direct `INSERT INTO note`. **Blocked on two PM SQL steps** (`user.is_bot`, `bot_post`) before P2 can deploy. |
 
 ---
 

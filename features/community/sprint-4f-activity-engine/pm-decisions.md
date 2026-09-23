@@ -74,8 +74,14 @@ and fall back to the two-endpoint form — but do not fall back to `DATABASE_URL
    Amazon affiliate tags, so an invented reader praising a book is a fabricated review attached to
    a commercial benefit — the FTC's 2024 rule and India's consumer-affairs guidance both reach it.
    Distinct editorial *voices* are wanted; disguised humans are not built here.
-2. **4F merges after 4E.** 4E's package P3 rewrites the same `notes_router.py` functions. No 4F
-   branch merges to master while 4E is unmerged.
+2. ~~**4F merges after 4E.** 4E's package P3 rewrites the same `notes_router.py` functions. No 4F
+   branch merges to master while 4E is unmerged.~~ **Lifted 2026-09-23.** 4E was descoped to three
+   packages and **P3 — the only reason for this constraint — was dropped**
+   (`features/maintenance/sprint-4e-query-budget/pm-decisions.md`). Nothing in 4E now touches
+   `notes_router.py`, `likes_comments.py` or `crud.py`. The one file overlap left is
+   `users_router.py` / `groups_router.py`, from 4E's two N+1 fixes (`4b0df5c`); 4F's P2 edits
+   different functions in those files, and whoever merges confirms that in the diff rather than
+   trusting this line.
 3. **The two PM SQL steps run before the code that depends on them**, in the order
    `architecture.md` §"Deploy order" gives, because `schema_guard` exits at startup on a missing
    column.
