@@ -203,12 +203,17 @@ def get_user_stats(
         if not is_following:
             raise HTTPException(status_code=403, detail="This profile is private")
 
-    # Get all user's books
-    all_books = db.exec(
-        select(models.UserBook)
+    # Get all user's books, carrying each book along (Sprint 4E, R-05): the page total
+    # below used to reach `userbook.book` per finished row, one lazy SELECT each, so a
+    # reader with 100 finished books cost 103 queries. The join is an OUTER join — a
+    # userbook whose book row is missing must still be counted, as it was before.
+    rows = db.exec(
+        select(models.UserBook, models.Book)
+        .outerjoin(models.Book, models.Book.id == models.UserBook.book_id)
         .where(models.UserBook.user_id == user_id)
     ).all()
-    
+    all_books = [row[0] for row in rows]
+
     # Count by status
     total_books = len(all_books)
     finished = len([b for b in all_books if b.status == "finished"])
@@ -236,9 +241,9 @@ def get_user_stats(
     
     # Calculate total pages read (finished books + current progress)
     total_pages = 0
-    for userbook in all_books:
-        if userbook.status == "finished" and userbook.book:
-            total_pages += userbook.book.total_pages or 0
+    for userbook, book in rows:
+        if userbook.status == "finished" and book:
+            total_pages += book.total_pages or 0
         elif userbook.status == "reading" and userbook.current_page:
             total_pages += userbook.current_page or 0
     
