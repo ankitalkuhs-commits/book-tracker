@@ -22,7 +22,11 @@
 //   node qa/page_perf.mjs [--runs 3] [--profiles desktop,mobile] [--only /home]
 //                         [--web URL] [--api URL] [--secret-file .env.review]
 // Writes qa/reports/page-perf-<date>.md and .json
-import { chromium } from 'playwright';
+// playwright is imported lazily, where the browser is actually launched. As a static import it
+// made this whole module unloadable without qa/node_modules — and qa/unit/pagePerfWaterfall.test.mjs
+// imports it for its pure helpers. node --test then reports the load failure as a single "fail 1"
+// while six assertions disappear from the count, which is exactly the silent-skip failure the
+// non-vacuity rules exist to catch.
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -253,6 +257,7 @@ async function main() {
     process.exit(2);
   }
 
+  const { chromium } = await import('playwright');
   const browser = await chromium.launch();
   // One untimed visit first, so DNS and TLS setup is not billed to whichever page happens to be
   // measured first. A real first-time visitor pays that extra once.
