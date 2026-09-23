@@ -3,8 +3,10 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status, 
 from typing import Optional, List
 from pydantic import BaseModel
 from sqlmodel import Session
+from sqlalchemy.exc import IntegrityError
+from datetime import timedelta
 from ..deps import get_db, get_current_user, get_current_user_optional
-from .. import crud, models
+from .. import crud, models, localday
 from ..group_activity import fire_group_activity_for_user
 import os
 import uuid
@@ -21,6 +23,15 @@ cloudinary.config(
 )
 
 router = APIRouter(prefix="/notes", tags=["notes"])
+
+# ── Sprint 4F: the bot cap and the dedup key (R-13, R-15) ───────────────────
+# R-13: a hard server-side cap. The bot's own restraint is not a control, and the seven-a-week
+# schedule (R-09) must never read this as headroom.
+BOT_MAX_NOTES_PER_DAY = 2
+BOT_CAP_WINDOW = timedelta(hours=24)
+# The four content types bot_post.content_type may hold. A dedup_key is "<type>:<id>"; the
+# server splits on the first colon. Bot-only field, so failing loudly costs a reader nothing.
+BOT_CONTENT_TYPES = ("bestseller", "prompt", "quote", "circles")
 
 
 def format_timestamp(dt):
@@ -52,6 +63,12 @@ class NoteCreateSchema(BaseModel):
     quote: Optional[str] = None
     userbook_id: Optional[int] = None
     is_public: Optional[bool] = None   # F-17: omitted on create => private; omitted on update => unchanged
+    # Sprint 4F (R-07/R-15): "<content_type>:<id>", e.g. "bestseller:9780593321447". Honoured
+    # ONLY when the caller is a bot account; silently ignored for a reader, and never read by
+    # PUT /notes/{id}, which shares this schema (see the F-17 comment above). A 422 here would
+    # have to be duplicated on a route that has no dedup concept, and would break any old
+    # client that round-trips a note body.
+    dedup_key: Optional[str] = None
 
     def has_content(self) -> bool:
         return bool(
@@ -137,6 +154,37 @@ def create_note(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
+    # Sprint 4F R-13: the cap, and the dedup key, are BOTH gated on the row's is_bot flag, so a
+    # reader's POST runs exactly the statements it ran before 4F (B-33 pins the number). The
+    # cap runs first, before anything is written, so a 429 leaves nothing behind (B-15a).
+    dedup_key = None
+    content_type = None
+    if current_user.is_bot:
+        from sqlmodel import select as _select
+        from sqlalchemy import func as _func
+        window_start = localday.utcnow() - BOT_CAP_WINDOW
+        recent = db.exec(
+            _select(_func.count(models.Note.id))
+            .where(models.Note.user_id == current_user.id)
+            .where(models.Note.created_at >= window_start)
+        ).one()
+        if (recent or 0) >= BOT_MAX_NOTES_PER_DAY:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="Automated accounts may post at most "
+                       f"{BOT_MAX_NOTES_PER_DAY} times in 24 hours",
+            )
+        if payload.dedup_key:
+            prefix = payload.dedup_key.split(":", 1)[0]
+            if ":" not in payload.dedup_key or prefix not in BOT_CONTENT_TYPES:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail="dedup_key must be '<content_type>:<id>' with content_type one of "
+                           + ", ".join(BOT_CONTENT_TYPES),
+                )
+            dedup_key = payload.dedup_key
+            content_type = prefix
+
     text = payload.text
     emotion = payload.emotion
     page_number = payload.page_number
@@ -168,8 +216,28 @@ def create_note(
         page_number=page_number,
         chapter=chapter,
         image_url=image_url,
-        quote=quote
+        quote=quote,
+        commit=(dedup_key is None),
     )
+
+    # Sprint 4F R-15: the bot_post row goes in the SAME transaction as the note. There is no
+    # window between the two writes, so a collision on uq_bot_post(content_type, dedup_key)
+    # rolls the whole transaction back and the note is never created — the failure mode the old
+    # "post, then record it" design had does not exist here. This runs BEFORE the group-activity
+    # hook below, so a 409 raises before any background task is registered.
+    if dedup_key is not None:
+        db.add(models.BotPost(
+            bot_email=current_user.email,
+            content_type=content_type,
+            dedup_key=dedup_key,
+            note_id=note.id,
+        ))
+        try:
+            db.commit()
+        except IntegrityError:
+            db.rollback()       # the note goes with it — nothing was committed
+            raise HTTPException(status_code=409, detail="Already posted")
+        db.refresh(note)
 
     # Fire group activity for note posted — public notes only, and after the response (F-59).
     # A private note must never surface in GET /groups/{id}/activity.
@@ -194,7 +262,7 @@ def create_note(
         "quote": note.quote,
         "is_public": note.is_public,
         "created_at": format_timestamp(note.created_at),
-        "user": {"id": user.id, "name": user.name} if user else None,
+        "user": {"id": user.id, "name": user.name, "is_bot": bool(user.is_bot)} if user else None,
         "book": {"id": book.id, "title": book.title, "author": book.author} if book else None
     }
     return out
@@ -249,7 +317,7 @@ def update_note(
         "is_public": note.is_public,
         "created_at": format_timestamp(note.created_at),
         "updated_at": format_timestamp(note.updated_at),
-        "user": {"id": user.id, "name": user.name} if user else None,
+        "user": {"id": user.id, "name": user.name, "is_bot": bool(user.is_bot)} if user else None,
         "book": {"id": book.id, "title": book.title, "author": book.author} if book else None
     }
 
@@ -320,6 +388,7 @@ def get_feed(
                 "name": user.name,
                 "username": getattr(user, "username", None),
                 "profile_picture": getattr(user, "profile_picture", None),
+                "is_bot": bool(user.is_bot),
             } if user else None,
             "book": {
                 "id": book.id, "title": book.title,
@@ -381,6 +450,7 @@ def get_my_notes(
                 "id": user.id, "name": user.name,
                 "username": getattr(user, "username", None),
                 "profile_picture": getattr(user, "profile_picture", None),
+                "is_bot": bool(user.is_bot),
             } if user else None,
             "book": {
                 "id": book.id, "title": book.title,
@@ -450,7 +520,7 @@ def get_public_notes_for_user(
             "quote": n.quote,
             "is_public": n.is_public,
             "created_at": format_timestamp(n.created_at),
-            "user": {"id": user.id, "name": user.name} if user else None,
+            "user": {"id": user.id, "name": user.name, "is_bot": bool(user.is_bot)} if user else None,
             "book": {
                 "id": book.id, "title": book.title, "author": book.author, "cover_url": book.cover_url,
                 "google_books_id": book.google_books_id, "isbn": book.isbn, "total_pages": book.total_pages,
@@ -501,7 +571,7 @@ def get_notes_for_userbook(
             "quote": n.quote,
             "is_public": n.is_public,
             "created_at": format_timestamp(n.created_at),
-            "user": {"id": user.id, "name": user.name} if user else None,
+            "user": {"id": user.id, "name": user.name, "is_bot": bool(user.is_bot)} if user else None,
             "book": {"id": book.id, "title": book.title, "author": book.author} if book else None
         })
     return out
@@ -609,6 +679,7 @@ def get_friends_feed(
                 "username": getattr(user, "username", None),
                 "profile_picture": getattr(user, "profile_picture", None),
                 "is_mutual": user.id in mutual_ids,
+                "is_bot": bool(user.is_bot),
             } if user else None,
             "book": {
                 "id": book.id, "title": book.title,

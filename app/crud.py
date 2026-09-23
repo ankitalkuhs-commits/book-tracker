@@ -113,7 +113,12 @@ def create_note(db: Session, *, user_id: int, text: Optional[str] = None,
                 emotion: Optional[str] = None, userbook_id: Optional[int] = None,
                 is_public: bool = True, page_number: Optional[int] = None,
                 chapter: Optional[str] = None, image_url: Optional[str] = None,
-                quote: Optional[str] = None) -> models.Note:
+                quote: Optional[str] = None, commit: bool = True) -> models.Note:
+    """Create a note. `commit=False` (Sprint 4F, R-15) flushes instead of committing, so the
+    caller can put another row — the bot's `bot_post` — in the SAME transaction and commit both
+    at once. The flush assigns the SERIAL primary key without ending the transaction, so
+    `note.id` is real and the row is still rollback-able. The default keeps every existing
+    caller byte-identical; `notes_router.create_note` is the only caller in `app/`."""
     note = models.Note(
         user_id=user_id,
         text=text,
@@ -126,6 +131,9 @@ def create_note(db: Session, *, user_id: int, text: Optional[str] = None,
         quote=quote
     )
     db.add(note)
+    if not commit:
+        db.flush()
+        return note
     db.commit()
     db.refresh(note)
     return note
