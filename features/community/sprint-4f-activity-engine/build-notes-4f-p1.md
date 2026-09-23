@@ -26,6 +26,21 @@ requirements: R-01, R-05, R-08
 | `tests/conftest.py` | `_StatementCounter` gains `.inserts` (K-10). Purely additive |
 | `tests/test_local_day.py`, `tests/test_sql_artifacts.py` | 3 forced edits — see **Finding 1** |
 
+### Suite numbers
+
+| | Collected | Passed | Failed |
+|---|---:|---:|---:|
+| Baseline, this worktree at `2d1f1be` | 540 | 540 | 0 |
+| After P1 (`5b55c1b`) | **568** | **568** | **0** |
+
+568 − 540 = **28**, exactly the number of cases added — so no test file failed to load and no
+assertion was silently skipped (`--collect-only -q` confirms 568 separately). Wall time 447 s.
+
+**Caution for anyone repeating this:** the first "baseline" run of this build was contaminated —
+it was started before the edits and finished after them, and the deferred `from app.schema_guard
+import ...` calls inside test bodies picked up the half-edited tree. It reported 10 failures that
+were partly artefacts. Take the baseline on a clean tree, with no editing in flight.
+
 ### `/auth/bot-login`, and the thing it must not do
 
 It is `review_login` with the find-or-create block **deliberately absent**. A bot-login that can
@@ -166,7 +181,64 @@ written or moved** (R-06).
 
 ## Mutation-proof table
 
-See section "Mutation proofs" appended below after the run.
+Every one of the 28 cases was run green, then run again against the named one-line break in
+**product** code, and the actual first `E` line is recorded below. Each mutation was reverted
+immediately afterwards and `tests/test_bots.py` re-run: **28 passed** after every revert.
+
+Driver: `scratchpad/p1-4f/mut4f.py` (applies one exact anchored replacement, runs one pytest
+node id, restores the file byte-for-byte in a `finally`). Node ids are full, never `-k`
+substrings (rule 6).
+
+| MUT | Case | Product change | Result | Actual first RED line |
+|---|---|---|---|---|
+| MUT-4F-01 | B-31 | `models.py` → `is_bot: Optional[bool] = Field(default=None, index=True)` | RED | `E AssertionError: assert True is False` (`col.nullable is False`) |
+| MUT-4F-02 | B-25 | drop `("bot_post","dedup_key")` from `REQUIRED_COLUMNS` | RED | `E AssertionError: assert ('bot_post', 'dedup_key') in (('user','timezone'), ('reading_activity','local_day'), ('user','is_bot'))` |
+| MUT-4F-03 | B-25a | `add_bot_accounts` → `user.is_bot = False` | RED | `E AssertionError: assert False is True` |
+| MUT-4F-03b | B-25a | `add_bot_accounts` → `user.is_admin = True` | RED | `E AssertionError: assert True is False` |
+| MUT-4F-05 | B-01 | delete the `if not configured_secret or not allowlist: 404` gate | RED | `E AssertionError: assert 500 == 404` (unconfigured now reaches `None.encode`) |
+| MUT-4F-06 | B-01a | drop `include_in_schema=False` | RED | `E AssertionError: assert '/auth/bot-login' not in {...}` |
+| MUT-4F-07 | B-02 | invert to `if (email_ok and row_ok and secret_ok):` | RED | `E assert 401 == 200` |
+| MUT-4F-08 | B-03 | `row_ok = user is not None` (drop the `is_bot` check) | RED | `E assert 200 == 401` |
+| MUT-4F-09 | B-04 | `email_ok = email in set(allowlist)` (delete the domain guard) | RED | `E assert 200 == 401` |
+| MUT-4F-10 | B-05 | add an early `401 "Unknown account"` branch | RED | `E assert b'{"detail":"...own account"}' == b'{"detail":"...credentials"}'` |
+| MUT-4F-11 | B-06 | drop `row_ok` from the check **and** paste `review_login`'s find-or-create | RED | `E assert 200 == 401` |
+| MUT-4F-12 | B-07 | remove `expires_delta=timedelta(minutes=15)` | RED | `E AssertionError: expected a 900 s token, got 2592000 s` |
+| MUT-4F-13 | B-07a | `secret_ok = payload.secret == configured_secret` | RED | `E AssertionError: assert ['payload.sec..._digest call'] == []` |
+| MUT-4F-14 | B-07b | copy `review_login`'s `last_active` write into `bot_login` | RED | `E AssertionError: assert datetime.datetime(2026, 9, 23, 6, 0) is None` |
+| MUT-4F-15 | B-07c | read both env vars once, at import, into module constants | RED | `E assert 404 == 200` |
+| MUT-4F-16 | B-08 | remove `Depends(deny_bot_actor)` from `POST /follow/{id}` | RED | `E assert 200 == 403` |
+| MUT-4F-17 | B-09 | remove the dependency from `like_note` | RED | `E assert 201 == 403` |
+| MUT-4F-18 | B-10 | remove the dependency from `unlike_note` | RED | `E assert 200 == 403` |
+| MUT-4F-19 | B-11 | remove the dependency from `create_comment` | RED | `E assert 201 == 403` |
+| MUT-4F-17b | B-11a | remove the dependency from `like_note` | RED | `E AssertionError: assert 201 == 403` |
+| MUT-4F-20 | B-12 | `deny_bot_actor` → `if True:` (reject everyone) | RED | `E AssertionError: assert 403 == 200` |
+| MUT-4F-21a | B-12a | add `deny_bot_actor` to `POST /notes/` | RED | `E AssertionError: expected 4 guarded routes, found 5: [... ('POST','/notes/') ...]` |
+| MUT-4F-21b | B-12a | remove it from `POST /follow/{id}` | RED | `E AssertionError: expected 4 guarded routes, found 3: [...]` |
+| MUT-4F-22 | B-12b | decide from a JWT `is_bot` claim instead of the row | RED | `E AssertionError: the row now says bot; the token predates it` |
+| MUT-4F-23 | B-12c | move the check out of the dependency, into `like_note`'s body | RED | `E assert 1 == 0` (`stmt_counter.inserts`) |
+| MUT-4F-24 | B-21 | remove the recipient `is_bot` filter from `_user_wants_event` | RED | `E assert 2 == 1` |
+| MUT-4F-25 | B-21a | remove the actor filter from `fire_event` | RED | `E AssertionError: assert 1 == 0` |
+| MUT-4F-26 | B-22 | remove `.where(User.is_bot == False)` from the scheduler | RED | `E AssertionError: assert 4 not in [4, 5]` |
+| MUT-4F-28 | B-23' | commit a **deletion** of a K-01 assertion instead of amending it | RED | `E assert ['tests/test_notes.py: deleted without an equivalent replacement: ...'] == []` |
+| MUT-4F-28b | B-23' (2nd) | commit a deletion in `tests/test_dependencies.py`, a file K-01 does not list | RED | `E AssertionError: tests/test_dependencies.py has deleted lines and is not in K-01's list` |
+
+**No mutation stayed green.** Two needed rewriting before they bit, and both rewrites are
+reported rather than swapped in silently:
+
+- **MUT-4F-11 as tests.md words it does not bite.** "Paste `review_login`'s find-or-create
+  block" alone leaves the `row_ok` term in the credentials check, so a missing row still 401s
+  before the paste is ever reached and B-06 stays green. The faithful mutation is the *whole*
+  copy — `review_login`'s check (`email_ok and secret_ok`, no row term) **plus** its
+  find-or-create. That is also the realistic defect: someone copies the route wholesale. The
+  table above records that two-edit form.
+- **MUT-4F-15's obvious form does not bite either.** A `try/except NameError` cache never
+  populates, so the config is still re-read every request. The mutation that reproduces the
+  defect is hoisting both `os.getenv` calls to module scope, which is what "read at import
+  time" actually means.
+
+The two B-23' mutations are the only ones that need a commit (the case reads
+`git diff origin/master...HEAD`). Each was committed on `builder-4f-p1`, run, and removed with
+`git reset --hard 5b55c1b`; `git status` was verified clean afterwards both times.
 
 ---
 
@@ -259,7 +331,18 @@ what B-10 asserts and what R-05 wants (a bot must not touch reader-facing engage
 all), but it means the *only* way to remove such a row is the PM's SQL. Given P-4F-02 asserts
 there are none, this is correct rather than a gap; recorded so nobody reads it as an oversight.
 
-### Finding 6 (Informational) — `fire_event`'s actor guard costs one extra `SELECT` per call.
+### Finding 6 (Minor) — the allowlist lookup short-circuits the database read.
+
+`bot_login` does `user = crud.get_user_by_email(db, email) if email_ok else None`, so a
+non-allowlisted address is answered without a database round trip while an allowlisted one is
+not. The **responses** are byte-identical (B-05 proves that on `content`, `content-type` and
+`content-length`), and the secret comparison is constant-time, so nothing secret-derived leaks —
+but an attacker with a stopwatch could distinguish "in `BOT_LOGIN_EMAILS`" from "not in it".
+`BOT_LOGIN_EMAILS` is operator configuration and not a secret, and the API has no rate limiting
+anywhere (architecture §Security review 3.8 records that as a known gap), so this is accepted
+rather than fixed. Recorded so it is a decision and not an oversight.
+
+### Finding 7 (Informational) — `fire_event`'s actor guard costs one extra `SELECT` per call.
 
 B-21a needs `fire_event` to refuse a bot **actor**, which means reading the actor's row. That is
 one `db.get(User, actor_id)` per `fire_event` call (identity-map cached within a session, and
