@@ -1112,6 +1112,27 @@ PRE_4F_USER_KEYS = {
 }
 
 
+# The eight NON-note author objects R-02 requires. Written out as a literal so a site that is
+# silently dropped from the walk fails the count before anything is checked about contents
+# (rules 2 and 4) — a sub-case that quietly stops running would otherwise pass.
+#
+# `GET /users/following` is here on a PM ruling (2026-09-23) on this Builder's Finding 9. It is
+# not in spec R-02's list, but R-03 badges the sidebar following list (HomePage.jsx:655) and
+# R-05 explicitly permits a reader to follow a bot — "the prohibition is one-directional". So a
+# bot genuinely appears there, and without the field the badge would read undefined forever.
+# That is the opposite resolution to K-05's HomePage.jsx:704, where a bot can never appear.
+OTHER_AUTHOR_SITES = (
+    "GET /profile/{user_id}",
+    "GET /users/search",
+    "GET /users/following",
+    "POST /notes/{note_id}/comments",
+    "GET /notes/{note_id}/comments",
+    "GET /groups/{group_id}/posts",
+    "POST /groups/{group_id}/posts",
+    "GET /groups/{group_id}/activity",
+)
+
+
 def _note_route_inventory():
     """Every APIRoute under /notes whose response model is NoteOutSchema or a list of it."""
     found = set()
@@ -1199,59 +1220,79 @@ class TestSerialisation:
 
     def test_is_bot_on_the_other_author_objects(self, client, db):
         """B-17. MUT-4F-35: remove `is_bot` from profile_router.py's `base` dict.
+        MUT-4F-35b: remove it from users_router.py's FollowingUser.
 
-        Five sub-cases: the public profile, user search, the comment author on create and on
-        list, and the two group post shapes plus group activity.
+        Every author object R-02 requires that is NOT a note. The walk collects first and
+        asserts its inventory against OTHER_AUTHOR_SITES before it checks any value, so a
+        sub-case that stops producing rows fails the count rather than passing on nothing.
         """
         bot = _make_bot(db, "4f-b17-bot@trackmyread.com", name="B17Bot")
         reader = _make_user(db, email="4f-b17-reader@example.com", name="B17Reader")
-        bh, rh = _auth(bot), _auth(reader)
+        rh = _auth(reader)
+        found = {}
+
+        def record(label, user_dict, expected):
+            found.setdefault(label, []).append((label, user_dict, expected))
 
         # (1) GET /profile/{user_id}
         for target, expected in ((bot, True), (reader, False)):
-            body = client.get("/profile/" + str(target.id), headers=rh)
-            assert body.status_code == 200, body.text
-            data = body.json()
+            body_ = client.get("/profile/" + str(target.id), headers=rh)
+            assert body_.status_code == 200, body_.text
+            data = body_.json()
             assert data["id"] == target.id          # CONTROL: a real payload, not {}
-            assert data["is_bot"] is expected
+            record("GET /profile/{user_id}", data, expected)
 
         # (2) GET /users/search
         results = client.get("/users/search?q=B17", headers=rh).json()
         assert len(results) >= 1, "the search returned nothing — the sub-case would be vacuous"
         by_id = {u["id"]: u for u in results}
         assert bot.id in by_id, "the bot is not in the search results"
-        assert by_id[bot.id]["is_bot"] is True
+        record("GET /users/search", by_id[bot.id], True)
         _make_user(db, email="4f-b17-other@example.com", name="B17Reader2")
-        assert client.get("/users/search?q=B17Reader2",
-                          headers=rh).json()[0]["is_bot"] is False
+        other_row = client.get("/users/search?q=B17Reader2", headers=rh).json()[0]
+        record("GET /users/search", other_row, False)
 
-        # (3) the comment author on CREATE (likes_comments.py:157). A bot cannot reach this
+        # (3) GET /users/following. A reader following a BOT is allowed and unchanged — R-05's
+        # prohibition is one-directional — so this is a surface where a reader really does meet
+        # a bot account, which is why it carries the field and the badge (PM, 2026-09-23).
+        followee = _make_user(db, email="4f-b17-followee@example.com", name="B17Followee")
+        assert client.post("/follow/" + str(bot.id), headers=rh).status_code == 200
+        assert client.post("/follow/" + str(followee.id), headers=rh).status_code == 200
+        following = client.get("/users/following", headers=rh).json()
+        assert len(following) >= 2, following
+        following_by_id = {u["id"]: u for u in following}
+        assert bot.id in following_by_id and followee.id in following_by_id
+        record("GET /users/following", following_by_id[bot.id], True)
+        record("GET /users/following", following_by_id[followee.id], False)
+
+        # (4) the comment author on CREATE (likes_comments.py:157). A bot cannot reach this
         # route at all — deny_bot_actor 403s it (R-05) — so only the reader half exists here,
         # and the bot half is covered on the list shape below.
         note = _public_note(db, reader.id, text="B17 note")
         created = client.post("/notes/" + str(note.id) + "/comments",
                               json={"text": "hi"}, headers=rh)
         assert created.status_code == 201, created.text
-        assert created.json()["user"]["is_bot"] is False
+        record("POST /notes/{note_id}/comments", created.json()["user"], False)
 
-        # (4) the comment author on LIST (likes_comments.py:192). The bot's comment row is
+        # (5) the comment author on LIST (likes_comments.py:192). The bot's comment row is
         # written directly, because R-05 makes it unreachable through the API — which is
         # exactly the accident this field is here to render visibly.
         db.add(models.Comment(note_id=note.id, user_id=bot.id, text="bot comment"))
         db.commit()
         listed = client.get("/notes/" + str(note.id) + "/comments", headers=rh).json()
         assert len(listed) == 2, listed
-        flags = {row["user"]["id"]: row["user"]["is_bot"] for row in listed}
-        assert flags[bot.id] is True
-        assert flags[reader.id] is False
+        for row in listed:
+            record("GET /notes/{note_id}/comments", row["user"],
+                   row["user"]["id"] == bot.id)
 
-        # (5) the two group post shapes and group activity
+        # (6)(7) the two group post shapes, and (8) group activity
         gid = client.post("/groups/", json={"name": "B17 Circle", "is_private": False,
                                             "description": "d"}, headers=rh).json()["id"]
         posted = client.post("/groups/" + str(gid) + "/posts",
                              json={"text": "reader post"}, headers=rh)
         assert posted.status_code == 201, posted.text
-        assert posted.json()["user"]["is_bot"] is False          # groups_router.py:883
+        record("POST /groups/{group_id}/posts", posted.json()["user"], False)   # :883
+
         db.add(models.GroupMember(group_id=gid, user_id=bot.id, role="member", status="active"))
         db.add(models.GroupPost(group_id=gid, user_id=bot.id, text="bot group post"))
         db.add(models.GroupActivity(group_id=gid, user_id=bot.id, event_type="member_joined"))
@@ -1260,13 +1301,34 @@ class TestSerialisation:
 
         posts = client.get("/groups/" + str(gid) + "/posts", headers=rh).json()  # :844
         assert len(posts) == 2, posts
-        post_flags = {row["user"]["id"]: row["user"]["is_bot"] for row in posts}
-        assert post_flags[bot.id] is True and post_flags[reader.id] is False
+        for row in posts:
+            record("GET /groups/{group_id}/posts", row["user"], row["user"]["id"] == bot.id)
 
         activity = client.get("/groups/" + str(gid) + "/activity", headers=rh).json()  # :1129
         assert len(activity) >= 2, activity
-        act_flags = {row["user"]["id"]: row["user"]["is_bot"] for row in activity if row["user"]}
-        assert act_flags[bot.id] is True and act_flags[reader.id] is False
+        for row in activity:
+            if row["user"]:
+                record("GET /groups/{group_id}/activity", row["user"],
+                       row["user"]["id"] == bot.id)
+
+        # ── the inventory, BEFORE any value is checked ──────────────────────
+        assert len(OTHER_AUTHOR_SITES) == 8
+        assert len(found) == 8, \
+            "reached %d of the 8 author sites: missing %s" % (
+                len(found), sorted(set(OTHER_AUTHOR_SITES) - set(found)))
+        assert sorted(found) == sorted(OTHER_AUTHOR_SITES)
+
+        # ── and only now, the values ────────────────────────────────────────
+        saw_bot = saw_reader = False
+        for label, rows in found.items():
+            assert rows, label
+            for _, user, expected in rows:
+                assert "is_bot" in user, (label, sorted(user))
+                assert isinstance(user["is_bot"], bool), (label, repr(user["is_bot"]))
+                assert user["is_bot"] is expected, label
+                saw_bot = saw_bot or expected
+                saw_reader = saw_reader or not expected
+        assert saw_bot and saw_reader, "both a bot and a reader must have been exercised"
 
     def test_reader_is_false_never_null_never_absent(self, client, db):
         """B-18. MUT-4F-36: emit `getattr(user, "is_bot", None)`.
