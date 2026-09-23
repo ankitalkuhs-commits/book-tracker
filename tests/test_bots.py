@@ -806,6 +806,12 @@ def _exempt_marker_violations(diff_text):
             removed.append(line[1:])
         elif line.startswith("+") and not line.startswith("+++"):
             added.append(line[1:])
+        else:
+            # a context line ends the current edit group. Without this, git's 3-line context
+            # merges an unrelated replacement and a wholly new block into ONE hunk, and the
+            # new block inherits the replacement's marker requirement. Measured on this
+            # branch: P1's C4_PAIRS rework and P2's appended TestBotSQL share a hunk.
+            flush()
     flush()
     return violations
 
@@ -836,6 +842,23 @@ class TestExistingSuite:
             "+        assert True\n"
         )
         assert len(_exempt_marker_violations(unmarked)) == 1
+
+        # ...and does NOT fire on a wholly new block that follows a context line, which is
+        # what tests.md K-15 instructs a Builder to add to tests/test_sql_artifacts.py
+        # (case B-25b). Measured on this branch: git's 3-line context merges P1's
+        # C4_PAIRS rework and P2's appended TestBotSQL into one hunk.
+        appended = (
+            "--- a/tests/test_sql_artifacts.py\n"
+            "+++ b/tests/test_sql_artifacts.py\n"
+            "@@ -307,5 +307,8 @@\n"
+            "-        for table, column in REQUIRED_COLUMNS:\n"
+            "+        for table, column in C4_PAIRS:\n"
+            "             assert column in step1\n"
+            "+\n"
+            "+class TestBotSQL:\n"
+            "+    PM_SQL_QUEUE_PATH = 1\n"
+        )
+        assert _exempt_marker_violations(appended) == []
 
         # CONTROL (rule 3): the detector reports a hit on a synthetic diff that DELETES an
         # assertion instead of amending it.
@@ -1332,22 +1355,44 @@ class TestDedup:
                        .where(models.Note.text == "B27 SECOND TEXT")).first() is None
 
     def test_409_raises_before_the_group_activity_task(self, client, db, monkeypatch):
-        """B-27a. MUT-4F-41: move the dedup block below the group-activity hook."""
+        """B-27a. MUT-4F-41: move the dedup block below the group-activity hook.
+
+        R-15's ordering claim is about REGISTRATION, not execution: `background_tasks.add_task`
+        must never be reached on the 409 path. Asserting only that the task never RAN cannot
+        see the difference — Starlette drops a response's background tasks when the handler
+        raises, so a hook registered and then abandoned looks identical from the outside.
+        (Measured: MUT-4F-41 as tests.md words it stays green against that weaker assertion.)
+        So both are asserted: the registration, and the call.
+        """
+        from fastapi import BackgroundTasks
+
         bot = _make_bot(db, "4f-b27a-bot@trackmyread.com", name="B27a")
         h = _auth(bot)
         key = "quote:12"
+
         spy = _Spy()
         monkeypatch.setattr(notes_router, "fire_group_activity_for_user", spy)
+
+        registered = []
+        original_add = BackgroundTasks.add_task
+
+        def recording_add(self, func, *args, **kwargs):
+            registered.append(func)
+            return original_add(self, func, *args, **kwargs)
+
+        monkeypatch.setattr(BackgroundTasks, "add_task", recording_add)
 
         first = client.post("/notes/", json={"text": "B27a first", "is_public": True,
                                             "dedup_key": key}, headers=h)
         assert first.status_code == 201, first.text
-        assert len(spy.calls) == 1, "CONTROL: the 201 path DOES queue the hook"
+        assert registered.count(spy) == 1, "CONTROL: the 201 path DOES register the hook"
+        assert len(spy.calls) == 1, "CONTROL: and runs it"
 
         second = client.post("/notes/", json={"text": "B27a second", "is_public": True,
                                              "dedup_key": key}, headers=h)
         assert second.status_code == 409
-        assert len(spy.calls) == 1, "the 409 must queue nothing"
+        assert registered.count(spy) == 1, "the 409 must not even register the hook"
+        assert len(spy.calls) == 1, "and must certainly not run it"
 
     def test_reader_dedup_key_is_silently_ignored(self, client, db, caplog):
         """B-28 (K-14). MUT-4F-42: honour dedup_key without the `current_user.is_bot` guard.
