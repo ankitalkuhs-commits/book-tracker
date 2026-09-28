@@ -14,7 +14,14 @@ import urllib.error
 import urllib.request
 
 REPO = pathlib.Path(__file__).resolve().parent.parent
-API = sys.argv[sys.argv.index("--api") + 1] if "--api" in sys.argv else "https://book-tracker-stitch.onrender.com"
+API = sys.argv[sys.argv.index("--api") + 1] if "--api" in sys.argv else "https://api.trackmyread.com"
+# A bare URL used to be accepted silently and then ignored, so `live_checks.py https://api...`
+# ran the whole suite against the default host and reported 15/15 for a service nobody asked
+# about. A post-deploy check that verifies the wrong service is worse than no check.
+_stray = [a for a in sys.argv[1:] if a.startswith(("http://", "https://")) and sys.argv[sys.argv.index(a) - 1] != "--api"]
+if _stray:
+    sys.exit(f"pass the host as --api {_stray[0]} (a bare URL is ignored, and the run would "
+             f"silently check {API} instead)")
 SECRET = re.search(r"^REVIEW_LOGIN_SECRET=(.+)$", (REPO / ".env.review").read_text(encoding="utf-8"), re.M).group(1).strip()
 
 results = []
