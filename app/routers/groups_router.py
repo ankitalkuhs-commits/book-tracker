@@ -290,7 +290,21 @@ def get_my_pending_groups(
     if not memberships:
         return []
     group_ids = [m.group_id for m in memberships]
-    all_groups = db.exec(select(models.ReadingGroup).where(models.ReadingGroup.id.in_(group_ids))).all()
+    # Sprint 4E (R-05): the member count used to be one count(*) per pending circle,
+    # so this endpoint cost 3 + n queries. It is now one grouped OUTER join — the
+    # "active" filter lives in the ON clause, not the WHERE, so a circle with no
+    # active members still appears, with a count of 0.
+    rows = db.exec(
+        select(models.ReadingGroup, func.count(models.GroupMember.id))
+        .outerjoin(
+            models.GroupMember,
+            (models.GroupMember.group_id == models.ReadingGroup.id)
+            & (models.GroupMember.status == "active"),
+        )
+        .where(models.ReadingGroup.id.in_(group_ids))
+        .group_by(models.ReadingGroup.id)
+        .order_by(models.ReadingGroup.id)
+    ).all()
     return [
         {
             "id": g.id,
@@ -298,14 +312,9 @@ def get_my_pending_groups(
             "description": g.description,
             "is_private": g.is_private,
             "cover_preset": g.cover_preset,
-            "member_count": db.exec(
-                select(func.count(models.GroupMember.id)).where(
-                    models.GroupMember.group_id == g.id,
-                    models.GroupMember.status == "active",
-                )
-            ).one(),
+            "member_count": member_count,
         }
-        for g in all_groups
+        for g, member_count in rows
     ]
 
 
