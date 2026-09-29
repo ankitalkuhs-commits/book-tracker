@@ -727,6 +727,34 @@ K01_MAX_CHANGED_ASSERTIONS = 14
 SCHEMA_GUARD_EXEMPT = {"tests/test_local_day.py", "tests/test_sql_artifacts.py"}
 REWORK_MARKERS = ("REQUIRED_COLUMNS", "C4_PAIRS", "Sprint 4F", "#")
 
+# Third exemption, found when 4F was merged onto a master that already carried Sprint 4E.
+# 4E's query-budget guard holds a measured number per endpoint. R-16 adds a `bot_users` and a
+# `bot_notes` count to /admin/stats, so BQ-39 legitimately moves 15 -> 17 — a test edit no
+# token rule can describe, because the changed token is a digit. The guard caught it on the
+# merge, which is exactly its job; recording the bump here is the honest resolution, and
+# widening the token rule to admit numbers would not be.
+#
+# Bounded the same way as the others: one file, and a replacing line must name the row it
+# changes, so this cannot become a licence to re-baseline the table.
+BUDGET_EXEMPT = {"tests/test_query_budget.py"}
+BUDGET_MARKERS = ("BQ-39", "Row(\"39\"", "Sprint 4F", "#")
+
+
+def _budget_marker_violations(diff_text):
+    """Added lines in the budget file that REPLACE something and name no row.
+
+    Same shape as _exempt_marker_violations: only a diff that removes something is policed,
+    so adding a brand-new row costs nothing, while re-baselining an existing budget has to
+    say which one it is moving.
+    """
+    removed = [l for l in diff_text.splitlines()
+               if l.startswith("-") and not l.startswith("---")]
+    if not removed:
+        return []
+    added = [l[1:].strip() for l in diff_text.splitlines()
+             if l.startswith("+") and not l.startswith("+++")]
+    return [a for a in added if a and not any(m in a for m in BUDGET_MARKERS)]
+
 
 def _diff_violations(diff_text, exempt=frozenset()):
     """Return a list of complaints about a unified diff over tests/.
@@ -897,11 +925,58 @@ class TestExistingSuite:
                 edited.append((path, int(deletions)))
         for path, deletions in edited:
             assert (path in K01_ALLOWED_FILES or path in SCHEMA_GUARD_EXEMPT
+                    or path in BUDGET_EXEMPT
                     or path == "tests/conftest.py"), \
                 f"{path} has deleted lines and is not in K-01's list"
             if path in K01_ALLOWED_FILES:
                 assert deletions <= K01_MAX_CHANGED_ASSERTIONS, \
                     f"{path}: {deletions} changed lines, K-01 allows at most 14 in total"
+
+        # Each exemption is bounded by name and by count, so neither can widen silently.
+        assert len(SCHEMA_GUARD_EXEMPT) == 2
+        assert len(BUDGET_EXEMPT) == 1
+
+    def test_budget_exemption_lines_name_the_row_they_change(self):
+        """B-23'c: a replacing line in the budget file must name the row it re-baselines.
+
+        Without this, BUDGET_EXEMPT would licence re-measuring the whole table in a commit
+        nobody reads. With it, moving a budget costs a line that says which budget moved.
+
+        Note for whoever mutation-tests this: `git diff origin/master...HEAD` reads COMMITTED
+        state, so editing the budget file in the working tree does not exercise this rule and
+        will pass regardless. That is how I first "proved" it, wrongly. The controls below run
+        the real function over synthetic diffs, which is the layer a mutation can reach.
+        """
+        diff = subprocess.run(
+            ["git", "diff", "origin/master...HEAD", "--", "tests/test_query_budget.py"],
+            cwd=REPO_ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace",
+        )
+        assert diff.returncode == 0
+        assert _budget_marker_violations(diff.stdout) == []
+
+        # CONTROL (rule 3): the SAME function must fail on a re-baseline that names no row.
+        # Calling the function, not a copy of its logic — a control that re-implements the
+        # rule tests the copy and passes while the rule itself is broken.
+        unmarked = ('--- a/tests/test_query_budget.py\n+++ b/tests/test_query_budget.py\n'
+                    '-    Row("08", "GET /notes/feed", "signed in", RATCHET, 8, 8, "8",\n'
+                    '+    Row("08", "GET /notes/feed", "signed in", RATCHET, 99, 99, "8",\n')
+        assert _budget_marker_violations(unmarked) != [], \
+            "the marker rule cannot fail, so its pass proves nothing"
+
+        # CONTROL: and it must NOT over-fire on a properly annotated bump.
+        marked = ('--- a/tests/test_query_budget.py\n+++ b/tests/test_query_budget.py\n'
+                  '-    Row("39", "GET /admin/stats", "—", RATCHET, 15, 15, "15",\n'
+                  '+    # BQ-39 raised for Sprint 4F R-16\n'
+                  '+    Row("39", "GET /admin/stats", "—", RATCHET, 17, 17, "15",\n')
+        assert _budget_marker_violations(marked) == []
+
+        # CONTROL: a pure addition — a brand-new row, nothing replaced — is always fine and
+        # needs no marker. Added because without it, deleting the `if not removed` guard in
+        # _budget_marker_violations passed every other control in this test: they all happen
+        # to contain a removal, so none of them could see the difference.
+        pure_addition = ('--- a/tests/test_query_budget.py\n+++ b/tests/test_query_budget.py\n'
+                         '+    Row("45", "GET /something/new", "—", RATCHET, 4, 4, "4",\n')
+        assert _budget_marker_violations(pure_addition) == []
 
 
 # ═══════════════════════════════════════════════════════════════════════════
