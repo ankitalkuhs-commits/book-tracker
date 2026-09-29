@@ -739,6 +739,54 @@ REWORK_MARKERS = ("REQUIRED_COLUMNS", "C4_PAIRS", "Sprint 4F", "#")
 BUDGET_EXEMPT = {"tests/test_query_budget.py"}
 BUDGET_MARKERS = ("BQ-39", "Row(\"39\"", "Sprint 4F", "#")
 
+# ── The diff base. READ THIS BEFORE CHANGING IT. ─────────────────────────────
+#
+# B-23' is a statement about **what Sprint 4F did to test files that already existed**. That
+# is a historical fact. It stopped being a moving target the moment 4F merged, so the base
+# it is measured from is a PINNED COMMIT and must never go back to `origin/master`.
+#
+# Why this matters, from the branch that hit it (build-notes-4f-p6.md, PM decision
+# 2026-09-29): while 4F was unmerged, `origin/master` *was* the pre-4F tree, so the rule
+# measured exactly the right range by accident. Once 4F merged, `origin/master` contained
+# 4F, and the same expression started measuring **every later branch** against post-4F
+# master. It then did two things it was never meant to do:
+#
+#   * it forbade a later sprint from deleting any test — which blocked the PM's withdrawal
+#     of R-05a, a decision that necessarily deletes the three tests that asserted it;
+#   * it forbade its own amendment, because `tests/test_bots.py` is not on any exempt list
+#     and every edit to this file shows up as deleted lines in it.
+#
+# Pinning the base fixes both at the root. Against a pre-4F tree, Sprint 4F's own test files
+# (`tests/test_bots.py`, `tests/test_bot_content.py`) are wholly new and appear as pure
+# additions, which `_diff_violations` already permits — so they need no exemption, and a
+# later sprint editing them is simply outside what this rule talks about. The three named
+# exemptions below stay exactly as they were, and the pre-4F suite keeps every bit of the
+# protection it had.
+#
+# 707b8d9 is `merge(4e): query budget …`. The ONE commit between it and the 4F merge is
+# 01ec86c `fix(qa): refuse a bare URL …`, which touches only `qa/live_checks.py` — nothing
+# under `tests/` — so the two are the same base for this rule. Verified with
+# `git show --numstat 01ec86c -- tests/` (empty) on 2026-09-29.
+#
+# CI must be able to reach this commit. `actions/checkout@v4` clones at depth 1 by default,
+# and a pinned SHA is not in a depth-1 clone: the pytest job therefore sets `fetch-depth: 0`.
+# If that is ever removed, these cases FAIL LOUDLY with the message below rather than
+# skipping — a guard that quietly stops looking is the failure mode this whole file exists
+# to prevent.
+B23_BASE = "707b8d9"
+B23_RANGE = B23_BASE + "...HEAD"
+
+
+def _require_b23_base():
+    """Fail with instructions if the pinned base is not in this clone. Never skip."""
+    got = subprocess.run(["git", "cat-file", "-e", B23_BASE + "^{commit}"],
+                         cwd=REPO_ROOT, capture_output=True, text=True)
+    assert got.returncode == 0, (
+        f"B-23's pinned base {B23_BASE} is not reachable in this clone. This is a CHECKOUT "
+        "problem, not a reason to re-point the rule at origin/master: the pytest job needs "
+        "`fetch-depth: 0` on actions/checkout (see .github/workflows/ci-tests.yml)."
+    )
+
 
 def _budget_marker_violations(diff_text):
     """Added lines in the budget file that REPLACE something and name no row.
@@ -847,9 +895,14 @@ def _exempt_marker_violations(diff_text):
 class TestExistingSuite:
 
     def test_only_the_new_key_was_added_to_tests(self):
-        """B-23' (K-01). MUT-4F-28: delete tests/test_notes.py:1106 instead of amending it."""
+        """B-23' (K-01). MUT-4F-28: delete tests/test_notes.py:1106 instead of amending it.
+
+        Measured from the PINNED pre-4F base, never from origin/master — see the comment on
+        `B23_BASE` for why, and do not re-point it.
+        """
+        _require_b23_base()
         diff = subprocess.run(
-            ["git", "diff", "origin/master...HEAD", "--", "tests/"],
+            ["git", "diff", B23_RANGE, "--", "tests/"],
             cwd=REPO_ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace",
         )
         assert diff.returncode == 0, f"git diff failed: {diff.stderr[:200]}"
@@ -909,9 +962,14 @@ class TestExistingSuite:
         assert _diff_violations(permitted) == []
 
     def test_changed_assertion_files_are_in_k01s_list(self):
-        """B-23' second half: only K-01's three files may have EDITED lines under tests/."""
+        """B-23' second half: only K-01's three files may have EDITED lines under tests/.
+
+        Same PINNED base as the case above. Sprint 4F's own test files are wholly new
+        against it, so they carry no deletions and need no exemption.
+        """
+        _require_b23_base()
         diff = subprocess.run(
-            ["git", "diff", "origin/master...HEAD", "--numstat", "--", "tests/"],
+            ["git", "diff", B23_RANGE, "--numstat", "--", "tests/"],
             cwd=REPO_ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace",
         )
         assert diff.returncode == 0
@@ -932,7 +990,7 @@ class TestExistingSuite:
                 assert deletions <= K01_MAX_CHANGED_ASSERTIONS, \
                     f"{path}: {deletions} changed lines, K-01 allows at most 14 in total"
 
-        # Each exemption is bounded by name and by count, so neither can widen silently.
+        # Each exemption is bounded by name and by count, so none can widen silently.
         assert len(SCHEMA_GUARD_EXEMPT) == 2
         assert len(BUDGET_EXEMPT) == 1
 
@@ -942,13 +1000,16 @@ class TestExistingSuite:
         Without this, BUDGET_EXEMPT would licence re-measuring the whole table in a commit
         nobody reads. With it, moving a budget costs a line that says which budget moved.
 
-        Note for whoever mutation-tests this: `git diff origin/master...HEAD` reads COMMITTED
+        Note for whoever mutation-tests this: `git diff <base>...HEAD` reads COMMITTED
         state, so editing the budget file in the working tree does not exercise this rule and
         will pass regardless. That is how I first "proved" it, wrongly. The controls below run
         the real function over synthetic diffs, which is the layer a mutation can reach.
+
+        Same PINNED base as the two cases above.
         """
+        _require_b23_base()
         diff = subprocess.run(
-            ["git", "diff", "origin/master...HEAD", "--", "tests/test_query_budget.py"],
+            ["git", "diff", B23_RANGE, "--", "tests/test_query_budget.py"],
             cwd=REPO_ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace",
         )
         assert diff.returncode == 0
@@ -1739,7 +1800,7 @@ class TestBotsPosted:
         assert unknown.json() == {"dedup_keys": []}
 
     def test_route_does_not_carry_deny_bot_actor(self):
-        """B-29b (K-16). MUT-4F-50: add Depends(deny_bot_actor) to bots_router.
+        """B-29b (K-16). MUT-4F-96: add Depends(deny_bot_actor) to bots_router.
 
         Two dependencies with opposite senses and similar names are a mistake waiting to
         happen: deny_bot_actor 403s a BOT, this route 403s a READER. Adding the dependency here
@@ -1760,7 +1821,7 @@ class TestBotsPosted:
 class TestAdminMetrics:
 
     def test_reader_counts_do_not_move_when_a_bot_posts(self, client, db, admin_headers):
-        """B-19. MUT-4F-51: drop the filter on total_users. MUT-4F-52: drop it on total_notes."""
+        """B-19. MUT-4F-97: drop the filter on total_users. MUT-4F-98: drop it on total_notes."""
         before = client.get("/admin/stats", headers=admin_headers).json()
 
         bot = _make_bot(db, "4f-b19-bot@trackmyread.com", name="B19b")
@@ -1791,7 +1852,7 @@ class TestAdminMetrics:
         assert set(after_bot) == ta.TestAdminRegression.STATS_KEYS
 
     def test_bot_users_and_bot_notes_are_the_excluded_figures(self, client, db, admin_headers):
-        """B-19b. MUT-4F-53: make bot_users count all users.
+        """B-19b. MUT-4F-99: make bot_users count all users.
 
         R-16: nothing disappears. reader + bot must add back up to the whole table.
         """
@@ -1879,3 +1940,157 @@ class TestRemovedRoutes:
         assert "/admin/bot/trigger" not in spec["paths"]
         # CONTROL: the same admin, on the same router, still works
         assert client.get("/admin/stats", headers=admin_headers).status_code == 200
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 3.6 The linked book — PM change 2 of 2026-09-29
+#
+# The PM's complaint: a bot post rendered with no cover and no title, so it read as a
+# different kind of object in the feed. The feed's `book` object is derived from
+# `note.userbook -> book` and from nothing else (notes_router.py get_feed), so the only
+# way a bot post can carry one is for the bot to own a `UserBook`. It gets one through the
+# reader's own `POST /books/add-to-library`.
+#
+# These cases assert the SERVER half: that a bot may walk that path, that the note it then
+# posts serialises a real title and a real author, and that owning a library does not make
+# the bot reach a reader (R-05).
+# ═══════════════════════════════════════════════════════════════════════════
+
+class TestBotLinkedBook:
+
+    def test_bot_add_to_library_then_post_renders_like_a_reader(self, client, db):
+        """B-34. MUT-4F-96: serialise `book` as None for a bot author in get_feed.
+
+        The assertion is on the VALUES, not on the presence of a key: a `book` dict with a
+        None title would still satisfy `"book" in row`.
+        """
+        bot = _make_bot(db, "4f-b34-bot@trackmyread.com", name="TrackMyRead Bestsellers")
+        reader = _make_user(db, email="4f-b34-reader@example.com", name="B34 Reader")
+        h = _auth(bot)
+
+        r = client.post("/books/add-to-library", json={
+            "title": "The Wager", "author": "David Grann",
+            "isbn": "9780385534260", "cover_url": "https://covers.example/wager.jpg",
+            "status": "to-read",
+        }, headers=h)
+        assert r.status_code == 200, r.text
+        userbook_id = r.json()["id"]
+        assert isinstance(userbook_id, int)
+
+        r = client.post("/notes/", json={
+            "text": "The Wager by David Grann\n\n#1 NYT Hardcover Nonfiction",
+            "is_public": True, "userbook_id": userbook_id,
+            "dedup_key": "bestseller:9780385534260",
+        }, headers=h)
+        assert r.status_code == 201, r.text
+        note_id = r.json()["id"]
+
+        feed = client.get("/notes/feed", headers=_auth(reader))
+        assert feed.status_code == 200, feed.text
+        row = next((n for n in feed.json() if n["id"] == note_id), None)
+        assert row is not None, "the bot's post is not in the reader's feed at all"
+
+        book = row["book"]
+        assert book is not None, "the card has no book — this is the defect being fixed"
+        assert book["title"] == "The Wager"
+        assert book["author"] == "David Grann"
+        assert book["cover_url"] == "https://covers.example/wager.jpg"
+        assert row["user"]["is_bot"] is True
+
+        # CONTROL: a bot post with no userbook still serialises cleanly as book=None, which
+        # is what the other three voices produce.
+        r2 = client.post("/notes/", json={"text": "A reading prompt.", "is_public": True,
+                                          "dedup_key": "prompt:34"}, headers=h)
+        assert r2.status_code == 201, r2.text
+        feed2 = client.get("/notes/feed", headers=_auth(reader)).json()
+        bare = next(n for n in feed2 if n["id"] == r2.json()["id"])
+        assert bare["book"] is None
+
+    def test_a_bot_adding_a_book_notifies_nobody(self, client, db):
+        """B-35. MUT-4F-97: delete the `_actor.is_bot` early return in fire_event.
+
+        R-05 says a bot never reaches a reader's inbox. `POST /books/add-to-library` fires a
+        `book_added` event to the actor's followers, and a reader IS allowed to follow a bot,
+        so this path is the one place owning a library could leak into a reader's inbox.
+        """
+        bot = _make_bot(db, "4f-b35-bot@trackmyread.com", name="B35 Bot")
+        reader = _make_user(db, email="4f-b35-reader@example.com", name="B35 Reader")
+        _follow(db, reader.id, bot.id)
+
+        before = _count(db, models.NotificationLog, models.NotificationLog.user_id == reader.id)
+        r = client.post("/books/add-to-library", json={
+            "title": "B35 Title", "author": "B35 Author", "isbn": "9780000000035",
+        }, headers=_auth(bot))
+        assert r.status_code == 200, r.text
+        assert _count(db, models.NotificationLog,
+                      models.NotificationLog.user_id == reader.id) == before
+
+        # CONTROL: the very same call, made by a reader the same reader follows, DOES
+        # notify — so the zero above is the bot guard and not a dead code path.
+        other = _make_user(db, email="4f-b35-other@example.com", name="B35 Other")
+        _follow(db, reader.id, other.id)
+        r = client.post("/books/add-to-library", json={
+            "title": "B35 Control", "author": "B35 Author", "isbn": "9780000000036",
+        }, headers=_auth(other))
+        assert r.status_code == 200, r.text
+        assert _count(db, models.NotificationLog,
+                      models.NotificationLog.user_id == reader.id) == before + 1
+
+    def test_add_to_library_does_not_carry_deny_bot_actor(self):
+        """B-36. MUT-4F-98: add `Depends(deny_bot_actor)` to add_book_to_library.
+
+        R-05's prohibition list is exactly four routes (follow, like, unlike, comment). A bot
+        owning its OWN library is not interaction with a reader's content, so this route must
+        stay open to bots — and the four that are closed must stay closed.
+        """
+        from app.routers import books_router as _books_router
+        from app.routers import follow_router as _follow_router
+
+        def _deps(fn):
+            return [p.default.dependency for p in inspect.signature(fn).parameters.values()
+                    if hasattr(p.default, "dependency")]
+
+        assert deny_bot_actor not in _deps(_books_router.add_book_to_library)
+        # CONTROL: the inventory helper does find it where R-05 requires it.
+        assert deny_bot_actor in _deps(_follow_router.follow_user)
+
+    def test_the_bot_shelf_stays_out_of_reader_surfaces(self, client, db):
+        """B-37. MUT-4F-99: change add_to_library's status to "reading" in bots/common.py.
+
+        A `to-read` row with no rating is in none of the places a followed account's library
+        reaches a reader. This is the assertion that makes that claim true rather than
+        merely intended.
+        """
+        from bots import common as bots_common
+
+        assert '"status": "to-read"' in inspect.getsource(bots_common.add_to_library), \
+            "the bot no longer adds books as to-read; re-check the surfaces below"
+
+        bot = _make_bot(db, "4f-b37-bot@trackmyread.com", name="B37 Bot")
+        reader = _make_user(db, email="4f-b37-reader@example.com", name="B37 Reader")
+        _follow(db, reader.id, bot.id)
+        rh = _auth(reader)
+
+        r = client.post("/books/add-to-library", json={
+            "title": "B37 Shelved", "author": "B37 Author", "isbn": "9780000000037",
+            "status": "to-read",
+        }, headers=_auth(bot))
+        assert r.status_code == 200, r.text
+
+        reading = client.get("/userbooks/friends/currently-reading", headers=rh).json()
+        assert all(i["book"]["title"] != "B37 Shelved" for i in reading), reading
+
+        recs = client.get("/books/recommendations", headers=rh).json()
+        assert all(x["title"] != "B37 Shelved" for x in recs), recs
+
+        # CONTROL: the same book added by a followed READER as "reading" DOES surface, so
+        # the two emptinesses above are the status and not a broken endpoint.
+        other = _make_user(db, email="4f-b37-other@example.com", name="B37 Other")
+        _follow(db, reader.id, other.id)
+        r = client.post("/books/add-to-library", json={
+            "title": "B37 Surfaced", "author": "B37 Author", "isbn": "9780000000038",
+            "status": "reading",
+        }, headers=_auth(other))
+        assert r.status_code == 200, r.text
+        reading = client.get("/userbooks/friends/currently-reading", headers=rh).json()
+        assert any(i["book"]["title"] == "B37 Surfaced" for i in reading), reading

@@ -13,6 +13,14 @@ Two deliberate differences from the old script, both recorded in the build notes
   better editorial rule than a coin flip anyway.
 * **The candidate pool is filtered before the model is called** (C-05a), so a run that has
   to skip fourteen already-posted books still spends exactly one Gemini call.
+
+Since 2026-09-29 the post also carries a **real linked book**. `@TMRBot` adds the title to
+its own library through `POST /books/add-to-library` — the reader's path, unchanged — and
+passes the resulting `userbook_id` to `POST /notes/`. That is the only way the feed can
+emit a `book` object, because the serialiser derives it from `note.userbook.book`. The
+side effect is deliberate and was put to the PM: `@TMRBot`'s profile now holds a library,
+and that library is "the bestsellers it has featured". See `common.add_to_library` for why
+the rows are `to-read` and what that keeps them out of.
 """
 from __future__ import annotations
 
@@ -150,7 +158,8 @@ def book_cover(book: Dict[str, Any]) -> Optional[str]:
 def compose(book: Dict[str, Any], teaser: str, list_display: str) -> str:
     weeks_on = book.get("weeks_on_list") or 0
     weeks = " - {} weeks".format(weeks_on) if weeks_on > 1 else ""
-    body = "{title} by {author}\n\n#{rank} {list_display}{weeks}\n\n{teaser}".format(
+    # R-05a withdrawn 2026-09-29: the teaser is the whole post, nothing is appended.
+    return "{title} by {author}\n\n#{rank} {list_display}{weeks}\n\n{teaser}".format(
         title=book.get("title", "Unknown Title"),
         author=book.get("author", "Unknown Author"),
         rank=book.get("rank", "?"),
@@ -158,7 +167,6 @@ def compose(book: Dict[str, Any], teaser: str, list_display: str) -> str:
         weeks=weeks,
         teaser=teaser,
     )
-    return common.append_label(body, common.ACCOUNTS[CONTENT_TYPE]["handle"])
 
 
 def run() -> None:
@@ -203,10 +211,26 @@ def run() -> None:
     if not teaser:
         teaser = description_teaser(book)
 
+    # The cover goes into the catalogue row, not onto the post as a loose attachment, so the
+    # card renders the same furniture a reader's does: a cover thumbnail and the title above
+    # the author's name, both derived by the feed from `note.userbook.book`.
+    cover = book_cover(book)
+    userbook_id = common.add_to_library(
+        token,
+        title=book.get("title") or "Unknown Title",
+        author=book.get("author") or "Unknown Author",
+        isbn=book.get("primary_isbn13") or book.get("primary_isbn10"),
+        cover_url=cover,
+        description=(book.get("description") or None),
+    )
+
     common.post_note(
         token,
         text=compose(book, teaser, list_display),
-        image_url=book_cover(book),
+        # Only when the link failed: otherwise the same cover would render twice, once as
+        # the book thumbnail and once as an attached image.
+        image_url=None if userbook_id else cover,
+        userbook_id=userbook_id,
         dedup_key="{}:{}".format(CONTENT_TYPE, isbn_key(book)),
     )
 

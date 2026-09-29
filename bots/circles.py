@@ -5,6 +5,10 @@ What it may say, and what it may not:
 * **Public circles only.** A private circle contributes nothing, not even to a count.
 * **Aggregate counts only.** No reader name, no username, no profile link, no circle name.
   The only proper noun in the post is a book title.
+* **No linked book.** `/groups/discover` hands back a `current_book` with an id, so the
+  roundup *could* attach it. It does not: the post's subject is the circles, not that
+  title, and a cover thumbnail beside it would read as a review of the book. The card
+  renders with `book == None`, which is the ordinary shape for a reader post with no book.
 * **A k-anonymity floor**: a title is named only when at least `MIN_READERS` readers across
   at least `MIN_CIRCLES` public circles are reading it. E-3, decided: the floor does not
   move, and below it the roundup is **not** softened or reworded — Thursday posts a second
@@ -67,12 +71,12 @@ def summarise(rows: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
 
 
 def compose(summary: Dict[str, Any]) -> str:
-    body = (
+    # R-05a withdrawn 2026-09-29: the roundup sentence is the whole post.
+    return (
         "This week in Literary Circles: {active} circles are active, and the book turning "
         "up most often is {title} - {readers} readers across {circles} circles. "
         "Browse circles from the Circles tab.".format(**summary)
     )
-    return common.append_label(body, common.ACCOUNTS[CONTENT_TYPE]["handle"])
 
 
 def week_key(now=None) -> str:

@@ -171,8 +171,15 @@ test('feed_card_name_is_wrapped_in_a_userNameRow', () => {
 });
 
 // ── A-02 ────────────────────────────────────────────────────────────────────
-// R-05a's floor: the "— automated post from @handle" line lives in note.text,
-// so no screen may reshape a note's text before rendering it.
+// A note's text is the author's, and no screen may reshape it before rendering.
+//
+// This case was written for R-05a, which required a trailing "— automated post from
+// @handle" line in note.text and would have been defeated by a screen that trimmed it.
+// R-05a is WITHDRAWN (PM decision, 2026-09-29) and the line is gone — but the rule this
+// case actually enforces never depended on it: a reader's post must reach the screen
+// verbatim, not silently truncated, reflowed or stripped. The detectors below are
+// unchanged; only the reason for keeping them is restated. (The regexes in the
+// detector-proof block are synthetic strings, not the withdrawn label.)
 const NOTE_TEXT_FILES = [FEED, GROUP, PROFILE];
 const NOTE_TEXT_SITE_COUNT = 3;
 

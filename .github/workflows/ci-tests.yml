@@ -23,6 +23,13 @@
 # review - or a file that stopped loading, which is the bug this file is here to catch.
 # Lowering a floor to make CI green is the exact move this workflow exists to prevent.
 #
+# RAISE THESE EVERY SPRINT. Not "when you remember": a floor that lags is a gate that is
+# switched off, and the size of the hole is exactly the size of the lag. Measured 2026-09-29:
+# the pytest floor said 623 while master passed 709, so a test file could have stopped
+# loading and taken 86 assertions with it without CI saying a word - for a week. The last
+# step of any sprint that touches tests is to re-measure all three suites and put the
+# numbers here, in that sprint's own commit.
+#
 # Public repositories get unlimited GitHub-hosted Actions minutes, so running all three
 # suites on every push costs nothing.
 #
@@ -45,9 +52,23 @@ jobs:
     runs-on: ubuntu-latest
     env:
       # Floor, not a target. Raise it when you add tests; never lower it to go green.
-      EXPECTED_MIN_TESTS: 623
+      # 2026-09-29: this had drifted. It was set to 623 when P5 added this file, and master
+      # reached 709 as Sprint 4E and the rest of 4F merged without anyone raising it — an
+      # 86-test hole in the exact protection this workflow exists to give. Package P6
+      # measured 714 locally and set the floor to it. If CI reports fewer than 714, that is
+      # the gap this floor exists to expose; find the file that stopped loading rather than
+      # lowering the number.
+      EXPECTED_MIN_TESTS: 714
     steps:
       - uses: actions/checkout@v4
+        with:
+          # B-23' (tests/test_bots.py::TestExistingSuite) diffs against a PINNED pre-Sprint-4F
+          # commit, 707b8d9. A pinned SHA is not present in the default depth-1 clone, so the
+          # three B-23' cases would fail with "the pinned base is not reachable". Full history
+          # is the fix; re-pointing the rule at origin/master is NOT — read the comment on
+          # B23_BASE before touching either. Do not lower this to a fixed depth either: the
+          # distance from HEAD to 707b8d9 grows with every commit.
+          fetch-depth: 0
 
       - uses: actions/setup-python@v5
         with:

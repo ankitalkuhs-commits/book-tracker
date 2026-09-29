@@ -1,9 +1,12 @@
-"""Shared plumbing for the four bot voices: the label, the token, the two API calls.
+"""Shared plumbing for the four bot voices: the token and the API calls.
 
-Design constraints this file exists to keep (spec R-05a, R-07, R-08, R-15):
+Design constraints this file exists to keep (spec R-07, R-08, R-15):
 
-* **The R-05a label is a fixed string built here, never by the language model.** One
-  module-level literal, `LABEL_TEMPLATE`, and one function that appends it. C-01/C-02/C-02a.
+* **No in-text label.** R-05a is **withdrawn by PM decision on 2026-09-29**. There is no
+  `LABEL_TEMPLATE` and no `append_label()` any more, and nothing here may reintroduce one:
+  a bot post is labelled by the account (username, display name, the "Automated account."
+  bio), by the `is_bot` field on every author object, and by the client's BOT badge. C-01b
+  asserts the absence. See spec R-05a and pm-decisions E-2 for the residual risk.
 * **No database.** The only I/O is `requests` against the public API. C-04a.
 * **Nothing secret is ever logged.** `log()` is the only output path and it prints what it
   is given; no caller passes it a response body, a header or a token. GitHub masks secrets
@@ -21,19 +24,9 @@ from typing import Any, Dict, Iterable, List, Optional
 
 import requests
 
-# ── The R-05a label ──────────────────────────────────────────────────────────
-#
-# E-2, decided: an em dash, a space, then `automated post from @<handle>`. Lower-case
-# "automated", no trailing punctuation. This is the ONLY place the form is written down,
-# and it is a plain literal so that no code path can build it from model output.
-LABEL_TEMPLATE = "— automated post from @{handle}"
-
-# Derived, so the prefix can never drift from the template above.
-LABEL_PREFIX = LABEL_TEMPLATE[: LABEL_TEMPLATE.index("{")]
-
 # ── Accounts ─────────────────────────────────────────────────────────────────
 #
-# handle is what appears in the label; email is what /auth/bot-login is given.
+# handle is the account's username; email is what /auth/bot-login is given.
 ACCOUNTS: Dict[str, Dict[str, str]] = {
     "bestseller": {"handle": "TMRBot", "email": "tmrbot@trackmyread.com"},
     "prompt": {"handle": "TMRPrompts", "email": "tmrprompts@trackmyread.com"},
@@ -58,20 +51,6 @@ class BotError(RuntimeError):
 
 def api_base() -> str:
     return os.environ.get("TMR_API_BASE", DEFAULT_API_BASE).rstrip("/")
-
-
-def label_line(handle: str) -> str:
-    """The exact R-05a line for one account. `handle` is given without the `@`."""
-    return LABEL_TEMPLATE.format(handle=handle)
-
-
-def append_label(body: str, handle: str) -> str:
-    """Append the R-05a line to finished body text.
-
-    Called *after* every content source (the model included) has had its say, so a model
-    that returns nothing still yields a labelled post — C-02.
-    """
-    return (body or "").rstrip() + "\n\n" + label_line(handle)
 
 
 def log(*parts: Any) -> None:
@@ -171,6 +150,65 @@ def get_json(token: str, path: str, params: Optional[Dict[str, Any]] = None):
     return resp.json()
 
 
+def add_to_library(
+    token: str,
+    *,
+    title: str,
+    author: Optional[str],
+    isbn: Optional[str],
+    cover_url: Optional[str],
+    description: Optional[str] = None,
+) -> Optional[int]:
+    """Resolve a book to a `UserBook` the bot owns, and return that userbook's id.
+
+    This is the reader's own path — `POST /books/add-to-library` — used unchanged: it
+    matches an existing `Book` by `google_books_id` then `isbn`, creates one when there is
+    no match, and creates the caller's `UserBook`. Reusing it is what makes a bot's card
+    identical to a reader's, because the feed's `book` object is derived from the note's
+    `userbook -> book` and from nothing else.
+
+    `status="to-read"` is deliberate, and it is the whole of what keeps this shelf inert:
+    `GET /userbooks/friends/currently-reading` and recommendation bucket 1 both select
+    `status == "reading"`, and bucket 2 selects `status == "finished"` with `rating >= 4`.
+    A "to-read" row with no rating is in none of them, so a reader who follows a bot gets
+    no recommendation and no "currently reading" tile out of it.
+
+    Returns None on any failure — a book that will not link is not a reason to lose the
+    post, so the caller falls back to an unlinked post. Never raises: unlike `post_note`,
+    this call is not the run's purpose.
+    """
+    body: Dict[str, Any] = {
+        "title": title,
+        "author": author,
+        "isbn": isbn,
+        "cover_url": cover_url,
+        "description": description,
+        "status": "to-read",
+    }
+    try:
+        resp = _request(
+            "POST",
+            api_base() + "/books/add-to-library",
+            headers=_auth_header(token),
+            json_body=body,
+        )
+    except Exception as exc:
+        log("add-to-library unreachable; posting without a linked book.", type(exc).__name__)
+        return None
+
+    status = resp.status_code
+    if status not in (200, 201):
+        # 400 is "already in your library" — a previous run linked the book and then failed
+        # to post. Not worth a second call to go and find the row: the post still goes out,
+        # unlinked, and the next list rotation moves on.
+        log("add-to-library status", status, "- posting without a linked book")
+        return None
+
+    userbook_id = (resp.json() or {}).get("id")
+    log("linked book status", status, "userbook", userbook_id)
+    return userbook_id
+
+
 def post_note(
     token: str,
     *,
@@ -178,6 +216,7 @@ def post_note(
     dedup_key: str,
     quote: Optional[str] = None,
     image_url: Optional[str] = None,
+    userbook_id: Optional[int] = None,
 ) -> int:
     """Create the post. One attempt, ever.
 
@@ -186,6 +225,10 @@ def post_note(
 
     `dedup_key` is passed on the same request, so the `bot_post` row is written inside the
     note's own transaction (R-15). There is no second call for a run to die between.
+
+    `userbook_id` is what makes the feed card carry a cover and a title. It is optional
+    because three of the four voices have no book: a prompt and a quote are about nothing
+    in the catalogue, and a card with `book == None` is the ordinary reader shape too.
     """
     body: Dict[str, Any] = {
         "text": text,
@@ -196,6 +239,8 @@ def post_note(
         body["quote"] = quote
     if image_url is not None:
         body["image_url"] = image_url
+    if userbook_id is not None:
+        body["userbook_id"] = userbook_id
 
     resp = _request(
         "POST", api_base() + "/notes/", headers=_auth_header(token), json_body=body

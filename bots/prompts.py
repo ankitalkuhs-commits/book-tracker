@@ -33,7 +33,8 @@ def choose(used_keys: Iterable[str]) -> Optional[Dict[str, Any]]:
 
 
 def compose(entry: Dict[str, Any]) -> str:
-    return common.append_label(entry["text"], common.ACCOUNTS[CONTENT_TYPE]["handle"])
+    # R-05a withdrawn 2026-09-29: the pool entry is the whole post, nothing is appended.
+    return entry["text"]
 
 
 def post_prompt(token: Optional[str] = None) -> int:
