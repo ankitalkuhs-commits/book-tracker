@@ -690,7 +690,13 @@ BUDGETS = [
         lambda d: f"/groups/{d.g_priv}/activity"),
     Row("38", "GET /groups/{id}/pending", "curator", RATCHET, 4, 4, "4",
         lambda d: f"/groups/{d.g_curator}/pending"),
-    Row("39", "GET /admin/stats", "—", RATCHET, 15, 15, "15",
+    # 15 -> 17 on 2026-09-29: Sprint 4F R-16 splits readers from bots here, adding a
+    # `bot_users` and a `bot_notes` count. Deliberate, and the guard caught it on the merge,
+    # which is the behaviour this table exists for. Still a ratchet, and still far above the
+    # 2 that descoped Sprint 4E P6 would have reached. Both new counts could fold into the
+    # existing ones with FILTER (17 -> 15); not worth reopening for an admin-only page at
+    # 3 ms a query, but that is the move if this endpoint is ever revisited.
+    Row("39", "GET /admin/stats", "—", RATCHET, 17, 17, "15",
         lambda d: "/admin/stats", who="admin"),
     Row("40", "GET /admin/users", "—", RATCHET, 5, 5, "5",
         lambda d: "/admin/users", who="admin"),
