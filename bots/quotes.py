@@ -29,8 +29,8 @@ def choose(used_keys: Iterable[str]) -> Optional[Dict[str, Any]]:
 
 
 def compose(entry: Dict[str, Any]) -> str:
-    attribution = "{} — {} ({})".format(entry["author"], entry["work"], entry["year"])
-    return common.append_label(attribution, common.ACCOUNTS[CONTENT_TYPE]["handle"])
+    # R-05a withdrawn 2026-09-29: the attribution is the whole post, nothing is appended.
+    return "{} — {} ({})".format(entry["author"], entry["work"], entry["year"])
 
 
 def run() -> None:

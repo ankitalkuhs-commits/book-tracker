@@ -1,4 +1,8 @@
-"""Sprint 4F, package P5 — the bot package and its CI (tests.md C-01..C-22).
+"""Sprint 4F, package P5 — the bot package and its CI (tests.md C-01..C-23b).
+
+Amended 2026-09-29 (package P6, branch `fix/bot-post-parity`): C-01, C-02 and C-02a are
+DELETED — they asserted R-05a's in-text label, which the PM withdrew. C-01b asserts the
+absence instead, and C-23/C-23a/C-23b cover R-17's linked book.
 
 No network. Every NYT / Gemini / API call is a monkeypatched double, and the one seam they
 all go through is `bots.common._request`, so a call this file has not doubled raises rather
@@ -22,7 +26,8 @@ import yaml
 
 from bots import bestsellers, circles, common, prompts, quotes
 
-assert callable(common.label_line)
+assert callable(common.post_note)
+assert callable(common.add_to_library)
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BOTS_DIR = os.path.join(REPO_ROOT, "bots")
@@ -63,6 +68,7 @@ class FakeApi:
         discover=None,
         nyt_books=None,
         nyt_error=None,
+        library_status=201,
     ):
         # dedup_key -> naive-UTC instant it was used
         self.posted = dict(posted or {})
@@ -73,6 +79,9 @@ class FakeApi:
         self.calls = []
         self.note_bodies = []
         self.posted_since = {}
+        # POST /books/add-to-library — the reader path the bestseller voice reuses.
+        self.library_status = library_status
+        self.library_bodies = []
 
     def __call__(self, method, url, *, headers=None, params=None, json_body=None, timeout=None):
         self.calls.append((method, url))
@@ -94,6 +103,14 @@ class FakeApi:
                 and (cutoff is None or used_at >= cutoff)
             ]
             return FakeResponse(200, {"dedup_keys": sorted(keys)})
+
+        if method == "POST" and url.endswith("/books/add-to-library"):
+            self.library_bodies.append(json_body)
+            if self.library_status in (200, 201):
+                return FakeResponse(
+                    self.library_status, {"id": 700 + len(self.library_bodies)}
+                )
+            return FakeResponse(self.library_status, {"detail": "refused"})
 
         if method == "POST" and url.endswith("/notes/"):
             self.note_bodies.append(json_body)
@@ -175,110 +192,47 @@ def run_all_four(monkeypatch, fake=None):
     return fake
 
 
-# ── 6.1 The label — R-05a ────────────────────────────────────────────────────
+# ── 6.1 The in-text label — R-05a, WITHDRAWN by PM decision 2026-09-29 ───────
+#
+# R-05a required every bot post to end with `— automated post from @<handle>`. The PM
+# withdrew it on 2026-09-29 after seeing the first live post; the line was stripped from
+# that post by hand and removed from the code here.
+#
+# C-01 (the exact E-2 string), C-02 (appended after generation) and C-02a (never model
+# generated) asserted the withdrawn requirement and are GONE — see build-notes-4f-p6.md.
+# What replaces them is C-01b below, which asserts the absence, because the requirement was
+# withdrawn deliberately and a later reader re-adding "just a small disclaimer line" would
+# be reversing a PM decision rather than fixing an oversight.
 
 
-class TestLabel:
-    def test_every_post_ends_with_the_exact_e2_string(self, monkeypatch):
-        """C-01."""
-        # The form lives in exactly one constant, and it is this one (E-2).
-        assert common.LABEL_TEMPLATE == "— automated post from @{handle}"
-
+class TestNoInTextLabel:
+    def test_no_post_carries_an_automated_post_line(self, monkeypatch):
+        """C-01b (MUT-4F-100) — R-05a is withdrawn: no voice appends anything to its own text."""
         fake = run_all_four(monkeypatch)
         assert len(fake.note_bodies) == 4, fake.keys_posted()
 
-        expected_handles = {
-            "bestseller": "TMRBot",
-            "prompt": "TMRPrompts",
-            "quote": "TMRQuotes",
-            "circles": "TMRCircles",
-        }
-        seen = set()
         for body in fake.note_bodies:
-            content_type = body["dedup_key"].split(":", 1)[0]
-            seen.add(content_type)
-            handle = expected_handles[content_type]
             text = body["text"]
-            tail = "\n— automated post from @" + handle
-            assert text.endswith(tail), (content_type, repr(text[-60:]))
-            # em dash, not a hyphen and not an en dash
-            assert "- automated post from @" not in text
-            assert "– automated post from @" not in text
-            # lower-case, no trailing punctuation, no trailing whitespace
-            assert "Automated post from @" not in text
-            assert text == text.rstrip()
-            assert not text.endswith(".")
-        assert seen == set(expected_handles), seen
+            # Control: the post says something, so this is not passing on empty strings.
+            assert text.strip(), body["dedup_key"]
+            lowered = text.lower()
+            assert "automated post from" not in lowered, body["dedup_key"]
+            assert "automated account" not in lowered, body["dedup_key"]
+            # No trailing handle line of any dash flavour.
+            for dash in ("—", "–", "-"):
+                assert not text.rstrip().endswith(dash + " @TMRBot"), body["dedup_key"]
 
-    def test_line_is_appended_after_generation(self, monkeypatch):
-        """C-02 — a model that returns nothing still yields a labelled post."""
-        # The seam itself: nothing to label is still labelled. `append_label` is called
-        # after every content source has had its say, so there is no path on which an
-        # empty generation produces an unlabelled post.
-        assert common.append_label("", "TMRBot").endswith(
-            "\n— automated post from @TMRBot"
-        )
-        assert common.append_label("body", "TMRBot").startswith("body")
-
-        for teaser in ("", "A teaser — with its own em dash — inside it."):
-            fake = FakeApi(nyt_books=[nyt_book("9780000000002")])
-            install(monkeypatch, fake, teaser=teaser)
-            bestsellers.run()
-            text = fake.note_bodies[-1]["text"]
-            assert text.endswith("\n— automated post from @TMRBot"), repr(text[-60:])
-            assert text.count(common.LABEL_PREFIX) == 1, repr(text)
-
-    def test_line_is_never_model_generated(self):
-        """C-02a — the label is a module-level literal, not built from model output."""
-        source = _read(os.path.join(BOTS_DIR, "common.py"))
-        tree = ast.parse(source)
-
-        found = [
-            node
-            for node in tree.body
-            if isinstance(node, ast.Assign)
-            and any(
-                isinstance(t, ast.Name) and t.id == "LABEL_TEMPLATE" for t in node.targets
-            )
-            and isinstance(node.value, ast.Constant)
-            and isinstance(node.value.value, str)
-        ]
-        assert len(found) == 1, "LABEL_TEMPLATE must be one module-level string literal"
-
-        # Nothing anywhere in bots/ builds a LABEL* name from anything but that literal.
-        assert _label_violations_in_package() == []
-
-        # Control (rule 3): the detector fires on a synthetic model-built label.
-        synthetic = ast.parse('LABEL_TEMPLATE = model.generate("write a disclaimer")')
-        assert _label_violations(synthetic) == ["LABEL_TEMPLATE"]
+        # ...and the plumbing that used to build it is gone from the package, so no voice
+        # can pick it up again by importing it.
+        for name in ("append_label", "label_line", "LABEL_TEMPLATE", "LABEL_PREFIX"):
+            assert not hasattr(common, name), name
+        blob = "".join(_read(p) for p in _bots_sources())
+        assert "automated post from" not in blob.lower()
 
 
 def _read(path):
     with open(path, "r", encoding="utf-8") as fh:
         return fh.read()
-
-
-def _label_violations(tree):
-    """Names containing LABEL assigned anything other than a string literal (or a slice of
-    LABEL_TEMPLATE, which is how LABEL_PREFIX is kept from drifting)."""
-    out = []
-    for node in ast.walk(tree):
-        if not isinstance(node, ast.Assign):
-            continue
-        for target in node.targets:
-            if not (isinstance(target, ast.Name) and "LABEL" in target.id):
-                continue
-            value = node.value
-            if isinstance(value, ast.Constant) and isinstance(value.value, str):
-                continue
-            if (
-                isinstance(value, ast.Subscript)
-                and isinstance(value.value, ast.Name)
-                and value.value.id == "LABEL_TEMPLATE"
-            ):
-                continue
-            out.append(target.id)
-    return out
 
 
 def _bots_sources():
@@ -288,13 +242,6 @@ def _bots_sources():
             if name.endswith(".py"):
                 files.append(os.path.join(dirpath, name))
     return files
-
-
-def _label_violations_in_package():
-    out = []
-    for path in _bots_sources():
-        out.extend(_label_violations(ast.parse(_read(path))))
-    return out
 
 
 # ── 6.2 Posting through the API — R-07 ───────────────────────────────────────
@@ -460,7 +407,9 @@ class TestBestsellers:
         assert "It goes on for some time" not in text  # the FIRST sentence only
         teaser_line = "A quiet novel about a long winter."
         assert len(teaser_line.split()) <= bestsellers.MAX_TEASER_WORDS
-        assert text.endswith("\n— automated post from @TMRBot")
+        # R-05a withdrawn 2026-09-29: the post now ENDS on the teaser, with nothing after
+        # it. This was `assert text.endswith("<the R-05a line>")`.
+        assert text.rstrip().endswith(teaser_line), repr(text[-60:])
 
     def test_nyt_failure_posts_nothing_and_exits_zero(self, monkeypatch):
         """C-07 — a skipped day, not a fabricated one."""
@@ -479,6 +428,73 @@ class TestBestsellers:
         bestsellers.run()
         assert fake.keys_posted() == ["bestseller:9780000000010"]
         assert "bestseller:" + legacy not in fake.keys_posted()
+
+
+# ── 6.3a The linked book — PM change 2 of 2026-09-29 ─────────────────────────
+#
+# The feed's `book` object comes from `note.userbook -> book` and from nothing else, so a
+# post with no `userbook_id` renders with no cover and no title — which is what made the
+# first live bot post read as a different kind of object in the feed. The bestseller voice
+# now takes the reader's own `POST /books/add-to-library` path and passes the `userbook_id`
+# it gets back. The other three voices have no book and pass none.
+
+
+class TestLinkedBook:
+    def test_bestseller_links_the_book_and_drops_the_loose_image(self, monkeypatch):
+        """C-23 (MUT-4F-101) — the post carries the userbook the library call created."""
+        book = nyt_book("9780000000021", title="The Linked One")
+        fake = FakeApi(nyt_books=[book])
+        install(monkeypatch, fake)
+        bestsellers.run()
+
+        # The library call happened, with the real book's real values — an assertion that
+        # only says "a call happened" would pass on an empty payload.
+        assert len(fake.library_bodies) == 1, fake.library_bodies
+        sent = fake.library_bodies[0]
+        assert sent["title"] == "The Linked One"
+        assert sent["author"] == "An Author"
+        assert sent["isbn"] == "9780000000021"
+        assert sent["cover_url"] == "https://example.com/9780000000021.jpg"
+        assert sent["status"] == "to-read", (
+            "a 'reading' or rated 'finished' row would put the bot into "
+            "GET /userbooks/friends/currently-reading and into recommendations"
+        )
+
+        # ...and the note carries THAT userbook id, not a truthy placeholder.
+        assert len(fake.note_bodies) == 1
+        posted = fake.note_bodies[0]
+        assert posted["userbook_id"] == 701, posted
+        # The cover is the book's now, so it is not also attached to the post.
+        assert "image_url" not in posted, posted
+
+    def test_a_failed_link_still_posts_with_the_cover_attached(self, monkeypatch):
+        """C-23a (MUT-4F-102) — a book that will not link is not a reason to lose the post."""
+        book = nyt_book("9780000000022", title="The Unlinkable")
+        fake = FakeApi(nyt_books=[book], library_status=400)   # "already in your library"
+        install(monkeypatch, fake)
+        assert common.run_guarded(bestsellers.run) == 0
+
+        assert len(fake.note_bodies) == 1, fake.note_bodies
+        posted = fake.note_bodies[0]
+        assert "userbook_id" not in posted, posted
+        assert posted["image_url"] == "https://example.com/9780000000022.jpg", posted
+        assert "The Unlinkable" in posted["text"]
+
+    def test_the_other_three_voices_link_nothing(self, monkeypatch):
+        """C-23b (MUT-4F-103) — a prompt, a quote and a roundup have no book, and none is invented."""
+        fake = FakeApi(discover=ABOVE_FLOOR)
+        install(monkeypatch, fake)
+        for run in (prompts.run, quotes.run, circles.run):
+            run()
+
+        assert fake.library_bodies == [], fake.library_bodies
+        assert len(fake.note_bodies) == 3, fake.keys_posted()
+        for posted in fake.note_bodies:
+            assert "userbook_id" not in posted, posted["dedup_key"]
+        # Control: the roundup DID name a book in its text — so "no linked book" is a
+        # decision about the card, not an artefact of there being nothing to link.
+        roundup = [b for b in fake.note_bodies if b["dedup_key"].startswith("circles:")]
+        assert len(roundup) == 1 and "Tomorrow and Tomorrow" in roundup[0]["text"]
 
 
 class TestDedupWindows:
@@ -567,12 +583,16 @@ class TestCircles:
             assert len(fake.note_bodies) == 1, rows
             body = fake.note_bodies[0]
             key, text = body["dedup_key"], body["text"]
+            # R-05a withdrawn 2026-09-29: these two branches were told apart by the trailing
+            # handle line. With no label, the body itself has to carry the difference, which
+            # is a stronger assertion than the one it replaces — a roundup mislabelled as a
+            # prompt used to be caught by the handle and is now caught by the content.
             if expect_roundup:
                 assert key.startswith("circles:"), key
-                assert text.endswith("\n— automated post from @TMRCircles")
+                assert "circles are active" in text, text
+                assert "Literary Circles" in text, text
             else:
                 assert key.startswith("prompt:"), key
-                assert text.endswith("\n— automated post from @TMRPrompts")
                 assert "circles are active" not in text
                 assert "Literary Circles" not in text
 

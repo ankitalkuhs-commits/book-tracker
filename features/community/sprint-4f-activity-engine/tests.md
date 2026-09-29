@@ -2,6 +2,7 @@
 screen: sprint-4f-activity-engine
 feature: community
 test_plan_written: 2026-09-23
+amended: 2026-09-29 (package P6, branch `fix/bot-post-parity`) — the PM WITHDREW R-05a after reviewing the first live bot post, and added R-17 (a bot post carries a real linked book). C-01, C-02, C-02a and L-4F-05 asserted the withdrawn requirement and are DELETED; C-01b, C-23/C-23a/C-23b, B-34..B-37 and L-4F-06 are added; A-02 is kept with its rationale restated. Deletions are struck through in place, never removed, so the record shows a decision and not a gap.
 last_run: —
 pass_rate: —
 written_by: Senior QA (before Builder; branch HEAD cf2f5a8 is docs only — no 4F product, bot, harness or test code exists on this branch)
@@ -81,7 +82,7 @@ Binding on every case in this plan. Rules 1–3 are 4C's (architecture.md §"Non
 | **P2** API — serialisation, cap, metrics, dedup | **28** (`tests/test_bots.py`: B-13..B-20 + B-15a/16a/18a/19b/19c, B-24, B-26..B-30 + B-27a/28a/29a/29b/30a, B-32, B-32b, B-33 · `tests/test_sql_artifacts.py`: B-25b) | the 14 key-set assertions in K-01 | same | see below |
 | **P3** Web | **9** (`qa/unit/botBadge.test.mjs`: W-04..W-07 · `qa/web_4f_local.mjs`: L-4F-01..05 — the architecture's W-01..W-03 are three of those five) | — | `node --test "qa/unit/*.test.mjs"`; `node qa/web_4f_local.mjs` | unit **34 → 38 pass**; harness → `4F web local: 5 passed, 0 failed` |
 | **P4** Android | **7** (`__tests__/botBadge.test.mjs`: A-01, A-01a, A-02..A-06) | `workflows.test.mjs::build_android_yml_absent` (K-02, case C-20) | `node --test "__tests__/*.test.mjs"` from `book-tracker-mobile-stitch/` | **113 tests / 112 pass / 1 fail → 120 tests / 120 pass / 0 fail** |
-| **P5** Bot + CI | **27** pytest (`tests/test_bot_content.py`: C-01..C-19, C-21, C-22 incl. C-02a/04a/05a/11a/13a/13b) **+ 1 changed** node test (C-20) | `__tests__/workflows.test.mjs` | `.venv\Scripts\python -m pytest tests -q` (same suite) | included below |
+| **P5** Bot + CI *(as planned 2026-09-23; see P6 for the 2026-09-29 amendment)* | **27** pytest (`tests/test_bot_content.py`: C-01..C-19, C-21, C-22 incl. C-02a/04a/05a/11a/13a/13b) **+ 1 changed** node test (C-20) | `__tests__/workflows.test.mjs` | `.venv\Scripts\python -m pytest tests -q` (same suite) | included below |
 | Static | ST-4F-01..06 | — | section 7 | as stated |
 | Production / PM | P-4F-01..12, D-4F-01..02 | — | section 8 | as stated |
 | Regression | RG-4F-01..10 | — | section 9 | per row |
@@ -174,8 +175,8 @@ Instant is the default pin unless stated. `_configure_bot_login` sets both env v
 
 | # | Case | Assert | Mutation | Sev / Pri |
 |---|---|---|---|---|
-| B-23' | `TestExistingSuite::test_only_the_new_key_was_added_to_tests` (static) | `git diff origin/master...HEAD -- tests/` (via `subprocess`), parsed: every removed line is matched, in the same hunk, by an added line differing **only** by tokens drawn from `{"is_bot", "bot_users", "bot_notes"}`; no line is **deleted** without a replacement. The two files in `SCHEMA_GUARD_EXEMPT` (K-01a) are exempt from the token rule **and** the exemption is itself asserted: `len(SCHEMA_GUARD_EXEMPT) == 2`, and every line added to an exempt file carries one of the rework markers. **Control:** the detector, run on a synthetic diff that deletes an assertion, reports 1 violation | delete `tests/test_notes.py:1106` instead of amending it (MUT-4F-28) → `assert ['tests/test_notes.py: deleted without an equivalent replacement: …'] == []` | Critical P0 |
-| B-23'b | `TestExistingSuite::test_changed_assertion_files_are_in_k01s_list` (static) | every file with deleted lines in that diff is in K-01's three-file list (`tests/test_notes.py`, `tests/test_admin.py`, `tests/test_groups.py`) **or** in `SCHEMA_GUARD_EXEMPT`; the count of changed assertion lines outside the exempt files is **≤ 14** | edit a fourth file — e.g. delete a line in `tests/test_dependencies.py` (MUT-4F-28b) → `assert tests/test_dependencies.py has deleted lines and is not in K-01's list` | Critical P0 |
+| B-23' | `TestExistingSuite::test_only_the_new_key_was_added_to_tests` (static) | `git diff 707b8d9...HEAD -- tests/` (**pinned base since 2026-09-29 — §2.6b; it was `origin/master...HEAD`, which broke the moment 4F merged**) (via `subprocess`), parsed: every removed line is matched, in the same hunk, by an added line differing **only** by tokens drawn from `{"is_bot", "bot_users", "bot_notes"}`; no line is **deleted** without a replacement. The two files in `SCHEMA_GUARD_EXEMPT` (K-01a) are exempt from the token rule **and** the exemption is itself asserted: `len(SCHEMA_GUARD_EXEMPT) == 2`, and every line added to an exempt file carries one of the rework markers. **Control:** the detector, run on a synthetic diff that deletes an assertion, reports 1 violation | delete `tests/test_notes.py:1106` instead of amending it (MUT-4F-28) → `assert ['tests/test_notes.py: deleted without an equivalent replacement: …'] == []` | Critical P0 |
+| B-23'b | `TestExistingSuite::test_changed_assertion_files_are_in_k01s_list` (static) | same pinned range (§2.6b); every file with deleted lines in that diff is in K-01's three-file list (`tests/test_notes.py`, `tests/test_admin.py`, `tests/test_groups.py`) **or** in `SCHEMA_GUARD_EXEMPT`; the count of changed assertion lines outside the exempt files is **≤ 14** | edit a fourth file — e.g. delete a line in `tests/test_dependencies.py` (MUT-4F-28b) → `assert tests/test_dependencies.py has deleted lines and is not in K-01's list` | Critical P0 |
 | — | the whole suite | `pytest tests -q` → **623 passed, 0 failed** | any of the above | Critical P0 |
 
 ---
@@ -206,6 +207,74 @@ Two synthetic controls are required (rule 3), and both are built:
 | the rule does not over-fire | an exempt file: a marked replacement, then a **context line**, then an unmarked new class | **0** violations |
 
 MUT-4F-28 and MUT-4F-28b are unaffected — both are removals, which `_diff_violations` catches.
+
+---
+
+### 2.6b Amendment to B-23' — the diff base is PINNED, not `origin/master` (Builder P6, 2026-09-29)
+
+**The defect.** All three B-23' nodes measured `git diff origin/master...HEAD -- tests/`.
+While Sprint 4F was unmerged that was the right range by accident: `origin/master` *was* the
+pre-4F tree. The moment 4F merged, `origin/master` contained 4F and the same expression began
+measuring **every later branch** against post-4F master. Two consequences, both hit on branch
+`fix/bot-post-parity`:
+
+- it forbade a later sprint from **deleting any test** — which blocked the PM's withdrawal of
+  R-05a, a decision that necessarily deletes the three cases that asserted it;
+- it forbade **its own amendment**, because `tests/test_bots.py` is on no exempt list and
+  every edit to that file shows up as deleted lines in it.
+
+**The fix the PM chose.** B-23' is a statement about *what Sprint 4F did to test files that
+already existed*. That is a historical fact and stopped being a moving target when 4F merged,
+so the base is now a **pinned commit**:
+
+```python
+B23_BASE  = "707b8d9"          # merge(4e): query budget ... — the last pre-4F tree
+B23_RANGE = B23_BASE + "...HEAD"
+```
+
+The rejected alternative was a fourth exemption naming Sprint 4F's own test files. It buys one
+merge and taxes every branch after it, and it quietly exempts the file the rule lives in.
+
+`707b8d9` is the 4E merge. The **one** commit between it and the 4F merge is `01ec86c`
+*fix(qa): refuse a bare URL* — it touches only `qa/live_checks.py`, nothing under `tests/`, so
+the two commits are the same base for this rule (`git show --numstat 01ec86c -- tests/` is
+empty). Verified 2026-09-29.
+
+**What this changes, and what it does not.** Against a pre-4F tree, `tests/test_bots.py` and
+`tests/test_bot_content.py` are wholly new and appear as **pure additions** (2096/0 and 883/0
+lines), which `_diff_violations` already permits — so they need no exemption and a later
+sprint editing them is simply outside what this rule talks about. `SCHEMA_GUARD_EXEMPT`,
+`BUDGET_EXEMPT` and K-01's three-file 14-line ceiling are untouched, and every other pre-4F
+file still may not lose a line.
+
+**Non-vacuity.** Under `origin/master` the range was *empty* on a just-merged master, so all
+three nodes passed while asserting nothing. Under the pinned base the range is **3,264 diff
+lines across nine files** — the rule is exercised for the first time since the merge:
+
+| file | added / deleted | covered by |
+|---|---|---|
+| `tests/test_bots.py` | 2096 / 0 | pure addition |
+| `tests/test_bot_content.py` | 883 / 0 | pure addition |
+| `tests/test_sql_artifacts.py` | 92 / 1 | `SCHEMA_GUARD_EXEMPT` |
+| `tests/test_local_day.py` | 7 / 3 | `SCHEMA_GUARD_EXEMPT` |
+| `tests/test_notes.py` | 7 / 7 | K-01, ≤ 14 |
+| `tests/test_query_budget.py` | 7 / 1 | `BUDGET_EXEMPT` |
+| `tests/test_admin.py` | 4 / 4 | K-01, ≤ 14 |
+| `tests/test_groups.py` | 2 / 2 | K-01, ≤ 14 |
+| `tests/conftest.py` | 5 / 0 | named allowance |
+
+**Proved both directions** (build-notes-4f-p6.md has the output):
+
+| Direction | Experiment | Result |
+|---|---|---|
+| still bites | delete `assert r.json()["book"]["title"] == "Dune"` from `tests/test_books.py` (a pre-4F file), **commit**, run | **2 failed** — `deleted without an equivalent replacement` and `tests/test_books.py has deleted lines and is not in K-01's list` |
+| no longer over-fires | delete an assertion from `tests/test_bot_content.py` (a 4F-era file), **commit**, run | **3 passed.** The same commit under the old `origin/master` base yields **106** `_diff_violations` and two files with unlisted deletions |
+
+**CI requirement.** `git diff` against a pinned SHA needs that SHA in the clone, and
+`actions/checkout@v4` clones at depth 1. The pytest job therefore sets **`fetch-depth: 0`**.
+If it is ever removed, `_require_b23_base()` fails the three cases with a message naming the
+remedy — it does **not** skip. A fixed depth is not an alternative: the distance from HEAD to
+`707b8d9` grows with every commit.
 
 ---
 
@@ -303,6 +372,11 @@ File opens with the import guard `assert.ok(fs.existsSync(BADGE_PATH), 'BotBadge
 
 - **Setup** copies `qa/web_4d_local.mjs:33-60`: `--web` / `--api`, **exit 5** on a `trackmyread.com` / `onrender.com` host, **exit 6** on a missing precondition, never prints a token or secret, one line per case, then `4F web local: <n> passed, <m> failed`.
 - **Extra precondition:** the local API's `GET /notes/feed` carries `is_bot` on the `user` object — else exit 6 with `run P2 first, or apply the two SQLite ALTERs`.
+- **Extra precondition, added 2026-09-29 after it produced a wrong answer:** `--web` must be serving **this working tree, now**. `npm run dev -- --port 5178` prints `Port 5178 is in use, trying another one...` and binds 5179 when something already holds 5178; the operator then runs the harness against the port they *asked for* and every case measures another checkout's dev server. Measured that day: a mutation applied to this worktree did not bite and the harness reported PASS, because :5178 belonged to `…/worktrees/4f-p3/`.
+  The check fetches the witness module `/src/pages/HomePage.jsx` — the file every case here depends on — and reads two things out of Vite's dev transform, with no writes and no nonce:
+    - **identity:** the absolute source path the transform names must be inside this harness's own repo root. Content alone is not enough: sibling worktrees hold byte-identical files, so a content check passes right up to the moment the trees diverge, which is exactly when it matters.
+    - **freshness:** the inline sourcemap's `sourcesContent[0]` is the original file text, and must equal the file on disk — which catches a server serving a stale transform of the right tree.
+  All three failure modes **exit 6 and run nothing**, including "the served module names no source path", because a harness that cannot identify what it is measuring must not report a pass.
 - **Fixture:** review.reader (110) posts one note; a local-only bot account is flagged `is_bot = true` in the **local** SQLite DB (never production — `qa/RULES_OF_ENGAGEMENT.md`). Every case starts from a **fresh browser context**, because the 60-second GET cache can serve a stale response (4D lesson).
 
 | # | Case | Steps | Expected | Mutation | Sev / Pri |
@@ -311,7 +385,8 @@ File opens with the import guard `assert.ok(fs.existsSync(BADGE_PATH), 'BotBadge
 | L-4F-02 (W-01) | a reader's post is not badged, and gains no whitespace | the same page, the reader's card | no `BOT` text anywhere in the card; the card's bounding height equals a pre-4F screenshot's within 2 px (spec R-03: "no extra whitespace") | MUT-4F-57 (render unconditionally) → a pill on the reader card | Critical P0 |
 | L-4F-03 (W-02) | profile header and user search | open `/profile/<bot id>`; type the bot's name in the sidebar search | the badge renders beside the `<h1>` and in the search result row | remove either (MUT-4F-55) | Critical P0 |
 | L-4F-04 (W-03) | a `user` object with **no** `is_bot` (a stale 60 s cache) | `page.route` the feed call and strip `is_bot` from every `user` object | no badge anywhere; **no console error**; the page renders the same number of cards as the unmodified response | a truthy default in `BotBadge` (MUT-4F-59) → a pill appears on every card | Major P0 |
-| L-4F-05 | the R-05a line is visible in the post body | the bot's post text ends with `— automated post from @TMRBot` | the rendered `innerText` of the card contains that exact string, em dash included | the web app trims the last line of a post (MUT-4F-60) → the string is absent | Critical P0 |
+| ~~L-4F-05~~ **DELETED 2026-09-29** | ~~the R-05a line is visible in the post body~~ — R-05a withdrawn; there is no weaker version of this case that is still true, so it is removed rather than reworded (MUT-4F-60 goes with it) | — | — | — |
+| **L-4F-06** *(new 2026-09-29, R-17)* | the bot's card carries a book cover and title, like a reader's | the bot's post in the feed has a linked book (in `--api` mode that is a precondition, checked before the run) | the card's `innerText` contains the book title; exactly one `img[alt="<title>"]` is present and paints (non-zero `boundingBox()`); **control** — the reader's bookless card in the same feed carries neither, and still renders | drop `userbook_id` from the bot's post, or `book` from `get_feed`'s payload (MUT-4F-104) → no `img[alt=…]` and no title on the card | Critical P0 |
 
 ---
 
@@ -325,7 +400,7 @@ File opens with `assert.ok(existsInMobile('src/components/BotBadge.js'))` (K-07)
 |---|---|---|---|---|---|
 | A-01 | `badge_present_at_every_r04_site` | six sites from spec R-04: `FeedScreen.js` feed-post name (`:660`), the "is feeling…" sentence (`:697`), the comment row (`:751`), the user-search row (`:593`); `GroupDetailScreen.js` post author (`:724`); `UserProfileScreen.js` display name (`:303`). For each: a `JSXElement` named `BotBadge` exists in the same JSX parent as the `Text` node that prints the name | the six **anchor** nodes are located by their content (`styles.userName`, `styles.commentName`, `styles.postAuthor`, `styles.userNameText`, the emotion sentence, `styles.userName` on the profile), and `found === 6` is asserted first (rule 4). The same walker on a synthetic screen with no badge reports 0 | remove the badge from any one (MUT-4F-61) → `5 !== 6`, naming the site | Critical P0 |
 | A-01a | `feed_card_name_is_wrapped_in_a_userNameRow` | at `FeedScreen.js:654-662` the bare `<View style={{flex:1}}>` now contains a `userNameRow`-styled `View` around the name and the badge (architecture P4: without it the badge cannot sit beside the name) | the `userNameRow` style exists at `FeedScreen.js:1053` and is referenced ≥ 2 times | place the badge outside the row (MUT-4F-62) → the badge is not a sibling of the name `Text` | Major P1 |
-| A-02 | `post_text_is_rendered_verbatim` (R-05a floor) | the `Text` that renders `post.text` (`FeedScreen.js:705`) has `{post.text}` as its **only** child — no `.replace(`, no `.split(`, no `.slice(`, no `trimTrailingLine`-shaped call anywhere in `FeedScreen.js`, `GroupDetailScreen.js` or `UserProfileScreen.js` applied to a note's text | the three `post.text` render sites are found (`found === 3`); the detector on a synthetic `<Text>{post.text.replace(/—.*$/,'')}</Text>` reports 1 | strip the trailing line before rendering (MUT-4F-63) → `1 !== 0` | Critical P0 |
+| A-02 | `post_text_is_rendered_verbatim` *(written as R-05a's floor; **kept** after the 2026-09-29 withdrawal because the rule it enforces — a note's text reaches the screen unmodified — never depended on the label. Only the rationale comment changed.)* | the `Text` that renders `post.text` (`FeedScreen.js:705`) has `{post.text}` as its **only** child — no `.replace(`, no `.split(`, no `.slice(`, no `trimTrailingLine`-shaped call anywhere in `FeedScreen.js`, `GroupDetailScreen.js` or `UserProfileScreen.js` applied to a note's text | the three `post.text` render sites are found (`found === 3`); the detector on a synthetic `<Text>{post.text.replace(/—.*$/,'')}</Text>` reports 1 | strip the trailing line before rendering (MUT-4F-63) → `1 !== 0` | Critical P0 |
 | A-03 | `badge_reuses_the_existing_pill_styles` | `BotBadge.js` references `userBadge` / `userBadgeText` (`FeedScreen.js:1055-1057`) and declares **no new** `StyleSheet.create` block with a background colour | both style keys exist in `FeedScreen.js` | invent a new style (MUT-4F-64) → a new `StyleSheet.create` is found | Minor P2 |
 | A-04 | `group_avatar_takes_an_isBot_prop` | `GroupDetailScreen.js:42-49`'s local `Avatar({ name, size })` now also takes `isBot`, and the call at `:722` passes it | the `Avatar` `FunctionDeclaration` is found by name | drop the prop (MUT-4F-65) → the param list lacks `isBot` | Minor P2 |
 | A-05 | `app_json_is_2_2_4_63` | `expo.version === '2.2.4'`, `expo.android.versionCode === 63` (`scripts/check-version-bump.js --strict` fails the AAB otherwise) | — | leave 2.2.3 / 62 (MUT-4F-66) → `'2.2.3' !== '2.2.4'` | Major P0 |
@@ -335,15 +410,34 @@ File opens with `assert.ok(existsInMobile('src/components/BotBadge.js'))` (K-07)
 
 ## 6. Package P5 — the bot package and its CI (`tests/test_bot_content.py`)
 
-Pytest, **no network**: every NYT / Gemini / API call is a monkeypatched double. The file opens with `from bots import common, bestsellers, prompts, quotes, circles` and `assert callable(common.label_line)` (K-07).
+Pytest, **no network**: every NYT / Gemini / API call is a monkeypatched double. The file opens with `from bots import common, bestsellers, prompts, quotes, circles` and, since the 2026-09-29 amendment, `assert callable(common.post_note)` / `assert callable(common.add_to_library)` (K-07 — `common.label_line` no longer exists).
 
-### 6.1 The label — R-05a
+### 6.1 The in-text label — R-05a, ~~required~~ **WITHDRAWN by PM decision 2026-09-29**
+
+**C-01, C-02 and C-02a are deleted.** Each one's entire purpose was R-05a's trailing
+`— automated post from @<handle>` line; there is no weaker version of any of them that is
+still true. They are struck through below rather than removed, so that the reasoning that
+justified them stays on the record — the badge depends on the client, and a 2.2.1 Android
+reader, a stale cache and a screen reader all see text, not a pill. The PM withdrew the
+requirement anyway; the residual risk is recorded in spec.md R-05a and pm-decisions.md.
+
+**C-01b replaces them**, asserting the absence, because the withdrawal is a decision that a
+later reader could quietly reverse by "just adding a small disclaimer line".
 
 | # | Pytest node id | Arrange / act | Assert | Mutation → first red line | Sev / Pri |
 |---|---|---|---|---|---|
-| C-01 | `TestLabel::test_every_post_ends_with_the_exact_e2_string` | build one post of each of the four types with doubled sources | each `text` ends with, character for character, `"\n— automated post from @" + handle`: `—` (em dash) **not** `-` or `–`; a single space after it; lower-case `automated`; the handle for that account (`@TMRBot`, `@TMRPrompts`, `@TMRQuotes`, `@TMRCircles`); **no trailing punctuation or whitespace** (`text == text.rstrip()`). The form is read from one constant in `bots/common.py`, and the test asserts the constant **is** `"— automated post from @{handle}"` | make the line optional for one type, or change the em dash to a hyphen (MUT-4F-68) → `assert '... - automated post from @TMRQuotes' .endswith('... — automated post from @TMRQuotes')` | Critical P0 |
-| C-02 | `TestLabel::test_line_is_appended_after_generation` | a Gemini double that returns `""`, and one that returns a string **containing** an em dash | both posts still end with the exact line, exactly once (`text.count(LABEL_PREFIX) == 1`) | move the append before generation (MUT-4F-69) → `assert '' .endswith('— automated post from @TMRBot')` | Critical P0 |
-| C-02a | `TestLabel::test_line_is_never_model_generated` | AST of `bots/`: the label constant is a module-level string literal in `bots/common.py`, and no `f`-string or `.format` builds it from a variable other than `handle`; nothing passes the label text to the model client | the constant is found (`found == 1`); the detector on a synthetic `LABEL = model.generate("write a disclaimer")` reports 1 | build the line from model output (MUT-4F-70) → `1 !== 0` | Critical P0 |
+| ~~C-01~~ **DELETED 2026-09-29** | ~~`TestLabel::test_every_post_ends_with_the_exact_e2_string`~~ | build one post of each of the four types with doubled sources | each `text` ends with, character for character, `"\n— automated post from @" + handle`: `—` (em dash) **not** `-` or `–`; a single space after it; lower-case `automated`; the handle for that account (`@TMRBot`, `@TMRPrompts`, `@TMRQuotes`, `@TMRCircles`); **no trailing punctuation or whitespace** (`text == text.rstrip()`). The form is read from one constant in `bots/common.py`, and the test asserts the constant **is** `"— automated post from @{handle}"` | make the line optional for one type, or change the em dash to a hyphen (MUT-4F-68) → `assert '... - automated post from @TMRQuotes' .endswith('... — automated post from @TMRQuotes')` | Critical P0 |
+| ~~C-02~~ **DELETED 2026-09-29** | ~~`TestLabel::test_line_is_appended_after_generation`~~ | a Gemini double that returns `""`, and one that returns a string **containing** an em dash | both posts still end with the exact line, exactly once (`text.count(LABEL_PREFIX) == 1`) | move the append before generation (MUT-4F-69) → `assert '' .endswith('— automated post from @TMRBot')` | Critical P0 |
+| ~~C-02a~~ **DELETED 2026-09-29** | ~~`TestLabel::test_line_is_never_model_generated`~~ | AST of `bots/`: the label constant is a module-level string literal in `bots/common.py`, and no `f`-string or `.format` builds it from a variable other than `handle`; nothing passes the label text to the model client | the constant is found (`found == 1`); the detector on a synthetic `LABEL = model.generate("write a disclaimer")` reports 1 | build the line from model output (MUT-4F-70) → `1 !== 0` | Critical P0 |
+| **C-01b** *(new 2026-09-29)* | `TestNoInTextLabel::test_no_post_carries_an_automated_post_line` | build one post of each of the four types with doubled sources | no post's text contains `automated post from` or `automated account` (case-insensitively) and none ends on a dash + handle; every post is non-empty (control); `common` has no `append_label` / `label_line` / `LABEL_TEMPLATE` / `LABEL_PREFIX`; the string `automated post from` appears nowhere in `bots/**.py` | re-add the trailing label line to any one voice (MUT-4F-100) → `assert 'automated post from' not in '...'` | Critical P0 |
+
+### 6.1a The linked book — R-17 *(new 2026-09-29)*
+
+| # | Pytest node id | Arrange / act | Assert | Mutation → first red line | Sev / Pri |
+|---|---|---|---|---|---|
+| C-23 | `TestLinkedBook::test_bestseller_links_the_book_and_drops_the_loose_image` | one NYT book, all sources doubled; the `POST /books/add-to-library` double returns `{"id": 701}` | exactly one library call, carrying the real `title`, `author`, `isbn`, `cover_url` **and `status == "to-read"`**; the note body carries `userbook_id == 701` (the id the call returned, not a truthy placeholder) and **no** `image_url` | pass `userbook_id=None` from `bestsellers.run` (MUT-4F-101) → `KeyError: 'userbook_id'` | Critical P0 |
+| C-23a | `TestLinkedBook::test_a_failed_link_still_posts_with_the_cover_attached` | the library double returns **400** ("already in your library") | the run still exits 0 and still posts; the note carries no `userbook_id` and **does** carry `image_url` | make `add_to_library` raise instead of returning `None` (MUT-4F-102) → `assert 0 == 1` on the post count | Major P0 |
+| C-23b | `TestLinkedBook::test_the_other_three_voices_link_nothing` | run `prompts`, `quotes`, `circles` | zero library calls; no `userbook_id` on any of the three posts; control — the roundup **does** name a book in its text, so "no link" is a decision about the card and not an absence of a book | link the roundup's `current_book` (MUT-4F-103) → the library-call list is not empty | Major P0 |
 
 ### 6.2 Posting through the API — R-07
 
@@ -360,12 +454,12 @@ Pytest, **no network**: every NYT / Gemini / API call is a monkeypatched double.
 
 | # | Pytest node id | Assert | Mutation → first red line | Sev / Pri |
 |---|---|---|---|---|
-| C-06 | `TestBestsellers::test_gemini_failure_falls_back_to_the_description` | a Gemini double that raises; the post still exists, its teaser is the first sentence of the NYT description, ≤ 30 words, and it still carries the C-01 line | remove the `except` around the teaser call (MUT-4F-77) → the exception propagates → `Failed: DID NOT post` | Major P0 |
+| C-06 | `TestBestsellers::test_gemini_failure_falls_back_to_the_description` | a Gemini double that raises; the post still exists, its teaser is the first sentence of the NYT description, ≤ 30 words, and (amended 2026-09-29) the post **ends on** that teaser — it used to assert the C-01 line here | remove the `except` around the teaser call (MUT-4F-77) → the exception propagates → `Failed: DID NOT post` | Major P0 |
 | C-07 | `TestBestsellers::test_nyt_failure_posts_nothing_and_exits_zero` | an NYT double that raises; **no** `POST /notes/` call is made; the run's exit code is **0** (a skipped day, not a fabricated one) | substitute placeholder book data on failure (MUT-4F-78) → `assert 1 == 0` posts | Major P0 |
 | C-08 | `TestDedupWindows::test_prompt_60_days_quote_180_days` | `GET /bots/posted` double returns keys used 30 days ago and 200 days ago. A prompt used 30 days ago is **not** chosen; one used 61 days ago **is**. A quote used 179 days ago is **not** chosen; one used 181 days ago **is**. The `since` the bot sends is `now - NO_REPEAT_DAYS` for its type | ignore the `GET /bots/posted` response when choosing (MUT-4F-79) → the 30-day-old prompt is chosen → `assert 'prompt:7' not in {'prompt:7'}` | Major P0 |
 | C-09 | `TestBestsellers::test_legacy_editorial_post_isbn_is_not_reposted` | `GET /bots/posted?content_type=bestseller` double returns a key that exists **only** in `editorial_post` (B-29's union); the NYT list's first entry is that ISBN | the bot posts a **different** ISBN, or nothing; the posted `dedup_key` is never the legacy one | ignore the response and post the first NYT entry (MUT-4F-80) → `assert 'bestseller:B' != 'bestseller:B'` | Critical P0 |
 | C-10 | `TestCircles::test_roundup_names_nobody` | a `/groups/public` double carrying reader names, usernames, a private circle's name and per-reader rows | the composed text contains none of the reader names, none of the usernames, and not the private circle's name; it contains only counts and public titles. **Control:** the text is non-empty and contains the public title (so "names nobody" is not "says nothing") | include the top reader's name (MUT-4F-81) → `assert 'Priya' not in '...Priya...'` | Critical P0 |
-| C-11 | `TestCircles::test_below_the_floor_posts_a_prompt_not_a_roundup` | doubles giving (a) 2 readers / 2 circles, (b) 3 readers / 1 circle, (c) 3 readers / 2 circles | (a) and (b) post a **prompt** — the `dedup_key` prefix is `prompt:` and the handle in the C-01 line is `@TMRPrompts`; **no** roundup text is posted, softened or otherwise. (c) posts a roundup with `circles:` | lower the floor to 1 (MUT-4F-82) → `assert 'circles:2026-W39'.startswith('prompt:')` | Critical P0 |
+| C-11 | `TestCircles::test_below_the_floor_posts_a_prompt_not_a_roundup` | doubles giving (a) 2 readers / 2 circles, (b) 3 readers / 1 circle, (c) 3 readers / 2 circles | (a) and (b) post a **prompt** — the `dedup_key` prefix is `prompt:` and the body carries no roundup wording; **no** roundup text is posted, softened or otherwise. (c) posts a roundup with `circles:` **and** the words "circles are active" / "Literary Circles". *(Amended 2026-09-29: the two branches used to be told apart by the handle in the C-01 line. With R-05a withdrawn the body itself has to carry the difference, which is a stronger assertion than the one it replaces.)* | lower the floor to 1 (MUT-4F-82) → `assert 'circles:2026-W39'.startswith('prompt:')` | Critical P0 |
 | C-11a | `TestCircles::test_fallback_prompt_obeys_the_same_60_day_window` | below the floor, with the 60-day window already containing the "next" prompt | the fallback picks an unused prompt (E-3: "subject to the same 60-day no-repeat window") | skip the window on the fallback path (MUT-4F-83) → a repeat is chosen | Major P0 |
 | C-13 | `TestPools::test_prompt_pool_is_sufficient_for_the_worst_case` (K-13) | `slots_per_week` counted from `.github/workflows/tmr-bots.yml`'s schedule (prompt crons + the Thursday cron, because Thursday can fall through) and `window_days = bots.prompts.NO_REPEAT_DAYS`; then `len(pool) >= ceil(window_days / 7) * slots_per_week + 1`. **Nothing in this assertion is a literal.** The computed requirement is printed in the failure message | shrink the pool (MUT-4F-84) → `assert 20 >= 28`; add a fourth prompt slot to the workflow without growing the pool → `assert 40 >= 49` | Critical P0 |
 | C-13a | `TestPools::test_window_and_slot_count_are_what_the_pm_decided` | `bots.prompts.NO_REPEAT_DAYS == 60`; `bots.quotes.NO_REPEAT_DAYS == 180`; the counted `slots_per_week == 3`. This is the case that stops C-13 being satisfied by lowering the window | set `NO_REPEAT_DAYS = 7` (MUT-4F-85) → `assert 7 == 60` | Critical P0 |
@@ -386,6 +480,32 @@ Parsed with `yaml.safe_load` in pytest (the Python side) and by `__tests__/_ast.
 | C-21 | `TestWorkflow::test_only_three_secrets_and_never_a_database_url` | every `secrets.X` reference across **all** of `.github/workflows/*.yml` is in `{BOT_LOGIN_SECRET, NYT_API_KEY, GEMINI_API_KEY, GITHUB_TOKEN, EXPO_TOKEN}`, and the bot workflow's own set is **exactly** `{BOT_LOGIN_SECRET, NYT_API_KEY, GEMINI_API_KEY}`; the token `DATABASE_URL` appears **nowhere** in `.github/**` (any file, any case); no `env:` block in the bot workflow defines a `*_URL` pointing at `postgres`. **Control:** the walker found `>= 3` workflow files and `>= 1` secret reference, and the detector on a synthetic `env: {DATABASE_URL: ${{ secrets.DATABASE_URL }}}` reports 1 | add `DATABASE_URL` to the workflow (MUT-4F-93) → `assert ['tmr-bots.yml:31 DATABASE_URL'] == []` | Critical P0 |
 | C-22 | `TestWorkflow::test_editorial_bot_is_still_present_and_unscheduled` | `editorial_bot.py` **exists** (architecture: deleted only after two successful production runs) and is referenced by **no** workflow and by **no** file under `app/` — `admin_router.py`'s `subprocess.run([sys.executable, "editorial_bot.py"])` (today at `:366`) is gone | delete `editorial_bot.py` in this sprint (MUT-4F-94) → `assert False is True`; leave the admin route → the `app/` reference is found | Minor P1 |
 | C-20 | `__tests__/workflows.test.mjs::build_android_yml_absent` (**changed**, K-02) | `build-android.yml` still absent; the directory listing equals the explicit allowlist `['build-stitch-aab.yml','build-stitch-apk.yml','keep-oregon-awake.yml','tmr-bots.yml']` | add an unlisted workflow (MUT-4F-95) → the deepEqual names it | Major P0 |
+
+---
+
+## 6a. Package P6 — the post-ship fix (`tests/test_bots.py`, 2026-09-29)
+
+Branch `fix/bot-post-parity`, built the day 4F shipped, on two PM instructions taken from a
+review of the first live bot post: **withdraw R-05a** (handled in place above — §6.1,
+§4.2, §5) and **add R-17**, a bot post must carry a real linked book.
+
+The bot-side cases for R-17 are C-23/C-23a/C-23b in §6.1a. These four are the server side:
+the bot walks the reader's own `POST /books/add-to-library`, so what has to be proved here is
+that it *may*, that the note it then posts serialises real values, and that owning a library
+does not become a way for a bot to reach a reader.
+
+| # | Pytest node id | Arrange / act | Assert | Mutation → first red line | Sev / Pri |
+|---|---|---|---|---|---|
+| B-34 | `TestBotLinkedBook::test_bot_add_to_library_then_post_renders_like_a_reader` | a bot `POST /books/add-to-library` (title, author, isbn, cover_url, `status: to-read`), then `POST /notes/` with the returned `userbook_id` and a `dedup_key`; a reader reads `GET /notes/feed` | the reader's feed row carries `book.title == "The Wager"`, `book.author == "David Grann"`, `book.cover_url == "https://covers.example/wager.jpg"` — **values, not the presence of a key**, because a `book` dict full of `None`s would satisfy `"book" in row`; `user.is_bot is True`; **control** — a second bot post with no `userbook_id` serialises `book is None` and does not error | serialise `book` as `None` for a bot author in `get_feed` (MUT-4F-96) → `assert None is not None`, "the card has no book — this is the defect being fixed" | Critical P0 |
+| B-35 | `TestBotLinkedBook::test_a_bot_adding_a_book_notifies_nobody` | a reader **follows** the bot (R-05 permits that direction); the bot adds a book | the reader's `NotificationLog` count is unchanged, although `add_book_to_library` does fire a `book_added` event to the actor's followers; **control** — the same call by a *reader* the same reader follows moves the count by exactly 1 | delete the `_actor.is_bot` early return in `fire_event` (MUT-4F-97) → the count moves by 1 where 0 was asserted | Critical P0 |
+| B-36 | `TestBotLinkedBook::test_add_to_library_does_not_carry_deny_bot_actor` | inspect the route's FastAPI dependencies | `deny_bot_actor` is **not** on `books_router.add_book_to_library` — R-05's prohibition is exactly four routes and a bot owning its own library is not one of them; **control** — the same helper *does* find it on `follow_router.follow_user` | add `Depends(deny_bot_actor)` to `add_book_to_library` (MUT-4F-98) → the dependency is found | Major P0 |
+| B-37 | `TestBotLinkedBook::test_the_bot_shelf_stays_out_of_reader_surfaces` | the bot's source is checked for `"status": "to-read"`; a reader follows the bot; the bot shelves a book | the title is absent from `GET /userbooks/friends/currently-reading` and from `GET /books/recommendations`; **control** — a followed *reader* shelving as `reading` does surface in currently-reading, so the two emptinesses are the status and not a broken endpoint | `add_to_library` sends `status="reading"` (MUT-4F-99) → the bot's shelf appears in currently-reading | Major P0 |
+
+**Why `to-read` and not `finished`.** The three reader-facing selects are
+`GET /userbooks/friends/currently-reading` (`status == "reading"`), recommendation bucket 1
+(`status == "reading"`) and bucket 2 (`status == "finished" AND rating >= 4`). `to-read` with
+no rating is in none of them. `finished` would also miss bucket 2 while the rating stays
+null, but it claims the bot read the book; `to-read` claims only that the shelf exists.
 
 ---
 
@@ -437,7 +557,8 @@ The architecture's `P-01..P-08` map to `P-4F-01..08` in the same order; `P-4F-09
 | P-4F-07 | No `DATABASE_URL` in CI | GitHub → Settings → Secrets and variables → Actions, read **by name**, after the bots are live | exactly `BOT_LOGIN_SECRET`, `NYT_API_KEY`, `GEMINI_API_KEY` for these workflows, and **no `DATABASE_URL`** anywhere in the list (E-5/E-7) | Critical P0 |
 | P-4F-08 | 409 by hand | re-dispatch a bestseller run with `workflow_dispatch` for a key already posted | **409** in the log; `count(*)` on `note` for that bot **unchanged**; the run fails visibly | Critical P0 |
 | P-4F-09 | **E-9 bios (K-12 — QA/PM, not automated)** | `SELECT count(*) FROM "user" WHERE is_bot AND COALESCE(bio,'') NOT LIKE 'Automated account.%';` and `SELECT name FROM "user" WHERE email='tmrbot@trackmyread.com';` | **0**; and the name is `TrackMyRead Bestsellers`. **This is the whole enforcement of E-9.** There is no server-side check and there will not be one; re-run it after any bio edit | Major P0 |
-| P-4F-10 | The label on a real card | open the community feed on `<web>` and on an Android **2.2.1** phone | web: the `BOT` pill. Android 2.2.1: **no pill** (expected — E-1) but the post's last line reads `— automated post from @…`. This is the check that proves R-05a is doing the work the badge cannot yet do | Critical P0 |
+| P-4F-10 | The label on a real card — **rewritten 2026-09-29** | open the community feed on `<web>` and on an Android **2.2.1** phone | web: the `BOT` pill. Android 2.2.1: **no pill and no text label of any kind** — that is now the EXPECTED and accepted state, not a defect, because R-05a was withdrawn. Record what the card actually shows and hand it to the PM; this check no longer proves a floor, it measures how exposed Android readers are until 2.2.4 ships | Critical P0 |
+| P-4F-13 | **R-17 on a real card** *(new 2026-09-29)* | open the community feed on `<web>` after a real bestseller run | `@TMRBot`'s card shows the book cover thumbnail and the title above the author's name, the same shape as a reader's card; the cover is **not** also shown as an attached image; `@TMRBot`'s profile shows the featured books as a library, with **0 reading / 0 finished** | Major P0 |
 | P-4F-11 | Render cron deleted | Render dashboard | the job "TMR bot Cron Job" is **deleted**, not suspended, and the paid service is gone from the bill | Major P0 |
 | P-4F-12 | The bot is not "active" | `/admin/users`, the bot rows | `is_bot` shows in the admin table; `last_active` moves for the bots (it will — `deps.py:87` stamps it) **and** the reader-facing figures in P-4F-06 do not. Recorded so the known cost of moving to the API is visible rather than surprising | Minor P1 |
 | **D-4F-01** | Android 2.2.4 on a device (PM) | install the 2.2.4 test APK; open the feed, a bot's profile, and a comment thread on a bot post | the badge renders at all four visible sites; a reader's card shows none | Critical P0 |
@@ -538,7 +659,7 @@ A row whose tests stay green is **not caught**: the merge is blocked until a tes
 | 57 | `BotBadge.jsx` | render the pill unconditionally | W-06, L-4F-02 | a pill on the reader card | | | |
 | 58 | `src/services/api.js` (web) | keep `triggerBot()` | W-07 | `1 !== 0` | | | |
 | 59 | `BotBadge.jsx` | `user?.is_bot ?? true` | L-4F-04 | a pill on every card | | | |
-| 60 | `HomePage.jsx` | trim the post's last line | L-4F-05 | the label string is absent | | | |
+| ~~60~~ | ~~`HomePage.jsx`~~ | ~~trim the post's last line~~ | ~~L-4F-05~~ | **withdrawn with L-4F-05, 2026-09-29** | | | |
 | 61 | `FeedScreen.js` | remove the badge from `:697` | A-01 | `5 !== 6` | | | |
 | 62 | `FeedScreen.js` | badge outside `userNameRow` | A-01a | the badge is not a sibling of the name | | | |
 | 63 | `FeedScreen.js` | `{post.text.replace(/—.*$/,'')}` | A-02 | `1 !== 0` | | | |
@@ -546,9 +667,9 @@ A row whose tests stay green is **not caught**: the merge is blocked until a tes
 | 65 | `GroupDetailScreen.js` | drop the `isBot` prop | A-04 | the param list lacks `isBot` | | | |
 | 66 | `app.json` | leave 2.2.3 / 62 | A-05 | `'2.2.3' !== '2.2.4'` | | | |
 | 67 | `FeedScreen.js` | import `BotBadge` from a wrong path | A-06 | `apiContract` names the unresolved import | | | |
-| 68 | `bots/common.py` | em dash → hyphen in the label | C-01 | `.endswith(...)` fails, showing both strings | | | |
-| 69 | `bots/common.py` | append the label before generation | C-02 | `assert ''.endswith('— automated post from @TMRBot')` | | | |
-| 70 | `bots/common.py` | build the label from model output | C-02a | `1 !== 0` | | | |
+| ~~68~~ | ~~`bots/common.py`~~ | ~~em dash → hyphen in the label~~ | ~~C-01~~ | **withdrawn with C-01, 2026-09-29** | | | |
+| ~~69~~ | ~~`bots/common.py`~~ | ~~append the label before generation~~ | ~~C-02~~ | **withdrawn with C-02, 2026-09-29** | | | |
+| ~~70~~ | ~~`bots/common.py`~~ | ~~build the label from model output~~ | ~~C-02a~~ | **withdrawn with C-02a, 2026-09-29** | | | |
 | 71 | `bots/common.py` | drop `is_public: True` | C-03 | `assert None is True` | | | |
 | 72 | `bots/quotes.py` | omit `dedup_key` | C-04 | `assert None is not None` | | | |
 | 73 | `bots/common.py` | re-add `create_engine` | C-04a | `assert ['bots/common.py: sqlalchemy'] == []` | | | |
@@ -574,6 +695,15 @@ A row whose tests stay green is **not caught**: the merge is blocked until a tes
 | 93 | `.github/workflows/tmr-bots.yml` | add `DATABASE_URL` | C-21, ST-4F-01 | `assert ['tmr-bots.yml:31 DATABASE_URL'] == []` | | | |
 | 94 | repo | delete `editorial_bot.py` | C-22 | `assert False is True` | | | |
 | 95 | `.github/workflows/` | add an unlisted workflow | C-20 | the deepEqual names it | | | |
+| 96 | `app/routers/notes_router.py` | serialise `book` as `None` for a bot author in `get_feed` | B-34 | `assert None is not None` — "the card has no book" | | | |
+| 97 | `app/notifications/dispatcher.py` | delete the `_actor.is_bot` early return in `fire_event` | B-35 | the follower's notification count moves by 1 | | | |
+| 98 | `app/routers/books_router.py` | add `Depends(deny_bot_actor)` to `add_book_to_library` | B-36 | the dependency is found on the route | | | |
+| 99 | `bots/common.py` | `add_to_library` sends `status="reading"` | B-37 | the bot's shelf appears in `friends/currently-reading` | | | |
+| 100 | `bots/prompts.py` (or any voice) | re-add a trailing label line | C-01b | `assert 'automated post from' not in '...'` | | | |
+| 101 | `bots/bestsellers.py` | pass `userbook_id=None` to `post_note` | C-23 | `KeyError: 'userbook_id'` | | | |
+| 102 | `bots/common.py` | `add_to_library` raises instead of returning `None` | C-23a | `assert 0 == 1` — the post is lost | | | |
+| 103 | `bots/circles.py` | link the roundup's `current_book` | C-23b | the library-call list is not empty | | | |
+| 104 | `HomePage.jsx` | `const book = null` in `PostCard` (exactly the defect the PM reported) | L-4F-06 | `expected one cover <img alt="The Wager"> on the bot's card, found 0` | | | |
 
 ---
 
@@ -582,7 +712,7 @@ A row whose tests stay green is **not caught**: the merge is blocked until a tes
 Stated plainly, because a gap nobody names becomes a gap somebody assumes was covered.
 
 1. **No real Android device in CI, and no Play build in this sprint.** Every automated Android case (A-01..A-06) is an **AST assertion over source**: it proves a `BotBadge` element sits beside a name in the JSX tree. It does **not** prove the pill is visible, legible, correctly coloured, or not clipped at the right edge of a narrow card. That is D-4F-01, done by hand by the PM on a 2.2.4 test APK, and it is the only proof there is. R-04's success criterion is a human looking at a phone.
-2. **No proof that the badge reaches installed apps.** E-1 accepted that it does not, for some weeks. The plan tests the *floor* instead (R-05a: C-01, C-02, A-02, L-4F-05, P-4F-10). If R-05a's line is ever dropped as "redundant now the badge exists", Android users below 2.2.4 lose their only label — that is what A-02 and C-01 exist to prevent, and it is why both are Critical.
+2. **No proof that the badge reaches installed apps, and — since 2026-09-29 — nothing standing in for it on Android.** E-1 accepted that the badge does not reach installed apps for some weeks. The plan used to test the *floor* instead (R-05a: C-01, C-02, A-02, L-4F-05, P-4F-10), and this paragraph warned, in these words: *"If R-05a's line is ever dropped as 'redundant now the badge exists', Android users below 2.2.4 lose their only label — that is what A-02 and C-01 exist to prevent."* **That is what happened.** The PM withdrew R-05a on 2026-09-29 with the consequence on the table; C-01, C-02, C-02a and L-4F-05 are deleted, and an installed Android app below 2.2.4 now shows a bot post with a display name and no marker. The warning was right and was overridden knowingly, not missed. Shipping 2.2.4 is the only thing that closes it, and P-4F-10 now measures the exposure rather than proving a floor.
 3. **E-9's bio wording has no automated test and will not get one** (PM ruling, K-12). `P-4F-09` is a production SQL check owned by QA/PM, re-run after any bio edit. A bot whose bio is edited in the database to something else will pass every test in this document.
 4. **The constant-time compare is proved structurally, not by timing** (K-06). B-07a proves `hmac.compare_digest` is *called*; it cannot prove the process leaks no timing signal elsewhere (the allowlist lookup, the database query for the row). Rate limiting is absent from the whole API by choice (architecture §Security review 3.8) and this sprint does not add it; a bot-login endpoint can be probed at will.
 5. **No live GitHub Actions run is tested.** C-17..C-22 parse the YAML. They cannot prove GitHub honours the cron, that the runner has the secrets, or that a scheduled run happens at all — GitHub delays and sometimes drops scheduled runs. P-4F-03 and P-4F-04 are the only proof, and they take a week.

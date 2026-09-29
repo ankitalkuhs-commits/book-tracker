@@ -1,6 +1,9 @@
 // qa/web_4f_local.mjs
 // Sprint 4F package P3 — the *rendered* half of the badge cases:
-// L-4F-01..05 from features/community/sprint-4f-activity-engine/tests.md §4.2.
+// L-4F-01..04 from features/community/sprint-4f-activity-engine/tests.md §4.2, plus L-4F-06.
+// L-4F-05 asserted R-05a's in-text line and is GONE: the PM withdrew R-05a on 2026-09-29.
+// L-4F-06 replaces it and covers the second thing the PM asked for on the same day — a bot's
+// card must carry the cover and title a reader's does.
 //
 // W-04..W-07 in qa/unit/botBadge.test.mjs prove the badge is written at the seven R-03 sites. A
 // source scan cannot prove that the pill actually paints, that a reader's card gains no height, or
@@ -20,6 +23,11 @@
 // Never production (qa/RULES_OF_ENGAGEMENT.md): refuses --web / --api pointing at trackmyread.com
 // or onrender.com (exit 5). Never the literal "localhost" — use 127.0.0.1 (exit 6).
 // No token or secret is ever printed.
+//
+// Read --web off the dev server's own "Local:" line, not off the --port you asked for: Vite
+// prints "Port N is in use, trying another one..." and binds N+1 when N is taken, and N may
+// then belong to a different checkout. The harness refuses to run if that has happened
+// (see treeMismatchReason below) — it used to run anyway, and reported a wrong answer.
 //
 // Usage (from the repo root):
 //   node qa/web_4f_local.mjs --mock --web http://127.0.0.1:5178
@@ -46,10 +54,20 @@ const MOCK = flag('mock');
 const ONLY = arg('only', null)?.split(',').map(s => s.trim()).filter(Boolean) || null;
 const SECRET_FILE = arg('secret-file', path.join(REPO, '.env.review'));
 
-// The exact R-05a line spec R-05a pins, for L-4F-05. Em dash, lowercase "automated", no trailing
-// punctuation. Written out here rather than imported so a drift in bots/common.py shows up as a
-// failure in this harness too.
-const LABEL_LINE = '— automated post from @TMRBot';
+// R-05a is WITHDRAWN (PM decision, 2026-09-29). There is no in-text line to look for any more,
+// and L-4F-05 — which asserted it — is gone with it. L-4F-06 below replaces it: the bot's card
+// must carry the same book furniture a reader's does, which is the second thing the PM asked for.
+// The cover is an inline data: URI on purpose. `page.route` only intercepts the API origin, so a
+// real https cover URL would be fetched for real: it fails to resolve offline, the card's onError
+// handler hides the thumbnail, and the failed request also lands in L-4F-04's console-error check.
+// A data: URI keeps both cases about rendering rather than about the network.
+const COVER_DATA_URI = 'data:image/svg+xml;utf8,'
+  + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="80" height="120"><rect width="80" height="120" fill="#00695c"/></svg>');
+const BOT_BOOK = {
+  id: 4401, title: 'The Wager', author: 'David Grann',
+  cover_url: COVER_DATA_URI,
+  google_books_id: null, isbn: '9780385534260', total_pages: 352,
+};
 
 // ---------- never production ----------
 for (const [name, url] of [['--web', WEB], ['--api', MOCK ? WEB : API]]) {
@@ -66,9 +84,10 @@ const NOW = new Date().toISOString();
 
 const FIXTURE_FEED = [
   {
-    id: 9001, text: `This week's bestsellers, in brief.\n\n${LABEL_LINE}`, quote: null, image_url: null,
+    id: 9001, text: "The Wager by David Grann\n\n#1 NYT Hardcover Nonfiction - 4 weeks\n\nA shipwreck, a mutiny, and two irreconcilable stories of what happened.",
+    quote: null, image_url: null,
     created_at: NOW, updated_at: null, is_public: true, user_id: BOT.id, user: { ...BOT },
-    book: null, likes_count: 0, comments_count: 0, liked_by_me: false,
+    book: { ...BOT_BOOK }, likes_count: 0, comments_count: 0, liked_by_me: false,
   },
   {
     id: 9002, text: 'Finished this on the train and sat with it for a while.', quote: null, image_url: null,
@@ -138,6 +157,85 @@ function mintToken(email, secret, ttl) {
   return `${seg1}.${seg2}.${b64url(sig)}`;
 }
 
+// ---------- is `--web` actually serving THIS tree, at THIS moment? ----------
+//
+// Why this exists (found on 2026-09-29, and it produced a wrong answer before it was caught):
+// `npm run dev -- --port 5178` prints "Port 5178 is in use, trying another one..." and binds
+// 5179 when something already holds 5178. The operator then runs this harness against 5178 —
+// the port they asked for — and every case happily measures *another checkout's* dev server.
+// A mutation applied to this worktree did not bite, and the harness reported PASS.
+//
+// The check has two halves, because there are two ways to measure the wrong thing and they
+// need different remedies:
+//
+//   IDENTITY — Vite's dev transform of a .jsx module names the module's ABSOLUTE path (the
+//     react-refresh registration, and the sourcemap). If that path is not inside this
+//     harness's own repo root, the server belongs to a different checkout. Content alone is
+//     not enough here: sibling worktrees usually hold byte-identical files, so a content
+//     check passes right up to the moment the trees diverge — which is exactly when it
+//     matters. Measured on 2026-09-29, :5178 named `…/worktrees/4f-p3/…` while this tree is
+//     `…/worktrees/4f-fix/…`.
+//
+//   FRESHNESS — the same sourcemap's `sourcesContent[0]` is the ORIGINAL file text, so
+//     comparing it with the file on disk proves the server is serving the CURRENT contents
+//     and not a stale transform.
+//
+// No writes and no nonce. `HomePage.jsx` is the witness because it is the file every
+// rendering case in this harness depends on.
+//
+// If the check cannot identify the tree at all, the run is REFUSED. A harness that cannot
+// see what it is measuring must not report a pass; that is the whole lesson of the bug above.
+const WITNESS_REL = 'book-tracker-frontend-stitch/src/pages/HomePage.jsx';
+const WITNESS_URL = '/src/pages/HomePage.jsx';
+const norm = s => s.replace(/\r\n/g, '\n');
+const slash = s => s.replace(/\\/g, '/');
+
+async function treeMismatchReason() {
+  const diskPath = path.join(REPO, WITNESS_REL);
+  if (!fs.existsSync(diskPath)) return `${WITNESS_REL} is missing from ${REPO} — this harness is not in a checkout it can verify`;
+
+  let res;
+  try { res = await fetch(`${WEB}${WITNESS_URL}`); }
+  catch (e) { return `GET ${WEB}${WITNESS_URL} failed (${e.message}) — is a dev server listening on ${WEB}?`; }
+  if (!res.ok) return `GET ${WEB}${WITNESS_URL} returned HTTP ${res.status} — ${WEB} is not a Vite dev server for this app`;
+
+  const body = await res.text();
+  const mine = slash(diskPath);
+  const hint = '\n      Most likely: the dev server you started printed "Port ... is in use, trying another one..." and bound a\n'
+    + '      DIFFERENT port, while the port you passed to --web belongs to another checkout. Read the port off the\n'
+    + '      dev server\'s own "Local:" line and pass that one.';
+
+  // ── identity ──
+  const served = (body.match(/[A-Za-z]:[/\\][^\s"'`]*?book-tracker-frontend-stitch[/\\]src[/\\]pages[/\\]HomePage\.jsx/)
+               || body.match(/\/[^\s"'`]*?book-tracker-frontend-stitch\/src\/pages\/HomePage\.jsx/) || [])[0];
+  if (!served) {
+    return `the module served at ${WEB}${WITNESS_URL} names no source path, so this harness cannot prove which tree `
+      + 'it came from and refuses to report a result. Run it against `npm run dev` (a Vite dev server), not a '
+      + 'preview or a static build.';
+  }
+  if (slash(served).toLowerCase() !== mine.toLowerCase()) {
+    return `${WEB} is serving a DIFFERENT checkout.\n`
+      + `      served from: ${slash(served)}\n`
+      + `      expected:    ${mine}${hint}`;
+  }
+
+  // ── freshness ──
+  const m = body.match(/sourceMappingURL=data:application\/json;base64,([A-Za-z0-9+/=]+)/);
+  if (!m) return `the module served at ${WEB}${WITNESS_URL} carries no inline sourcemap — cannot prove the server is not serving stale code`;
+  let sourcesContent;
+  try {
+    const map = JSON.parse(Buffer.from(m[1], 'base64').toString('utf8'));
+    sourcesContent = (map.sourcesContent || [])[0];
+  } catch (e) { return `could not decode the sourcemap served at ${WEB}${WITNESS_URL}: ${e.message}`; }
+  if (typeof sourcesContent !== 'string') return `the sourcemap served at ${WEB}${WITNESS_URL} carries no sourcesContent — cannot prove freshness`;
+
+  if (norm(sourcesContent) !== norm(fs.readFileSync(diskPath, 'utf8'))) {
+    return `${WEB} is serving the right tree (${mine}) but STALE contents of it — the served ${WITNESS_REL} `
+      + 'does not match the file on disk. Restart the dev server.';
+  }
+  return null;
+}
+
 async function checkPreconditions() {
   const missing = [];
   for (const [name, url] of [['--web', WEB], ...(MOCK ? [] : [['--api', API]])]) {
@@ -152,6 +250,12 @@ async function checkPreconditions() {
     missing.push(`GET ${WEB}/src/services/api.js did not respond — is the web dev server running (npm --prefix book-tracker-frontend-stitch run dev -- --mode localapi --port <port> --host 127.0.0.1)?`);
   } else if (!apiJsText.includes(API)) {
     missing.push(`served src/services/api.js does not reference ${API} (VITE_API_BASE_URL) — the dev server is not running --mode localapi, or --api does not match its target`);
+  }
+
+  // ...and it must be THIS tree's dev server, not whatever else holds that port.
+  if (apiJsText) {
+    const wrongTree = await treeMismatchReason();
+    if (wrongTree) missing.push(wrongTree);
   }
 
   if (MOCK) return { missing, token: 'mock.token.not-a-real-jwt' };
@@ -179,7 +283,12 @@ async function checkPreconditions() {
     const human = feed.find(p => p.user?.is_bot === false);
     if (!bot) missing.push('no bot-authored post in the local feed — flag a local-only account `is_bot = true` in the LOCAL SQLite DB (never production) and have it post');
     if (!human) missing.push('no reader-authored post in the local feed — have review.reader post one');
-    return { missing, token: reader.token, botUserId: bot?.user?.id ?? null };
+    // L-4F-06 needs the bot post to carry a linked book, which is what a real bestseller post
+    // has had since 2026-09-29: the bot POSTs /books/add-to-library and passes the userbook_id.
+    if (bot && !bot.book?.title) {
+      missing.push('the bot-authored post in the local feed has no linked book — post it with a userbook_id (see bots/bestsellers.py) so L-4F-06 has something to measure');
+    }
+    return { missing, token: reader.token, botUserId: bot?.user?.id ?? null, botTitle: bot?.book?.title ?? null };
   }
   return { missing, token: reader.token };
 }
@@ -240,6 +349,9 @@ async function cardFor(page, name) {
 
 let TOKEN = null;
 let BOT_USER_ID = BOT.id;
+// --api mode fills this from the seeded bot post's own book; --mock leaves it null and L-4F-06
+// falls back to the fixture's title.
+let BOT_TITLE = null;
 
 const CASES = {
   'L-4F-01': ['a bot post is badged in the community feed', async () => {
@@ -312,12 +424,28 @@ const CASES = {
     }, { strip: true });
   }],
 
-  'L-4F-05': ['the R-05a line is visible in the post body', async () => {
+  // L-4F-05 asserted the R-05a in-text line. The PM withdrew R-05a on 2026-09-29; the case is
+  // deleted rather than reworded, because there is no weaker version of it that is still true.
+
+  'L-4F-06': ['the bot\'s card carries a book cover and title, like a reader\'s', async () => {
     await withPage(async page => {
       const card = await cardFor(page, BOT.name);
-      const text = await card.innerText();
-      assert(text.includes(LABEL_LINE),
-        `the bot's card does not contain "${LABEL_LINE}" — the card reads: ${JSON.stringify(text.slice(0, 200))}`);
+      const title = BOT_TITLE || BOT_BOOK.title;
+      assert((await card.innerText()).includes(title),
+        `the bot's card does not print the book title "${title}" — it reads: ${JSON.stringify((await card.innerText()).slice(0, 200))}`);
+      const covers = card.locator(`img[alt="${title}"]`);
+      assert(await covers.count() === 1,
+        `expected one cover <img alt="${title}"> on the bot's card, found ${await covers.count()}`);
+      const box = await covers.first().boundingBox();
+      assert(box && box.width > 0 && box.height > 0, 'the cover img is present but paints nothing');
+
+      // CONTROL: a card with no book still renders — that is the ordinary shape for three
+      // of the four voices, so the fix must not have made a book mandatory.
+      const readerCard = await cardFor(page, READER.name);
+      assert(!(await readerCard.innerText()).includes(title),
+        'the reader fixture post carries the same book — this control proves nothing');
+      assert(await readerCard.locator(`img[alt="${title}"]`).count() === 0, 'a cover leaked onto the bookless card');
+      assert((await readerCard.boundingBox()).height > 0, 'the bookless card did not render');
     });
   }],
 };
@@ -331,6 +459,7 @@ if (pre.missing.length) {
 }
 TOKEN = pre.token;
 if (!MOCK && pre.botUserId) BOT_USER_ID = pre.botUserId;
+if (!MOCK && pre.botTitle) BOT_TITLE = pre.botTitle;
 
 browser = await chromium.launch();
 try {

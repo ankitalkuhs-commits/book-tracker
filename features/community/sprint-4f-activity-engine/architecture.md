@@ -2,7 +2,8 @@
 screen: sprint-4f-activity-engine
 feature: community
 status: architecture-complete, all nine escalations decided
-last_verified: 2026-09-23
+last_verified: 2026-09-29
+amended: 2026-09-29 — R-05a (the in-text label) is WITHDRAWN by PM decision and R-17 (a bot post carries a real linked book) is added. Every R-05a passage below is annotated in place rather than deleted; see spec.md R-05a/R-17, pm-decisions.md and build-notes-4f-p6.md.
 architect_verified: 2026-09-22 — every file:line in this document was read on branch sprint-4f-community-activity (base master @ b98228a). Line numbers are from that commit unless a line says otherwise; the P3 and P4 sections now carry this branch's numbers as well, because those packages have merged and the files have moved.
 revised: 2026-09-23 @ 3065172 — E-5/E-7 replaced the direct-connection dedup with an API-side atomic dedup. The files read for that revision, on this branch: `app/routers/notes_router.py:46-61` (`NoteCreateSchema`), `:133-199` (`create_note`), `app/crud.py:112-131` (`crud.create_note`), `app/database.py:60-68` (`get_db`), `app/routers/follow_router.py:37-44` (the IntegrityError → error-response precedent), `app/models.py:30-43` (`User`), `app/main.py:133-148` (router registration). Every other line number in this document is unchanged from the 2026-09-22 verification.
 depends_on: Sprint 4C (shipped code, unshipped release — `app/localday.py`, `app/schema_guard.py`). **Sprint 4E is no longer a dependency** — it completed 2026-09-23 descoped to three packages, and the package that overlapped `notes_router.py` (its P3) was dropped.
@@ -12,8 +13,8 @@ depends_on: Sprint 4C (shipped code, unshipped release — `app/localday.py`, `a
 
 | Risk | Where it bites | What this design does |
 |---|---|---|
-| **A reader mistakes a bot for a person.** The regulated failure mode, and the reason the "ordinary readers" idea is refused. | Feed, profile, search, comments | Two independent labels: a database flag surfaced in every API author object and badged by both clients (R-01..R-04), plus a fixed line inside the post text that every client, every cache state and every screen reader gets for free (R-05a). |
-| **Android cannot be updated remotely.** No OTA channel; last Play release is 2.2.1. The badge reaches installed apps only when readers update. | Android feed and profile | R-05a is the floor, and the PM accepted it as the label Android readers get for some weeks (E-1). The bots start now; the badge arrives as an upgrade. |
+| **A reader mistakes a bot for a person.** The regulated failure mode, and the reason the "ordinary readers" idea is refused. | Feed, profile, search, comments | Two independent labels: a database flag surfaced in every API author object and badged by both clients (R-01..R-04), plus ~~a fixed line inside the post text that every client, every cache state and every screen reader gets for free (R-05a)~~ — **R-05a withdrawn 2026-09-29, so the database flag and the two clients' badges are now the ONLY labels, and the second label is gone.** The account's username, display name and "Automated account." bio remain, but a reader sees those only on the profile. |
+| **Android cannot be updated remotely.** No OTA channel; last Play release is 2.2.1. The badge reaches installed apps only when readers update. | Android feed and profile | ~~R-05a is the floor, and the PM accepted it as the label Android readers get for some weeks (E-1).~~ **This mitigation no longer exists: R-05a was withdrawn on 2026-09-29, so an installed app below 2.2.4 shows NO per-post marker at all until that build reaches the reader. Shipping 2.2.4 is the only remaining mitigation.** |
 | **The bot token is a normal reader token.** If it leaks it can act as that account. | Anything `POST`-able | The account owns no reader data; every engagement endpoint 403s on `is_bot` (R-05); the token lives 15 minutes; only a shared secret is stored, and clearing it on Render revokes everything. |
 | **A production database credential in a world-readable CI.** The repository is verified **PUBLIC**. | GitHub Actions | The bot holds no database credential. `DATABASE_URL` is never an Actions secret (E-5/E-7). Dedup moved into the API, inside the note's own transaction. |
 | **Moving to the API introduces the bot into reader metrics.** `deps.py:87` stamps `last_active` on every authenticated request. Today's SQL bot never authenticates. | `/admin/stats`, admin user list | R-16 excludes bots from the counts and reports them separately. This is a cost of doing the right thing, not an accident. |
@@ -146,7 +147,7 @@ badge and that `HomePage.jsx` holds exactly four, with the reason written into t
 
 | File | Change |
 |---|---|
-| `bots/` (new package) | `bots/common.py` (login, `GET /bots/posted`, post, cap/409 handling, the R-05a line), `bots/bestsellers.py` (the NYT + Gemini logic lifted from `editorial_bot.py`, **minus** its `create_engine` / `INSERT` — `editorial_bot.py:287-290`), `bots/prompts.py`, `bots/quotes.py`, `bots/circles.py` (falls through to `bots/prompts.py` below the k-floor, E-3), `bots/content/prompts.json`, `bots/content/quotes.json`. **No `sqlalchemy` import anywhere in `bots/`, and a test asserts that** |
+| `bots/` (new package) | `bots/common.py` (login, `GET /bots/posted`, post, cap/409 handling, `add_to_library` for R-17; the R-05a line was here until it was withdrawn on 2026-09-29), `bots/bestsellers.py` (the NYT + Gemini logic lifted from `editorial_bot.py`, **minus** its `create_engine` / `INSERT` — `editorial_bot.py:287-290`), `bots/prompts.py`, `bots/quotes.py`, `bots/circles.py` (falls through to `bots/prompts.py` below the k-floor, E-3), `bots/content/prompts.json`, `bots/content/quotes.json`. **No `sqlalchemy` import anywhere in `bots/`, and a test asserts that** |
 | `editorial_bot.py` | **deleted** once `bots/bestsellers.py` has posted successfully twice in production. Not before — it is the only working implementation of the cover-lookup chain and the Gemini fallback |
 | `.github/workflows/tmr-bots.yml` (new) | one workflow, seven cron entries, a `content_type` chosen from the day, plus `workflow_dispatch` with a `type` input |
 | `context/deployment/README.md` | the new env vars, both kill switches with the click path, and the note that the Render cron job is deleted |
@@ -280,8 +281,10 @@ GitHub Actions cron (UTC)
        │     quote:      next unused id from bots/content/quotes.json  (180-day window)
        │     circles:    GET /groups/public aggregate; k-floor;
        │                 below the floor -> fall through to a prompt (E-3)
-       │     -> append the R-05a line
-       └─ POST /notes/  {text, quote?, image_url?, is_public: true, dedup_key: "<type>:<id>"}
+       │     (no label is appended — R-05a withdrawn 2026-09-29)
+       │     bestseller only: POST /books/add-to-library -> userbook_id  (R-17; a
+       │                     failure here is logged and the post goes out unlinked)
+       └─ POST /notes/  {text, quote?, image_url?, userbook_id?, is_public: true, dedup_key: "<type>:<id>"}
              201 -> the note AND its bot_post row were committed together. Done
              409 -> the key was taken between the GET and the POST. No note was created.
                     Fail the run. Never retry
@@ -446,8 +449,9 @@ House rule: every Critical and Major case names the **one-line product change th
 
 | # | Case | Sev | Mutation |
 |---|---|---|---|
-| C-01 | Every generated post ends with the exact E-2 string for its account, compared character-for-character (em dash, lower-case "automated", the handle, no trailing punctuation) | Crit | Make the line optional for one content type, or change the em dash to a hyphen |
-| C-02 | The R-05a line is appended after model output, so a model that returns nothing still yields a labelled post | Crit | Move the append before generation |
+| ~~C-01~~ | ~~Every generated post ends with the exact E-2 string for its account~~ — **DELETED 2026-09-29, R-05a withdrawn.** Replaced by **C-01b**: no post carries an "automated post from" line, and `append_label` / `LABEL_TEMPLATE` no longer exist in `bots/` | Crit | Re-add a trailing label line to any one voice |
+| ~~C-02~~ | ~~The R-05a line is appended after model output~~ — **DELETED 2026-09-29, R-05a withdrawn** (so was C-02a, the AST case) | — | — |
+| C-23 / C-23a / C-23b | **R-17.** The bestseller post carries the `userbook_id` that `POST /books/add-to-library` returned, with the real title/author/ISBN/cover sent and no duplicate `image_url`; a failed link still posts, with the cover attached; the other three voices link nothing | Crit | Pass `userbook_id=None`, or add a book to a prompt |
 | C-03 | `is_public: true` is in the `POST /notes/` body for every type | Crit | Drop the key (F-17 would make every post private) |
 | C-04 | Every `POST /notes/` body carries a `dedup_key` of the form `<content_type>:<id>` | Crit | Omit the key for one content type (the post would then be undeduplicated) |
 | C-04a | `bots/` imports no database driver — no `sqlalchemy`, no `psycopg2`, no `create_engine`, and no code reads `DATABASE_URL` | Crit | Re-add `editorial_bot.py:287-290`'s engine to `bots/common.py` |
@@ -469,7 +473,7 @@ House rule: every Critical and Major case names the **one-line product change th
 | W-02 | The badge renders on the bot's profile header and in user search | Crit | Remove the badge from either site |
 | W-03 | A post whose `user` object **lacks** `is_bot` (a stale 60 s cache) renders no badge and does not crash | Major | Use a truthy default in `BotBadge` |
 | A-01 | Android feed card, profile header, comment row and search row render the badge | Crit | Remove the badge from any one |
-| A-02 | A 2.2.1-shaped render path (no `is_bot` handling) still shows the R-05a text line | Crit | Strip the trailing line from the post text before rendering |
+| A-02 | A note's text is rendered verbatim — no screen reshapes it. *(Written for R-05a; kept after the 2026-09-29 withdrawal because the rule it enforces never depended on the label — a reader's post must reach the screen unmodified.)* | Crit | Strip the trailing line from the post text before rendering |
 
 ### Production checks (owned by QA/PM after deploy)
 
@@ -503,6 +507,7 @@ Five. File sets are disjoint. P1 must land before P2 (P2 reads the column P1 dec
 | **P3** | Web | `book-tracker-frontend-stitch/src/components/BotBadge.jsx` (new), `HomePage.jsx`, `UserProfilePage.jsx`, `GroupDetailPage.jsx`, `AdminPage.jsx`, `src/services/api.js` | R-03, R-16 (admin UI) |
 | **P4** | Android | `book-tracker-mobile-stitch/src/components/BotBadge.js` (new), `FeedScreen.js`, `GroupDetailScreen.js`, `UserProfileScreen.js`, `app.json` | R-04 |
 | **P5** | Bot + CI + docs | `bots/**` (new), `.github/workflows/tmr-bots.yml` (new), `tests/test_bot_content.py` (new), `context/deployment/README.md`, `context/PM_SQL_QUEUE.md`, `features/community/index.md` | R-05a, R-07, R-09..R-12, R-14, R-15 |
+| **P6** | *(post-ship, 2026-09-29)* Withdraw the label, link the book | `bots/**`, `tests/test_bot_content.py`, `tests/test_bots.py`, `qa/web_4f_local.mjs`, `book-tracker-mobile-stitch/__tests__/botBadge.test.mjs`, this document, `spec.md`, `pm-decisions.md`, `tests.md` | ~~R-05a~~ (withdrawn), **R-17** (new) |
 
 `likes_comments.py` appears in **both** P1 (the `deny_bot_actor` dependency on three routes) and P2 (`is_bot` in two author dicts). Rather than split a small file across two builders, **P1 owns `likes_comments.py` entirely** and makes both changes; P2 treats it as read-only. That is the only file that would otherwise collide.
 
@@ -573,6 +578,8 @@ The badge in R-04 reaches a reader only when they install a new build. There is 
 Options: (a) hold the bots until 2.2.4 adoption crosses a threshold — weeks of delay, and the threshold is never reached; (b) ship the API and web now, start the bots, and rely on R-05a's in-text line for Android until 2.2.4 spreads; (c) ship a server-side text label only and drop the badge — refused, the PM requirement is explicit that a name or text convention alone is not enough.
 
 **(b) was taken.** The in-text line is a real label: every Android version shows it, it survives caching and screen readers, and it names the account. The badge arrives as an upgrade rather than a gate. The PM accepted explicitly that, for some weeks, some readers see the label only as text.
+
+**Amended 2026-09-29.** The PM withdrew R-05a after reviewing the first live post, which removes the whole basis of option (b): there is no in-text line any more, so an installed Android app below 2.2.4 now shows a bot post with a display name and no marker of any kind. The decision stands — the bots keep running — but the honest description of the current state is closer to option (c) than to (b), with the badge shipping on web only. Shipping 2.2.4 is the only thing that closes it.
 
 ### E-2 — The exact wording of the in-text label. **DECIDED: the trailing named form, `— automated post from @<handle>`.** (`pm-decisions.md` §Accepted as recommended, E-2)
 
