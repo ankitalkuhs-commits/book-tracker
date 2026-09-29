@@ -1308,8 +1308,11 @@ class TestSchemaGuard:
         assert eng.connect_calls == 1
 
     def test_guard_passes_when_both_present(self):
-        from app.schema_guard import assert_migrated
-        eng = _StubEngine("postgresql", rows=[("user", "timezone"), ("reading_activity", "local_day")])
+        from app.schema_guard import assert_migrated, REQUIRED_COLUMNS
+        # Sprint 4F: the stub now serves whatever REQUIRED_COLUMNS asks for, so appending a
+        # column (which every migration does) no longer makes this "everything present" case
+        # fail. The "something missing" case above keeps its deliberate, literal omission.
+        eng = _StubEngine("postgresql", rows=list(REQUIRED_COLUMNS))
         assert assert_migrated(eng) is None
 
     def test_guard_fails_open_on_db_error(self, capsys):
@@ -1356,7 +1359,8 @@ class TestSchemaGuard:
                 pass
         assert calls == []
 
-        good_engine = _StubEngine("postgresql", rows=[("user", "timezone"), ("reading_activity", "local_day")])
+        from app.schema_guard import REQUIRED_COLUMNS          # Sprint 4F: see above
+        good_engine = _StubEngine("postgresql", rows=list(REQUIRED_COLUMNS))
         monkeypatch.setattr(appdb, "engine", good_engine)
         with TestClient(fastapi_app):
             pass

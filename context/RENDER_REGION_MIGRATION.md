@@ -1,5 +1,23 @@
 # Moving the API from Oregon to Singapore
 
+> ## DONE — the cutover shipped 2026-09-22
+>
+> The live API is **`https://api.trackmyread.com`**, served by the Singapore service. **Per database
+> query: 275 ms → 3 ms.** The Oregon service (`book-tracker-stitch`) is still up on the **free**
+> plan, forwarding for installed Android apps older than 2.2.3, and is kept from sleeping by
+> `.github/workflows/keep-oregon-awake.yml` (added 2026-09-22 after a real cold-start outage:
+> last request 06:59, shutdown 07:14, back at 07:53). Delete that workflow, and then the Oregon
+> service, once the old app versions are gone — that is step 7 below, and it is the only step left.
+>
+> Android calls the custom domain, not an `onrender.com` address
+> (`book-tracker-mobile-stitch/src/services/api.js:11`), so the next region move is a DNS change
+> rather than a forced app release. The web app's base URL comes from `VITE_API_BASE_URL` in
+> **Vercel's** environment, which is not in this repository — verify it there, not here.
+>
+> **Everything below is the plan as written before the cutover.** It is kept as the record of why
+> Singapore and not Mumbai, what each step was, and how to roll each one back. "Status 2026-09-21:
+> parked" and the "To finish" list are both superseded by this box.
+
 **Why.** The API runs in Oregon, the database in Singapore, so every query crosses the Pacific. Measured on production from the `Server-Timing` header: **182–251 ms per query**, and a page makes 5–12 of them. Application code costs a few milliseconds. This is the largest single cost on every signed-in page and no code change can remove it (F-68).
 
 **What Render allows.** A service's region is fixed at creation and cannot be changed; Render's own answer is to create a new service in the new region ([Regions](https://render.com/docs/regions)). Suspending does not help. A service's `onrender.com` address cannot be changed either, and a deleted name is not immediately reusable ([community](https://community.render.com/t/reusing-old-url/26327), [feature request](https://feedback.render.com/features/p/ability-to-change-onrendercom-sub-domain)), so "delete the old one and take its name" is not dependable.

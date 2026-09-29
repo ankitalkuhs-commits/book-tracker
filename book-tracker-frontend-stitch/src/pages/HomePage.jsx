@@ -5,6 +5,7 @@ import { useToast } from '../components/Toast'
 import { useTranslation } from 'react-i18next'
 import BookPreviewModal from '../components/BookPreviewModal'
 import VisibilityToggle from '../components/VisibilityToggle'
+import BotBadge from '../components/BotBadge'
 import { readNoteVisibility } from '../utils/noteVisibility'
 import {
   getCommunityFeed, getFriendsFeed, createNote, uploadNoteImage,
@@ -172,7 +173,7 @@ function PostCard({ post, currentUserId, isAdmin, onLikeToggle, onDelete, onEdit
           >
             <Avatar user={post.user} size={10} />
             <div className="text-left">
-              <h4 className="font-bold text-on-surface text-sm">{post.user?.name || 'User'}</h4>
+              <h4 className="font-bold text-on-surface text-sm">{post.user?.name || 'User'}<BotBadge user={post.user} /></h4>
               <p className="text-xs text-on-surface-muted">
                 {timeAgo(post.created_at)}
                 {isEdited && <span className="ml-1 italic">· Edited</span>}
@@ -288,7 +289,7 @@ function PostCard({ post, currentUserId, isAdmin, onLikeToggle, onDelete, onEdit
               <div key={c.id} className="flex gap-2 text-sm items-start">
                 <Avatar user={c.user} size={7} />
                 <div className="bg-surface-container-low rounded-xl px-3 py-2 flex-1 min-w-0">
-                  <span className="font-bold text-on-surface text-xs">{c.user?.name} </span>
+                  <span className="font-bold text-on-surface text-xs">{c.user?.name}<BotBadge user={c.user} /> </span>
                   <span className="text-on-surface-variant">{c.text}</span>
                 </div>
                 {isAdmin && (
@@ -638,7 +639,7 @@ function Sidebar() {
               >
                 <Avatar user={u} size={8} />
                 <div>
-                  <p className="text-sm font-bold text-on-surface">{u.name}</p>
+                  <p className="text-sm font-bold text-on-surface">{u.name}<BotBadge user={u} /></p>
                   <p className="text-xs text-on-surface-variant">@{u.username}</p>
                 </div>
               </button>
@@ -661,7 +662,7 @@ function Sidebar() {
                 <div className="flex items-center space-x-3">
                   <Avatar user={u} size={9} />
                   <span className="text-sm font-medium text-on-surface group-hover:text-primary transition-colors">
-                    {u.name}
+                    {u.name}<BotBadge user={u} />
                   </span>
                 </div>
               </button>

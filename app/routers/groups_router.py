@@ -618,6 +618,11 @@ def get_members(
                 "user_id": u.id, "name": u.name, "username": u.username,
                 "profile_picture": getattr(u, "profile_picture", None),
                 "role": m.role, "joined_at": m.joined_at.isoformat(),
+                # Sprint 4F R-02. A bot is in no circle (R-05) and cannot reach this list, but
+                # R-03 badges this row *by name* so that a future mistake is visible rather
+                # than silent. A badge with no field behind it is a claim the code does not
+                # keep, so the field is here (PM ruling, 2026-09-23).
+                "is_bot": bool(u.is_bot),
             })
     return result
 
@@ -851,7 +856,8 @@ def get_group_posts(
             "image_url": p.image_url,
             "created_at": p.created_at.isoformat(),
             "user": {"id": user.id, "name": user.name,
-                     "profile_picture": getattr(user, "profile_picture", None)} if user else None,
+                     "profile_picture": getattr(user, "profile_picture", None),
+                     "is_bot": bool(user.is_bot)} if user else None,
             "book": {"id": book.id, "title": book.title,
                      "cover_url": book.cover_url} if book else None,
         })
@@ -890,7 +896,8 @@ def create_group_post(
         "emotion": p.emotion, "image_url": p.image_url,
         "created_at": p.created_at.isoformat(),
         "user": {"id": user.id, "name": user.name,
-                 "profile_picture": getattr(user, "profile_picture", None)},
+                 "profile_picture": getattr(user, "profile_picture", None),
+                 "is_bot": bool(user.is_bot)},
         "book": None,
     }
 
@@ -1140,6 +1147,7 @@ def get_group_activity(
                 "name": user.name or user.username,
                 "username": user.username,
                 "avatar_url": getattr(user, "avatar_url", None),
+                "is_bot": bool(user.is_bot),
             } if user else None,
         })
     return result

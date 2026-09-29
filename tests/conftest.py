@@ -168,14 +168,17 @@ class _StatementCounter:
     """Counts SQL statements on `engine` via before_cursor_execute (the F-08 pattern)."""
 
     _UPDATE_USER_RE = re.compile(r'^\s*UPDATE\s+"?user"?\s', re.IGNORECASE)
+    _INSERT_RE = re.compile(r'^\s*INSERT\s', re.IGNORECASE)   # Sprint 4F K-10
 
     def __init__(self):
         self.selects = 0
         self.updates_user = 0
+        self.inserts = 0
 
     def reset(self):
         self.selects = 0
         self.updates_user = 0
+        self.inserts = 0
 
     def _before_cursor_execute(self, conn, cursor, statement, parameters, context, executemany):
         s = statement.strip()
@@ -183,6 +186,8 @@ class _StatementCounter:
             self.selects += 1
         if self._UPDATE_USER_RE.match(s):
             self.updates_user += 1
+        if self._INSERT_RE.match(s):
+            self.inserts += 1
 
 
 @pytest.fixture()

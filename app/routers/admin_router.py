@@ -35,6 +35,10 @@ class PlatformStats(BaseModel):
     total_likes: int
     total_comments: int
     push_subscribed_users: int = 0
+    # Sprint 4F R-16: the reader figures above exclude bot accounts; these two report what was
+    # excluded, so no number disappears from the dashboard.
+    bot_users: int = 0
+    bot_notes: int = 0
 
 
 class UserSummary(BaseModel):
@@ -44,6 +48,7 @@ class UserSummary(BaseModel):
     username: str | None
     email: str
     is_admin: bool
+    is_bot: bool = False        # Sprint 4F R-16
     books_count: int
     followers_count: int
     following_count: int
@@ -87,18 +92,30 @@ def get_platform_stats(
     week_ago = now - timedelta(days=7)
     month_ago = now - timedelta(days=30)
     
-    # Total users
-    total_users = db.exec(select(func.count(models.User.id))).one()
-    
+    # Total users — READERS only (Sprint 4F R-16). Bot accounts are counted separately below,
+    # so moving the bot onto the public API cannot inflate a reader number.
+    total_users = db.exec(
+        select(func.count(models.User.id))
+        .where(models.User.is_bot == False)
+    ).one()
+
     # New users this week/month
     new_users_week = db.exec(
         select(func.count(models.User.id))
+        .where(models.User.is_bot == False)
         .where(models.User.created_at >= week_ago)
     ).one()
-    
+
     new_users_month = db.exec(
         select(func.count(models.User.id))
+        .where(models.User.is_bot == False)
         .where(models.User.created_at >= month_ago)
+    ).one()
+
+    # The excluded figures (R-16)
+    bot_users = db.exec(
+        select(func.count(models.User.id))
+        .where(models.User.is_bot == True)
     ).one()
     
     # Total books
@@ -123,8 +140,18 @@ def get_platform_stats(
         .where(models.UserBook.status == "want_to_read")
     ).one()
     
-    # Total notes
-    total_notes = db.exec(select(func.count(models.Note.id))).one()
+    # Total notes — readers' notes only (Sprint 4F R-16)
+    total_notes = db.exec(
+        select(func.count(models.Note.id))
+        .join(models.User, models.User.id == models.Note.user_id)
+        .where(models.User.is_bot == False)
+    ).one()
+
+    bot_notes = db.exec(
+        select(func.count(models.Note.id))
+        .join(models.User, models.User.id == models.Note.user_id)
+        .where(models.User.is_bot == True)
+    ).one()
     
     # Total follows
     total_follows = db.exec(select(func.count(models.Follow.id))).one()
@@ -165,6 +192,8 @@ def get_platform_stats(
         total_likes=total_likes,
         total_comments=total_comments,
         push_subscribed_users=push_subscribed_users or 0,
+        bot_users=bot_users or 0,
+        bot_notes=bot_notes or 0,
     )
 
 
@@ -211,6 +240,7 @@ def get_all_users(
             username=user.username,
             email=user.email,
             is_admin=user.is_admin,
+            is_bot=bool(user.is_bot),
             books_count=books_counts.get(user.id, 0),
             followers_count=followers_counts.get(user.id, 0),
             following_count=following_counts.get(user.id, 0),
@@ -350,39 +380,10 @@ def set_admin_status(
     }
 
 
-@router.post("/bot/trigger")
-def trigger_editorial_bot(
-    admin_user=Depends(get_admin_user)
-):
-    """
-    Manually trigger the TrackMyRead Editorial Bot.
-    Fetches today's NYT bestseller and posts it to the community feed.
-    Requires admin access.
-    """
-    import subprocess
-    import sys
-    try:
-        result = subprocess.run(
-            [sys.executable, "editorial_bot.py"],
-            capture_output=True,
-            text=True,
-            timeout=60
-        )
-        if result.returncode == 0:
-            return {
-                "status": "success",
-                "message": "Editorial bot ran successfully",
-                "output": result.stdout
-            }
-        else:
-            raise HTTPException(
-                status_code=500,
-                detail=f"Bot failed: {result.stderr or result.stdout}"
-            )
-    except subprocess.TimeoutExpired:
-        raise HTTPException(status_code=504, detail="Bot timed out after 60 seconds")
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+# Sprint 4F (architecture §7): POST /admin/bot/trigger is DELETED. It shelled out to
+# editorial_bot.py on the API host, depended on the repo layout being present beside the
+# service, and would now need the bot's login secret on that host to work at all. Its
+# replacement is the tmr-bots workflow's workflow_dispatch button (R-09, R-14).
 
 
 # ─── Push notification broadcast ─────────────────────────────────────────────
@@ -439,6 +440,8 @@ class NoteAdminView(BaseModel):
     id: int
     user_id: int
     user_name: str | None
+    is_bot: bool = False        # Sprint 4F R-16: the author's flag, so a bot post can be told
+                                # apart while moderating
     text: str | None
     quote: str | None
     emotion: str | None
@@ -491,6 +494,7 @@ def list_recent_notes(
             id=n.id,
             user_id=n.user_id,
             user_name=(u.name or u.username or u.email.split('@')[0]) if u else None,
+            is_bot=bool(u.is_bot) if u else False,
             text=n.text,
             quote=n.quote,
             emotion=n.emotion,

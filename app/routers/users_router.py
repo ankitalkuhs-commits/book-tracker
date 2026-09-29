@@ -21,6 +21,7 @@ class UserSearchResult(BaseModel):
     is_following: bool
     follows_you: bool
     is_mutual: bool
+    is_bot: bool = False        # Sprint 4F R-02: always present, always boolean
 
 
 class FollowingUser(BaseModel):
@@ -32,6 +33,7 @@ class FollowingUser(BaseModel):
     is_following: bool = True  # Always true in following list
     is_mutual: bool
     followed_at: str
+    is_bot: bool = False        # Sprint 4F R-02: always present, always boolean
 
 
 @router.get("/search", response_model=List[UserSearchResult])
@@ -102,7 +104,8 @@ def search_users(
             bio=user.bio,
             is_following=is_following,
             follows_you=follows_you,
-            is_mutual=is_following and follows_you
+            is_mutual=is_following and follows_you,
+            is_bot=bool(user.is_bot)
         ))
     
     return results
@@ -157,7 +160,8 @@ def get_following_list(
             bio=user.bio,
             is_following=True,  # Always true in following list
             is_mutual=user.id in mutual_set,
-            followed_at=follow_time_map[user.id].isoformat() + 'Z'
+            followed_at=follow_time_map[user.id].isoformat() + 'Z',
+            is_bot=bool(user.is_bot)
         ))
     
     # Sort: mutual follows first, then by followed_at descending

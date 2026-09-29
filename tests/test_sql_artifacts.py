@@ -307,5 +307,96 @@ class TestMigration4C:
         step1 = section[section.index(C4_STEP_1):section.index(C4_STEP_2)]
         m = re.search(r"VARCHAR\((\d+)\)", step1)
         assert m and int(m.group(1)) == localday.MAX_ZONE_LEN == 64
-        for table, column in REQUIRED_COLUMNS:
+        # Sprint 4F: scoped to the 4C pairs. REQUIRED_COLUMNS is appended to by every future
+        # migration (schema_guard.py's own docstring says so), so walking ALL of it against the
+        # 4C section asserted that no sprint after 4C may ever add a column. Each sprint's own
+        # section owns its own columns; 4F's two live in context/PM_SQL_QUEUE.md (P5).
+        C4_PAIRS = (("user", "timezone"), ("reading_activity", "local_day"))
+        assert set(C4_PAIRS) <= set(REQUIRED_COLUMNS)
+        for table, column in C4_PAIRS:
             assert column in step1
+
+
+# ── Sprint 4F (B-25b, tests.md K-15) ────────────────────────────────────────
+# The two PM SQL steps have no other harness: they are not in context/supabase_migration.sql,
+# they live in the PM's queue, and schema_guard exits at startup if they have not been run.
+#
+# Builder finding, reported in build-notes-4f-p2.md: architecture.md §Data says the 4F SQL goes
+# into PM_SQL_QUEUE.md "as new steps 4 and 5". Steps 4 and 5 ALREADY EXIST on this branch
+# (Rating-reset repair; the QA leftover), so the 4F SQL is steps 6 and 7 and K-15's
+# "bounded section from its `## 4.` heading" is re-pointed here to `## 6.`.
+PM_SQL_QUEUE_PATH = "context/PM_SQL_QUEUE.md"
+BOT_SQL_FIRST_HEADING = "## 6. Sprint 4F"
+BOT_EMAILS_4F = (
+    "tmrbot@trackmyread.com",
+    "tmrprompts@trackmyread.com",
+    "tmrquotes@trackmyread.com",
+    "tmrcircles@trackmyread.com",
+)
+# R-06: no note row is read, written or moved. `note_id` is a column name, not the table, and
+# \b keeps it out of the match because "_" is a word character.
+TOUCHES_NOTE = re.compile(r'\b(INSERT\s+INTO|UPDATE|DELETE\s+FROM|FROM|JOIN)\s+"?note"?\b',
+                          re.IGNORECASE)
+
+
+def _bot_sql_section():
+    """The 4F steps only — bounded at both ends.
+
+    4C's K-15 lesson: `text[start:]` scans everything after the heading, so a later section can
+    satisfy an assertion the bounded one fails. This runs from the `## 6.` heading to the first
+    `## ` heading that follows step 7.
+    """
+    text = _read(PM_SQL_QUEUE_PATH)
+    start = text.index(BOT_SQL_FIRST_HEADING)
+    rest = text[start + len(BOT_SQL_FIRST_HEADING):]
+    headings = [m.start() for m in re.finditer(r"^## ", rest, re.MULTILINE)]
+    assert len(headings) >= 2, "expected a `## 7.` heading and one after it"
+    end = start + len(BOT_SQL_FIRST_HEADING) + headings[1]
+    return text[start:end]
+
+
+class TestBotSQL:
+    """B-25b — the two Sprint 4F PM SQL steps (K-15)."""
+
+    def test_4f_section_is_bounded_idempotent_and_never_touches_note(self):
+        section = _bot_sql_section()
+        whole = _read(PM_SQL_QUEUE_PATH)
+
+        # the bound is real: shorter than the file, and it excludes the neighbouring sections
+        assert 0 < len(section) < len(whole)
+        assert "Rating-reset repair" not in section          # step 4, before it
+        assert "What Claude does with each answer" not in section   # the section after step 7
+        assert "## 7. Sprint 4F" in section                  # and step 7 IS inside it
+
+        normalized = " ".join(strip_comments(section).split())
+
+        # (1) the column, idempotent
+        assert ('ALTER TABLE "user" ADD COLUMN IF NOT EXISTS is_bot BOOLEAN NOT NULL '
+                'DEFAULT false' in normalized)
+        assert "CREATE INDEX IF NOT EXISTS ix_user_is_bot" in normalized
+
+        # (2) the table and BOTH indexes, idempotent
+        assert "CREATE TABLE IF NOT EXISTS bot_post" in normalized
+        assert "CREATE UNIQUE INDEX IF NOT EXISTS uq_bot_post" in normalized
+        assert "CREATE INDEX IF NOT EXISTS ix_bot_post_posted" in normalized
+
+        # (3) the four bot accounts
+        for email in BOT_EMAILS_4F:
+            assert email in section, email
+
+        # (4) the three verification queries
+        assert 'SELECT count(*) FROM "user" WHERE is_bot AND is_admin' in normalized
+        assert "WHERE is_bot AND COALESCE(bio,'') NOT LIKE 'Automated account.%'" in normalized
+        assert "information_schema.columns" in normalized and "'bot_post'" in normalized
+
+        # (5) R-06: nothing in this section reads, writes or moves a `note` row
+        offenders = [st.strip()[:70] for st in statements(strip_comments(section))
+                     if TOUCHES_NOTE.search(st)]
+        assert offenders == [], offenders
+
+        # CONTROL (rule 3): the detector reports a hit on a synthetic offending statement
+        synthetic = "UPDATE note SET is_public = false WHERE id = 1;"
+        assert [st.strip()[:70] for st in statements(synthetic)
+                if TOUCHES_NOTE.search(st)] == ["UPDATE note SET is_public = false WHERE id = 1"]
+        # ...and does NOT fire on the `note_id` column the real section declares
+        assert TOUCHES_NOTE.search("note_id INTEGER,") is None

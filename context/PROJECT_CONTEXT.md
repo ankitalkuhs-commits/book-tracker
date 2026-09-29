@@ -18,19 +18,25 @@ A social book tracking platform: track reading progress, share reflections, disc
 | Layer | Tech |
 |---|---|
 | Backend | FastAPI (Python), SQLModel ORM |
-| Database | PostgreSQL on Supabase (prod) / SQLite (local dev) |
+| Database | PostgreSQL on Supabase, Singapore region (prod) / SQLite (local dev) |
 | Web frontend | React 18 + Vite + TailwindCSS (custom design tokens) |
 | Mobile | React Native, Expo SDK, EAS builds (NOT Expo Go) |
 | Auth | Google OAuth 2.0 → JWT tokens |
 | File uploads | Cloudinary (profile pictures + note images) |
 | Push | Expo FCM (Android mobile) + VAPID via pywebpush (web PWA) |
-| Hosting | Render (backend auto-deploys from `master`), Vercel (web frontend) |
+| Hosting | Render **Singapore** (backend auto-deploys from `master`), Vercel (web frontend) |
 
 ### Deployments
 
+**The API moved from Oregon to Singapore on 2026-09-22 (F-68).** API and database are now in the
+same region and a database query costs **~3 ms** instead of ~275 ms. Details and the click-path in
+`context/RENDER_REGION_MIGRATION.md`. Any latency figure in a document written before that date is
+suspect.
+
 | Service | URL | Branch |
 |---|---|---|
-| Backend (Render) | `https://book-tracker-stitch.onrender.com` | `master` |
+| Backend (Render, Singapore — `book-tracker-sg`) | `https://api.trackmyread.com` | `master` |
+| Backend (Render, Oregon — `book-tracker-stitch`, legacy) | `https://book-tracker-stitch.onrender.com` — free plan, serves installed Android apps older than 2.2.3 only | `master` |
 | Web (Vercel) | `https://www.trackmyread.com` | `master` |
 | Android (Play Store) | TrackMyRead | EAS build from `master` |
 

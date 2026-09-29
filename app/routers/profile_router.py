@@ -236,6 +236,7 @@ def get_public_profile(user_id: int, db: Session = Depends(get_db), current_user
         "is_private": is_private,
         "is_following": is_following,
         "follows_you": follows_you,
+        "is_bot": bool(user.is_bot),   # Sprint 4F R-02
     }
 
     # Private profile — only followers (and self) see stats + content

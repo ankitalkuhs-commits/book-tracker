@@ -3,7 +3,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, select
-from ..deps import get_db, get_current_user
+from ..deps import get_db, get_current_user, deny_bot_actor
 from .. import models
 from ..utils.push import send_push_notification_to_user
 from ..notifications.dispatcher import fire_event
@@ -33,7 +33,8 @@ def like_note(
     note_id: int,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_user)
+    current_user: models.User = Depends(get_current_user),
+    _: None = Depends(deny_bot_actor),          # R-05: before any row, before any notification
 ):
     """Like a note"""
     # Check if note exists
@@ -84,7 +85,8 @@ def like_note(
 def unlike_note(
     note_id: int,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_user)
+    current_user: models.User = Depends(get_current_user),
+    _: None = Depends(deny_bot_actor),          # R-05: before any row, before any notification
 ):
     """Unlike a note"""
     # Find and delete like
@@ -117,7 +119,8 @@ def create_comment(
     payload: CommentCreate,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_user)
+    current_user: models.User = Depends(get_current_user),
+    _: None = Depends(deny_bot_actor),          # R-05: before any row, before any notification
 ):
     """Add a comment to a note"""
     if not payload.text or not payload.text.strip():
@@ -154,7 +157,8 @@ def create_comment(
         "id": comment.id,
         "text": comment.text,
         "created_at": comment.created_at.isoformat() + 'Z',
-        "user": {"id": current_user.id, "name": current_user.name}
+        "user": {"id": current_user.id, "name": current_user.name,
+                 "is_bot": bool(current_user.is_bot)}   # R-02
     }
 
 
@@ -194,6 +198,7 @@ def get_comments(
                 "name": user.name,
                 "username": getattr(user, "username", None),
                 "profile_picture": getattr(user, "profile_picture", None),
+                "is_bot": bool(user.is_bot),   # R-02
             } if user else None
         })
 
