@@ -88,6 +88,40 @@ class TestLocalDayUnits:
                     "posixrules", "Etc/Unknown", " UTC"):
             assert localday.valid_zone(bad) is None
 
+    def test_non_iana_names_are_excluded_on_every_platform(self):
+        """The rejection of "localtime" must be a decision, not a platform accident.
+
+        `test_valid_zone_rejects_garbage` above lists "localtime" and passes on Windows for
+        the wrong reason: the pinned `tzdata` wheel has no such key, so nothing is being
+        excluded. On Linux `available_timezones()` DOES return it (a symlink to the host's
+        zone) and the same assertion failed in CI on 2026-09-30 — a reader sending
+        `X-Timezone: localtime` was accepted and given the server's day boundaries.
+
+        The module is re-imported against a SIMULATED Linux tz directory, because comparing
+        `_VALID_ZONES` to `available_timezones() - NON_IANA_ZONE_NAMES` is not enough: on
+        Windows both sides are equal whether or not the subtraction is there, so deleting it
+        passes. (Found by mutation, after the first version of this test claimed otherwise.)
+        """
+        import importlib
+        import zoneinfo
+
+        linux_like = {"UTC", "Asia/Kolkata", "Asia/Tokyo", "localtime", "posixrules"}
+        real = zoneinfo.available_timezones
+        try:
+            zoneinfo.available_timezones = lambda: set(linux_like)
+            reloaded = importlib.reload(localday)
+            assert "localtime" in linux_like                      # control: the fake bites
+            assert reloaded.valid_zone("localtime") is None
+            assert reloaded.valid_zone("posixrules") is None
+            assert reloaded.valid_zone("Asia/Tokyo") == "Asia/Tokyo"
+        finally:
+            zoneinfo.available_timezones = real
+            importlib.reload(localday)
+
+        # and the live module agrees, on whichever platform this is running
+        assert localday.valid_zone("localtime") is None
+        assert localday._VALID_ZONES.isdisjoint(localday.NON_IANA_ZONE_NAMES)
+
     def test_valid_zone_length_cap_independent_of_allowlist(self, monkeypatch):
         monkeypatch.setattr(localday, "_VALID_ZONES", localday._VALID_ZONES | {"Z" * 65, "Y" * 64})
         assert "Z" * 65 in localday._VALID_ZONES   # control: the patch bites
