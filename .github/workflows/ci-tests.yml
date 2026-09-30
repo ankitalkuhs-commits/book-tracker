@@ -58,7 +58,7 @@ jobs:
       # measured 714 locally and set the floor to it. If CI reports fewer than 714, that is
       # the gap this floor exists to expose; find the file that stopped loading rather than
       # lowering the number.
-      EXPECTED_MIN_TESTS: 714
+      EXPECTED_MIN_TESTS: 715
     steps:
       - uses: actions/checkout@v4
         with:
