@@ -125,12 +125,28 @@ def _build_query(raw: str, genre: Optional[str]) -> str:
     if qualifier_re.search(q):
         return q
 
-    # 3. Genre chip provided
+    # 3. Genre chip provided.
+    #
+    # The separator is a SPACE, not "+". Google Books joins qualifiers with a space; a literal
+    # "+" inside the parameter *value* is percent-encoded to %2B by the HTTP client, so Google
+    # receives an actual plus character and matches nothing. Measured against the live API:
+    #   "the midnight library"                  -> 3056 results
+    #   "the midnight library+subject:fiction"  ->    0 results   <- what this used to send
+    #   "the midnight library subject:fiction"  ->  301 results
     if genre and genre != "all" and genre in GENRE_SUBJECTS:
-        return f"{q}+subject:{GENRE_SUBJECTS[genre]}"
+        return f"{q} subject:{GENRE_SUBJECTS[genre]}"
 
-    # 4. Default: fiction bias — the single biggest quality improvement for novel readers
-    return f"{q}+subject:fiction"
+    # 4. No genre chip: send the reader's words, unqualified.
+    #
+    # This used to append `subject:fiction` to EVERY search as a "fiction bias". Even with the
+    # separator fixed it returns the wrong book for non-fiction, measured top result:
+    #   "the perilous fight"  plain -> The Perilous Fight   | +fiction -> All the Marbles
+    #   "end times fascism"   plain -> End Times Fascism    | +fiction -> End of Days
+    #   "sapiens"             plain -> Sapiens              | +fiction -> a Romanian edition
+    # and it costs fiction nothing to drop: "the midnight library", "jane eyre" and
+    # "project hail mary" return the same top result either way. _novel_score() already
+    # re-ranks for novel readers after the fetch, which is the right place for that bias.
+    return q
 
 
 def _novel_score(result: dict) -> int:
