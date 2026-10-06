@@ -400,3 +400,67 @@ class TestBotSQL:
                 if TOUCHES_NOTE.search(st)] == ["UPDATE note SET is_public = false WHERE id = 1"]
         # ...and does NOT fire on the `note_id` column the real section declares
         assert TOUCHES_NOTE.search("note_id INTEGER,") is None
+
+
+# ── Sprint 4G (tests.md B-37, K-14) ──────────────────────────────────────────────────────────
+
+APPLE_SQL_FIRST_HEADING = "## 8. Sprint 4G"
+
+
+def _apple_sql_section():
+    """Step 8 only — bounded at both ends, in the shape of `_bot_sql_section()` above.
+
+    4C's K-15 lesson: `text[start:]` scans everything after the heading, so a later section
+    can satisfy an assertion the bounded one fails.
+    """
+    text = _read(PM_SQL_QUEUE_PATH)
+    start = text.index(APPLE_SQL_FIRST_HEADING)
+    rest = text[start + len(APPLE_SQL_FIRST_HEADING):]
+    headings = [m.start() for m in re.finditer(r"^## ", rest, re.MULTILINE)]
+    assert headings, "expected a `## ` heading after step 8"
+    end = start + len(APPLE_SQL_FIRST_HEADING) + headings[0]
+    return text[start:end]
+
+
+class TestAppleSQL:
+    """B-37 — the Sprint 4G PM SQL step (step 8) and K-14's bound on 4F's."""
+
+    def test_step_8_is_bounded_idempotent_and_additive(self):
+        section = _apple_sql_section()
+        whole = _read(PM_SQL_QUEUE_PATH)
+
+        # the bound is real: shorter than the file, and it excludes both neighbours
+        assert 0 < len(section) < len(whole)
+        assert "Sprint 4F" not in section
+        assert "What Claude does with each answer" not in section
+
+        normalized = " ".join(strip_comments(section).split())
+
+        # (1) the column and its unique index, both idempotent
+        assert 'ALTER TABLE "user" ADD COLUMN IF NOT EXISTS apple_sub VARCHAR(255)' in normalized
+        assert ('CREATE UNIQUE INDEX IF NOT EXISTS uq_user_apple_sub ON "user" (apple_sub)'
+                in normalized)
+
+        # (2) additive only. A NOT NULL or a DEFAULT on the new column would rewrite every
+        #     row, and nothing in this step may read, write or move an existing row. The
+        #     NOT NULL / DEFAULT check is scoped to the ALTER itself — the verification query
+        #     legitimately says `apple_sub IS NOT NULL`.
+        alter = [st.strip() for st in statements(strip_comments(section))
+                 if "ADD COLUMN" in st.upper()]
+        assert len(alter) == 1, alter
+        assert "NOT NULL" not in alter[0].upper()
+        assert "DEFAULT" not in alter[0].upper()
+        for verb in ("UPDATE ", "DELETE ", "INSERT "):
+            assert verb not in normalized.upper(), verb
+
+        # (3) the three verification queries (architecture §Data)
+        assert "information_schema.columns" in normalized and "'apple_sub'" in normalized
+        assert "pg_indexes" in normalized and "'uq_user_apple_sub'" in normalized
+        assert 'SELECT count(*) FROM "user" WHERE apple_sub IS NOT NULL' in normalized
+
+        # (4) K-14: appending step 8 after step 7 leaves 4F's own bounded section intact —
+        #     the bound moves onto the `## 8.` heading and every 4F assertion still holds.
+        bot = _bot_sql_section()
+        assert "## 7. Sprint 4F" in bot
+        assert APPLE_SQL_FIRST_HEADING not in bot
+        assert "What Claude does with each answer" not in bot

@@ -39,6 +39,11 @@ class User(SQLModel, table=True):
     # no token claim carries it (E-4), so revoking a bot is one UPDATE. Indexed because R-16's
     # /admin/stats counts filter on it on every call.
     is_bot: bool = Field(default=False, index=True)
+    # Sprint 4G (R-03): Apple's `sub` — the ONLY identifier every Apple sign-in carries. Apple
+    # hands over the email on the first authorization only, so this row, not the email, is the
+    # Apple identity. NULL for every Google reader (a unique index ignores NULLs, so they all
+    # coexist); unique so two concurrent first sign-ins cannot both win. Never serialised.
+    apple_sub: Optional[str] = Field(default=None, index=True, unique=True, max_length=255)
     notification_prefs: Optional[str] = Field(default=None)  # JSON: {"new_follower": true, ...}
     created_at: datetime = Field(default_factory=datetime.utcnow)
     last_active: Optional[datetime] = None

@@ -158,6 +158,39 @@ Steps 6 and 7 are additive, re-runnable, and touch no existing row of any other 
 
 ---
 
+## 8. Sprint 4G — the `user.apple_sub` column — WRITES, additive, and it gates the 4G deploy
+
+Run this **before** the Sprint 4G API deploy. `schema_guard` requires `user.apple_sub`, so the
+commit that adds it refuses to start until this has run (that is the guard working: Render fails
+the deploy and the previous version keeps serving).
+
+```sql
+ALTER TABLE "user" ADD COLUMN IF NOT EXISTS apple_sub VARCHAR(255);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_user_apple_sub ON "user" (apple_sub);
+```
+
+Nullable, no default: the `ALTER` is metadata-only and no existing row is rewritten. Every
+current reader stays `NULL`, which is correct — they have no Apple identity. The unique index
+ignores `NULL`s, so thousands of Google-only readers coexist while at most one row can ever hold
+a given Apple subject. **That index is where the correctness lives**: Apple hands over the email
+only on the first authorization, so this column is the identity for every later sign-in, and two
+concurrent first sign-ins must not both win. The index is its own statement because creating
+indexes is never bundled in this project — you decide it.
+
+**Verify — send the output back.**
+
+```sql
+-- 1 row: character varying, YES
+SELECT column_name, data_type, is_nullable FROM information_schema.columns
+ WHERE table_schema = current_schema() AND table_name = 'user' AND column_name = 'apple_sub';
+-- 1 row: a CREATE UNIQUE INDEX definition
+SELECT indexname, indexdef FROM pg_indexes WHERE tablename = 'user' AND indexname = 'uq_user_apple_sub';
+-- must return 0: nothing has been written yet
+SELECT count(*) FROM "user" WHERE apple_sub IS NOT NULL;
+```
+
+---
+
 ## What Claude does with each answer
 
 | You send | Claude does |
@@ -168,3 +201,4 @@ Steps 6 and 7 are additive, re-runnable, and touch no existing row of any other 
 | 4. three counts | reviews (a) against (a3) and recommends whether to widen the date before (b)/(c) |
 | 6. bot rows + 0/0 | merges Sprint 4F's API package, which deploys it, then checks `/version` |
 | 7. dedup_key + both index names | confirms `schema_guard` will pass, then runs `migrations/add_bot_accounts.py` |
+| 8. column row + index row + 0 | deploys Sprint 4G's API package (the commit carrying `("user","apple_sub")` in `schema_guard`), then checks `/version` |

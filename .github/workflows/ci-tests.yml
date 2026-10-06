@@ -58,7 +58,12 @@ jobs:
       # measured 714 locally and set the floor to it. If CI reports fewer than 714, that is
       # the gap this floor exists to expose; find the file that stopped loading rather than
       # lowering the number.
-      EXPECTED_MIN_TESTS: 715
+      # 2026-10-06, Sprint 4G P1+P2: re-measured at 779 on branch builder-4g-api (715 + 64:
+      # 63 in tests/test_apple_auth.py and 1 in tests/test_sql_artifacts.py::TestAppleSQL).
+      # The number is a measurement, not a copy from tests.md. P3 (+8) and P4 raise it again
+      # in their own commits; the qa/unit floor at :111 was re-measured at 38 and is
+      # deliberately unchanged, because this sprint adds no web code (R-14).
+      EXPECTED_MIN_TESTS: 779
     steps:
       - uses: actions/checkout@v4
         with:

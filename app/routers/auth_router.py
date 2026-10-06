@@ -1,4 +1,5 @@
 # app/routers/auth_router.py
+import hashlib
 import hmac
 import os
 import secrets
@@ -6,12 +7,15 @@ from datetime import timedelta
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, select
 from google.oauth2 import id_token
 from google.auth.transport import requests
 from ..database import get_session
 from ..deps import get_db, get_current_user
 from .. import crud, auth, models, localday
+from .. import apple_keys                    # Sprint 4G: its own line, so this sprint's diff
+                                             # over this file removes nothing (ST-4G-05)
 from pydantic import BaseModel
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -19,6 +23,14 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 class GoogleAuthIn(BaseModel):
     token: str
+
+class AppleAuthIn(BaseModel):
+    # Sprint 4G (R-01, R-04). `full_name` is NOT in the identity token — Apple puts it on the
+    # credential object, on the first authorization only — so it travels in the body, and is
+    # read ONLY on a create path (R-07).
+    identity_token: str
+    nonce: str
+    full_name: Optional[str] = None
 
 class ReviewLoginIn(BaseModel):
     email: str
@@ -233,6 +245,177 @@ def bot_login(payload: BotLoginIn, db: Session = Depends(get_session)):
         "access_token": token,
         "expires_in": BOT_LOGIN_TOKEN_MINUTES * 60,
         "user": {"id": user.id, "email": user.email},
+    }
+
+
+def _apple_config() -> list[str]:
+    """Read APPLE_AUDIENCES on every request, for the same two reasons `_bot_login_config`
+    and `_review_login_config` are read per request: tests monkeypatch it, and an operator
+    changes the bundle id on Render without a code deploy. Parsed like BOT_LOGIN_EMAILS
+    (`:181-182`): comma-separated, trimmed, empties dropped.
+
+    NOT defaulted to the bundle id. A silent default is how a staging build ends up
+    accepting production tokens. Unset -> the route 404s (R-02)."""
+    raw = os.getenv("APPLE_AUDIENCES") or ""
+    return [a.strip() for a in raw.split(",") if a.strip()]
+
+
+# R-01: one message for every failure. The route never reports WHICH check failed.
+APPLE_INVALID_DETAIL = "Invalid Apple token"
+
+# Sprint 4G, pm-decisions K-05. The claim is the primary rule and this domain is the floor
+# under it: an address in this domain NEVER links, whatever `is_private_email` says.
+APPLE_RELAY_DOMAIN = "privaterelay.appleid.com"
+
+# R-07: branch 5's placeholder. A digest, not the raw subject, so the Apple subject is not
+# sitting in a column clients can read; a subdomain this project owns and routes no mail to.
+APPLE_PLACEHOLDER_DOMAIN = "users.noreply.trackmyread.com"
+
+
+def _coerce_apple_bool(value) -> bool:
+    """R-05. The account-takeover gate, and the sharpest edge in this sprint.
+
+    Apple sends `email_verified` and `is_private_email` as the boolean `true` in some token
+    shapes and as the STRING "true" in others, and python-jose passes strings through
+    uncoerced (measured). So `if claims.get("email_verified"):` is TRUE for the string
+    "false" — which links an unverified email onto an existing reader's row (F7).
+
+    The only accepted forms are the literal True and "true" case-insensitively. Everything
+    else — "false", False, None, absent, "1", 1, "" — is NOT verified.
+    """
+    if value is True:
+        return True
+    if isinstance(value, str):
+        return value.strip().lower() == "true"
+    return False
+
+
+def _apple_placeholder_email(sub: str) -> str:
+    """apple-<16 hex of a digest of the subject>@users.noreply.trackmyread.com
+
+    A pure function of the subject, which is what makes branch 5 self-heal if the second
+    commit is ever lost (architecture §"Why not one transaction")."""
+    digest = hashlib.sha256(sub.encode("utf-8")).hexdigest()[:16]
+    return f"apple-{digest}@{APPLE_PLACEHOLDER_DOMAIN}"
+
+
+def _user_by_apple_sub(db: Session, sub: str) -> Optional[models.User]:
+    """Branch 1's lookup. A named function so the suite can drive the concurrent-write race
+    at the one seam where it happens (B-29)."""
+    return db.exec(select(models.User).where(models.User.apple_sub == sub)).first()
+
+
+@router.post("/apple")
+def apple_auth(payload: AppleAuthIn, db: Session = Depends(get_session)):
+    """
+    Sprint 4G (R-01..R-08). Sign in with Apple, for the iOS client.
+
+    Unlike /auth/review-login and /auth/bot-login this stays in the OpenAPI schema: it is a
+    public reader-facing route like /auth/google.
+
+    The linking rule is five ordered branches, first match wins (R-06, pm-decisions E-1):
+
+      1. a row already carries this `apple_sub`  -> that reader. NO email is read at all.
+      2. no match, and the row found by email    -> 401. An existing Apple identity is never
+         carries a DIFFERENT `apple_sub`            overwritten.
+      3. no match, email present, verified,      -> LINK: set `apple_sub` on that row and
+         not a relay, and a row has that email      nothing else. The only branch that links.
+      4. no match, email present and verified    -> create with that email.
+      5. no match, no usable email               -> create with a synthesised placeholder.
+
+    Branch 1 reading no email is the whole design: once a reader is known, a token whose
+    `email` claim changed — they turned Hide My Email on, or changed their Apple ID address —
+    must not move them to another row or rewrite their address.
+    """
+    audiences = _apple_config()
+
+    # Not opted in -> the route behaves as if it does not exist, the same contract
+    # /auth/review-login (`:137-138`) and /auth/bot-login (`:209-210`) already have. This is
+    # what keeps Apple sign-in impossible in local dev, in CI and in a fork.
+    if not audiences:
+        raise HTTPException(status_code=404, detail="Not Found")
+
+    try:
+        claims = apple_keys.verify_identity_token(payload.identity_token, payload.nonce, audiences)
+    except apple_keys.AppleKeysUnavailable:
+        # Apple is unreachable. 503, never a token: "not fetched" must not become "not checked".
+        raise HTTPException(status_code=503, detail="Apple sign-in temporarily unavailable")
+    except apple_keys.AppleTokenInvalid:
+        raise HTTPException(status_code=401, detail=APPLE_INVALID_DETAIL)
+
+    # R-01: everything downstream keys off `sub`, so an absent or empty one is a 401.
+    sub = claims.get("sub")
+    if not isinstance(sub, str) or not sub.strip():
+        raise HTTPException(status_code=401, detail=APPLE_INVALID_DETAIL)
+    sub = sub.strip()
+
+    # Trimmed, never case-folded: branch 3 matches rows that /auth/google created from the
+    # address Google asserted (`:83` does no folding either), so folding here would be a new
+    # normalisation on one side of the comparison only.
+    raw_email = claims.get("email")
+    email = raw_email.strip() if isinstance(raw_email, str) and raw_email.strip() else None
+    verified = _coerce_apple_bool(claims.get("email_verified"))
+    # The claim is the rule; the domain is the floor under it (pm-decisions K-05).
+    # The domain half IS case-folded — a domain is case-insensitive, so a floor that only
+    # recognised the lowercase spelling would not be a floor.
+    is_relay = _coerce_apple_bool(claims.get("is_private_email")) or (
+        email is not None and email.rsplit("@", 1)[-1].lower() == APPLE_RELAY_DOMAIN
+    )
+
+    user = _user_by_apple_sub(db, sub)                      # branch 1
+    is_new = False
+
+    if user is None:
+        by_email = crud.get_user_by_email(db, email) if email else None
+
+        if by_email is not None and by_email.apple_sub and by_email.apple_sub != sub:
+            # branch 2. Never overwrite: this is an attacker-facing rule, not a tidiness one.
+            raise HTTPException(status_code=401, detail=APPLE_INVALID_DETAIL)
+
+        if email and verified and not is_relay and by_email is not None:
+            # branch 3 — the ONLY branch that links, and the link is additive: it writes
+            # `apple_sub` and nothing else. `full_name` is ignored here, or a request body
+            # could rename an existing reader (R-07).
+            user = by_email
+        else:
+            if email and verified:
+                new_email = email                           # branch 4 (relay or real)
+            else:
+                new_email = _apple_placeholder_email(sub)    # branch 5
+            name = payload.full_name or new_email.split("@")[0]
+            random_password = secrets.token_urlsafe(32)
+            user = crud.create_user(
+                db, name=name, email=new_email, password_hash=auth.hash_password(random_password)
+            )
+            is_new = True
+
+        # R-03: persisted in THIS request, before the token is returned. If this write is
+        # lost, every later sign-in creates another account for ever (F4).
+        user.apple_sub = sub
+
+    # Login is activity on the reader's day, whatever their zone — /auth/google's rule at `:95`.
+    user.last_active = localday.utcnow()
+    db.add(user)
+    try:
+        db.commit()
+    except IntegrityError:
+        # A concurrent first sign-in with the same subject beat us to it. The unique index is
+        # the control; this is follow_router.py:39-44's contract, so the loser gets one
+        # deterministic error and never a second row.
+        db.rollback()
+        raise HTTPException(status_code=409, detail="Apple account already linked")
+    db.refresh(user)
+
+    # The ordinary 30-day reader token, carrying NO provider claim: get_current_user resolves
+    # the row on every request (deps.py:76), so the row is the single authority.
+    token = auth.create_access_token({"sub": user.email})
+    return {
+        "access_token": token,
+        "is_new": is_new,
+        # pm-decisions addendum Q-1: additive. `is_new` alone cannot tell a brand-new reader
+        # from a Hide My Email duplicate, and the relay address is right there in the token.
+        "private_relay": bool(is_relay),
+        "user": {"id": user.id, "name": user.name, "email": user.email},
     }
 
 
