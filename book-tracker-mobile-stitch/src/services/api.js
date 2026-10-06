@@ -74,6 +74,17 @@ export const authAPI = {
     const response = await api.post('/auth/google', { token: idToken });
     return response.data;
   },
+  // Sprint 4G (R-09, A-06). `full_name` is omitted entirely when Apple did not give us one:
+  // Apple returns `fullName` on the credential only on the FIRST authorization, and the
+  // server falls back to the email prefix (auth_router.py R-07). Sending the string "null",
+  // or a name synthesised here, would make that fallback unreachable for ever.
+  // `nonce` travels unmodified — the server compares it verbatim against the token's claim.
+  appleLogin: async (identityToken, nonce, fullName) => {
+    const body = { identity_token: identityToken, nonce };
+    if (fullName) body.full_name = fullName;
+    const response = await api.post('/auth/apple', body);
+    return response.data;
+  },
   saveToken: async (token) => { authExpiredNotified = false; await AsyncStorage.setItem('bt_token', token); },
   getToken: async () => AsyncStorage.getItem('bt_token'),
   logout: async () => { await AsyncStorage.removeItem('bt_token'); },

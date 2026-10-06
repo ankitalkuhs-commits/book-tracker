@@ -156,7 +156,12 @@ jobs:
     runs-on: ubuntu-latest
     env:
       # Floor, not a target. See the header.
-      EXPECTED_MIN_TESTS: 121
+      # 2026-10-07, Sprint 4G P4: re-measured at 136 on branch builder-4g-client2
+      # (121 + 15: appleSignIn.test.mjs's A-01..A-13, two of which are A-02a/A-02b).
+      # tests.md predicted 134 for 13 cases; A-02b (iOS is Apple-only, pm-decisions
+      # E-6) and A-13 (the eas.json ios profiles, addendum K-10) are additions this
+      # package had to make and are written up in build-notes-4g-client.md.
+      EXPECTED_MIN_TESTS: 136
     steps:
       - uses: actions/checkout@v4
 
