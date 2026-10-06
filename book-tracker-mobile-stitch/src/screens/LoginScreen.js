@@ -153,13 +153,23 @@ export default function LoginScreen({ onLoginSuccess }) {
             is E-5's "before the tap" half and is a requirement, not copy polish. */}
         {appleAvailable && (<>
           <Text style={styles.appleNotice}>{t('auth.appleNoticeBeforeTap')}</Text>
-          <AppleAuthentication.AppleAuthenticationButton
-            buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
-            buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
-            cornerRadius={APPLE_BTN_HEIGHT / 2}
-            style={styles.appleBtn}
-            onPress={handleAppleSignIn}
-          />
+          {loading ? (
+            // The native button takes no `disabled` and ignores any style we give it, so the
+            // Google button's own idiom is reused instead: swap the control for a spinner of
+            // the same footprint. That is both the feedback and the re-entrancy guard — while
+            // the request is in flight there is no Apple button on screen to tap twice.
+            <View style={styles.appleLoading}>
+              <ActivityIndicator color={colors.onSurface} size="small" />
+            </View>
+          ) : (
+            <AppleAuthentication.AppleAuthenticationButton
+              buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
+              buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
+              cornerRadius={APPLE_BTN_HEIGHT / 2}
+              style={styles.appleBtn}
+              onPress={handleAppleSignIn}
+            />
+          )}
         </>)}
 
         {/* iOS is Apple-only (pm-decisions E-6): there is no iOS Google client, so the Google
@@ -272,6 +282,13 @@ const styles = StyleSheet.create({
   appleBtn: {
     width: '100%', height: APPLE_BTN_HEIGHT,
     marginBottom: 20,
+  },
+  // The in-flight stand-in. Same footprint as appleBtn, so swapping them shifts nothing;
+  // this one is an ordinary View, so centring it is allowed.
+  appleLoading: {
+    width: '100%', height: APPLE_BTN_HEIGHT,
+    marginBottom: 20,
+    alignItems: 'center', justifyContent: 'center',
   },
   appleNotice: { ...type.caption, color: colors.onSurfaceVariant, textAlign: 'center', marginBottom: 12 },
 

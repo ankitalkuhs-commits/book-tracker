@@ -451,6 +451,27 @@ test('apple_button_is_first_and_the_same_size', () => {
   assert.equal(styleNumber(appleBtn, 'marginBottom', 'appleBtn'),
     styleNumber(googleBtn, 'marginBottom', 'googleBtn'));
 
+  // (f) while the request is in flight the reader gets feedback, and it occupies the
+  //     SAME footprint so nothing on the screen jumps. The native button accepts no
+  //     `disabled` prop and ignores styling, so the only honest way to do this is the
+  //     Google button's own idiom — swap the control for a spinner. That also removes
+  //     the button from the screen, which is the re-entrancy guard `disabled={loading}`
+  //     gives the Google side.
+  const swap = ancestors(apple, loginParents).find((a) => a.type === 'ConditionalExpression');
+  assert.ok(swap, 'the Apple button is not swapped for anything while loading — a reader gets no feedback');
+  assert.match(src(loginSrc, swap.test), /^loading$/, `the swap is conditioned on ${src(loginSrc, swap.test)}, not loading`);
+  const spinners = findAll(swap.consequent, (n) => n.type === 'JSXElement' && jsxName(n) === 'ActivityIndicator');
+  assert.equal(spinners.length, 1, `expected exactly one ActivityIndicator while loading, found ${spinners.length}`);
+  const standIns = findAll(swap.consequent, (n) => n.type === 'JSXElement' && jsxName(n) === 'View')
+    .filter((n) => /styles\.apple\w*/.test(src(loginSrc, n.openingElement)));
+  assert.equal(standIns.length, 1, 'the spinner has no appleBtn-sized container');
+  const standInStyle = /styles\.(apple\w*)/.exec(src(loginSrc, standIns[0].openingElement))[1];
+  const standIn = styleEntry(styleObj, standInStyle);
+  assert.equal(styleNumber(standIn, 'height', standInStyle), expected,
+    'the in-flight stand-in is a different height from the button it replaces — the layout would jump');
+  assert.equal(styleNumber(standIn, 'marginBottom', standInStyle),
+    styleNumber(appleBtn, 'marginBottom', 'appleBtn'));
+
   // The Apple button must actually be wired to its own handler.
   const onPress = jsxAttr(apple, 'onPress');
   assert.ok(onPress, 'the Apple button has no onPress');
@@ -505,19 +526,27 @@ test('neither_button_is_behind_a_disclosure', () => {
   const apple = appleButton();
   const google = googleButton();
 
+  // The chain compared is the ELEMENT chain. "Nested one level deeper" is a question
+  // about containers a reader has to get past, so expression containers, logical
+  // guards and the loading ternary are not part of it — and if they were, A-02(f)'s
+  // spinner swap would read as a disclosure, which it is not. The condition scan
+  // below is what catches an actual disclosure, and MUT-4G-49 is caught there.
   const upToScrollView = (el) => {
     const chain = [];
     for (const a of ancestors(el, loginParents)) {
-      chain.push(a.type === 'JSXElement' ? `JSXElement:${jsxName(a)}` : a.type);
-      if (a.type === 'JSXElement' && jsxName(a) === 'ScrollView') return chain;
+      if (a.type !== 'JSXElement') continue;
+      chain.push(`JSXElement:${jsxName(a)}`);
+      if (jsxName(a) === 'ScrollView') return chain;
     }
     assert.fail('no ScrollView ancestor');
   };
   const appleChain = upToScrollView(apple);
   const googleChain = upToScrollView(google);
-  assert.ok(appleChain.length > 1 && googleChain.length > 1, 'an ancestor chain came back empty');
+  assert.ok(appleChain.length > 0 && googleChain.length > 0, 'an ancestor chain came back empty');
   assert.deepEqual(appleChain, googleChain,
-    'one button is nested differently from the other — a button behind one more tap is not an equivalent option');
+    'one button is nested in a container the other is not — a button behind one more tap is not an equivalent option');
+  assert.deepEqual(appleChain, ['JSXElement:ScrollView'],
+    `the Apple button sits inside ${appleChain.join(' > ')} rather than directly in the ScrollView`);
 
   for (const [label, chain, el] of [['apple', appleChain, apple], ['google', googleChain, google]]) {
     for (const bad of ['Modal', 'Collapsible', 'Accordion']) {
@@ -817,7 +846,21 @@ test('is_new_from_the_apple_path_tells_the_reader', () => {
   assert.equal(bodies.length, 2, `expected two body keys, found ${bodies.join(', ')}`);
   for (const k of bodies) {
     const v = getDotted(en, k);
-    assert.match(v, /Google|support|help|contact/i, `${k} offers the reader no route out`);
+    assert.match(v, /support|help|contact/i, `${k} offers the reader no fallback`);
+    // The route has to be one the reader can actually take. This message only ever
+    // appears on iOS, and E-6 means there is no Google button on that screen — so
+    // "sign in with Google" would be an instruction pointing at a control they do
+    // not have, ending in a dead end. The web app is reachable from the same phone.
+    // Checked in EVERY locale, because "Google" and the domain are the same string
+    // in all six and a translator could reintroduce either.
+    for (const code of LOCALE_CODES) {
+      const localised = getDotted(loadLocale(code), k);
+      assert.equal(typeof localised, 'string', `${code}:${k} is missing`);
+      assert.doesNotMatch(localised, /Google/i,
+        `${code}:${k} tells an iOS reader to use Google, which E-6 removed from their screen`);
+      assert.match(localised, /trackmyread\.com/i,
+        `${code}:${k} names no route the reader can take from this phone`);
+    }
   }
   const relayBody = bodies.find((k) => /Relay/.test(k));
   assert.ok(relayBody, 'no relay-specific body key');

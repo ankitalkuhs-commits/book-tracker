@@ -92,33 +92,67 @@ than asserting which case the reader is in.
 
 | | |
 |---|---|
-| en | We created a new TrackMyRead account for this Apple ID. If you already use TrackMyRead with a different email address, that account is separate and still holds your books — sign in with Google to reach it, or contact support and we will help. |
-| de | Wir haben für diese Apple-ID ein neues TrackMyRead-Konto erstellt. Wenn du TrackMyRead bereits mit einer anderen E-Mail-Adresse nutzt, ist dieses Konto davon getrennt und enthält weiterhin deine Bücher – melde dich mit Google an, um es zu erreichen, oder wende dich an den Support, wir helfen dir. |
-| es | Hemos creado una cuenta nueva de TrackMyRead para este ID de Apple. Si ya usas TrackMyRead con otra dirección de correo electrónico, esa cuenta es independiente y conserva tus libros: inicia sesión con Google para acceder a ella o escribe al soporte y te ayudaremos. |
-| fr | Nous avons créé un nouveau compte TrackMyRead pour cet identifiant Apple. Si vous utilisez déjà TrackMyRead avec une autre adresse e-mail, ce compte est distinct et contient toujours vos livres : connectez-vous avec Google pour y accéder, ou contactez le support et nous vous aiderons. |
-| pt | Criamos uma nova conta do TrackMyRead para este ID Apple. Se você já usa o TrackMyRead com outro endereço de e-mail, aquela conta é separada e continua com os seus livros — entre com o Google para acessá-la ou fale com o suporte, que vamos ajudar. |
-| ru | Мы создали новый аккаунт TrackMyRead для этого Apple ID. Если вы уже пользуетесь TrackMyRead с другим адресом электронной почты, тот аккаунт отдельный, и ваши книги остались в нём — войдите через Google, чтобы открыть его, или напишите в поддержку, и мы поможем. |
+| en | We created a new TrackMyRead account for this Apple ID. If you already use TrackMyRead with a different email address, that account is separate and still holds your books — open trackmyread.com in your browser and sign in with the address you used before, or contact support and we will help. |
+| de | Wir haben für diese Apple-ID ein neues TrackMyRead-Konto erstellt. Wenn du TrackMyRead bereits mit einer anderen E-Mail-Adresse nutzt, ist dieses Konto davon getrennt und enthält weiterhin deine Bücher – öffne trackmyread.com im Browser und melde dich mit der bisherigen Adresse an, oder wende dich an den Support, wir helfen dir. |
+| es | Hemos creado una cuenta nueva de TrackMyRead para este ID de Apple. Si ya usas TrackMyRead con otra dirección de correo electrónico, esa cuenta es independiente y conserva tus libros: abre trackmyread.com en el navegador e inicia sesión con la dirección que usabas antes, o escribe al soporte y te ayudaremos. |
+| fr | Nous avons créé un nouveau compte TrackMyRead pour cet identifiant Apple. Si vous utilisez déjà TrackMyRead avec une autre adresse e-mail, ce compte est distinct et contient toujours vos livres : ouvrez trackmyread.com dans votre navigateur et connectez-vous avec l'adresse que vous utilisiez, ou contactez le support et nous vous aiderons. |
+| pt | Criamos uma nova conta do TrackMyRead para este ID Apple. Se você já usa o TrackMyRead com outro endereço de e-mail, aquela conta é separada e continua com os seus livros — abra trackmyread.com no navegador e entre com o endereço que você usava, ou fale com o suporte, que vamos ajudar. |
+| ru | Мы создали новый аккаунт TrackMyRead для этого Apple ID. Если вы уже пользуетесь TrackMyRead с другим адресом электронной почты, тот аккаунт отдельный, и ваши книги остались в нём — откройте trackmyread.com в браузере и войдите с прежним адресом, или напишите в поддержку, и мы поможем. |
 
 **`auth.appleNewAccountRelayBody`** — `is_new && private_relay`. The one case the server knows for
 certain (pm-decisions addendum Q-1), so it names Hide My Email instead of hedging.
 
 | | |
 |---|---|
-| en | You chose Hide My Email, so Apple gave us a private relay address and we created a new, empty account for it. Your books are still on the account under your own email address — sign in with Google to reach it, or contact support and we will help. |
-| de | Du hast „E-Mail-Adresse verbergen“ gewählt, daher hat Apple uns eine anonyme Weiterleitungsadresse gegeben und wir haben dafür ein neues, leeres Konto erstellt. Deine Bücher liegen weiterhin in dem Konto mit deiner eigenen E-Mail-Adresse – melde dich mit Google an, um es zu erreichen, oder wende dich an den Support, wir helfen dir. |
-| es | Elegiste «Ocultar mi correo electrónico», así que Apple nos dio una dirección de reenvío privada y hemos creado una cuenta nueva y vacía para ella. Tus libros siguen en la cuenta de tu propio correo electrónico: inicia sesión con Google para acceder a ella o escribe al soporte y te ayudaremos. |
-| fr | Vous avez choisi « Masquer mon adresse e-mail », Apple nous a donc transmis une adresse relais privée et nous avons créé un nouveau compte vide. Vos livres se trouvent toujours sur le compte associé à votre propre adresse e-mail : connectez-vous avec Google pour y accéder, ou contactez le support et nous vous aiderons. |
-| pt | Você escolheu «Ocultar meu e-mail», então a Apple nos deu um endereço de encaminhamento privado e criamos uma conta nova e vazia para ele. Os seus livros continuam na conta do seu próprio e-mail — entre com o Google para acessá-la ou fale com o suporte, que vamos ajudar. |
-| ru | Вы выбрали «Скрыть e-mail», поэтому Apple передал нам приватный адрес для пересылки, и мы создали для него новый пустой аккаунт. Ваши книги остались в аккаунте с вашим собственным адресом электронной почты — войдите через Google, чтобы открыть его, или напишите в поддержку, и мы поможем. |
+| en | You chose Hide My Email, so Apple gave us a private relay address and we created a new, empty account for it. Your books are still on the account under your own email address — open trackmyread.com in your browser and sign in with that address, or contact support and we will help. |
+| de | Du hast „E-Mail-Adresse verbergen“ gewählt, daher hat Apple uns eine anonyme Weiterleitungsadresse gegeben und wir haben dafür ein neues, leeres Konto erstellt. Deine Bücher liegen weiterhin in dem Konto mit deiner eigenen E-Mail-Adresse – öffne trackmyread.com im Browser und melde dich mit dieser Adresse an, oder wende dich an den Support, wir helfen dir. |
+| es | Elegiste «Ocultar mi correo electrónico», así que Apple nos dio una dirección de reenvío privada y hemos creado una cuenta nueva y vacía para ella. Tus libros siguen en la cuenta de tu propio correo electrónico: abre trackmyread.com en el navegador e inicia sesión con esa dirección, o escribe al soporte y te ayudaremos. |
+| fr | Vous avez choisi « Masquer mon adresse e-mail », Apple nous a donc transmis une adresse relais privée et nous avons créé un nouveau compte vide. Vos livres se trouvent toujours sur le compte associé à votre propre adresse e-mail : ouvrez trackmyread.com dans votre navigateur et connectez-vous avec cette adresse, ou contactez le support et nous vous aiderons. |
+| pt | Você escolheu «Ocultar meu e-mail», então a Apple nos deu um endereço de encaminhamento privado e criamos uma conta nova e vazia para ele. Os seus livros continuam na conta do seu próprio e-mail — abra trackmyread.com no navegador e entre com esse endereço, ou fale com o suporte, que vamos ajudar. |
+| ru | Вы выбрали «Скрыть e-mail», поэтому Apple передал нам приватный адрес для пересылки, и мы создали для него новый пустой аккаунт. Ваши книги остались в аккаунте с вашим собственным адресом электронной почты — откройте trackmyread.com в браузере и войдите с этим адресом, или напишите в поддержку, и мы поможем. |
 
-**The honest gap in this copy, named rather than hidden:** both bodies send the reader to *Google on
-another device or the web*, because on iOS there is no second button to offer (E-6). A reader whose
-only device is this iPhone cannot act on that sentence except by contacting support. That is the
-real residual cost of Apple-only iOS and it is a PM question, not a wording one.
+### The route out, corrected (coordinator, 2026-10-07)
 
-A second gap, inherited from the API package's finding 9: a reader whose email Apple will not vouch
-for gets a synthesised `apple-<digest>@users.noreply.trackmyread.com` address, and **none of this
-copy mentions it**. They will see that address in Settings and nothing explains it.
+The first version of both bodies said **"sign in with Google to reach it"**. That was wrong, and
+wrong in the worst available way: this message appears **only on iOS**, where E-6 means there is no
+Google button on the screen. It read as an instruction and pointed at a control the reader does not
+have, leaving support as the only real route — worse than saying nothing, because the reader spends
+their effort hunting for a button that was deliberately removed.
+
+Both bodies now point at **`trackmyread.com` in the browser**, which the same iPhone can reach in
+Safari, and keep the support line as the fallback. The web client is Google-only too, but that is
+not a problem here: on the web the Google button exists, and the sentence names a destination
+("open trackmyread.com and sign in with the address you used before") rather than a control.
+
+**This is now asserted, in every locale, not just reviewed.** A-11 checks each body in all six
+files for `trackmyread.com` and asserts the word `Google` does **not** appear — the brand name is
+the same string in all six languages, so a translator reintroducing the dead end turns the suite
+red. MUT-4G-68 and MUT-4G-69 prove both halves bite. The old anchor tests.md gives for A-11
+(`/Google|support|help|contact/i`) would have **accepted** the broken copy, because `Google` is one
+of its alternatives; that alternative is the bug and it is removed.
+
+### Accepted gap: the synthesised `@users.noreply.trackmyread.com` address
+
+A branch-5 reader — one whose email Apple will not vouch for — gets
+`apple-<digest>@users.noreply.trackmyread.com` as their account address, and nothing in this copy
+explains it. **Deliberately left unexplained, and here is the reasoning rather than a shrug.**
+
+The moment of confusion is in **Settings**, where `SettingsScreen.js:621` renders `profile?.email`
+weeks later. That file is not P4's — architecture §P4 says "nothing in P4 touches
+`SettingsScreen.js`" and A-07 turns red if it is touched — so fixing it where the confusion happens
+is a different package's work.
+
+The one surface this package *does* own where it could be said is the `is_new` alert, and putting it
+there costs more than it buys: a branch-5 reader is indistinguishable from a branch-4 reader in the
+response (`private_relay` is the relay flag, not a "placeholder address" flag), so the client would
+have to **detect it by matching `data.user.email` against the server's placeholder domain** — a new
+client/server coupling to a string that lives in `auth_router.py` — and a one-off login alert is not
+read again at the moment the reader actually wonders, in Settings, months later. A half-fix with a
+coupling attached is worse than a recorded gap.
+
+**Recommendation for the PM:** either explain it in Settings (one line beside the address, owned by
+whoever next touches that screen), or have the server return the placeholder-ness explicitly so a
+client does not have to infer it from a domain string. Both are out of P4.
 
 ## What I did about `eas.json` (addendum K-10)
 
@@ -169,6 +203,24 @@ No EAS build was run and nothing was registered with Apple.
   entirely for a falsy value — so R-07's email-prefix fallback stays reachable.
 - **`buttonStyle` is `BLACK`** on a cream background beside a white Google pill. A design call, not a
   requirement; D-4G-02's screenshot is where it gets judged.
+- **The in-flight state swaps the button for a spinner, and that was fixable after all.**
+  `AppleAuthenticationButton` takes no `disabled` prop and ignores any style we give it, so the
+  Google button's `disabled={loading}` has no counterpart — the first version of this package
+  maintained `setLoading` and rendered nothing, which I flagged. The fix needs none of the forbidden
+  styling: reuse the Google button's **own** idiom and swap the control for
+  `<View style={styles.appleLoading}><ActivityIndicator/></View>`, a plain View of identical
+  footprint (`width: '100%'`, `height: APPLE_BTN_HEIGHT`, `marginBottom: 20`), so nothing on the
+  screen moves. Swapping it out is also the re-entrancy guard `disabled={loading}` provides on the
+  Google side: while the request is in flight there is no Apple button on screen to tap twice.
+  A-02(f) asserts the swap exists, is conditioned on `loading`, contains exactly one
+  `ActivityIndicator`, and that the stand-in's height equals the **computed** 57 — MUT-66, 67 and 70
+  prove each of those.
+  One consequence worth stating: this put the Apple button inside a `ConditionalExpression`, which
+  made A-03's literal ancestor-chain comparison fail for a reason that has nothing to do with
+  disclosures. A-03 now compares the **element** ancestor chains (and additionally asserts the Apple
+  button is a direct element-child of the `ScrollView`), which is the faithful reading of "neither is
+  nested one level deeper" — a transient loading state is not a container a reader has to get past.
+  MUT-49 is still caught, by the disclosure-condition scan, which is what caught it before.
 
 ## Findings — what I found wrong in the spec, the plan or the brief
 
@@ -242,7 +294,15 @@ Ordered by how much they matter.
     The alert is raised before that call, so it sits over whatever comes next. Not a defect — but the
     citation is one level off, and anyone auditing where a new Apple reader lands will go to the
     wrong file.
-12. **`a11yTouchables.test.mjs` is blind to this screen's new button** (K-17, confirmed):
+12. **tests.md's A-11 content anchor would have passed the broken copy.** Its anchor is
+    `/Google|support|help|contact/i`, and the first version of this package's non-relay body said
+    "sign in with Google to reach it" — which satisfies that regex while telling an iOS reader to use
+    a button E-6 removed from their screen. The plan's anchor list is where that defect was allowed
+    to live, not just my wording. A-11 now requires the web route in every locale and forbids
+    `Google` in all six (MUT-68, MUT-69). **tests.md's A-11 row should lose `Google` from its
+    alternatives**, or the next person writing this copy makes the same mistake and the suite agrees
+    with them.
+13. **`a11yTouchables.test.mjs` is blind to this screen's new button** (K-17, confirmed):
     `AppleAuthenticationButton` is not in `TOUCHABLE_TAGS`, and the pre-tap notice is a plain `Text`
     with no size or contrast assertion anywhere. Nothing here proves the notice is legible at the
     largest accessibility text size, or that it is not clipped. Still section-10 territory.
@@ -277,7 +337,14 @@ did not actually change a file on disk — "caught" cannot be recorded against a
 
 Rows 46–58 are tests.md's. **63, 64, 65** are new for finding 4 and for A-02's shrink mutation;
 **59** is new for A-02b (finding 3); **60** for A-13; **61, 62** for the `private_relay` branch and
-the export-compliance flag.
+the export-compliance flag; **66, 67, 70** for the in-flight swap and **68, 69** for the corrected
+route out, both added for the coordinator's 2026-10-07 correction.
+
+Two rows had to be re-anchored rather than re-written, and the driver is why they were caught:
+MUT-63's anchor `width: '100%', height: APPLE_BTN_HEIGHT,` stopped being unique the moment
+`appleLoading` was added, and MUT-70's `{loading ? (` was never unique because the Google button has
+one of its own. The driver **refused both** instead of mutating the wrong site — which is exactly
+the failure a looser driver would have recorded as "caught".
 
 | MUT-4G | File | Change | Case(s) red | Observed first red line | Caught | Restored |
 |---|---|---|---|---|---|---|
@@ -306,9 +373,16 @@ the export-compliance flag.
 | **63** | LoginScreen.js | style the Apple corner with `borderRadius` | A-02 | `appleBtn sets borderRadius, which expo-apple-authentication ignores and the App Store guidelines forbid` | yes | yes |
 | **64** | LoginScreen.js | drop the `cornerRadius` prop | A-02 | `the Apple button passes no cornerRadius prop` | yes | yes |
 | **65** | LoginScreen.js | `APPLE_BTN_HEIGHT = 48` (shrink the button) | A-02 | `appleBtn.height must equal … (15) … (1.5)` / `48 !== 57` | yes | yes |
+| **66** | LoginScreen.js | remove the loading swap entirely (no feedback in flight) | A-02(f) | `the Apple button is not swapped for anything while loading — a reader gets no feedback` | yes | yes |
+| **67** | LoginScreen.js | `appleLoading` height 40 (the stand-in is a different size) | A-02(f) | `the in-flight stand-in is a different height from the button it replaces — the layout would jump` / `40 !== 57` | yes | yes |
+| **68** | locales/en.json | the non-relay body says "sign in with Google to reach it" | A-11 | `en:auth.appleNewAccountBody tells an iOS reader to use Google, which E-6 removed from their screen` | yes | yes |
+| **69** | locales/fr.json | one locale loses the web route | A-11 | `fr:auth.appleNewAccountRelayBody names no route the reader can take from this phone` | yes | yes |
+| **70** | LoginScreen.js | the swap is conditioned on something other than `loading` | A-02(f) | `the swap is conditioned on false, not loading` | yes | yes |
 
-**25 of 25 rows caught; none stayed green, and none needed a structural substitute.** Every row was
-applied and reverted, and the working tree is clean afterwards.
+**30 of 30 rows caught; none stayed green, and none needed a structural substitute.** Every row was
+applied and reverted, and the working tree is clean afterwards. MUT-68 is the one worth reading
+twice: it is the coordinator's correction turned into a test, and it is red **in English** — the
+locale a reviewer would actually read.
 
 ### The synthetic negatives (the brief's "prove the detector can fail")
 
@@ -317,6 +391,9 @@ applied and reverted, and the working tree is clean afterwards.
 | the availability gate (A-01) | `{Platform.OS === 'ios' && <AppleAuthenticationButton/>}` | the guard's left-hand side is not an `Identifier` — the detector rejects it |
 | the cancel-is-silent walk (A-05) | a `catch` whose `ERR_REQUEST_CANCELED` branch calls `Alert.alert` | exactly **1** violation reported |
 | the `t()`-call notice walk (A-10) | `<Text style={styles.appleNotice}>Hard-coded copy</Text>` | **0** matches — a bare string cannot satisfy it |
+
+The locale checks need no synthetic input: MUT-68 and MUT-69 **are** the negative, applied to the
+shipped files and reverted.
 
 ## Suite counts
 
@@ -351,4 +428,9 @@ Everything tests.md section 10 says, unchanged, plus:
   A-08 pins the bundle id; nothing in this repo can check the Render env var.
 - **The two new native modules are not installed anywhere in this repo.** The lockfile entries are
   resolved and integrity-pinned, and `npm ci` will fetch them, but no build has linked them.
-- **Accessibility of the Apple button and the pre-tap notice** — see finding 12.
+- **Accessibility of the Apple button and the pre-tap notice** — see finding 13.
+- **Nothing proves the corrected route out actually works.** The copy now says "open
+  trackmyread.com and sign in with the address you used before". That the web client signs that
+  reader in to the account holding their books is true of the product today, but no test here
+  touches the web app, and `qa/unit` is asserted **unchanged** by design. P-4G-06 and P-4G-07 are
+  where somebody follows that sentence on a real phone and confirms it ends somewhere.
