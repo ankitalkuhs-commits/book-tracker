@@ -443,6 +443,27 @@ def delete_own_account(
     and all associated data (userbooks, notes, follows, likes, comments, push tokens,
     notification logs, group memberships, group posts).
     """
+    # Sprint 4G (R-13). Apple requires an app that offers Sign in with Apple and account
+    # deletion to revoke the reader's tokens as part of that deletion.
+    #
+    # Three properties, all of them load-bearing:
+    #   * Gated on `apple_sub` — a Google-only reader's deletion makes NO outbound call and is
+    #     byte-identical to today (B-41). A reader who never used Apple must cost nothing.
+    #   * ABOVE the cascade — after the deletes below there is no `apple_sub` left to revoke.
+    #   * Best effort — `revoke_token` returns instead of raising, so a failed, slow or
+    #     unconfigured revocation cannot block the deletion. Guideline 5.1.1(v) is the
+    #     stronger obligation of the two: a reader must be able to delete their account when
+    #     Apple is down (B-42).
+    #
+    # `client_id` is the first configured audience, i.e. the bundle id (architecture E-2
+    # item 5). With `APPLE_AUDIENCES` unset there is no client id to present and nothing is
+    # sent, which is the same inert state an unset `APPLE_PRIVATE_KEY` produces.
+    if current_user.apple_sub:
+        _apple_audiences = _apple_config()
+        apple_keys.revoke_token(
+            current_user.apple_sub, _apple_audiences[0] if _apple_audiences else ""
+        )
+
     uid = current_user.id
 
     # F-50: group activity rows this user triggered, in any group (delete before the

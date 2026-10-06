@@ -63,7 +63,11 @@ jobs:
       # The number is a measurement, not a copy from tests.md. P3 (+8) and P4 raise it again
       # in their own commits; the qa/unit floor at :111 was re-measured at 38 and is
       # deliberately unchanged, because this sprint adds no web code (R-14).
-      EXPECTED_MIN_TESTS: 779
+      # 2026-10-07, Sprint 4G P3 (R-13, revocation on deletion): re-measured at 787 on branch
+      # builder-4g-revoke. 779 + 8 = the five B-40..B-44 ids, of which B-42 is parametrised
+      # over its four failure modes. Measured with `pytest tests -q`, not copied; the
+      # before-value 779 was measured on the same tree first (779 passed in 668s).
+      EXPECTED_MIN_TESTS: 787
     steps:
       - uses: actions/checkout@v4
         with:

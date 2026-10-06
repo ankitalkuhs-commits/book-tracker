@@ -54,11 +54,19 @@ REVIEW_LOGIN_SECRET=                          # see "Review accounts" below
 REVIEW_LOGIN_EMAILS=review.reader@trackmyread.com,review.friend@trackmyread.com
 BOT_LOGIN_SECRET=                             # see "Editorial bots" below (Sprint 4F)
 BOT_LOGIN_EMAILS=tmrbot@trackmyread.com,tmrprompts@trackmyread.com,tmrquotes@trackmyread.com,tmrcircles@trackmyread.com
+APPLE_AUDIENCES=                              # see "Sign in with Apple" below (Sprint 4G)
+APPLE_TEAM_ID=                                # R-13 revocation only
+APPLE_KEY_ID=                                 # R-13 revocation only
+APPLE_PRIVATE_KEY=                            # R-13 revocation only, the .p8 PEM
 ```
 
 `BOT_LOGIN_SECRET` and `BOT_LOGIN_EMAILS` are **both** required for `POST /auth/bot-login`
 to exist at all. With either unset the route returns 404, so it does not exist locally, in
 tests, or in a fork.
+
+`APPLE_AUDIENCES` is required for `POST /auth/apple` to exist at all — with it unset the route
+returns 404, the same contract. The three `APPLE_*` revocation variables are independent of it:
+with any of them unset, sign-in still works and **R-13 is inert** (see "Sign in with Apple").
 
 ### Web frontend (`.env`)
 ```
@@ -328,6 +336,70 @@ Unchanged from the P1/P2 build notes: the PM runs `PM_SQL_QUEUE.md` step 6, then
 **then** the API is deployed, then `BOT_LOGIN_SECRET` / `BOT_LOGIN_EMAILS` are set on Render,
 then `python -m migrations.add_bot_accounts` is run against production. Only after all of
 that is `BOT_ENABLED` set to `true`.
+
+---
+
+## Sign in with Apple (Sprint 4G)
+
+Four environment variables on the Render **API service**, in two independent groups. Neither
+group needs a code deploy; both are read per request.
+
+| Name | Group | What happens when it is unset |
+|---|---|---|
+| `APPLE_AUDIENCES` | sign-in | `POST /auth/apple` returns **404**. No Apple sign-in is possible — locally, in CI, or in a fork. |
+| `APPLE_TEAM_ID` | revocation (R-13) | revocation is **inert**: nothing is sent, the Render log says `apple revoke: not configured, skipped`, and the deletion completes exactly as before. |
+| `APPLE_KEY_ID` | revocation (R-13) | same |
+| `APPLE_PRIVATE_KEY` | revocation (R-13) | same |
+
+`APPLE_AUDIENCES` is the **bundle id**, `com.bookpulse.mobile` (kept knowingly — pm-decisions
+E-2). It is a comma-separated list so a web client can be added later with no API change;
+today it is one value.
+
+### What the PM must create for R-13 — the token revocation key
+
+Apple requires an app that offers Sign in with Apple *and* account deletion to revoke the
+reader's tokens as part of the deletion; it is checked in review alongside Guideline 5.1.1(v).
+Until the key below exists, **R-13 ships inert and that is a recorded submission risk, not an
+oversight** (pm-decisions E-4).
+
+1. **Apple Developer portal -> Certificates, Identifiers & Profiles -> Keys -> `+`.**
+   Name it something like `TrackMyRead Sign in with Apple`, tick **Sign in with Apple**,
+   configure it against the `com.bookpulse.mobile` primary App ID, and **Continue -> Register**.
+2. **Download the `.p8`. It is downloadable exactly once.** Store it in the password manager,
+   not in the repository, not in a chat, not in a commit. The existing
+   `AuthKey_4W4FHZ8NRR.p8` (the App Store Connect CI key) is a **different** key for a
+   different purpose and must not be reused here.
+3. Note the **Key ID** shown on the key's page (10 characters, the `AuthKey_<KEYID>.p8`
+   fragment of the filename) and the **Team ID** from the top-right of the portal
+   (10 characters).
+4. **Render -> the API service -> Environment -> Add Environment Variable**, three of them:
+
+   | Name | Value |
+   |---|---|
+   | `APPLE_TEAM_ID` | the 10-character Team ID |
+   | `APPLE_KEY_ID` | the 10-character Key ID of the key from step 1 |
+   | `APPLE_PRIVATE_KEY` | the **entire contents** of the `.p8`, including the `-----BEGIN PRIVATE KEY-----` and `-----END PRIVATE KEY-----` lines and the newlines between them |
+
+5. Save. Render restarts the service; there is nothing to deploy and nothing to merge.
+
+**It must never reach GitHub Actions.** This repository is public. Nothing in CI needs it: the
+outbound revocation call is injected in every test (`app.apple_keys.http_post`) and every case
+signs with an EC key the test generates.
+
+**Rotation** is a new key in the portal plus two env edits (`APPLE_KEY_ID`,
+`APPLE_PRIVATE_KEY`). Compromise lets an attacker revoke our readers' Apple sessions — a
+nuisance, not a data breach: the key reads nothing and writes nothing in our database.
+
+**Kill switch:** blank `APPLE_PRIVATE_KEY`. Revocation goes inert again on the next request and
+account deletion is unaffected, because revocation can never block a deletion.
+
+### Verifying R-13 once the key is set
+
+A one-time manual check with a **throwaway** Apple ID on a TestFlight build (done-checklist 11):
+sign in, delete the account in Settings -> Account, then confirm TrackMyRead no longer appears
+under that Apple ID's *Settings -> Apple ID -> Password & Security -> Apps Using Apple ID*. The
+Render log for that deletion must show one `apple revoke: status <code>` line and nothing else
+— no token, no email, no `sub`, no `client_secret`, no response body (P-4G-12).
 
 ---
 

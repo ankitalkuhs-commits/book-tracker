@@ -28,6 +28,7 @@ No new dependency: `jose` is already `app/auth.py:5`'s library and `requests` is
 `google.auth.transport.requests` uses underneath.
 """
 import hmac
+import os
 import time
 from typing import Optional
 
@@ -186,3 +187,132 @@ def verify_identity_token(token: str, nonce: str, audiences: list) -> dict:
         raise AppleTokenInvalid("nonce mismatch")
 
     return claims
+
+
+# ─────────────────────────────────────────────────────────────────────────────────────────────
+# R-13: token revocation on account deletion (Sprint 4G, package P3)
+#
+# Apple requires an app that offers Sign in with Apple AND account deletion to revoke the
+# reader's tokens through its REST API as part of that deletion; it is checked in review
+# alongside Guideline 5.1.1(v). Without it the reader's Apple ID keeps listing TrackMyRead
+# under "Apps Using Apple ID" after they deleted their account.
+#
+# The one rule that outranks everything else here: **5.1.1(v) beats revocation.** A reader who
+# asks to be deleted gets deleted, whatever Apple's endpoint does. So `revoke_token` NEVER
+# raises — the swallow lives here rather than in the route, because this module owns the
+# protocol and therefore owns its failure modes, and one guard is easier to reason about than
+# two. Its return value is the outcome, never an exception.
+#
+# R-13 ships INERT: with `APPLE_PRIVATE_KEY` unset (the shipping state until the PM creates the
+# `.p8` — pm-decisions E-4) nothing is attempted and nothing is sent. Enabling it is three
+# environment variables and no deploy.
+# ─────────────────────────────────────────────────────────────────────────────────────────────
+
+APPLE_REVOKE_URL = "https://appleid.apple.com/auth/revoke"
+
+# R-13 says "an exp within an hour" and tests.md B-40 asserts `exp - iat <= 3600`, so that is
+# the ceiling this has to stay under. Ten minutes is plenty for one synchronous call, and it
+# makes a leaked secret useless almost immediately.
+CLIENT_SECRET_TTL_SECONDS = 600
+
+REVOKE_TIMEOUT_SECONDS = 5
+
+
+def _revoke_config() -> tuple:
+    """`APPLE_TEAM_ID`, `APPLE_KEY_ID`, `APPLE_PRIVATE_KEY`, read on every call.
+
+    Per call for the same reason `_apple_config` reads `APPLE_AUDIENCES` per request: a test
+    monkeypatches them, and an operator rotates the key on Render without a code deploy.
+    Read at import time instead and R-13 could only ever be enabled by a restart.
+
+    The PEM is NOT stripped — a PKCS8 PEM's trailing newline is part of the file and
+    `cryptography` is content to have it either way, but trimming the interior would corrupt
+    it, so this does not touch it at all.
+    """
+    return (
+        (os.getenv("APPLE_TEAM_ID") or "").strip(),
+        (os.getenv("APPLE_KEY_ID") or "").strip(),
+        os.getenv("APPLE_PRIVATE_KEY") or "",
+    )
+
+
+def build_client_secret(team_id: str, key_id: str, private_key: str, client_id: str) -> str:
+    """The ES256 `client_secret` Apple's `auth/revoke` authenticates with.
+
+    `iss` is the Team ID, `sub` is the client id (for a native app that is the bundle id, which
+    pm-decisions E-2 keeps as `com.bookpulse.mobile`), `aud` is Apple itself. The `kid` header
+    names which of the team's Sign in with Apple keys signed it, which is why `APPLE_KEY_ID`
+    is a separate variable from the key material.
+
+    ES256, not RS256: Apple only accepts an elliptic-curve signature here, and a `.p8` is an
+    EC key — `jose.jwt.encode(..., algorithm="RS256")` with one raises `JWSError` outright.
+    No new dependency; `python-jose[cryptography]` was already pinned.
+    """
+    now = int(time.time())
+    return jwt.encode(
+        {
+            "iss": team_id,
+            "sub": client_id,
+            "aud": APPLE_ISSUER,
+            "iat": now,
+            "exp": now + CLIENT_SECRET_TTL_SECONDS,
+        },
+        private_key,
+        algorithm="ES256",
+        headers={"kid": key_id},          # jose supplies {"alg","typ"}; measured, not assumed
+    )
+
+
+def http_post(url: str, data: dict, timeout: int):
+    """The single injectable seam for the outbound revocation, the shape `fetch_jwks` already
+    gives verification: a module-level name a test monkeypatches, so CI makes no network call
+    and needs no secret (architecture §Security review 4 — the key must never reach Actions).
+    """
+    return requests.post(url, data=data, timeout=timeout)
+
+
+def revoke_token(apple_sub: str, client_id: str) -> Optional[int]:
+    """Best-effort revocation of a reader's Apple tokens. **Returns, never raises.**
+
+    Returns the HTTP status code when a call completed (including a 4xx/5xx — the status is the
+    outcome, not a reason to fail), and None when nothing was sent: not configured, not gated
+    in, or the attempt itself failed or timed out.
+
+    Signature note (a deliberate deviation from architecture §P3's `revoke_token(user)`): this
+    takes the two strings it needs rather than a `models.User`, which keeps `apple_keys.py`
+    free of the ORM in both directions and makes it impossible for this function to read a
+    column it has no business reading. The route owns the `apple_sub IS NOT NULL` gate.
+
+    Logging discipline (R-13, architecture §Security review 4): a status code and nothing else.
+    No `client_secret`, no PEM, no `apple_sub`, no email, no response body. A failure logs the
+    exception's TYPE NAME only, because `requests` puts the URL — and therefore sometimes the
+    query it was given — into the exception's own string.
+    """
+    try:
+        team_id, key_id, private_key = _revoke_config()
+        if not (apple_sub and client_id and team_id and key_id and private_key):
+            # The shipping state until the PM creates the `.p8` (pm-decisions E-4). Not an
+            # error and not a warning: R-13 is knowingly inert and this is the line that says
+            # so in the Render log.
+            print("apple revoke: not configured, skipped", flush=True)
+            return None
+
+        client_secret = build_client_secret(team_id, key_id, private_key, client_id)
+        resp = http_post(
+            APPLE_REVOKE_URL,
+            {
+                "token": apple_sub,
+                "token_type_hint": "refresh_token",
+                "client_id": client_id,
+                "client_secret": client_secret,
+            },
+            REVOKE_TIMEOUT_SECONDS,
+        )
+        status = getattr(resp, "status_code", None)
+        print(f"apple revoke: status {status}", flush=True)
+        return status
+    except Exception as e:
+        # 5.1.1(v) outranks revocation. There is no failure here that may reach the caller:
+        # the deletion must complete when Apple is down, slow, or misconfigured.
+        print(f"apple revoke: failed ({type(e).__name__})", flush=True)
+        return None
