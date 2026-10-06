@@ -1,6 +1,7 @@
-"""Sprint 4G — Sign in with Apple: the column, the guard, token verification, the linking rule.
+"""Sprint 4G — Sign in with Apple: the column, the guard, verification, linking, revocation.
 
-tests.md packages P1 (B-32, B-32a, B-32b, B-38, B-39) and P2 (B-01..B-13, B-20..B-36).
+tests.md packages P1 (B-32, B-32a, B-32b, B-38, B-39), P2 (B-01..B-13, B-20..B-36) and
+P3 (B-40..B-44, revocation on deletion).
 
 What section 3.1 establishes and what it does not (tests.md non-vacuity rule 10): every token
 here is minted by this suite, with an RSA key this suite generated, against a key document this
@@ -25,7 +26,8 @@ from types import SimpleNamespace
 import pytest
 import requests as requests_lib          # only for the exception type B-11 raises
 from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives.asymmetric import rsa
+from cryptography.hazmat.primitives.asymmetric import ec, rsa
+from sqlalchemy import event
 from fastapi.testclient import TestClient
 from jose import jwt
 from jose.utils import base64url_encode
@@ -35,16 +37,16 @@ from sqlmodel import SQLModel, Session, select
 # ── Import guard (tests.md K-07, non-vacuity rule 5) ─────────────────────────────────────────
 # A missing or renamed symbol must be ONE loud collection error, never N silent skips.
 from app import apple_keys, auth, crud, models, schema_guard
-from app.apple_keys import fetch_jwks, verify_identity_token
+from app.apple_keys import fetch_jwks, revoke_token, verify_identity_token
 from app.models import User
 from app.routers import auth_router
 
 assert callable(verify_identity_token) and callable(fetch_jwks)
+# `revoke_token` is P3's symbol (R-13). P1+P2 deliberately left it out of this guard, because
+# importing a symbol that did not exist yet would have been ONE collection error that took all
+# 64 of their assertions with it. P3 has landed, so the guard tests.md asks for is complete.
+assert callable(revoke_token)
 assert hasattr(User, "apple_sub"), "P1 has not added the column"
-# tests.md's header also imports `revoke_token`. It is P3's symbol and P3 is a separate
-# package that lands after this one, so importing it here would stop this whole file loading
-# and take 64 assertions with it. P3 adds it to this guard with its own cases. Deviation
-# recorded in build-notes-4g-api.md.
 
 from tests.conftest import _auth, _make_user, engine
 
@@ -1346,3 +1348,364 @@ class TestAppleLinking:
         print(f"synthetic leak: {sub}")
         leaked = capsys.readouterr()
         assert sub in leaked.out + leaked.err
+
+
+# -- P3: revocation on deletion (R-13) --------------------------------------------------------
+#
+# THE KEY NEVER ENTERS A FIXTURE (pm-decisions E-4). Every case here signs with an EC key this
+# test generates at import time and injects through `APPLE_PRIVATE_KEY`. The real `.p8` exists
+# only as a Render environment variable, is referenced by path, and its contents never enter a
+# chat, a log, a commit or a fixture.
+#
+# A revocation test is trivial to write vacuously: one that asserts "the deletion returned 200"
+# passes whether or not revocation was attempted at all. So every case here asserts what was
+# CALLED, and separately that the row is gone.
+
+APPLE_REVOKE_URL = "https://appleid.apple.com/auth/revoke"
+TEAM_ID = "4GTEAMID99"
+KEY_ID = "4GKEYID1234"
+REVOKE_BODY_KEYS = {"token", "token_type_hint", "client_id", "client_secret"}
+
+
+def _ec_keypair():
+    """A PKCS8 EC PEM and its public half - the shape of an Apple `.p8` without being one."""
+    key = ec.generate_private_key(ec.SECP256R1())
+    private = key.private_bytes(
+        serialization.Encoding.PEM,
+        serialization.PrivateFormat.PKCS8,
+        serialization.NoEncryption(),
+    ).decode()
+    public = key.public_key().public_bytes(
+        serialization.Encoding.PEM,
+        serialization.PublicFormat.SubjectPublicKeyInfo,
+    ).decode()
+    return private, public
+
+
+_REVOKE_PEM, _REVOKE_PUB = _ec_keypair()
+
+
+def _configure_revoke(monkeypatch, pem=_REVOKE_PEM, team_id=TEAM_ID, key_id=KEY_ID):
+    """The three R-13 variables. `_revoke_config()` reads them per call, so this needs no
+    restart - the same contract `_configure_apple` relies on for `APPLE_AUDIENCES`."""
+    if pem is None:
+        monkeypatch.delenv("APPLE_PRIVATE_KEY", raising=False)
+    else:
+        monkeypatch.setenv("APPLE_PRIVATE_KEY", pem)
+    monkeypatch.setenv("APPLE_TEAM_ID", team_id)
+    monkeypatch.setenv("APPLE_KEY_ID", key_id)
+
+
+class _RecordingPost:
+    """A stub for `apple_keys.http_post`. Records every call; optionally raises, or answers
+    with a given status and body."""
+
+    def __init__(self, status=200, body="", raises=None, side_effect=None):
+        self.calls = []
+        self.status = status
+        self.body = body
+        self.raises = raises
+        self.side_effect = side_effect
+
+    def __call__(self, url, data, timeout):
+        self.calls.append({"url": url, "data": data, "timeout": timeout})
+        if self.side_effect is not None:
+            self.side_effect(self.calls[-1])
+        if self.raises is not None:
+            raise self.raises
+        return SimpleNamespace(status_code=self.status, text=self.body)
+
+
+class _DeleteCounter:
+    """Counts DELETE statements on the engine the running app actually queries through.
+
+    `conftest.stmt_counter` counts SELECT / INSERT / UPDATE-user and NOT deletes, and tests.md
+    forbids changing `conftest.py` in this sprint - so B-43's "no DELETE had been issued yet"
+    needs its own listener. Same `before_cursor_execute` pattern, same engine object (the one
+    this file imports from `tests.conftest`, for the reason `stmt_counter`'s docstring gives).
+    """
+
+    def __init__(self):
+        self.deletes = 0
+
+    def reset(self):
+        self.deletes = 0
+
+    def _hook(self, conn, cursor, statement, parameters, context, executemany):
+        if statement.strip()[:6].upper() == "DELETE":
+            self.deletes += 1
+
+
+def _apple_reader(client, label, email):
+    """Create a reader THROUGH /auth/apple, so `apple_sub` is real and not planted.
+
+    Returns (user_id, apple_sub, auth header). A planted `apple_sub` would test the gate and
+    never the write that put it there.
+    """
+    sub = _sub(label)
+    r = client.post("/auth/apple", json=_body(
+        _mint(sub=sub, email=email, email_verified=True, is_private_email=False)))
+    assert r.status_code == 200, r.text
+    assert r.json()["is_new"] is True
+    body = r.json()
+    return body["user"]["id"], sub, {"Authorization": f"Bearer {body['access_token']}"}
+
+
+def _dependents(db, user_id):
+    """A few rows the cascade must take with it, so B-42 proves the deletion COMPLETED rather
+    than merely returned 200. The row types tests/test_auth.py::TestDeleteAccountCleansDependents
+    requires this route to clear."""
+    book = models.Book(title=f"4g revoke {user_id}", total_pages=100)
+    db.add(book)
+    db.commit()
+    db.refresh(book)
+    db.add(models.UserBook(user_id=user_id, book_id=book.id, status="reading"))
+    db.add(models.PushToken(user_id=user_id, token=f"4g-revoke-token-{user_id}"))
+    db.commit()
+    ub = db.exec(select(models.UserBook).where(models.UserBook.user_id == user_id)).first()
+    db.add(models.Note(user_id=user_id, userbook_id=ub.id, text="4g revoke note"))
+    db.commit()
+
+
+def _dependent_counts(db, user_id):
+    db.expire_all()
+    return {
+        "userbooks": len(db.exec(select(models.UserBook).where(
+            models.UserBook.user_id == user_id)).all()),
+        "notes": len(db.exec(select(models.Note).where(
+            models.Note.user_id == user_id)).all()),
+        "push_tokens": len(db.exec(select(models.PushToken).where(
+            models.PushToken.user_id == user_id)).all()),
+    }
+
+
+# B-42's four failure modes. The deletion must complete in every one of them.
+REVOKE_FAILURE_MODES = ["raises_request_exception", "raises_timeout", "http_500", "key_unset"]
+
+
+def _apply_failure_mode(mode, monkeypatch, body="apple-oops-detail"):
+    """Configure `mode` and return the recording stub, already installed."""
+    if mode == "raises_request_exception":
+        stub = _RecordingPost(raises=requests_lib.RequestException("4g revoke exploded"))
+    elif mode == "raises_timeout":
+        stub = _RecordingPost(raises=requests_lib.Timeout("4g revoke timed out"))
+    elif mode == "http_500":
+        stub = _RecordingPost(status=500, body=body)
+    elif mode == "key_unset":
+        stub = _RecordingPost()
+    else:                                    # pragma: no cover - guarded by the length assert
+        raise AssertionError(f"unknown mode {mode}")
+    _configure_revoke(monkeypatch, pem=None if mode == "key_unset" else _REVOKE_PEM)
+    monkeypatch.setattr(apple_keys, "http_post", stub)
+    return stub
+
+
+class TestAppleRevocation:
+    """R-13. Apple requires an app offering Sign in with Apple and account deletion to revoke
+    the reader's tokens as part of it. Revocation is best effort and Guideline 5.1.1(v)
+    outranks it: a reader who asks to be deleted gets deleted, whatever Apple's endpoint does.
+    """
+
+    def test_revoke_is_called_once_with_a_correct_client_secret(self, client, monkeypatch, db):
+        """B-40. MUT-4G-41: send the raw `.p8` as the `client_secret`; omit the call; sign
+        RS256; set `exp` a day out."""
+        _configure_apple(monkeypatch, BUNDLE_ID)
+        _configure_revoke(monkeypatch)
+        stub = _RecordingPost()
+        monkeypatch.setattr(apple_keys, "http_post", stub)
+
+        uid, sub, headers = _apple_reader(client, "b40", "4g-b40@example.com")
+        r = client.post("/auth/delete-account/me", headers=headers)
+        assert r.status_code == 200, r.text
+
+        # What was CALLED - the assertion a vacuous test leaves out.
+        assert len(stub.calls) == 1
+        call = stub.calls[0]
+        assert call["url"] == APPLE_REVOKE_URL
+        assert set(call["data"]) == REVOKE_BODY_KEYS
+        assert call["data"]["client_id"] == BUNDLE_ID      # architecture E-2 item 5
+        assert call["data"]["token"] == sub
+
+        # VERIFIED against this test's own EC public key, not merely decoded: a secret that
+        # does not verify is not a secret Apple would accept.
+        secret = call["data"]["client_secret"]
+        assert jwt.get_unverified_header(secret) == {
+            "alg": "ES256", "kid": KEY_ID, "typ": "JWT"}
+        claims = jwt.decode(secret, _REVOKE_PUB, algorithms=["ES256"],
+                            audience=APPLE_ISS, issuer=TEAM_ID)
+        assert claims["iss"] == TEAM_ID
+        assert claims["sub"] == BUNDLE_ID
+        assert claims["aud"] == APPLE_ISS
+        assert isinstance(claims["iat"], int)
+        assert claims["exp"] - claims["iat"] <= 3600       # Apple's ceiling
+
+        # ...and SEPARATELY, that the reader is actually gone.
+        assert _row(db, uid) is None
+
+    def test_a_google_only_deletion_makes_no_call(self, client, monkeypatch, db):
+        """B-41. MUT-4G-42: call revoke without the `apple_sub IS NOT NULL` gate.
+
+        "Byte-identical to today" is a COMPARISON, not an assertion about a string, so the
+        before-value is captured from a deletion with the revocation code path monkeypatched
+        out entirely.
+        """
+        _configure_apple(monkeypatch, BUNDLE_ID)
+        _configure_revoke(monkeypatch)
+
+        # The before-value: the revocation path replaced by something that fails the test if
+        # it is reached at all, so this response provably predates R-13.
+        def _must_not_run(*a, **k):          # pragma: no cover - a tripwire, not a path
+            raise AssertionError("the before-value was captured WITH the revocation path")
+
+        # Patched and restored by hand rather than with `monkeypatch.undo()`: undo() reverts
+        # EVERY patch this instance holds, and the autouse `apple_jwks` fixture shares the
+        # instance - so undo() would also un-stub `fetch_jwks` and let the control step below
+        # reach the real network.
+        original_revoke = apple_keys.revoke_token
+        apple_keys.revoke_token = _must_not_run
+        try:
+            before_user = _make_user(db, email="4g-b41-before@example.com", name="B41 Before")
+            before_uid = before_user.id
+            assert before_user.apple_sub is None
+            before = client.post("/auth/delete-account/me", headers=_auth(before_user))
+        finally:
+            apple_keys.revoke_token = original_revoke
+        assert _row(db, before_uid) is None
+
+        # The after: the real code, a live HTTP stub, a Google-only reader.
+        stub = _RecordingPost()
+        monkeypatch.setattr(apple_keys, "http_post", stub)
+        google_only = _make_user(db, email="4g-b41-after@example.com", name="B41 After")
+        google_uid = google_only.id
+        assert google_only.apple_sub is None
+        after = client.post("/auth/delete-account/me", headers=_auth(google_only))
+
+        assert stub.calls == []
+        assert _row(db, google_uid) is None
+        assert after.status_code == before.status_code
+        assert after.json() == before.json()
+        assert after.content == before.content
+
+        # CONTROL (rule 3): the same stub, an Apple reader, one call. So "zero" above is the
+        # gate working and not a broken stub.
+        uid, _, headers = _apple_reader(client, "b41", "4g-b41-apple@example.com")
+        assert client.post("/auth/delete-account/me", headers=headers).status_code == 200
+        assert len(stub.calls) == 1
+        assert _row(db, uid) is None
+
+    @pytest.mark.parametrize("mode", REVOKE_FAILURE_MODES)
+    def test_a_failed_revocation_never_blocks_the_deletion(self, mode, client, monkeypatch, db):
+        """B-42. MUT-4G-43: let the revocation exception propagate.
+
+        Guideline 5.1.1(v) outranks revocation. `key_unset` is the SHIPPING state - the PM has
+        not created the `.p8` yet (pm-decisions E-4), so in production today this is the only
+        one of the four that runs.
+        """
+        assert len(REVOKE_FAILURE_MODES) == 4
+        _configure_apple(monkeypatch, BUNDLE_ID)
+        stub = _apply_failure_mode(mode, monkeypatch)
+
+        uid, _, headers = _apple_reader(
+            client, f"b42{mode[:4]}", f"4g-b42-{mode}@example.com")
+        _dependents(db, uid)
+        assert _dependent_counts(db, uid) == {"userbooks": 1, "notes": 1, "push_tokens": 1}
+
+        r = client.post("/auth/delete-account/me", headers=headers)
+
+        assert r.status_code == 200, r.text
+        assert r.json() == {"message": "Account deleted"}
+        db.expire_all()
+        assert db.get(models.User, uid) is None
+        assert _dependent_counts(db, uid) == {"userbooks": 0, "notes": 0, "push_tokens": 0}
+
+        # The attempt still happened (or was deliberately not configured) - this is what keeps
+        # the case from passing because revocation was quietly skipped.
+        assert len(stub.calls) == (0 if mode == "key_unset" else 1)
+
+    def test_revocation_runs_before_the_row_is_deleted(self, client, monkeypatch, db):
+        """B-43. MUT-4G-44: move the revocation below the cascade.
+
+        After the cascade there is no `apple_sub` left to revoke, so "it works" and "it runs
+        first" are not the same claim. The stub reads the database to prove the second.
+        """
+        _configure_apple(monkeypatch, BUNDLE_ID)
+        _configure_revoke(monkeypatch)
+        uid, sub, headers = _apple_reader(client, "b43", "4g-b43@example.com")
+
+        counter = _DeleteCounter()
+        event.listen(engine, "before_cursor_execute", counter._hook)
+        seen = {}
+
+        def _peek(call):
+            db.expire_all()
+            row = db.get(models.User, uid)
+            seen["row"] = row
+            seen["apple_sub"] = getattr(row, "apple_sub", None)
+            seen["deletes"] = counter.deletes
+
+        stub = _RecordingPost(side_effect=_peek)
+        monkeypatch.setattr(apple_keys, "http_post", stub)
+        try:
+            counter.reset()
+            r = client.post("/auth/delete-account/me", headers=headers)
+        finally:
+            event.remove(engine, "before_cursor_execute", counter._hook)
+
+        assert r.status_code == 200, r.text
+        assert len(stub.calls) == 1
+        assert seen["row"] is not None               # the row was still there
+        assert seen["apple_sub"] == sub              # ...and still carried the subject
+        assert seen["deletes"] == 0                  # ...and nothing had been deleted yet
+        assert counter.deletes > 0                   # control: deletes DID happen afterwards
+        assert _row(db, uid) is None
+
+    def test_nothing_sensitive_is_logged(self, client, monkeypatch, db, capsys):
+        """B-44. MUT-4G-45: `print(resp.text)` on a non-2xx; or log the secret.
+
+        R-13 permits a status code and nothing else. Runs one success and all four B-42 modes,
+        because a failure path is where a response body is most tempting to print.
+        """
+        body = "apple-oops-detail-4g-b44"
+        emails = []
+        secrets = []
+
+        # 1. the success path
+        _configure_apple(monkeypatch, BUNDLE_ID)
+        _configure_revoke(monkeypatch)
+        stub = _RecordingPost(body=body)
+        monkeypatch.setattr(apple_keys, "http_post", stub)
+        capsys.readouterr()
+        email = "4g-b44-ok@example.com"
+        uid, sub, headers = _apple_reader(client, "b44ok", email)
+        assert client.post("/auth/delete-account/me", headers=headers).status_code == 200
+        subs = [sub]
+        emails.append(email)
+        secrets.append(stub.calls[0]["data"]["client_secret"])
+
+        # 2. every failure mode
+        for mode in REVOKE_FAILURE_MODES:
+            mstub = _apply_failure_mode(mode, monkeypatch, body=body)
+            _configure_apple(monkeypatch, BUNDLE_ID)
+            email = f"4g-b44-{mode}@example.com"
+            uid, sub, headers = _apple_reader(client, f"b44{mode[:4]}", email)
+            assert client.post("/auth/delete-account/me", headers=headers).status_code == 200
+            subs.append(sub)
+            emails.append(email)
+            if mstub.calls:
+                secrets.append(mstub.calls[0]["data"]["client_secret"])
+
+        logged = "".join(capsys.readouterr())
+        assert "-----BEGIN" not in logged
+        assert _REVOKE_PEM not in logged
+        assert body not in logged
+        for secret in secrets:
+            assert secret not in logged
+        for value in subs + emails:
+            assert value not in logged, value[:24]
+        # A status code alone IS permitted, and proves the capture is not simply empty.
+        assert "apple revoke: status 200" in logged
+
+        # CONTROL (rule 3): the same detector finds a deliberate leak.
+        print(f"synthetic leak: {body} {subs[0]}")
+        leaked = "".join(capsys.readouterr())
+        assert body in leaked and subs[0] in leaked
