@@ -83,7 +83,11 @@
     "errorGooglePlayServices": "Google Play Services no disponible",
     "errorSignInFailed": "Error al iniciar sesión",
     "sessionExpiredTitle": "Sesión caducada",
-    "sessionExpiredBody": "Vuelve a iniciar sesión."
+    "sessionExpiredBody": "Vuelve a iniciar sesión.",
+    "appleNoticeBeforeTap": "Iniciar sesión con Apple crea una cuenta separada si tu ID de Apple usa otra dirección de correo electrónico o si eliges «Ocultar mi correo electrónico». Tu biblioteca actual permanece en la cuenta con la que te registraste.",
+    "appleNewAccountTitle": "Cuenta nueva creada",
+    "appleNewAccountBody": "Hemos creado una cuenta nueva de TrackMyRead para este ID de Apple. Si ya usas TrackMyRead con otra dirección de correo electrónico, esa cuenta es independiente y conserva tus libros: inicia sesión con Google para acceder a ella o escribe al soporte y te ayudaremos.",
+    "appleNewAccountRelayBody": "Elegiste «Ocultar mi correo electrónico», así que Apple nos dio una dirección de reenvío privada y hemos creado una cuenta nueva y vacía para ella. Tus libros siguen en la cuenta de tu propio correo electrónico: inicia sesión con Google para acceder a ella o escribe al soporte y te ayudaremos."
   },
   "feed": {
     "thoughtsPlaceholder": "¿Qué piensas sobre tu lectura actual?",

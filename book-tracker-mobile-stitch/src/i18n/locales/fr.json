@@ -83,7 +83,11 @@
     "errorGooglePlayServices": "Google Play Services indisponible",
     "errorSignInFailed": "Échec de la connexion",
     "sessionExpiredTitle": "Session expirée",
-    "sessionExpiredBody": "Veuillez vous reconnecter."
+    "sessionExpiredBody": "Veuillez vous reconnecter.",
+    "appleNoticeBeforeTap": "La connexion avec Apple crée un compte distinct si votre identifiant Apple utilise une autre adresse e-mail ou si vous choisissez « Masquer mon adresse e-mail ». Votre bibliothèque actuelle reste sur le compte avec lequel vous vous êtes inscrit.",
+    "appleNewAccountTitle": "Nouveau compte créé",
+    "appleNewAccountBody": "Nous avons créé un nouveau compte TrackMyRead pour cet identifiant Apple. Si vous utilisez déjà TrackMyRead avec une autre adresse e-mail, ce compte est distinct et contient toujours vos livres : connectez-vous avec Google pour y accéder, ou contactez le support et nous vous aiderons.",
+    "appleNewAccountRelayBody": "Vous avez choisi « Masquer mon adresse e-mail », Apple nous a donc transmis une adresse relais privée et nous avons créé un nouveau compte vide. Vos livres se trouvent toujours sur le compte associé à votre propre adresse e-mail : connectez-vous avec Google pour y accéder, ou contactez le support et nous vous aiderons."
   },
   "feed": {
     "thoughtsPlaceholder": "Que pensez-vous de votre lecture actuelle ?",

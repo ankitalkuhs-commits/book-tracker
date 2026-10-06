@@ -6,6 +6,8 @@ import {
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Svg, { Path } from 'react-native-svg';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
+import * as AppleAuthentication from 'expo-apple-authentication';
+import * as Crypto from 'expo-crypto';
 import { useTranslation } from 'react-i18next';
 import { authAPI, warmUp } from '../services/api';
 import { colors, radius, shadow, type } from '../theme';
@@ -26,10 +28,12 @@ const TRUST_AVATARS = [
 export default function LoginScreen({ onLoginSuccess }) {
   const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
+  const [appleAvailable, setAppleAvailable] = useState(false);
 
   useEffect(() => {
     GoogleSignin.configure({ webClientId: WEB_CLIENT_ID, offlineAccess: false });
     warmUp();   // fire-and-forget: wake a sleeping Render instance before the account picker returns (F-31)
+    AppleAuthentication.isAvailableAsync().then(setAppleAvailable, () => setAppleAvailable(false));   // Sprint 4G (R-09)
   }, []);
 
   const handleSignIn = async () => {
@@ -46,6 +50,50 @@ export default function LoginScreen({ onLoginSuccess }) {
       if (error.code === 'SIGN_IN_CANCELLED') { /* user dismissed */ }
       else if (error.code === 'IN_PROGRESS') Alert.alert(t('auth.errorPleaseWait'), t('auth.errorAlreadyInProgress'));
       else if (error.code === 'PLAY_SERVICES_NOT_AVAILABLE') Alert.alert(t('common.error'), t('auth.errorGooglePlayServices'));
+      else Alert.alert(t('auth.errorSignInFailed'), error.message || '');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ── Sprint 4G: Sign in with Apple (R-09, R-10, pm-decisions E-5/E-6) ───────
+  // A sibling of handleSignIn, which is not edited. iOS is Apple-only (E-6), so there is no
+  // second provider to fall back to — which is exactly why the is_new branch below is a
+  // requirement and not polish: a reader whose Apple ID address differs from their account's,
+  // or who taps Hide My Email, lands on a NEW, EMPTY account and must be told so.
+  const handleAppleSignIn = async () => {
+    setLoading(true);
+    try {
+      // R-10: a fresh 64-char hex nonce per attempt, from expo-crypto's CSPRNG. Never
+      // Math.random, never module scope. It goes to Apple and to our server unmodified —
+      // Apple echoes it into the token's `nonce` claim and apple_keys.py compares the two
+      // byte for byte (its floor is 32 characters).
+      const nonce = Array.from(Crypto.getRandomBytes(32)).map(b => b.toString(16).padStart(2, '0')).join('');
+      const credential = await AppleAuthentication.signInAsync({
+        requestedScopes: [
+          AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+          AppleAuthentication.AppleAuthenticationScope.EMAIL,
+        ],
+        nonce,
+      });
+      // Apple gives fullName on the first authorization only. Nothing is invented here: when
+      // both parts are absent this is '' and api.js omits the field (R-07, A-06).
+      const fullName = [credential.fullName?.givenName, credential.fullName?.familyName].filter(Boolean).join(' ');
+      const data = await authAPI.appleLogin(credential.identityToken, nonce, fullName);
+      await authAPI.saveToken(data.access_token);
+      if (data.is_new) {
+        // E-5, after the fact. `private_relay` (pm-decisions addendum Q-1) is the one case the
+        // server can identify exactly; without it the message must stay true both for a
+        // genuinely new reader and for someone who already has an account under another
+        // address, because nothing can tell those two apart.
+        Alert.alert(
+          t('auth.appleNewAccountTitle'),
+          data.private_relay ? t('auth.appleNewAccountRelayBody') : t('auth.appleNewAccountBody'),
+        );
+      }
+      onLoginSuccess?.();
+    } catch (error) {
+      if (error.code === 'ERR_REQUEST_CANCELED') { /* reader dismissed the sheet — silent, as SIGN_IN_CANCELLED is */ }
       else Alert.alert(t('auth.errorSignInFailed'), error.message || '');
     } finally {
       setLoading(false);
@@ -99,6 +147,25 @@ export default function LoginScreen({ onLoginSuccess }) {
           ))}
         </View>
 
+        {/* Apple sign-in (Sprint 4G). The gate is isAvailableAsync(), never Platform.OS:
+            it is false on Android AND on an iOS build where the sheet would not work, so it
+            is the only check that can never render a dead button. The notice above the button
+            is E-5's "before the tap" half and is a requirement, not copy polish. */}
+        {appleAvailable && (<>
+          <Text style={styles.appleNotice}>{t('auth.appleNoticeBeforeTap')}</Text>
+          <AppleAuthentication.AppleAuthenticationButton
+            buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
+            buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
+            cornerRadius={APPLE_BTN_HEIGHT / 2}
+            style={styles.appleBtn}
+            onPress={handleAppleSignIn}
+          />
+        </>)}
+
+        {/* iOS is Apple-only (pm-decisions E-6): there is no iOS Google client, so the Google
+            button must not render where it could not work. The guard is deliberately OUTSIDE
+            the block below — every byte of it is unchanged from 5fc8ccc (A-02a). */}
+        {!appleAvailable && (<>
         {/* Google sign-in */}
         <TouchableOpacity style={styles.googleBtn} onPress={handleSignIn} disabled={loading} activeOpacity={0.85}>
           {loading ? (
@@ -115,6 +182,7 @@ export default function LoginScreen({ onLoginSuccess }) {
             </>
           )}
         </TouchableOpacity>
+        </>)}
 
         {/* Trust badge */}
         <View style={styles.trustRow}>
@@ -136,6 +204,14 @@ export default function LoginScreen({ onLoginSuccess }) {
 }
 
 const CARD_W = (SCREEN_W - 48 - 16) / 3; // 24px padding each side, 8px gap × 2
+
+// Sprint 4G (R-09, tests.md K-03). `googleBtn` declares no height — its rendered height is
+// resolved from its content: a Text in `type.title` (lineHeight 24) plus paddingVertical 15
+// twice plus borderWidth 1.5 twice = 57. AppleAuthenticationButton is a native view with no
+// intrinsic size in RN, so it needs that number explicitly, and the number is written here
+// once rather than guessed: A-02 recomputes it from theme.js and from googleBtn itself and
+// goes red if either source moves.
+const APPLE_BTN_HEIGHT = 57;
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.surface },
@@ -185,6 +261,19 @@ const styles = StyleSheet.create({
     ...shadow.card,
   },
   googleBtnText: { ...type.title, color: colors.onSurface },
+
+  // Apple button — same width, same gap and the same rendered height as the Google pill.
+  // Apple's HIG asks that their button not be smaller than the alternatives.
+  // NO borderRadius and NO backgroundColor here, deliberately: expo-apple-authentication
+  // documents that both are ignored on this native view and that setting them is against the
+  // App Store guidelines. The corner comes from the `cornerRadius` PROP, which is given
+  // APPLE_BTN_HEIGHT / 2 — the same pill the Google button's radius.full (999) clamps to.
+  // Height and width must be styles, though: without them the native view does not appear.
+  appleBtn: {
+    width: '100%', height: APPLE_BTN_HEIGHT,
+    marginBottom: 20,
+  },
+  appleNotice: { ...type.caption, color: colors.onSurfaceVariant, textAlign: 'center', marginBottom: 12 },
 
   // Trust badge
   trustRow:       { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },
