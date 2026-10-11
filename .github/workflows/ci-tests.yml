@@ -156,7 +156,7 @@ jobs:
       # tests.md predicted 134 for 13 cases; A-02b (iOS is Apple-only, pm-decisions
       # E-6) and A-13 (the eas.json ios profiles, addendum K-10) are additions this
       # package had to make and are written up in build-notes-4g-client.md.
-      EXPECTED_MIN_TESTS: 136
+      EXPECTED_MIN_TESTS: 139
     steps:
       - uses: actions/checkout@v4
 
