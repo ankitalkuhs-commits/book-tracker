@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, Alert,
-  ActivityIndicator, ScrollView, Image, StatusBar, Dimensions, Platform,
+  ActivityIndicator, ScrollView, Image, StatusBar, Platform, useWindowDimensions,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Svg, { Path } from 'react-native-svg';
@@ -23,7 +23,6 @@ const GoogleSignin = Platform.OS === 'ios'
   : require('@react-native-google-signin/google-signin').GoogleSignin;
 
 
-const SCREEN_W = Dimensions.get('window').width;
 
 const HERO_IMAGE  = 'https://images.unsplash.com/photo-1507842217343-583bb7270b66?w=800&q=80';
 const WEB_CLIENT_ID = '580873034102-ukh12uuph4c17eqvvbjl1a48alrfepok.apps.googleusercontent.com';
@@ -39,6 +38,14 @@ export default function LoginScreen({ onLoginSuccess }) {
   const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
   const [appleAvailable, setAppleAvailable] = useState(false);
+
+  // Dimensions.get('window') read at MODULE scope froze this to whatever the window was when
+  // the bundle evaluated. On an iPad that is not the rendered width - the scene is sized
+  // afterwards, and changes again on rotation or in Split View - so the third feature card
+  // was cut off the right edge on the first TestFlight build. useWindowDimensions recomputes
+  // on every change.
+  const { width: screenW } = useWindowDimensions();
+  const cardW = (screenW - 48 - 16) / 3;   // 24px padding each side, 8px gap x 2
 
   useEffect(() => {
     // iOS is Apple-only (E-6) and the Google native module is not linked there at all
@@ -154,7 +161,7 @@ export default function LoginScreen({ onLoginSuccess }) {
         {/* Feature cards */}
         <View style={styles.featureRow}>
           {featureCards.map(card => (
-            <View key={card.title} style={styles.featureCard}>
+            <View key={card.title} style={[styles.featureCard, { width: cardW }]}>
               <Text style={styles.featureEmoji}>{card.emoji}</Text>
               <Text style={styles.featureTitle}>{card.title}</Text>
               <Text style={styles.featureDesc}>{card.desc}</Text>
@@ -228,7 +235,6 @@ export default function LoginScreen({ onLoginSuccess }) {
   );
 }
 
-const CARD_W = (SCREEN_W - 48 - 16) / 3; // 24px padding each side, 8px gap × 2
 
 // Sprint 4G (R-09, tests.md K-03). `googleBtn` declares no height — its rendered height is
 // resolved from its content: a Text in `type.title` (lineHeight 24) plus paddingVertical 15
@@ -268,7 +274,7 @@ const styles = StyleSheet.create({
   // Feature cards
   featureRow:  { flexDirection: 'row', gap: 8, marginBottom: 26 },
   featureCard: {
-    width: CARD_W, backgroundColor: colors.surfaceContainerLow,
+    backgroundColor: colors.surfaceContainerLow,
     borderRadius: radius.lg, padding: 14, alignItems: 'center', gap: 4,
     borderWidth: 1, borderColor: colors.outlineVariant + '50',
   },

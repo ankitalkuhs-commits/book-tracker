@@ -976,6 +976,38 @@ test('google_signin_is_not_statically_imported', () => {
     1, 'the detector cannot see a static import, so its pass proves nothing');
 });
 
+// ── A-15 (added after the iPad TestFlight build clipped the third card) ─────
+test('layout_width_is_not_frozen_at_module_scope', () => {
+  // Dimensions.get('window') at module scope is evaluated once, when the bundle loads. On an
+  // iPad the scene is sized afterwards - and changes again on rotation and in Split View -
+  // so any layout derived from it is wrong there. Build 2 cut the third feature card off the
+  // right edge of an iPad because CARD_W was computed that way.
+  const frozen = findAll(loginAst, (n) => n.type === 'CallExpression'
+    && /Dimensions\s*\.\s*get/.test(src(loginSrc, n.callee)));
+  const atModuleScope = frozen.filter((n) => !ancestors(n, parentsOf(loginAst))
+    .some((a) => a.type === 'FunctionDeclaration' || a.type === 'ArrowFunctionExpression'
+      || a.type === 'FunctionExpression'));
+  assert.deepEqual(atModuleScope.map((n) => src(loginSrc, n)), [],
+    'Dimensions.get() at module scope - frozen width, wrong on iPad and after rotation');
+
+  // and the responsive hook is what replaced it
+  const hook = findAll(loginAst, (n) => n.type === 'CallExpression'
+    && n.callee.name === 'useWindowDimensions');
+  assert.equal(hook.length, 1,
+    `expected useWindowDimensions() to supply the width, found ${hook.length} call(s)`);
+
+  // CONTROL (rule 3): the detector must see a module-scope Dimensions.get when there is one.
+  const synSrc = `const W = Dimensions.get('window').width;\nconst C = () => <View/>;`;
+  const synthetic = parseJS(synSrc);
+  const synFrozen = findAll(synthetic, (n) => n.type === 'CallExpression'
+    && /Dimensions\s*\.\s*get/.test(src(synSrc, n.callee)))
+    .filter((n) => !ancestors(n, parentsOf(synthetic))
+      .some((a) => a.type === 'FunctionDeclaration' || a.type === 'ArrowFunctionExpression'
+        || a.type === 'FunctionExpression'));
+  assert.equal(synFrozen.length, 1,
+    'the detector cannot see a module-scope Dimensions.get, so its pass proves nothing');
+});
+
 // ── A-13 (pm-decisions addendum K-10 — new in this package) ─────────────────
 test('eas_json_has_ios_profiles_and_leaves_android_alone', () => {
   const eas = JSON.parse(readMobile('eas.json'));
