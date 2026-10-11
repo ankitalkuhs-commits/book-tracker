@@ -572,6 +572,17 @@ def delete_own_account(
     )).all():
         db.delete(row)
 
+    # Sprint 4I-B (R-08, F11): blocks, BOTH directions, in the same transaction and above the
+    # `user` delete below. `block` carries no foreign key, so skipping either direction fails
+    # nothing loudly — it leaves a row pointing at a dead `user.id`, and the hidden-id set
+    # computed from it then hides a reader who no longer exists from somebody who never blocked
+    # them. The INBOUND half is the one a careless cascade misses, so B-33 asserts it by name
+    # and P-4I-08 is the production-shaped version of the same query.
+    for row in db.exec(select(models.Block).where(
+        (models.Block.blocker_id == uid) | (models.Block.blocked_id == uid)
+    )).all():
+        db.delete(row)
+
     # Notes, likes, comments
     note_ids = [n.id for n in db.exec(select(models.Note).where(models.Note.user_id == uid)).all()]
     for nid in note_ids:

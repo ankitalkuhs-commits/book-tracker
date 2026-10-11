@@ -24,6 +24,11 @@ Two decisions come from pm-decisions.md and override spec.md where they differ:
 - **20 reports per reporter per 24 hours** (Q-2), server-enforced, in the shape of Sprint 4F's
   bot cap (`notes_router.py:159-176`): the cap runs before anything is written, so a 429 leaves
   nothing behind. spec R-09 ("no rate limiter, the unique index is the cap") is superseded.
+
+Sprint 4I-B adds **`also_block`** to the request body (pm-decisions Q-3) and the one visibility
+condition a `user` target has — a blocked pair is 404'd like a missing row. The report and the
+block are written in ONE transaction, which is why `also_block` could not exist before blocking
+did and why it is a field here rather than a second request the client has to sequence.
 """
 from datetime import timedelta
 from typing import Optional
@@ -33,7 +38,7 @@ from pydantic import BaseModel, Field as PydField
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, func, select
 
-from .. import localday, models
+from .. import blocks, localday, models        # Sprint 4I-B: the MODULE, never the function
 from ..deps import get_db, get_current_user, deny_bot_actor
 from ..notifications.dispatcher import fire_event
 from .likes_comments import _assert_can_view_note
@@ -70,6 +75,14 @@ class ReportCreate(BaseModel):
     target_id: int
     reason: str
     detail: Optional[str] = PydField(default=None, max_length=1000)
+    # Sprint 4I-B (pm-decisions E-3 and Q-3). The report dialog carries "Also block this person",
+    # CHECKED BY DEFAULT, because what matters in the moment is relief by the reader's own hand.
+    # It is a field on THIS request and not a second call: two requests leave "what if the block
+    # half fails" to be specified, and the answer here is that there is no second half — the
+    # report and the block are written in one transaction, so either both happen or neither does.
+    # The default is False on the WIRE: an old client that does not know the field must not start
+    # blocking people. The checked-by-default decision belongs to the clients (C-13).
+    also_block: bool = False
 
 
 def _not_found() -> HTTPException:
@@ -146,6 +159,12 @@ def _resolve_target(db: Session, viewer: models.User, target_type: str, target_i
         raise _not_found()
     if subject.id == viewer.id:
         raise HTTPException(status_code=400, detail="You cannot report yourself")
+    # Sprint 4I-B: the one visibility condition a `user` target DOES have. Q-2's rule is "a user
+    # target is reportable iff `GET /profile/{id}` would not 404 for that viewer — i.e. the row
+    # exists AND the pair is not blocked"; `is_private_profile` stays irrelevant. The same 404 as
+    # a missing row, so the route still distinguishes nothing.
+    if blocks.is_blocked_pair(db, viewer, subject.id):
+        raise _not_found()
     return subject.id, None
 
 
@@ -163,6 +182,25 @@ def _existing_report(db: Session, reporter_id: int, target_type: str, target_id:
         .where(models.Report.target_type == target_type)
         .where(models.Report.target_id == target_id)
     ).first()
+
+
+def _write_block(db: Session, blocker_id: int, blocked_id: int) -> None:
+    """Stage the `also_block` block and the teardown it implies. DOES NOT COMMIT.
+
+    The existing-row check is not an optimisation. Without it, reporting somebody who is already
+    blocked raises on `uq_block_pair`, and the handler's `except IntegrityError` — which exists
+    for the duplicate REPORT — would roll back the report as well and answer 200 "received" with
+    nothing written. Reporting a reader you blocked earlier is an ordinary thing to do, so it
+    must not cost the report.
+    """
+    if db.exec(
+        select(models.Block)
+        .where(models.Block.blocker_id == blocker_id)
+        .where(models.Block.blocked_id == blocked_id)
+    ).first():
+        return
+    db.add(models.Block(blocker_id=blocker_id, blocked_id=blocked_id))
+    blocks.sever_relationships(db, blocker_id, blocked_id)
 
 
 def _admin_ids(db: Session) -> list[int]:
@@ -226,9 +264,19 @@ def create_report(
     target_user_id, snapshot = _resolve_target(db, current_user, payload.target_type,
                                                payload.target_id)
 
+    # Sprint 4I-B (pm-decisions Q-3). Whether the block is written is decided here, before the
+    # duplicate check below, so that re-reporting somebody with the box ticked still blocks them.
+    # `target_user_id` is None only for a `user` target with no author, which cannot happen —
+    # `_resolve_target` returns the subject's own id there.
+    block_target = target_user_id if (payload.also_block and target_user_id
+                                      and target_user_id != current_user.id) else None
+
     if _existing_report(db, current_user.id, payload.target_type, payload.target_id):
         # A reader tapping Report twice has not done anything wrong (R-01): the first report's
         # state, no second row, and a 200 that says no more than the 201 does.
+        if block_target is not None:
+            _write_block(db, current_user.id, block_target)
+            db.commit()
         response.status_code = status.HTTP_200_OK
         return dict(_RECEIVED)
 
@@ -243,6 +291,12 @@ def create_report(
         status="open",
     )
     db.add(report)
+    if block_target is not None:
+        # ONE transaction with the report (pm-decisions Q-3): the block row and the teardown of
+        # every live relationship between the two go in before the single commit below, so there
+        # is no partial state in which the reader is told "report received" while the block
+        # silently did not happen.
+        _write_block(db, current_user.id, block_target)
     try:
         db.commit()
     except IntegrityError:

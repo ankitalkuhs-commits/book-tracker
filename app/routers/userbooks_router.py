@@ -4,7 +4,8 @@ from typing import Optional, Literal
 from sqlmodel import Session, select
 from sqlalchemy.exc import IntegrityError
 from ..deps import get_db, get_current_user
-from .. import crud, models, localday
+# Sprint 4I-B (K-4I-10): the MODULE, never the bound function.
+from .. import blocks, crud, models, localday
 from typing import List
 from ..models import UserBook, Book, Follow   # adjust import path if different
 from datetime import datetime, timedelta
@@ -491,6 +492,11 @@ def get_user_books(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
+    # Sprint 4I-B (R-22 row 10): before the private gate below, same 404 body as a deleted
+    # account, so a block is indistinguishable from an account that is gone.
+    if blocks.is_blocked_pair(db, current_user, user_id):
+        raise HTTPException(status_code=404, detail="User not found")
+
     # Enforce private profile — non-followers cannot see books
     if getattr(user, "is_private_profile", False) and current_user.id != user_id:
         is_following = bool(db.exec(
@@ -557,7 +563,11 @@ def get_friends_currently_reading(
     
     if not following:
         return []
-    
+
+    # Sprint 4I-B (R-22 row 11). AFTER the early return. The response carries `user.name` and
+    # `profile_picture`, so it is filtered even though R-21 already empties it.
+    hidden = blocks.hidden_user_ids(db, current_user)
+
     following_ids = list(following)
     
     # Get mutual follows (users who follow you back)
@@ -578,7 +588,8 @@ def get_friends_currently_reading(
         .where(
             and_(
                 UserBook.user_id.in_(following_ids),
-                UserBook.status == "reading"
+                UserBook.status == "reading",
+                UserBook.user_id.notin_(hidden),        # Sprint 4I-B (R-22 row 11)
             )
         )
         .order_by(UserBook.updated_at.desc())

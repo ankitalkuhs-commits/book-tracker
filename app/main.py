@@ -8,7 +8,7 @@ from fastapi.staticfiles import StaticFiles
 from starlette.responses import JSONResponse
 from pathlib import Path
 from .database import init_db
-from .routers import auth_router, books_router, userbooks_router, notes_router, follow_router, profile_router, googlebooks_router, likes_comments, users_router, admin_router, reading_activity_router, push_router, groups_router, import_router, meta_router, bots_router, reports_router
+from .routers import auth_router, books_router, userbooks_router, notes_router, follow_router, profile_router, googlebooks_router, likes_comments, users_router, admin_router, reading_activity_router, push_router, groups_router, import_router, meta_router, bots_router, reports_router, blocks_router
 from .notifications.router import router as notifications_router
 import os
 # ---------------------
@@ -148,6 +148,7 @@ app.include_router(import_router.router)
 app.include_router(meta_router.router)
 app.include_router(bots_router.router)   # Sprint 4F R-15
 app.include_router(reports_router.router)  # Sprint 4I-A R-02
+app.include_router(blocks_router.router)   # Sprint 4I-B R-20
 
 # ---------------------
 # Step 4.5: Mount static files for uploads

@@ -139,7 +139,14 @@ def create_note(db: Session, *, user_id: int, text: Optional[str] = None,
     return note
 
 
-def get_notes_feed(db: Session, limit: int = 50) -> List[models.Note]:
+def get_notes_feed(db: Session, limit: int = 50, hidden=frozenset()) -> List[models.Note]:
+    """Sprint 4I-B (R-22 row 1): `hidden` is the viewer's block set, from
+    `blocks.hidden_user_ids`. The default is empty, so the one other caller shape stays
+    byte-identical — the same discipline `create_note`'s `commit=` kwarg uses above.
+
+    `notin_(empty)` is safe and adds no statement on the pinned SQLAlchemy 1.4.41, so there is
+    deliberately no `if hidden:` branch here: a shortcut would mean the day-one path (nobody has
+    blocked anyone) never exercised this line. B-35b is the case, MUT-4I-60 is the shortcut."""
     # Return public notes from non-private profiles, most recent first
     q = (
         select(models.Note)
@@ -147,6 +154,7 @@ def get_notes_feed(db: Session, limit: int = 50) -> List[models.Note]:
         .where(
             models.Note.is_public == True,
             models.User.is_private_profile == False,
+            models.Note.user_id.notin_(hidden),
         )
         .order_by(models.Note.created_at.desc())
         .limit(limit)

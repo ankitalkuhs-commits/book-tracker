@@ -302,6 +302,64 @@ Step 10 is additive, re-runnable, and touches no existing row of any table.
 
 ---
 
+## 11. Sprint 4I-B — the `block` table — WRITES, additive, and it gates the 4I-B deploy
+
+Run this **after** step 10 has run and the 4I-A API is deployed, and **before** the Sprint 4I-B
+API deploy. These are two separate deploys, not one. `schema_guard` requires `block.blocked_id`,
+so the commit that adds it refuses to start until this has run (that is the guard working: Render
+fails the deploy and the previous version keeps serving).
+
+This is the table behind `POST /blocks/{user_id}`. App Store Review Guideline 1.2 item 3 requires
+the ability to block abusive users, and there is none in the product today. A block is symmetric
+in visibility and interaction, asymmetric in control — only the blocker sees it or can lift it,
+and the blocked reader is never told.
+
+```sql
+CREATE TABLE IF NOT EXISTS block (
+    id          SERIAL PRIMARY KEY,
+    blocker_id  INTEGER   NOT NULL,
+    blocked_id  INTEGER   NOT NULL,
+    created_at  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_block_pair ON block (blocker_id, blocked_id);
+CREATE INDEX IF NOT EXISTS ix_block_blocked ON block (blocked_id);
+```
+
+**One row per block, read both ways.** The row records who blocked whom; the symmetry is in the
+read, not the storage. Two rows per block would double every write and would make "only the
+blocker can lift it" a convention rather than a fact about the data.
+
+**`uq_block_pair` is what makes a double block idempotent** under concurrency: the handler
+catches the unique violation and returns the state the caller asked for, so tapping Block twice
+is never a 500 and never a second row.
+
+**`ix_block_blocked` is the one index this design needs at runtime.** Every filtered request runs
+`WHERE blocker_id = :me OR blocked_id = :me`; `uq_block_pair` covers the first arm, and without
+an index on `blocked_id` the second arm is a sequential scan on every one of them. At 131 readers
+that is free — it is here so it does not have to be found later.
+
+**No foreign keys**, matching `report`. The account-deletion cascade deletes both directions
+itself, and a foreign key would turn a missed cascade step into a 500 instead of the orphan row
+the verification query below looks for.
+
+**Verify — send the output back.**
+
+```sql
+-- 4 rows: id, blocker_id, blocked_id, created_at
+SELECT column_name, data_type, character_maximum_length, is_nullable
+  FROM information_schema.columns
+ WHERE table_schema = current_schema() AND table_name = 'block'
+ ORDER BY ordinal_position;
+-- 3 rows: block_pkey, ix_block_blocked, uq_block_pair
+SELECT indexname FROM pg_indexes WHERE tablename = 'block' ORDER BY indexname;
+-- must return 0: nothing has been written yet
+SELECT count(*) FROM block;
+```
+
+Step 11 is additive, re-runnable, and touches no existing row of any table.
+
+---
+
 ## What Claude does with each answer
 
 | You send | Claude does |
@@ -315,3 +373,4 @@ Step 10 is additive, re-runnable, and touches no existing row of any table.
 | 8. column row + index row + 0 | deploys Sprint 4G's API package (the commit carrying `("user","apple_sub")` in `schema_guard`), then checks `/version` |
 | 9. column row + no index + 0 | deploys Sprint 4H's API package (the commit carrying `("user","apple_refresh_token")` in `schema_guard`), then checks `/version` |
 | 10. 13 column rows + 3 index names + 0 | deploys Sprint 4I-A's API package (the commit carrying `("report","reason")` in `schema_guard`), then checks `/version` and files one real report end to end |
+| 11. 4 column rows + 3 index names + 0 | deploys Sprint 4I-B's API package (the commit carrying `("block","blocked_id")` in `schema_guard`), then checks `/version` and runs the two invariant queries: no `follow` row survives for a blocked pair, and no `block` row points at a missing `user.id` |

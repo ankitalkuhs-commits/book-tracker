@@ -7,7 +7,8 @@ from pydantic import BaseModel
 from datetime import datetime, timedelta, date
 from ..database import get_session
 from ..deps import get_current_user
-from .. import models, localday
+# Sprint 4I-B (K-4I-10): the MODULE, never the bound function.
+from .. import blocks, models, localday
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -48,7 +49,12 @@ def search_users(
     """
     if not q or len(q.strip()) < 1:
         return []
-    
+
+    # Sprint 4I-B (R-22 row 8). AFTER the q="" early return above, so BQ-23e keeps its count of
+    # 1. The exclusion goes INSIDE the existing `and_`, so it costs no second statement beyond
+    # this one: a block that leaves the reader findable by name is not a block.
+    hidden = blocks.hidden_user_ids(db, current_user)
+
     search_term = f"%{q.lower()}%"
     
     # Search by username (case-insensitive)
@@ -57,6 +63,7 @@ def search_users(
         .where(
             and_(
                 models.User.id != current_user.id,  # Exclude current user
+                models.User.id.notin_(hidden),      # Sprint 4I-B (R-22 row 8)
                 or_(
                     func.lower(models.User.username).like(search_term),
                     func.lower(models.User.name).like(search_term)
@@ -127,13 +134,20 @@ def get_following_list(
     
     if not following_records:
         return []
-    
+
+    # Sprint 4I-B (R-22 row 9). AFTER the early return, so BQ-22e keeps its count of 2. R-21
+    # already empties this list for a blocked pair; it is filtered anyway because the response
+    # carries `name`, `username` and `bio` and one filter is cheaper than trusting an invariant
+    # two separate pieces of code maintain.
+    hidden = blocks.hidden_user_ids(db, current_user)
+
     followed_ids = [f.followed_id for f in following_records]
     
     # Get user details
     users = db.exec(
         select(models.User)
         .where(models.User.id.in_(followed_ids))
+        .where(models.User.id.notin_(hidden))        # Sprint 4I-B (R-22 row 9)
     ).all()
     
     # Check which ones follow back (mutual)
@@ -194,6 +208,12 @@ def get_user_stats(
     # Verify user exists
     user = db.get(models.User, user_id)
     if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Sprint 4I-B (R-22 row 7): before the private gate below, same 404 body as a deleted
+    # account. This is the row that moves BQ-24 — the project's only TARGET row this sprint
+    # touches — from 3 to 4. The N+1 fix it records is untouched; only the block check is new.
+    if blocks.is_blocked_pair(db, current_user, user_id):
         raise HTTPException(status_code=404, detail="User not found")
 
     # Enforce private profile — same guard as /profile/{user_id}

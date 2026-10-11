@@ -7,7 +7,8 @@ This version matches your existing DB which uses `password_hash`.
 from typing import Optional, List
 from datetime import datetime
 from sqlmodel import Field, Relationship, SQLModel
-from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, JSON, UniqueConstraint
+from sqlalchemy import (Column, Integer, String, Text, DateTime, ForeignKey, Index, JSON,
+                        UniqueConstraint)
 from sqlalchemy.sql import func
 from .database import Base
 
@@ -270,6 +271,43 @@ class Report(SQLModel, table=True):
     resolved_at: Optional[datetime] = Field(default=None)
     resolved_by: Optional[int] = Field(default=None)
     resolution: Optional[str] = Field(default=None, max_length=500)
+
+
+class Block(SQLModel, table=True):
+    """Sprint 4I-B (R-20): one reader has blocked another.
+
+    ONE ROW, READ BOTH WAYS. The row records who blocked whom; the symmetry lives in the read
+    (`app/blocks.py`'s two `or_` arms), not in the storage. Two rows per block would double
+    every write and would make "only the blocker can lift it" (R-20's asymmetric control) a
+    convention rather than a fact about the data.
+
+    `uq_block_pair` is what makes a double block idempotent under concurrency — the handler
+    catches the IntegrityError and returns the existing state, the shape
+    `follow_router.py:39-44` already uses.
+
+    `ix_block_blocked` is the one index this design needs at runtime. The helper's query is
+    `WHERE blocker_id = :me OR blocked_id = :me`; `uq_block_pair` covers the first arm, and
+    without an index on `blocked_id` the second arm is a sequential scan on every filtered
+    request. At 131 readers that is free; it is declared so it does not have to be found later.
+
+    NO FOREIGN KEYS, matching `Follow` (`:135-142`) — its `follower_id`/`followed_id` carry
+    FKs, so this is the one place the two tables differ, and deliberately: the account-deletion
+    cascade (`auth_router.py`) deletes both directions itself and a FK would make a missed
+    cascade step a 500 instead of the orphan row the production check (P-4I-08) looks for.
+    Checked by B-50, which asserts the FK set is empty.
+    """
+    __tablename__ = "block"
+    # The index is spelled out rather than taken from `Field(index=True)`, because that would
+    # name it `ix_block_blocked_id` while PM step 11 creates `ix_block_blocked`. A model index
+    # whose name differs from the migration's is a dev/prod divergence nothing catches, so the
+    # two are kept identical here and asserted by B-50 and B-53.
+    __table_args__ = (UniqueConstraint("blocker_id", "blocked_id", name="uq_block_pair"),
+                      Index("ix_block_blocked", "blocked_id"))
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    blocker_id: int = Field(nullable=False)
+    blocked_id: int = Field(nullable=False)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
 
 
 from typing import Optional

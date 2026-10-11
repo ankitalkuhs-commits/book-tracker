@@ -10,6 +10,8 @@ import cloudinary.uploader
 
 from ..models import User, UserBook, Follow, Book
 from ..deps import get_db, get_current_user
+# Sprint 4I-B (K-4I-10): the MODULE, never the bound function.
+from .. import blocks
 
 cloudinary.config(
     cloud_name=os.getenv("CLOUDINARY_CLOUD_NAME"),
@@ -203,6 +205,15 @@ async def upload_profile_picture(
 def get_public_profile(user_id: int, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
     user = db.get(User, user_id)
     if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Sprint 4I-B (R-22 row 6): BEFORE `is_self` and, crucially, before the private-profile gate
+    # further down. A block must not be able to make a private profile OPEN, and it cannot,
+    # because a blocked pair is 404'd here and never reaches the gate. The order is the
+    # requirement, not incidental — B-16 asserts all three halves: the blocked reader gets 404,
+    # an unblocked non-follower still gets 200 with `locked: true`, and the blocked response is
+    # not that 200. The body is the same "User not found" a deleted account gives (B-13a).
+    if blocks.is_blocked_pair(db, current_user, user.id):
         raise HTTPException(status_code=404, detail="User not found")
 
     # Self-view always allowed

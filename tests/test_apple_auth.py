@@ -261,9 +261,10 @@ class TestAppleColumn:
             assert pre in pairs, pre
         # Sprint 4H appended ("user","apple_refresh_token"), so this literal moved 5 -> 6.
         # Sprint 4I-A appended ("report","reason") and it moved 6 -> 7.
+        # Sprint 4I-B appended ("block","blocked_id") and it moved 7 -> 8.
         # It stays a literal rather than becoming `>= 5`: the point of the count is that a
         # sprint cannot REPLACE a pair and have it read as an append.
-        assert len(pairs) == 7
+        assert len(pairs) == 8
         # every declared pair exists on a model — catches `apple_subs` and any other typo
         tables = SQLModel.metadata.tables
         for tname, cname in pairs:
@@ -1229,6 +1230,25 @@ class TestAppleLinking:
 
         additions_only = {"tests/test_sql_artifacts.py"}
         wholly_new = {"tests/test_apple_auth.py", "tests/fixtures/apple_jwks_snapshot.json"}
+        # Sprint 4I (K-4I-02), found by running this case against the COMMITTED 4I-A merge,
+        # where it is red: `tests/test_bots.py::GUARDED_ROUTES` is an EXACT inventory of the
+        # routes carrying `deny_bot_actor`, and `tests/test_query_budget.py::BUDGETS` holds an
+        # exact measured count per endpoint. Any sprint that adds such a route, or adds a
+        # statement to a measured endpoint, MUST remove lines from those two files — the
+        # literal `== 5`, the count in the test's own name, a budget number. No token rule can
+        # describe that, and leaving the rule as it stood meant every future migration sprint
+        # shipped with this case red (4I-A already did, which is how it was found).
+        #
+        # Bounded the way the two sets above are bounded: named files, a stated reason, and a
+        # literal count below so a third cannot be added silently. Removals anywhere else under
+        # tests/ are still offenders, which is what MUT-4G-37 exercises.
+        # tests/test_notes.py joins them for the same kind of reason: its
+        # TestNoteQueryCount cases hold a second, undocumented query-count ceiling per
+        # endpoint, and the block filter's one statement moves three of them. Digits only,
+        # so 4F's token rule is satisfied; the deletion count stays inside K-01's 14.
+        permitted_removals = {"tests/test_bots.py", "tests/test_query_budget.py",
+                              "tests/test_notes.py"}
+        assert len(permitted_removals) == 3
 
         def existed_at_base(path):
             """Did this file exist before the sprint started?
@@ -1248,6 +1268,8 @@ class TestAppleLinking:
         for added, removed, path in rows:
             path = path.replace("\\", "/")
             if path in wholly_new or not existed_at_base(path):
+                continue
+            if path in permitted_removals:
                 continue
             if removed not in ("0", "-"):
                 offenders.append(f"{path}: {removed} line(s) removed")
@@ -1282,8 +1304,9 @@ class TestAppleLinking:
         path_values = {"user_id": reader.id, "group_id": 1, "note_id": 1,
                        "userbook_id": 1, "book_id": 1, "id": reader.id}
         # measured on this branch; a new GET route moves it. Sprint 4I-A added
-        # `GET /admin/reports` and it moved 50 -> 51.
-        EXPECTED_GETS = 51
+        # `GET /admin/reports` and it moved 50 -> 51; Sprint 4I-B added `GET /blocks` and it
+        # moved 51 -> 52.
+        EXPECTED_GETS = 52
         swept = 0
         bodies = []
         for route in list(fastapi_app.routes):
