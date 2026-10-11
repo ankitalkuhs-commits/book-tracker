@@ -130,9 +130,10 @@ column has no `information_schema` row, and a missing **table** produces no row 
 
 House rule: every case was run **green**, the mutation applied, the named node run again and
 required to be **RED**, the actual first failure line recorded, the mutation reverted, and the node
-re-run **green**. All 31 rows below were measured that way by
-`scratchpad/mutate.py` (apply -> run -> revert -> re-run); every row's `green_before` and
-`green_after` were `True`.
+re-run **green**. **32 mutations, 36 rows** (some bite more than one case), every one measured that
+way by an apply -> run -> revert -> re-run harness kept in the session scratchpad and deliberately
+not committed. Every row's `green_before` and `green_after` were `True`; the three rows marked
+"stays GREEN" are reported below rather than replaced.
 
 | MUT | Mutation (one line of product/artifact) | Node that must go red | Measured first RED line |
 |---|---|---|---|
