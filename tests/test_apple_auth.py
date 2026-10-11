@@ -260,9 +260,10 @@ class TestAppleColumn:
                     ("user", "is_bot"), ("bot_post", "dedup_key")):
             assert pre in pairs, pre
         # Sprint 4H appended ("user","apple_refresh_token"), so this literal moved 5 -> 6.
+        # Sprint 4I-A appended ("report","reason") and it moved 6 -> 7.
         # It stays a literal rather than becoming `>= 5`: the point of the count is that a
         # sprint cannot REPLACE a pair and have it read as an append.
-        assert len(pairs) == 6
+        assert len(pairs) == 7
         # every declared pair exists on a model — catches `apple_subs` and any other typo
         tables = SQLModel.metadata.tables
         for tname, cname in pairs:
@@ -1280,7 +1281,9 @@ class TestAppleLinking:
 
         path_values = {"user_id": reader.id, "group_id": 1, "note_id": 1,
                        "userbook_id": 1, "book_id": 1, "id": reader.id}
-        EXPECTED_GETS = 50          # measured on this branch; a new GET route moves it
+        # measured on this branch; a new GET route moves it. Sprint 4I-A added
+        # `GET /admin/reports` and it moved 50 -> 51.
+        EXPECTED_GETS = 51
         swept = 0
         bodies = []
         for route in list(fastapi_app.routes):

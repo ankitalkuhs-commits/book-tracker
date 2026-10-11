@@ -232,6 +232,46 @@ class BotPost(SQLModel, table=True):
     posted_at: datetime = Field(default_factory=datetime.utcnow, index=True)
 
 
+class Report(SQLModel, table=True):
+    """Sprint 4I-A (R-01, R-07): one reader's report of another reader's content or account.
+
+    A report is a message to a moderator. It changes nothing any serving path reads (R-04) and
+    the reported reader is never told (R-10).
+
+    `uq_report_once` is where the correctness lives: one reader may report a given thing exactly
+    once, enforced by the database and not by the handler, so two concurrent submissions cannot
+    both win. The handler catches the IntegrityError and returns the first report's state, the
+    same shape `follow_router.py:39-44` already uses.
+
+    NO FOREIGN KEYS, deliberately (R-07). A report outlives the content it is about: the admin
+    deletes the note, the report row stays with `status='actioned'`, and `target_id` dangles.
+    `target_snapshot` is why the queue can still show what was reported, and `target_user_id` is
+    denormalised so a pattern across one author's deleted content is still visible. `bot_post`
+    carries `note_id` with no FK for the same reason (`:231`).
+
+    NO `index=True` on any column either: the PM SQL (PM_SQL_QUEUE step 10) creates exactly two
+    indexes, `uq_report_once` and `ix_report_open (status, created_at DESC)`, and a model index
+    that the migration does not create is a dev/prod schema divergence nothing would catch.
+    """
+    __tablename__ = "report"
+    __table_args__ = (UniqueConstraint("reporter_id", "target_type", "target_id",
+                                       name="uq_report_once"),)
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    reporter_id: int = Field(nullable=False)
+    target_type: str = Field(nullable=False, max_length=16)   # note | comment | group_post | user
+    target_id: int = Field(nullable=False)
+    target_user_id: Optional[int] = Field(default=None)       # the author, denormalised at creation
+    reason: str = Field(nullable=False, max_length=32)
+    detail: Optional[str] = Field(default=None, max_length=1000)      # reader's free text, admin-only
+    target_snapshot: Optional[str] = Field(default=None, max_length=2000)  # a copy of the words reported
+    status: str = Field(default="open", max_length=16)        # open | actioned | dismissed
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    resolved_at: Optional[datetime] = Field(default=None)
+    resolved_by: Optional[int] = Field(default=None)
+    resolution: Optional[str] = Field(default=None, max_length=500)
+
+
 from typing import Optional
 from sqlmodel import SQLModel
 

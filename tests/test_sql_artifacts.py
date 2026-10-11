@@ -464,3 +464,87 @@ class TestAppleSQL:
         assert "## 7. Sprint 4F" in bot
         assert APPLE_SQL_FIRST_HEADING not in bot
         assert "What Claude does with each answer" not in bot
+
+
+# ── Sprint 4I-A (tests.md S-23, K-4I-13) ─────────────────────────────────────────────────────
+
+REPORT_SQL_FIRST_HEADING = "## 10. Sprint 4I-A"
+
+
+def _report_sql_section():
+    """Step 10 only — bounded at both ends, in `_apple_sql_section()`'s shape.
+
+    4C's K-15 lesson: `text[start:]` scans everything after the heading, so a later section
+    can satisfy an assertion the bounded one fails.
+    """
+    text = _read(PM_SQL_QUEUE_PATH)
+    start = text.index(REPORT_SQL_FIRST_HEADING)
+    rest = text[start + len(REPORT_SQL_FIRST_HEADING):]
+    headings = [m.start() for m in re.finditer(r"^## ", rest, re.MULTILINE)]
+    assert headings, "expected a `## ` heading after step 10"
+    end = start + len(REPORT_SQL_FIRST_HEADING) + headings[0]
+    return text[start:end]
+
+
+class TestReportSQL:
+    """S-23 — the Sprint 4I-A PM SQL step (step 10) and K-4I-13's bound on 4F's and 4G's."""
+
+    def test_step_10_is_bounded_idempotent_and_additive(self):
+        section = _report_sql_section()
+        whole = _read(PM_SQL_QUEUE_PATH)
+
+        # the bound is real: shorter than the file, and it excludes both neighbours
+        assert 0 < len(section) < len(whole)
+        assert "Sprint 4H" not in section
+        assert "What Claude does with each answer" not in section
+
+        normalized = " ".join(strip_comments(section).split())
+
+        # (1) the table and BOTH indexes, all idempotent. MUT-4I-05: drop an IF NOT EXISTS.
+        assert "CREATE TABLE IF NOT EXISTS report" in normalized
+        assert ("CREATE UNIQUE INDEX IF NOT EXISTS uq_report_once ON report "
+                "(reporter_id, target_type, target_id)" in normalized)
+        assert ("CREATE INDEX IF NOT EXISTS ix_report_open ON report (status, created_at DESC)"
+                in normalized)
+
+        # (2) the columns the model and schema_guard require, with the DDL's own widths
+        for fragment in ("reporter_id INTEGER NOT NULL",
+                         "target_type VARCHAR(16) NOT NULL",
+                         "target_id INTEGER NOT NULL",
+                         "target_user_id INTEGER",
+                         "reason VARCHAR(32) NOT NULL",
+                         "detail VARCHAR(1000)",
+                         "target_snapshot VARCHAR(2000)",
+                         "status VARCHAR(16) NOT NULL DEFAULT 'open'",
+                         "resolution VARCHAR(500)"):
+            assert fragment in normalized, fragment
+        # R-07: no foreign key anywhere in the step — the report outlives its target
+        assert "REFERENCES" not in normalized.upper()
+
+        # (3) additive only: nothing here reads, writes or moves an existing row
+        for verb in ("UPDATE ", "DELETE ", "DROP ", "ALTER ", "TRUNCATE "):
+            assert verb not in normalized.upper(), verb
+
+        # (4) the three verification queries (architecture §Data)
+        assert "information_schema.columns" in normalized and "'report'" in normalized
+        assert "pg_indexes" in normalized and "tablename = 'report'" in normalized
+        assert "SELECT count(*) FROM report" in normalized
+
+        # (5) K-4I-13: appending step 10 after step 9 leaves 4F's and 4G's bounded sections
+        #     intact. Inserting it BEFORE step 9 moves 4G's bound and fails here.
+        bot = _bot_sql_section()
+        assert "## 7. Sprint 4F" in bot
+        assert "## 8." not in bot
+        apple = _apple_sql_section()
+        assert "## 8. Sprint 4G" in apple
+        assert "## 9." not in apple
+        assert REPORT_SQL_FIRST_HEADING not in bot and REPORT_SQL_FIRST_HEADING not in apple
+
+        # (6) and step 10 is APPENDED, i.e. it sits after step 9 in the file. The bounds above
+        #     cannot see this on their own — each terminates on whatever `## ` heading comes
+        #     next, whatever its number. Measured: physically swapping sections 9 and 10 left
+        #     every assertion above green, so the ordering is asserted directly. The PM works
+        #     down this file in order, and a step numbered 10 sitting above step 9 is a step
+        #     that gets run in the wrong order.
+        assert whole.index("## 9. Sprint 4H") < whole.index(REPORT_SQL_FIRST_HEADING)
+        assert whole.index(APPLE_SQL_FIRST_HEADING) < whole.index("## 9. Sprint 4H")

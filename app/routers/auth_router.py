@@ -561,6 +561,17 @@ def delete_own_account(
     )).all():
         db.delete(row)
 
+    # Sprint 4I-A (R-08): reports, BOTH kinds, in the same transaction and above the `user`
+    # delete below. Reports this reader FILED go with them — a report is a reader's statement,
+    # snapshot included. Reports ABOUT this reader go too, because the content they describe is
+    # deleted a few lines down and the snapshot would be the only copy of it left anywhere.
+    # `report` carries no foreign key (R-07), so nothing here fails loudly if it is skipped —
+    # it just leaves rows pointing at a user id that no longer exists.
+    for row in db.exec(select(models.Report).where(
+        (models.Report.reporter_id == uid) | (models.Report.target_user_id == uid)
+    )).all():
+        db.delete(row)
+
     # Notes, likes, comments
     note_ids = [n.id for n in db.exec(select(models.Note).where(models.Note.user_id == uid)).all()]
     for nid in note_ids:
