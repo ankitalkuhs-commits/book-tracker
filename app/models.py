@@ -44,6 +44,14 @@ class User(SQLModel, table=True):
     # Apple identity. NULL for every Google reader (a unique index ignores NULLs, so they all
     # coexist); unique so two concurrent first sign-ins cannot both win. Never serialised.
     apple_sub: Optional[str] = Field(default=None, index=True, unique=True, max_length=255)
+    # Sprint 4H (R-13, the fix): Apple's refresh token, SEALED — a Fernet ciphertext whose key
+    # is `APPLE_TOKEN_KEY` in the Render environment and nowhere else (apple_keys.seal_token).
+    # It exists for exactly one purpose: `auth/revoke` on account deletion, which 4G could not
+    # do because it had only the `sub` to send and Apple answers a subject with 400.
+    # NOT indexed and NOT unique — nothing ever looks a reader up by it, and an index on a
+    # credential is a credential in one more place. NULL for every Google reader, and NULL
+    # until a reader signs in on a build that sends `authorization_code`. Never serialised.
+    apple_refresh_token: Optional[str] = Field(default=None, max_length=512)
     notification_prefs: Optional[str] = Field(default=None)  # JSON: {"new_follower": true, ...}
     created_at: datetime = Field(default_factory=datetime.utcnow)
     last_active: Optional[datetime] = None

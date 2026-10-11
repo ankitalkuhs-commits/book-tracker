@@ -191,6 +191,54 @@ SELECT count(*) FROM "user" WHERE apple_sub IS NOT NULL;
 
 ---
 
+## 9. Sprint 4H — the `user.apple_refresh_token` column — WRITES, additive, and it gates the 4H deploy
+
+Run this **before** the Sprint 4H API deploy. `schema_guard` requires `user.apple_refresh_token`,
+so the commit that adds it refuses to start until this has run (that is the guard working:
+Render fails the deploy and the previous version keeps serving).
+
+This is the column that makes Apple token revocation actually work. Sprint 4G shipped the
+revocation call with the Apple **subject** in it, and Apple's `auth/revoke` only accepts a
+refresh or access token — so every call would have answered `400` and the reader's Apple ID
+would have kept listing TrackMyRead under "Apps Using Apple ID", which is the item App Review
+checks. 4H exchanges Apple's one-time authorization code for a refresh token and stores it here.
+
+```sql
+ALTER TABLE "user" ADD COLUMN IF NOT EXISTS apple_refresh_token VARCHAR(512);
+```
+
+Nullable, no default, no index: the `ALTER` is metadata-only and no existing row is rewritten.
+Every current reader stays `NULL`, which is correct — a reader only gets a value the next time
+they sign in with Apple on a build that sends the code.
+
+**No index, and that is deliberate.** Nothing ever looks a reader up by this value, and an index
+on a credential is that credential sitting in one more place on disk and in one more backup.
+
+**What is stored is a ciphertext, not the token.** The value is sealed with Fernet
+(AES-128-CBC + HMAC-SHA256) under `APPLE_TOKEN_KEY`, which lives only in the Render environment.
+With `APPLE_TOKEN_KEY` unset the application writes **nothing** to this column and revocation
+stays inert, exactly as it is today — there is no plaintext fallback. 512 characters is the
+ciphertext length with room to spare; Apple's own token is about 60.
+
+**Verify — send the output back.**
+
+```sql
+-- 1 row: character varying, 512, YES
+SELECT column_name, data_type, character_maximum_length, is_nullable
+  FROM information_schema.columns
+ WHERE table_schema = current_schema()
+   AND table_name = 'user' AND column_name = 'apple_refresh_token';
+-- must return 0 rows: this column is deliberately NOT indexed
+SELECT indexname FROM pg_indexes
+ WHERE tablename = 'user' AND indexdef LIKE '%apple_refresh_token%';
+-- must return 0: nothing has been written yet
+SELECT count(*) FROM "user" WHERE apple_refresh_token IS NOT NULL;
+```
+
+Step 9 is additive, re-runnable, and touches no existing row of any table.
+
+---
+
 ## What Claude does with each answer
 
 | You send | Claude does |
@@ -202,3 +250,4 @@ SELECT count(*) FROM "user" WHERE apple_sub IS NOT NULL;
 | 6. bot rows + 0/0 | merges Sprint 4F's API package, which deploys it, then checks `/version` |
 | 7. dedup_key + both index names | confirms `schema_guard` will pass, then runs `migrations/add_bot_accounts.py` |
 | 8. column row + index row + 0 | deploys Sprint 4G's API package (the commit carrying `("user","apple_sub")` in `schema_guard`), then checks `/version` |
+| 9. column row + no index + 0 | deploys Sprint 4H's API package (the commit carrying `("user","apple_refresh_token")` in `schema_guard`), then checks `/version` |

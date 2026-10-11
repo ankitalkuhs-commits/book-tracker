@@ -57,7 +57,8 @@ BOT_LOGIN_EMAILS=tmrbot@trackmyread.com,tmrprompts@trackmyread.com,tmrquotes@tra
 APPLE_AUDIENCES=                              # see "Sign in with Apple" below (Sprint 4G)
 APPLE_TEAM_ID=                                # R-13 revocation only
 APPLE_KEY_ID=                                 # R-13 revocation only
-APPLE_PRIVATE_KEY=                            # R-13 revocation only, the .p8 PEM
+APPLE_PRIVATE_KEY=                            # R-13 revocation + 4H token exchange, the .p8 PEM
+APPLE_TOKEN_KEY=                              # Sprint 4H: Fernet key sealing the refresh token
 ```
 
 `BOT_LOGIN_SECRET` and `BOT_LOGIN_EMAILS` are **both** required for `POST /auth/bot-login`
@@ -341,15 +342,16 @@ that is `BOT_ENABLED` set to `true`.
 
 ## Sign in with Apple (Sprint 4G)
 
-Four environment variables on the Render **API service**, in two independent groups. Neither
-group needs a code deploy; both are read per request.
+Five environment variables on the Render **API service**, in three independent groups. No group
+needs a code deploy; all five are read per request.
 
 | Name | Group | What happens when it is unset |
 |---|---|---|
 | `APPLE_AUDIENCES` | sign-in | `POST /auth/apple` returns **404**. No Apple sign-in is possible — locally, in CI, or in a fork. |
 | `APPLE_TEAM_ID` | revocation (R-13) | revocation is **inert**: nothing is sent, the Render log says `apple revoke: not configured, skipped`, and the deletion completes exactly as before. |
 | `APPLE_KEY_ID` | revocation (R-13) | same |
-| `APPLE_PRIVATE_KEY` | revocation (R-13) | same |
+| `APPLE_PRIVATE_KEY` | revocation (R-13) | same, **and** no authorization-code exchange is attempted at sign-in (`apple token: not configured, skipped`). |
+| `APPLE_TOKEN_KEY` | storage (Sprint 4H) | the exchange still runs, but the refresh token is **dropped rather than stored in the clear**: `user.apple_refresh_token` stays NULL and revocation stays inert. There is no plaintext fallback, deliberately. |
 
 `APPLE_AUDIENCES` is the **bundle id**, `com.bookpulse.mobile` (kept knowingly — pm-decisions
 E-2). It is a comma-separated list so a web client can be added later with no API change;
@@ -381,6 +383,41 @@ oversight** (pm-decisions E-4).
    | `APPLE_PRIVATE_KEY` | the **entire contents** of the `.p8`, including the `-----BEGIN PRIVATE KEY-----` and `-----END PRIVATE KEY-----` lines and the newlines between them |
 
 5. Save. Render restarts the service; there is nothing to deploy and nothing to merge.
+
+### Sprint 4H — the fifth variable, `APPLE_TOKEN_KEY`
+
+Sprint 4G's revocation could not work. Apple's `auth/revoke` accepts a refresh or access token
+and 4G had only the Apple **subject** to send, which Apple answers with a `400`. Sprint 4H
+exchanges Apple's one-time authorization code at `auth/token`, stores the resulting refresh
+token on the reader's row **sealed**, and revokes that.
+
+`APPLE_TOKEN_KEY` is the Fernet key that seals it. Generate it **once**, on your own machine,
+and paste it into Render:
+
+```
+python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+```
+
+44 characters of url-safe base64. Password manager and Render only — never a repository, a
+commit, a chat or a test fixture, exactly like the `.p8`.
+
+**Unset is a safe state, not a broken one.** With no key the refresh token is dropped instead of
+being written in the clear, the column stays NULL, and revocation is inert — Sprint 4G's
+behaviour, which is what production does today.
+
+**Rotation costs the stored tokens, and that is acceptable.** A new `APPLE_TOKEN_KEY` cannot
+unseal values sealed under the old one; those readers' deletions send nothing until their next
+sign-in re-exchanges, and their deletion completes either way. Nothing needs re-encrypting and
+nothing needs a migration. Rotate it if it is ever exposed, and rotate the `.p8` with it.
+
+**What an attacker who can read the database gets.** A Fernet ciphertext, and nothing to do with
+it: unsealing needs `APPLE_TOKEN_KEY`, and *using* an Apple refresh token needs the `.p8` to
+build the `client_secret`. Neither is in the database or in the repository. An attacker who has
+the Render environment as well holds both and the encryption buys nothing — but even then the
+token only refreshes or revokes **this app's** Sign in with Apple relationship. It is not access
+to the reader's Apple ID, and it is not a way back into TrackMyRead: an `id_token` minted from a
+refresh grant carries no `nonce` claim, and `/auth/apple` rejects a token whose `nonce` is
+absent.
 
 **It must never reach GitHub Actions.** This repository is public. Nothing in CI needs it: the
 outbound revocation call is injected in every test (`app.apple_keys.http_post`) and every case

@@ -22,6 +22,13 @@ REQUIRED_COLUMNS = (
     # line. Deployed early it raises below, Render fails the deploy and the previous version
     # keeps serving — the guard working, and still a failed deploy somebody has to explain.
     ("user", "apple_sub"),             # Sprint 4G
+    # Sprint 4H. SAME NON-NEGOTIABLE ORDER: the PM runs PM_SQL_QUEUE step 9 FIRST and sends the
+    # verify output back, and only the deploy AFTER that may carry this line. This entry and
+    # `models.User.apple_refresh_token` must travel in the SAME commit — a model column without
+    # its guard entry is the April 2026 outage (the service boots, then 500s on every User
+    # query); a guard entry without the SQL is a failed deploy and the previous version keeps
+    # serving, which is the outcome this file exists to produce.
+    ("user", "apple_refresh_token"),   # Sprint 4H
 )
 
 

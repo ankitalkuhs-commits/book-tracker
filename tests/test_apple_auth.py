@@ -25,6 +25,7 @@ from types import SimpleNamespace
 
 import pytest
 import requests as requests_lib          # only for the exception type B-11 raises
+from cryptography.fernet import Fernet          # Sprint 4H
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ec, rsa
 from sqlalchemy import event
@@ -258,7 +259,10 @@ class TestAppleColumn:
         for pre in (("user", "timezone"), ("reading_activity", "local_day"),
                     ("user", "is_bot"), ("bot_post", "dedup_key")):
             assert pre in pairs, pre
-        assert len(pairs) == 5
+        # Sprint 4H appended ("user","apple_refresh_token"), so this literal moved 5 -> 6.
+        # It stays a literal rather than becoming `>= 5`: the point of the count is that a
+        # sprint cannot REPLACE a pair and have it read as an append.
+        assert len(pairs) == 6
         # every declared pair exists on a model — catches `apple_subs` and any other typo
         tables = SQLModel.metadata.tables
         for tname, cname in pairs:
@@ -1517,6 +1521,152 @@ def _apply_failure_mode(mode, monkeypatch, body="apple-oops-detail"):
     return stub
 
 
+# ── Sprint 4H helpers, used by P3's cases above and P5's below ───────────────────────────────
+#
+# WHAT 4G GOT WRONG, and what the cases below exist to pin: `auth/revoke` takes a refresh or
+# access token, and 4G had only the Apple `sub` to send. Apple answers a subject with 400, so
+# the shipped revocation could never unlist us from "Apps Using Apple ID"
+# (build-notes-4g-revoke.md "What I found wrong" item 1).
+#
+# No secret is committed. The Fernet key is generated at import time, like the EC key the
+# revocation cases sign with (ST-4G-01/02).
+
+APPLE_TOKEN_URL = "https://appleid.apple.com/auth/token"
+TOKEN_BODY_KEYS = {"grant_type", "code", "client_id", "client_secret"}
+AUTH_CODE = "4h-authorization-code-abc123"
+REFRESH_TOKEN = "4h-refresh-token-r1b2c3d4e5"
+TOKEN_KEY = Fernet.generate_key().decode()      # generated, never checked in
+
+
+def _configure_token_key(monkeypatch, key=TOKEN_KEY):
+    """`APPLE_TOKEN_KEY`. Read per call by `apple_keys._token_key`, so no restart is needed."""
+    if key is None:
+        monkeypatch.delenv("APPLE_TOKEN_KEY", raising=False)
+    else:
+        monkeypatch.setenv("APPLE_TOKEN_KEY", key)
+
+
+def _plant_refresh_token(db, user_id, plaintext=REFRESH_TOKEN):
+    """Seal `plaintext` into `user.apple_refresh_token` and commit. Returns the stored value.
+
+    Planted deliberately, and only in the cases that are about the DELETION. The write itself
+    has its own case — B-50 drives it through /auth/apple end to end — and planting is what
+    keeps these cases from needing an outbound exchange: B-43 installs its `http_post` stub
+    AFTER creating its reader, so a sign-in that exchanged would reach the real network.
+
+    The value still goes through `seal_token`, so the deletion's unseal is the real one. The
+    assertion below is deliberate: a case that forgot `_configure_token_key` would otherwise
+    plant NULL and then pass for the wrong reason.
+    """
+    db.expire_all()
+    row = db.get(models.User, user_id)
+    row.apple_refresh_token = apple_keys.seal_token(plaintext)
+    assert row.apple_refresh_token, "this case did not call _configure_token_key"
+    assert row.apple_refresh_token != plaintext
+    db.add(row)
+    db.commit()
+    return row.apple_refresh_token
+
+
+def _verify_client_secret(secret):
+    """The ES256 assertion VERIFIED against this suite's EC public key, not merely decoded.
+
+    Shared by the exchange and the revocation because it is literally the same assertion: one
+    `.p8` serves both endpoints, which is why 4H needs no new Apple key material.
+    """
+    assert jwt.get_unverified_header(secret) == {"alg": "ES256", "kid": KEY_ID, "typ": "JWT"}
+    claims = jwt.decode(secret, _REVOKE_PUB, algorithms=["ES256"],
+                        audience=APPLE_ISS, issuer=TEAM_ID)
+    assert claims["iss"] == TEAM_ID
+    assert claims["sub"] == BUNDLE_ID
+    assert claims["aud"] == APPLE_ISS
+    assert isinstance(claims["iat"], int)
+    assert claims["exp"] - claims["iat"] <= 3600       # Apple's ceiling
+    return claims
+
+
+class _Resp:
+    """A `requests.Response` stand-in with the three attributes the product reads.
+
+    `_RecordingPost` answers with a `SimpleNamespace`, which has no `.json()` — the exchange
+    needs one, and giving it its own response type leaves every P3 case untouched.
+    """
+
+    def __init__(self, status, payload=None, text=""):
+        self.status_code = status
+        self.text = text
+        self._payload = payload
+
+    def json(self):
+        return self._payload
+
+
+class _RecordingApple:
+    """One stub for `apple_keys.http_post` serving BOTH Apple endpoints, dispatching on url.
+
+    /auth/apple exchanges at `auth/token` and the deletion revokes at `auth/revoke` through the
+    same seam, so a stub that cannot tell them apart cannot prove which one was called. `calls`
+    keeps every call in order; `token_calls` and `revoke_calls` are the per-url views.
+    """
+
+    def __init__(self, token_status=200, token_payload=None, token_raises=None,
+                 revoke_status=204, revoke_raises=None, token_text=""):
+        self.calls = []
+        self.token_status = token_status
+        self.token_payload = ({"refresh_token": REFRESH_TOKEN, "access_token": "4h-access",
+                               "expires_in": 3600, "token_type": "Bearer"}
+                              if token_payload is None else token_payload)
+        self.token_raises = token_raises
+        self.token_text = token_text
+        self.revoke_status = revoke_status
+        self.revoke_raises = revoke_raises
+
+    def __call__(self, url, data, timeout):
+        self.calls.append({"url": url, "data": data, "timeout": timeout})
+        if url == APPLE_TOKEN_URL:
+            if self.token_raises is not None:
+                raise self.token_raises
+            return _Resp(self.token_status, self.token_payload, self.token_text)
+        if url == APPLE_REVOKE_URL:
+            if self.revoke_raises is not None:
+                raise self.revoke_raises
+            return _Resp(self.revoke_status, None, "")
+        raise AssertionError(f"unexpected Apple url {url}")   # pragma: no cover - a tripwire
+
+    @property
+    def token_calls(self):
+        return [c for c in self.calls if c["url"] == APPLE_TOKEN_URL]
+
+    @property
+    def revoke_calls(self):
+        return [c for c in self.calls if c["url"] == APPLE_REVOKE_URL]
+
+
+def _apple_reader_4h(client, label, email, code=AUTH_CODE):
+    """`_apple_reader`, plus Sprint 4H's `authorization_code` in the body.
+
+    Created THROUGH /auth/apple for the reason `_apple_reader` gives: a planted column value
+    tests the gate and never the write that put it there. Returns the payload too, because
+    B-57 asserts over the whole sign-in response.
+    """
+    sub = _sub(label)
+    body = _body(_mint(sub=sub, email=email, email_verified=True, is_private_email=False))
+    if code is not None:
+        body["authorization_code"] = code
+    r = client.post("/auth/apple", json=body)
+    assert r.status_code == 200, r.text
+    payload = r.json()
+    assert payload["is_new"] is True
+    return (payload["user"]["id"], sub,
+            {"Authorization": f"Bearer {payload['access_token']}"}, payload)
+
+
+def _stored(db, user_id):
+    db.expire_all()
+    row = db.get(models.User, user_id)
+    return None if row is None else row.apple_refresh_token
+
+
 class TestAppleRevocation:
     """R-13. Apple requires an app offering Sign in with Apple and account deletion to revoke
     the reader's tokens as part of it. Revocation is best effort and Guideline 5.1.1(v)
@@ -1525,13 +1675,24 @@ class TestAppleRevocation:
 
     def test_revoke_is_called_once_with_a_correct_client_secret(self, client, monkeypatch, db):
         """B-40. MUT-4G-41: send the raw `.p8` as the `client_secret`; omit the call; sign
-        RS256; set `exp` a day out."""
+        RS256; set `exp` a day out.
+
+        SPRINT 4H EDITED THIS CASE — the only P3 case whose assertions changed rather than
+        merely gaining a line. It used to assert `data["token"] == sub`, and that WAS the bug:
+        Apple's `auth/revoke` takes a refresh or access token and answers a subject with 400.
+        It now asserts the refresh token, plus `!= sub` so the old behaviour cannot come back
+        unnoticed. The `client_secret` half is unchanged — one `.p8` serves both Apple
+        endpoints — and has moved into `_verify_client_secret`, which B-50 reuses on the
+        exchange's secret.
+        """
         _configure_apple(monkeypatch, BUNDLE_ID)
         _configure_revoke(monkeypatch)
+        _configure_token_key(monkeypatch)
         stub = _RecordingPost()
         monkeypatch.setattr(apple_keys, "http_post", stub)
 
         uid, sub, headers = _apple_reader(client, "b40", "4g-b40@example.com")
+        sealed = _plant_refresh_token(db, uid)
         r = client.post("/auth/delete-account/me", headers=headers)
         assert r.status_code == 200, r.text
 
@@ -1541,15 +1702,14 @@ class TestAppleRevocation:
         assert call["url"] == APPLE_REVOKE_URL
         assert set(call["data"]) == REVOKE_BODY_KEYS
         assert call["data"]["client_id"] == BUNDLE_ID      # architecture E-2 item 5
-        assert call["data"]["token"] == sub
+        assert call["data"]["token"] == REFRESH_TOKEN      # Sprint 4H: the fix
+        assert call["data"]["token"] != sub                # Sprint 4G's bug, pinned shut
+        assert call["data"]["token"] != sealed             # unsealed, not the raw ciphertext
 
         # VERIFIED against this test's own EC public key, not merely decoded: a secret that
         # does not verify is not a secret Apple would accept.
         secret = call["data"]["client_secret"]
-        assert jwt.get_unverified_header(secret) == {
-            "alg": "ES256", "kid": KEY_ID, "typ": "JWT"}
-        claims = jwt.decode(secret, _REVOKE_PUB, algorithms=["ES256"],
-                            audience=APPLE_ISS, issuer=TEAM_ID)
+        claims = _verify_client_secret(secret)
         assert claims["iss"] == TEAM_ID
         assert claims["sub"] == BUNDLE_ID
         assert claims["aud"] == APPLE_ISS
@@ -1605,14 +1765,19 @@ class TestAppleRevocation:
 
         # CONTROL (rule 3): the same stub, an Apple reader, one call. So "zero" above is the
         # gate working and not a broken stub.
+        # Sprint 4H added the two lines below: the control reader needs a stored refresh token,
+        # because that is now what gets revoked. Nothing else in this case changed, and the
+        # before/after byte-comparison it is built around is untouched.
+        _configure_token_key(monkeypatch)
         uid, _, headers = _apple_reader(client, "b41", "4g-b41-apple@example.com")
+        _plant_refresh_token(db, uid)
         assert client.post("/auth/delete-account/me", headers=headers).status_code == 200
         assert len(stub.calls) == 1
         assert _row(db, uid) is None
 
     @pytest.mark.parametrize("mode", REVOKE_FAILURE_MODES)
     def test_a_failed_revocation_never_blocks_the_deletion(self, mode, client, monkeypatch, db):
-        """B-42. MUT-4G-43: let the revocation exception propagate.
+        """B-42. MUT-4G-43 / MUT-4H-14: let the revocation exception propagate.
 
         Guideline 5.1.1(v) outranks revocation. `key_unset` is the SHIPPING state - the PM has
         not created the `.p8` yet (pm-decisions E-4), so in production today this is the only
@@ -1624,6 +1789,10 @@ class TestAppleRevocation:
 
         uid, _, headers = _apple_reader(
             client, f"b42{mode[:4]}", f"4g-b42-{mode}@example.com")
+        # Sprint 4H: the reader needs a stored refresh token, because that is now what gets
+        # revoked. `key_unset` keeps sending nothing, which is what its own assertion says.
+        _configure_token_key(monkeypatch)
+        _plant_refresh_token(db, uid)
         _dependents(db, uid)
         assert _dependent_counts(db, uid) == {"userbooks": 1, "notes": 1, "push_tokens": 1}
 
@@ -1640,14 +1809,16 @@ class TestAppleRevocation:
         assert len(stub.calls) == (0 if mode == "key_unset" else 1)
 
     def test_revocation_runs_before_the_row_is_deleted(self, client, monkeypatch, db):
-        """B-43. MUT-4G-44: move the revocation below the cascade.
+        """B-43. MUT-4G-44 / MUT-4H-15: move the revocation below `db.commit()`.
 
         After the cascade there is no `apple_sub` left to revoke, so "it works" and "it runs
         first" are not the same claim. The stub reads the database to prove the second.
         """
         _configure_apple(monkeypatch, BUNDLE_ID)
         _configure_revoke(monkeypatch)
+        _configure_token_key(monkeypatch)                # Sprint 4H
         uid, sub, headers = _apple_reader(client, "b43", "4g-b43@example.com")
+        _plant_refresh_token(db, uid)                    # Sprint 4H: what gets revoked now
 
         counter = _DeleteCounter()
         event.listen(engine, "before_cursor_execute", counter._hook)
@@ -1689,11 +1860,13 @@ class TestAppleRevocation:
         # 1. the success path
         _configure_apple(monkeypatch, BUNDLE_ID)
         _configure_revoke(monkeypatch)
+        _configure_token_key(monkeypatch)                # Sprint 4H
         stub = _RecordingPost(body=body)
         monkeypatch.setattr(apple_keys, "http_post", stub)
         capsys.readouterr()
         email = "4g-b44-ok@example.com"
         uid, sub, headers = _apple_reader(client, "b44ok", email)
+        _plant_refresh_token(db, uid)                    # Sprint 4H
         assert client.post("/auth/delete-account/me", headers=headers).status_code == 200
         subs = [sub]
         emails.append(email)
@@ -1703,8 +1876,10 @@ class TestAppleRevocation:
         for mode in REVOKE_FAILURE_MODES:
             mstub = _apply_failure_mode(mode, monkeypatch, body=body)
             _configure_apple(monkeypatch, BUNDLE_ID)
+            _configure_token_key(monkeypatch)            # Sprint 4H
             email = f"4g-b44-{mode}@example.com"
             uid, sub, headers = _apple_reader(client, f"b44{mode[:4]}", email)
+            _plant_refresh_token(db, uid)                # Sprint 4H
             assert client.post("/auth/delete-account/me", headers=headers).status_code == 200
             subs.append(sub)
             emails.append(email)
@@ -1715,6 +1890,9 @@ class TestAppleRevocation:
         assert "-----BEGIN" not in logged
         assert _REVOKE_PEM not in logged
         assert body not in logged
+        # Sprint 4H: the stored ciphertext and its key are new secrets on this path.
+        assert REFRESH_TOKEN not in logged
+        assert TOKEN_KEY not in logged
         for secret in secrets:
             assert secret not in logged
         for value in subs + emails:
@@ -1726,3 +1904,483 @@ class TestAppleRevocation:
         print(f"synthetic leak: {body} {subs[0]}")
         leaked = "".join(capsys.readouterr())
         assert body in leaked and subs[0] in leaked
+
+
+# ═════════════════════════════════════════════════════════════════════════════════════════════
+# Sprint 4H — P5: the authorization-code exchange, the sealed column, and a revocation that can
+# actually succeed. Cases B-50..B-60.
+#
+# THREE WAYS THESE CASES COULD BE VACUOUS, and what stops each:
+#   * "sign-in returned 200" passes whether or not an exchange was attempted -> every case
+#     counts the calls to each Apple URL against a literal before asserting their contents.
+#   * "the column is not NULL" passes for a column holding the plaintext -> B-50 and B-57
+#     assert the stored value is NOT the plaintext AND that it unseals back to it. Either half
+#     alone is satisfiable by a bug.
+#   * a deletion case that never reaches the loop it is about -> B-40 and B-54 read the revoke
+#     call's `data["token"]` and compare it against BOTH the refresh token and the `sub`.
+# ═════════════════════════════════════════════════════════════════════════════════════════════
+
+PM_SQL_QUEUE_4H_PATH = REPO_ROOT / "context" / "PM_SQL_QUEUE.md"
+
+# B-51's four ways the exchange can fail. Sign-in must complete in every one of them.
+EXCHANGE_FAILURE_MODES = ["raises_request_exception", "raises_timeout", "http_400",
+                          "no_refresh_token"]
+
+
+def _exchange_failure(mode, body="apple-token-oops-4h"):
+    if mode == "raises_request_exception":
+        return _RecordingApple(token_raises=requests_lib.RequestException("4h token exploded"))
+    if mode == "raises_timeout":
+        return _RecordingApple(token_raises=requests_lib.Timeout("4h token timed out"))
+    if mode == "http_400":
+        return _RecordingApple(token_status=400,
+                               token_payload={"error": "invalid_grant"}, token_text=body)
+    if mode == "no_refresh_token":
+        return _RecordingApple(token_payload={"access_token": "4h-access", "expires_in": 3600})
+    raise AssertionError(f"unknown mode {mode}")       # pragma: no cover - length-asserted
+
+
+class TestAppleTokenExchange:
+    """B-50..B-53. The half Sprint 4G did not have: obtaining the refresh token at all.
+
+    Sign-in outranks the exchange exactly as deletion outranks revocation. A reader signs in
+    when Apple's token endpoint is down, when the `.p8` is absent and when `APPLE_TOKEN_KEY` is
+    absent — in all three the column simply stays NULL and the deletion sends nothing, which is
+    the deployed Sprint 4G behaviour and is already tested above.
+    """
+
+    def test_sign_in_exchanges_the_code_and_stores_it_sealed(self, client, monkeypatch, db):
+        """B-50. MUT-4H-01: never call `auth/token`; send `grant_type=refresh_token`; store
+        the plaintext instead of the seal; drop the `client_secret` from the exchange body."""
+        _configure_apple(monkeypatch, BUNDLE_ID)
+        _configure_revoke(monkeypatch)
+        _configure_token_key(monkeypatch)
+        stub = _RecordingApple()
+        monkeypatch.setattr(apple_keys, "http_post", stub)
+
+        uid, sub, headers, payload = _apple_reader_4h(client, "b50", "4g-b50@example.com")
+
+        # WHAT WAS CALLED — the assertion a vacuous version leaves out.
+        assert len(stub.calls) == 1, stub.calls
+        assert len(stub.token_calls) == 1
+        call = stub.token_calls[0]
+        assert call["url"] == APPLE_TOKEN_URL
+        assert set(call["data"]) == TOKEN_BODY_KEYS
+        assert call["data"]["grant_type"] == "authorization_code"
+        assert call["data"]["code"] == AUTH_CODE
+        assert call["data"]["client_id"] == BUNDLE_ID        # architecture E-2 item 5
+        _verify_client_secret(call["data"]["client_secret"])
+        assert call["timeout"] == apple_keys.TOKEN_TIMEOUT_SECONDS
+
+        # ...and SEPARATELY, what was stored. Both halves are needed: "not the plaintext"
+        # alone passes for a column holding garbage, and "unseals to it" alone passes for a
+        # column holding the plaintext under an identity cipher.
+        stored = _stored(db, uid)
+        assert stored is not None
+        assert stored != REFRESH_TOKEN
+        assert REFRESH_TOKEN not in stored
+        assert apple_keys.unseal_token(stored) == REFRESH_TOKEN
+
+        # The sign-in contract itself is untouched: the same four keys 4G returned.
+        assert set(payload) == {"access_token", "is_new", "private_relay", "user"}
+        assert _row(db, uid).apple_sub == sub
+
+    @pytest.mark.parametrize("mode", EXCHANGE_FAILURE_MODES)
+    def test_a_failed_exchange_never_blocks_sign_in(self, mode, client, monkeypatch, db):
+        """B-51. MUT-4H-02: let the exchange raise out of `exchange_authorization_code`; or
+        fail the sign-in when no refresh token came back.
+
+        Sign-in is the stronger obligation: a reader whose Apple ID works must get into the app
+        when Apple's token endpoint does not.
+        """
+        assert len(EXCHANGE_FAILURE_MODES) == 4
+        _configure_apple(monkeypatch, BUNDLE_ID)
+        _configure_revoke(monkeypatch)
+        _configure_token_key(monkeypatch)
+        stub = _exchange_failure(mode)
+        monkeypatch.setattr(apple_keys, "http_post", stub)
+
+        uid, sub, headers, _ = _apple_reader_4h(
+            client, f"b51{mode[:4]}", f"4g-b51-{mode}@example.com")
+
+        # The attempt happened — this is what keeps the case from passing because the whole
+        # exchange was quietly skipped.
+        assert len(stub.token_calls) == 1
+        # R-03's write survived an outbound failure, which is the reason the exchange sits
+        # AFTER that commit rather than inside it.
+        assert _row(db, uid).apple_sub == sub
+        assert _stored(db, uid) is None
+        # ...and the token the route handed back actually works.
+        assert client.get("/profile/me", headers=headers).status_code == 200
+
+    def test_no_authorization_code_means_no_exchange_at_all(
+            self, client, monkeypatch, db, capsys):
+        """B-52. MUT-4H-03: exchange unconditionally, ignoring whether a code was sent.
+
+        The TestFlight build in readers' hands today does not send one. A required field would
+        422 them out of the app, and an unconditional exchange would walk into
+        `exchange_authorization_code` on every one of their sign-ins for ever.
+
+        MEASURED, and the reason `capsys` is here: the call-count assertion ALONE does not
+        catch MUT-4H-03. `exchange_authorization_code`'s own `if not (code and ...)` guard
+        returns before the outbound call, so `if True:` in the route leaves `stub.calls` empty
+        and the case green (measured: `1 passed`). What the route's conditional actually buys
+        is that the function is not entered at all, and the log line is the only place that is
+        observable. Written up in build-notes-4h-revoke.md rather than swapped for a mutation
+        that was easier to catch.
+        """
+        _configure_apple(monkeypatch, BUNDLE_ID)
+        _configure_revoke(monkeypatch)
+        _configure_token_key(monkeypatch)
+        stub = _RecordingApple()
+        monkeypatch.setattr(apple_keys, "http_post", stub)
+
+        capsys.readouterr()
+        uid, sub, headers, _ = _apple_reader_4h(
+            client, "b52", "4g-b52@example.com", code=None)
+        logged = "".join(capsys.readouterr())
+
+        assert stub.calls == []
+        assert "apple token" not in logged, logged[-300:]
+        assert _row(db, uid).apple_sub == sub
+        assert _stored(db, uid) is None
+
+        # CONTROL (rule 3): the same stub, the same route and the same detector, with a code
+        # -> one call and one log line. So "zero" and "nothing" above are the conditional
+        # working and not a broken stub or a dead capture.
+        capsys.readouterr()
+        uid2, _, _, _ = _apple_reader_4h(client, "b52c", "4g-b52-control@example.com")
+        control = "".join(capsys.readouterr())
+        assert len(stub.token_calls) == 1
+        assert "apple token: status 200" in control
+        assert _stored(db, uid2) is not None
+
+    def test_without_the_encryption_key_nothing_is_stored(self, client, monkeypatch, db):
+        """B-53. MUT-4H-04: fall back to storing the plaintext when `APPLE_TOKEN_KEY` is unset.
+        MUT-4H-16: let a malformed `APPLE_TOKEN_KEY` raise out of `_token_key`.
+
+        That fallback is the one thing `seal_token` must never be talked into: a security
+        property that depends on whether an environment variable happens to be set is not a
+        property. Unset key -> NULL column -> revocation inert -> exactly Sprint 4G.
+        """
+        _configure_apple(monkeypatch, BUNDLE_ID)
+        _configure_revoke(monkeypatch)
+        _configure_token_key(monkeypatch, key=None)
+        stub = _RecordingApple()
+        monkeypatch.setattr(apple_keys, "http_post", stub)
+
+        uid, sub, headers, _ = _apple_reader_4h(client, "b53", "4g-b53@example.com")
+
+        # The exchange still ran — it is gated on the `.p8`, not on the encryption key — and
+        # the token was dropped rather than written in the clear.
+        assert len(stub.token_calls) == 1
+        assert _stored(db, uid) is None
+        assert _row(db, uid).apple_sub == sub
+
+        # An UNUSABLE key behaves like an unset one, never like a 500 on sign-in.
+        _configure_token_key(monkeypatch, key="not-a-fernet-key")
+        uid2, _, _, _ = _apple_reader_4h(client, "b53b", "4g-b53-bad@example.com")
+        assert _stored(db, uid2) is None
+
+        # ...and with the `.p8` absent there is no exchange at all (today's shipping state).
+        _configure_revoke(monkeypatch, pem=None)
+        _configure_token_key(monkeypatch)
+        before = len(stub.calls)
+        uid3, _, _, _ = _apple_reader_4h(client, "b53c", "4g-b53-nokey@example.com")
+        assert len(stub.calls) == before
+        assert _stored(db, uid3) is None
+
+
+class TestAppleRevocationWithRefreshToken:
+    """B-54..B-60. The deletion half, repaired.
+
+    Everything `TestAppleRevocation` asserts about deletion never being blocked still holds;
+    these cases are about WHAT is sent, what is stored, and what leaves the server.
+    """
+
+    def test_deletion_revokes_the_refresh_token_not_the_subject(self, client, monkeypatch, db):
+        """B-54. MUT-4H-05: revoke `current_user.apple_sub` again (Sprint 4G's bug); or send
+        the ciphertext without unsealing it.
+
+        End to end, through BOTH Apple endpoints and one stub: the sign-in exchanges, the
+        deletion revokes what the sign-in stored. B-40 above proves the same property from a
+        planted token; this one proves the two halves actually join up.
+        """
+        _configure_apple(monkeypatch, BUNDLE_ID)
+        _configure_revoke(monkeypatch)
+        _configure_token_key(monkeypatch)
+        stub = _RecordingApple()
+        monkeypatch.setattr(apple_keys, "http_post", stub)
+
+        uid, sub, headers, _ = _apple_reader_4h(client, "b54", "4g-b54@example.com")
+        sealed = _stored(db, uid)
+        assert sealed is not None and sealed != REFRESH_TOKEN
+
+        r = client.post("/auth/delete-account/me", headers=headers)
+        assert r.status_code == 200, r.text
+
+        assert len(stub.token_calls) == 1
+        assert len(stub.revoke_calls) == 1
+        data = stub.revoke_calls[0]["data"]
+        assert set(data) == REVOKE_BODY_KEYS
+        assert data["token"] == REFRESH_TOKEN            # the fix
+        assert data["token"] != sub                      # Sprint 4G's bug, pinned shut
+        assert data["token"] != sealed                   # ...and unsealed, not raw
+        assert data["token_type_hint"] == "refresh_token"
+        assert data["client_id"] == BUNDLE_ID
+        # The same `client_id` both times. Apple binds a refresh token to the client that
+        # obtained it, so these two disagreeing would be a 400 nobody could see in a test that
+        # looked at one call only.
+        assert stub.token_calls[0]["data"]["client_id"] == data["client_id"]
+        _verify_client_secret(data["client_secret"])
+
+        # ...and SEPARATELY, that the reader is actually gone.
+        assert _row(db, uid) is None
+
+    def test_a_google_only_deletion_touches_no_apple_path_at_all(
+            self, client, monkeypatch, db, capsys):
+        """B-55. MUT-4H-06: drop the `apple_sub IS NOT NULL` gate (`if True:`).
+
+        MEASURED, so that the reason this case exists is not guessed at. B-41 above still
+        catches MUT-4H-06 on its own, through its before-value tripwire: with the gate gone
+        the route reaches `revoke_token`, the tripwire raises, the deletion 500s and the
+        Google-only row survives (`tests/test_apple_auth.py:1750`). What B-41 can no longer
+        catch is a gate removed WITHOUT a tripwire in place, because after Sprint 4H
+        `unseal_token(None)` is None and `revoke_token(None, ...)` sends nothing — so the call
+        count stays zero and the response stays byte-identical. The gate's remaining
+        observable effect in the real code is that the Apple path prints nothing at all for a
+        Google-only reader, and that is what this asserts.
+        """
+        _configure_apple(monkeypatch, BUNDLE_ID)
+        _configure_revoke(monkeypatch)
+        _configure_token_key(monkeypatch)
+        stub = _RecordingApple()
+        monkeypatch.setattr(apple_keys, "http_post", stub)
+
+        google_only = _make_user(db, email="4g-b55@example.com", name="B55")
+        google_uid = google_only.id
+        assert google_only.apple_sub is None
+        assert google_only.apple_refresh_token is None
+
+        capsys.readouterr()
+        r = client.post("/auth/delete-account/me", headers=_auth(google_only))
+        logged = "".join(capsys.readouterr())
+
+        assert r.status_code == 200, r.text
+        assert stub.calls == []
+        assert _row(db, google_uid) is None
+        assert "apple revoke" not in logged, logged[-300:]
+        assert "apple token" not in logged, logged[-300:]
+
+        # CONTROL (rule 3): the same stub and the same detector on an Apple reader -> one
+        # revocation and one log line. So "nothing" above is the gate and not a dead capture.
+        uid, _, headers, _ = _apple_reader_4h(client, "b55c", "4g-b55-apple@example.com")
+        capsys.readouterr()
+        assert client.post("/auth/delete-account/me", headers=headers).status_code == 200
+        control = "".join(capsys.readouterr())
+        assert len(stub.revoke_calls) == 1
+        assert "apple revoke: status" in control
+
+    def test_an_unreadable_stored_token_still_deletes_and_sends_nothing(
+            self, client, monkeypatch, db):
+        """B-56. MUT-4H-07: let `unseal_token` raise instead of returning None; or send the
+        stored value anyway when the unseal fails.
+
+        A rotated `APPLE_TOKEN_KEY` is the realistic version of this, and it must not cost a
+        reader their deletion — 5.1.1(v) outranks revocation however the token became
+        unreadable. Sending the ciphertext would be worse than sending nothing: it hands a
+        credential-shaped value to Apple in exchange for a guaranteed 400.
+        """
+        _configure_apple(monkeypatch, BUNDLE_ID)
+        _configure_revoke(monkeypatch)
+        _configure_token_key(monkeypatch)
+        stub = _RecordingApple()
+        monkeypatch.setattr(apple_keys, "http_post", stub)
+        uid, sub, headers, _ = _apple_reader_4h(client, "b56", "4g-b56@example.com")
+        assert _stored(db, uid) is not None
+
+        # The key rotates underneath the stored value: the ciphertext is untouched and simply
+        # no longer authenticates.
+        _configure_token_key(monkeypatch, key=Fernet.generate_key().decode())
+        _dependents(db, uid)
+        assert _dependent_counts(db, uid) == {"userbooks": 1, "notes": 1, "push_tokens": 1}
+
+        r = client.post("/auth/delete-account/me", headers=headers)
+
+        assert r.status_code == 200, r.text
+        assert r.json() == {"message": "Account deleted"}
+        assert stub.revoke_calls == []
+        assert _row(db, uid) is None
+        assert _dependent_counts(db, uid) == {"userbooks": 0, "notes": 0, "push_tokens": 0}
+
+    def test_the_stored_token_never_leaves_the_server(self, client, monkeypatch, db):
+        """B-57. MUT-4H-08: add `apple_refresh_token` to the /auth/apple response, or to
+        /profile/me. MUT-4H-13: `index=True` on the column.
+
+        The column is a credential with exactly one reader — the deletion route. No client has
+        any use for it, sealed or not.
+        """
+        _configure_apple(monkeypatch, BUNDLE_ID)
+        _configure_revoke(monkeypatch)
+        _configure_token_key(monkeypatch)
+        stub = _RecordingApple()
+        monkeypatch.setattr(apple_keys, "http_post", stub)
+
+        uid, sub, headers, payload = _apple_reader_4h(client, "b57", "4g-b57@example.com")
+        sealed = _stored(db, uid)
+        assert sealed is not None
+
+        profile = client.get("/profile/me", headers=headers)
+        assert profile.status_code == 200, profile.text
+        for where, text in {"/auth/apple": json.dumps(payload),
+                            "/profile/me": profile.text}.items():
+            assert sealed not in text, where
+            assert REFRESH_TOKEN not in text, where
+            assert AUTH_CODE not in text, where
+            assert "refresh_token" not in text, where
+            assert TOKEN_KEY not in text, where
+
+        # CONTROL (rule 3): the detector finds the value when it IS present.
+        assert sealed in json.dumps({"apple_refresh_token": sealed})
+
+        # The model keeps it unindexed and non-unique: nothing looks a reader up by it, and an
+        # index on a credential is that credential in one more place on disk and in one more
+        # backup.
+        col = models.User.__table__.c.apple_refresh_token
+        assert col.nullable is True
+        assert col.index in (None, False)
+        assert col.unique in (None, False)
+        assert col.type.length == 512
+        # A fresh row is NULL, never "" — the deletion reads this column and "" must not look
+        # like something to revoke.
+        fresh = _make_user(db, email="4g-b57-fresh@example.com", name="B57 Fresh")
+        assert fresh.apple_refresh_token is None
+
+    def test_nothing_sensitive_is_logged_by_the_exchange(self, client, monkeypatch, db, capsys):
+        """B-58. MUT-4H-09: log the token response body, the refresh token or the code.
+
+        R-13's discipline extended to the new endpoint. A token response body is the single
+        most tempting thing in this sprint to print, and it is the one place a token appears.
+        """
+        body = "apple-token-detail-4h-b58"
+        _configure_apple(monkeypatch, BUNDLE_ID)
+        _configure_revoke(monkeypatch)
+        _configure_token_key(monkeypatch)
+
+        secrets = []
+        capsys.readouterr()
+
+        # 1. the success path, all the way through the deletion
+        stub = _RecordingApple(token_text=body)
+        monkeypatch.setattr(apple_keys, "http_post", stub)
+        uid, sub, headers, _ = _apple_reader_4h(client, "b58", "4g-b58-ok@example.com")
+        sealed = _stored(db, uid)
+        secrets.append(stub.token_calls[0]["data"]["client_secret"])
+        assert client.post("/auth/delete-account/me", headers=headers).status_code == 200
+        secrets.append(stub.revoke_calls[0]["data"]["client_secret"])
+        subs = [sub]
+
+        # 2. every way the exchange can fail
+        for mode in EXCHANGE_FAILURE_MODES:
+            fstub = _exchange_failure(mode, body=body)
+            monkeypatch.setattr(apple_keys, "http_post", fstub)
+            uid2, sub2, headers2, _ = _apple_reader_4h(
+                client, f"b58{mode[:4]}", f"4g-b58-{mode}@example.com")
+            assert client.post("/auth/delete-account/me", headers=headers2).status_code == 200
+            subs.append(sub2)
+            if fstub.token_calls:
+                secrets.append(fstub.token_calls[0]["data"]["client_secret"])
+
+        logged = "".join(capsys.readouterr())
+        assert "-----BEGIN" not in logged
+        assert _REVOKE_PEM not in logged
+        assert body not in logged
+        assert AUTH_CODE not in logged
+        assert REFRESH_TOKEN not in logged
+        assert TOKEN_KEY not in logged
+        assert sealed not in logged
+        for secret in secrets:
+            assert secret not in logged
+        for value in subs:
+            assert value not in logged, value[:24]
+        # Status lines alone ARE permitted, and prove the capture is not simply empty.
+        assert "apple token: status 200, refresh_token stored" in logged
+        assert "apple revoke: status" in logged
+
+        # CONTROL (rule 3): the same detector finds a deliberate leak.
+        print(f"synthetic leak: {body} {AUTH_CODE} {REFRESH_TOKEN}")
+        leaked = "".join(capsys.readouterr())
+        assert body in leaked and AUTH_CODE in leaked and REFRESH_TOKEN in leaked
+
+    def test_schema_guard_requires_the_new_column(self):
+        """B-59. MUT-4H-10: drop the 4H entry from `schema_guard.REQUIRED_COLUMNS`.
+
+        The column needs a PM SQL step, and a model column deployed without its guard entry is
+        the April 2026 outage: the service boots and then 500s on every `User` query. The entry
+        and the model field travel in ONE commit, and that commit deploys only after the SQL.
+        """
+        required = schema_guard.REQUIRED_COLUMNS
+        assert ("user", "apple_refresh_token") in required
+        # every earlier sprint's pairs are still there — 4H appends, it never rewrites
+        for pair in (("user", "timezone"), ("reading_activity", "local_day"),
+                     ("user", "is_bot"), ("bot_post", "dedup_key"), ("user", "apple_sub")):
+            assert pair in required, pair
+        tables = SQLModel.metadata.tables
+        for table, column in required:
+            assert table in tables, f"{table} is not a table in SQLModel.metadata"
+            assert column in tables[table].c, f"{table}.{column} is not a column"
+
+        # The guard EXITS rather than booting: served everything but this column, it raises.
+        served = [p for p in required if p != ("user", "apple_refresh_token")]
+        assert len(served) == len(required) - 1
+        with pytest.raises(RuntimeError) as exc:
+            schema_guard.assert_migrated(_StubEngine("postgresql", rows=served))
+        assert "apple_refresh_token" in str(exc.value)
+        # CONTROL: served the full set, it returns None.
+        assert schema_guard.assert_migrated(
+            _StubEngine("postgresql", rows=list(required))) is None
+
+    def test_pm_sql_step_9_is_bounded_idempotent_and_additive(self):
+        """B-60. MUT-4H-11: make step 9's ALTER NOT NULL, give it a DEFAULT, or index it.
+
+        Bounded at both ends for 4C's K-15 reason: `text[start:]` scans everything after the
+        heading, so a later section can satisfy an assertion the bounded one fails.
+        """
+        text = PM_SQL_QUEUE_4H_PATH.read_text(encoding="utf-8")
+        heading = "## 9. Sprint 4H"
+        start = text.index(heading)
+        rest = text[start + len(heading):]
+        headings = [m.start() for m in re.finditer(r"^## ", rest, re.MULTILINE)]
+        assert headings, "expected a `## ` heading after step 9"
+        section = text[start:start + len(heading) + headings[0]]
+
+        # the bound is real: shorter than the file, and it excludes both neighbours
+        assert 0 < len(section) < len(text)
+        assert "## 8. Sprint 4G" not in section
+        assert "What Claude does with each answer" not in section
+
+        normalized = " ".join(section.split())
+        assert ('ALTER TABLE "user" ADD COLUMN IF NOT EXISTS apple_refresh_token VARCHAR(512)'
+                in normalized)
+        # the model and the SQL agree on the width, recomputed rather than typed twice
+        width = models.User.__table__.c.apple_refresh_token.type.length
+        assert f"apple_refresh_token VARCHAR({width})" in normalized
+
+        # additive only: a NOT NULL or a DEFAULT would rewrite every row, and nothing in this
+        # step may read, write or move one.
+        alter = [s.strip() for s in section.split(";") if "ADD COLUMN" in s.upper()]
+        assert len(alter) == 1, alter
+        assert "NOT NULL" not in alter[0].upper()
+        assert "DEFAULT" not in alter[0].upper()
+        for verb in ("UPDATE ", "DELETE ", "INSERT ", "CREATE INDEX", "CREATE UNIQUE INDEX"):
+            assert verb not in normalized.upper(), verb
+
+        # the three verification queries
+        assert "information_schema.columns" in normalized
+        assert "'apple_refresh_token'" in normalized
+        assert "pg_indexes" in normalized
+        assert 'SELECT count(*) FROM "user" WHERE apple_refresh_token IS NOT NULL' in normalized
+
+        # K-14's property one sprint on: step 9 is APPENDED after step 8, which is what leaves
+        # 4G's own bounded section (and every assertion in it) intact.
+        assert text.index("## 8. Sprint 4G") < start

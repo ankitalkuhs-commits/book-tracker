@@ -1066,3 +1066,71 @@ test('eas_json_has_ios_profiles_and_leaves_android_alone', () => {
     { cwd: MOBILE_ROOT, encoding: 'utf8' }).status !== 0, true,
     'the .p8 is tracked by git');
 });
+
+// ── A-14 (Sprint 4H) ────────────────────────────────────────────────────────
+test('authorization_code_travels_from_the_credential_to_the_body', () => {
+  // Sprint 4H. Apple's one-time `authorizationCode` is the ONLY way the server
+  // can obtain a refresh token, and a refresh token is the only value
+  // `appleid.apple.com/auth/revoke` accepts. Without this field the server can
+  // send nothing at deletion and the reader's Apple ID keeps listing us under
+  // "Apps Using Apple ID" — which is the item App Review checks.
+  //
+  // MUT-4H-12: pass `null`/`undefined` instead of the credential's field; send
+  // it unconditionally; read `credential.authorization_code` (the snake_case
+  // spelling expo-apple-authentication does not have); stringify it.
+  const handlerSrc = src(loginCode, arrowFunction(loginAst, loginSrc, 'handleAppleSignIn'));
+  assert.match(handlerSrc, /credential\.authorizationCode/,
+    'the handler does not read authorizationCode off the credential');
+  assert.doesNotMatch(handlerSrc, /credential\.authorization_code/,
+    'snake_case — expo-apple-authentication spells it authorizationCode');
+  assert.doesNotMatch(handlerSrc, STRINGIFY,
+    'the handler stringifies — "null" would reach the server as a code');
+
+  // It is passed to appleLogin, and as the FOURTH argument, which is the
+  // position api.js reads. A call that merely mentions the field somewhere in
+  // the handler would satisfy a text scan and nothing else.
+  const calls = findAll(loginAst, (n) => n.type === 'CallExpression'
+    && /authAPI\.appleLogin$/.test(src(loginSrc, n.callee)));
+  assert.equal(calls.length, 1, `expected exactly one authAPI.appleLogin call, found ${calls.length}`);
+  const args = calls[0].arguments.map((a) => src(loginSrc, a));
+  assert.equal(args.length, 4, `appleLogin is called with ${args.length} arguments: ${args.join(', ')}`);
+  assert.match(args[3], /^credential\.authorizationCode$/,
+    `the 4th argument is ${args[3]}, not the credential's authorizationCode`);
+
+  // The api.js side: the parameter exists, in that position, and the body key
+  // is written exactly once and under a conditional — the same rule full_name
+  // lives under, for the same reason. An older build sends no code, and the
+  // string "null" would be worse than sending nothing.
+  const appleLogin = findAll(apiAst, (n) => n.type === 'ObjectProperty'
+    && n.key.type === 'Identifier' && n.key.name === 'appleLogin');
+  assert.equal(appleLogin.length, 1, `expected exactly one authAPI.appleLogin, found ${appleLogin.length}`);
+  const fn = appleLogin[0].value;
+  const params = (fn.params || []).map((p) => src(apiSrc, p));
+  assert.deepEqual(params, ['identityToken', 'nonce', 'fullName', 'authorizationCode'],
+    `appleLogin's parameters are ${params.join(', ')}`);
+
+  const fnSrc = src(apiCode, fn);
+  assert.match(fnSrc, /authorization_code/, 'appleLogin does not send authorization_code');
+  assert.doesNotMatch(fnSrc, STRINGIFY, 'appleLogin stringifies authorization_code');
+
+  const writes = findAll(fn, (n) => n.type === 'AssignmentExpression'
+    && /authorization_code/.test(src(apiSrc, n.left)));
+  const literals = findAll(fn, (n) => n.type === 'ObjectProperty'
+    && ((n.key.type === 'Identifier' && n.key.name === 'authorization_code')
+      || (n.key.type === 'StringLiteral' && n.key.value === 'authorization_code')));
+  assert.equal(writes.length + literals.length, 1,
+    `expected exactly one place where authorization_code is set, found ${writes.length + literals.length}`);
+  assert.equal(literals.length, 0,
+    'authorization_code is an unconditional key of the request body — an older build sends none');
+  const guarded = ancestors(writes[0], parentsOf(apiAst))
+    .some((a) => a.type === 'IfStatement' || a.type === 'ConditionalExpression' || a.type === 'LogicalExpression');
+  assert.ok(guarded, 'authorization_code is written unconditionally');
+
+  // CONTROL: the same detectors on a synthetic negative, so a green run above
+  // is the source being right and not the walks finding nothing.
+  const badSrc = "appleLogin: async (a, b, c) => { const body = { authorization_code: null }; }";
+  const badAst = parseJS(badSrc);
+  const badProp = findAll(badAst, (n) => n.type === 'ObjectProperty'
+    && n.key.type === 'Identifier' && n.key.name === 'authorization_code');
+  assert.equal(badProp.length, 1, 'the unconditional-literal detector found nothing to report');
+});
