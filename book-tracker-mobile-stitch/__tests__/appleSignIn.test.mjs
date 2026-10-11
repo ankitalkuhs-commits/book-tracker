@@ -929,6 +929,20 @@ test('eas_json_has_ios_profiles_and_leaves_android_alone', () => {
     assert.deepEqual(eas.build[name].android, base.build[name].android, `the ${name} android block changed`);
   }
   assert.deepEqual(eas.cli, base.cli, 'eas.json cli block changed');
-  assert.deepEqual(eas.submit, base.submit,
-    'submit.production gained an ios block — that needs an App Store Connect app id that does not exist yet');
+
+  // Until 2026-10-11 this asserted `eas.submit` was unchanged from the base, because at the
+  // time no App Store Connect record existed and an ascAppId would have been invented. The
+  // record now exists (TrackMyRead, com.bookpulse.mobile), so the assertion is inverted
+  // rather than deleted: the id must be present, and it must be the real one.
+  assert.equal(eas.submit.production.ios.ascAppId, '6821514742',
+    'submit.production.ios.ascAppId must be the real App Store Connect app id');
+
+  // What must NOT be here: this repository is public, so the ASC API key, its issuer and the
+  // team id are supplied by EXPO_ASC_* environment variables at submit time, never committed.
+  const forbidden = ['ascApiKeyPath', 'ascApiKeyIssuerId', 'ascApiKey', 'appleId', 'appleIdPassword'];
+  const present = forbidden.filter((k) => k in eas.submit.production.ios);
+  assert.deepEqual(present, [],
+    `credentials must not live in eas.json - this repo is public: ${present.join(', ')}`);
+  assert.deepEqual(Object.keys(eas.submit.production.ios), ['ascAppId'],
+    'the submit ios block carries the app id and nothing else');
 });
