@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { getAdminStats, getAdminUsers, sendTestPush, broadcastPush, setAdminRole, getAdminNotes, getAdminComments, adminDeleteNote, adminDeleteComment } from '../services/api'
+import { getAdminStats, getAdminUsers, sendTestPush, broadcastPush, setAdminRole, getAdminNotes, getAdminComments, adminDeleteNote, adminDeleteComment, getAdminReports, resolveReport } from '../services/api'
 import { useToast } from '../components/Toast'
 
 function StatCard({ label, value, sub }) {
@@ -38,6 +38,15 @@ export default function AdminPage() {
   const [deletingNote, setDeletingNote]     = useState(null)
   const [deletingComment, setDeletingComment] = useState(null)
   const [contentSearch, setContentSearch]   = useState('')
+
+  // Reports queue (Sprint 4I). trackmyread.com/support promises a report is reviewed within two
+  // working days; without this tab that promise depended on somebody making an authenticated GET
+  // by hand.
+  const [reports, setReports] = useState([])
+  const [reportsLoading, setReportsLoading] = useState(false)
+  const [reportsLoaded, setReportsLoaded] = useState(false)
+  const [reportStatus, setReportStatus] = useState('open')
+  const [resolvingReport, setResolvingReport] = useState(null)
 
   // Make admin
   const [makingAdmin, setMakingAdmin] = useState(null)
@@ -133,7 +142,45 @@ export default function AdminPage() {
     setDeletingComment(null)
   }
 
-  const TABS = ['overview', 'users', 'content', 'push']
+  // Lazy, like loadContent: the mount effect swallows its failure, so a queue fetched on mount
+  // would fail silently and the tab would read "no reports" when the request had simply 403'd.
+  const loadReports = async (status = reportStatus, force = false) => {
+    if (reportsLoaded && !force && status === reportStatus) return
+    setReportStatus(status)
+    setReportsLoading(true)
+    try {
+      const r = await getAdminReports(status)
+      setReports(r || [])
+      setReportsLoaded(true)
+    } catch (e) {
+      toast(e.message || 'Could not load reports', 'error')
+    }
+    setReportsLoading(false)
+  }
+
+  const handleResolveReport = async (report, status) => {
+    const resolution = window.prompt(
+      status === 'actioned'
+        ? 'What did you do? (kept with the report, never shown to a reader)'
+        : 'Why is this dismissed? (kept with the report)',
+      '',
+    )
+    if (resolution === null) return
+    setResolvingReport(report.id)
+    try {
+      await resolveReport(report.id, { status, resolution })
+      // Resolving is not deleting: the row stays, stamped, and is still readable under "all".
+      setReports(prev => reportStatus === 'all'
+        ? prev.map(r => r.id === report.id ? { ...r, status } : r)
+        : prev.filter(r => r.id !== report.id))
+      toast(status === 'actioned' ? 'Report actioned' : 'Report dismissed', 'success')
+    } catch (e) {
+      toast(e.message || 'Could not update the report', 'error')
+    }
+    setResolvingReport(null)
+  }
+
+  const TABS = ['overview', 'users', 'content', 'reports', 'push']
 
   return (
     <main className="max-w-screen-xl mx-auto px-4 md:px-8 pt-8 pb-12 space-y-8">
@@ -148,7 +195,7 @@ export default function AdminPage() {
         {TABS.map(tab => (
           <button
             key={tab}
-            onClick={() => { setActiveTab(tab); if (tab === 'content') loadContent() }}
+            onClick={() => { setActiveTab(tab); if (tab === 'content') loadContent(); if (tab === 'reports') loadReports() }}
             className={`pb-3 px-4 text-sm font-sans capitalize transition-colors ${
               activeTab === tab
                 ? 'text-primary font-bold border-b-2 border-primary'
@@ -435,6 +482,124 @@ export default function AdminPage() {
               </div>
             </section>
           )}
+        </div>
+      )}
+
+      {/* Reports queue — Sprint 4I */}
+      {activeTab === 'reports' && (
+        <div className="space-y-6">
+          <div className="flex items-center gap-2">
+            {['open', 'actioned', 'dismissed', 'all'].map(s => (
+              <button
+                key={s}
+                onClick={() => loadReports(s, true)}
+                className={`px-3 py-1.5 text-xs font-bold rounded-full capitalize transition-colors ${
+                  reportStatus === s
+                    ? 'bg-primary text-on-primary'
+                    : 'bg-surface-container text-on-surface-variant hover:text-on-surface'
+                }`}
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+
+          <p className="text-xs text-on-surface-variant">
+            Reviewed within 2 working days — that commitment is published on /support.
+          </p>
+
+          {reportsLoading && (
+            <div className="space-y-2">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="bg-surface-container-lowest rounded-2xl h-24 animate-pulse" />
+              ))}
+            </div>
+          )}
+
+          {!reportsLoading && reports.length === 0 && (
+            <p className="px-5 py-6 text-sm text-on-surface-variant text-center bg-surface-container-lowest rounded-2xl">
+              Nothing in this queue.
+            </p>
+          )}
+
+          {!reportsLoading && reports.map(r => (
+            <div key={r.id} className="bg-surface-container-lowest rounded-2xl p-5 space-y-3">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-error/10 text-error">{r.reason}</span>
+                <span className="text-xs px-2 py-0.5 rounded-full bg-surface-container-high text-on-surface-variant">{r.target_type} #{r.target_id}</span>
+                {r.reports_on_target > 1 && (
+                  <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-primary/10 text-primary">
+                    {r.reports_on_target} reports on this target
+                  </span>
+                )}
+                {r.target_user_is_bot && (
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-secondary/10 text-secondary">bot</span>
+                )}
+                <span className="text-xs text-on-surface-faint">{new Date(r.created_at).toLocaleString()}</span>
+                {r.status !== 'open' && (
+                  <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-surface-container-high text-on-surface-variant">{r.status}</span>
+                )}
+              </div>
+
+              <p className="text-xs text-on-surface-variant">
+                Reported by {r.reporter_name || `#${r.reporter_id}`}
+                {r.target_user_name ? ` · about ${r.target_user_name} (#${r.target_user_id})` : ''}
+              </p>
+
+              {r.target_snapshot && (
+                <blockquote className="text-sm text-on-surface bg-surface-container-low rounded-xl px-4 py-3 whitespace-pre-wrap break-words">
+                  {r.target_snapshot}
+                </blockquote>
+              )}
+              {r.detail && (
+                <p className="text-sm italic text-on-surface-variant">“{r.detail}”</p>
+              )}
+              {r.resolution && (
+                <p className="text-xs text-on-surface-variant">Resolution: {r.resolution}</p>
+              )}
+
+              <div className="flex items-center gap-2 flex-wrap pt-1">
+                {r.target_type === 'note' && (
+                  <button
+                    onClick={() => handleDeleteNote(r.target_id)}
+                    disabled={deletingNote === r.target_id}
+                    className="flex items-center gap-1 text-xs font-medium text-error px-2 py-1 rounded-lg hover:bg-error/5 disabled:opacity-40"
+                  >
+                    <span className="material-symbols-outlined text-base">delete</span>
+                    Delete post
+                  </button>
+                )}
+                {r.target_type === 'comment' && (
+                  <button
+                    onClick={() => handleDeleteComment(r.target_id)}
+                    disabled={deletingComment === r.target_id}
+                    className="flex items-center gap-1 text-xs font-medium text-error px-2 py-1 rounded-lg hover:bg-error/5 disabled:opacity-40"
+                  >
+                    <span className="material-symbols-outlined text-base">delete</span>
+                    Delete comment
+                  </button>
+                )}
+                {r.status === 'open' && (
+                  <>
+                    <button
+                      onClick={() => handleResolveReport(r, 'actioned')}
+                      disabled={resolvingReport === r.id}
+                      className="text-xs font-bold px-3 py-1.5 rounded-lg bg-primary text-on-primary disabled:opacity-40"
+                    >
+                      Actioned
+                    </button>
+                    <button
+                      onClick={() => handleResolveReport(r, 'dismissed')}
+                      disabled={resolvingReport === r.id}
+                      className="text-xs font-bold px-3 py-1.5 rounded-lg border border-outline-variant/30 text-on-surface-variant hover:bg-surface-container disabled:opacity-40"
+                    >
+                      Dismiss
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+          ))}
         </div>
       )}
 

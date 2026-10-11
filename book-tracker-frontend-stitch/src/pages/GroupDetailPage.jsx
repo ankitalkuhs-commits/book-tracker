@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext'
 import { useToast } from '../components/Toast'
 import BookPreviewModal from '../components/BookPreviewModal'
 import BotBadge from '../components/BotBadge'
+import ReportButton from '../components/ReportButton'
 import {
   getGroup, getGroupMembers, getGroupLeaderboard, getGroupGoal,
   getGroupPosts, createGroupPost, deleteGroupPost,
@@ -125,14 +126,22 @@ function PostCard({ post, isCurator, isOwn, onDelete, onUserClick }) {
             </span>
           )}
         </div>
-        {(isOwn || isCurator) && (
-          <button
-            onClick={() => onDelete(post.id)}
-            className="text-on-surface-variant/40 hover:text-error transition-colors shrink-0"
-          >
-            <span className="material-symbols-outlined text-base">delete</span>
-          </button>
-        )}
+        {/* Sprint 4I: the delete gate used to wrap this whole cluster, so a non-owner saw nothing
+            here at all and had nowhere to report a circle post from. Report is outside the gate;
+            Delete keeps its own (isOwn || isCurator). */}
+        <div className="shrink-0 flex items-center gap-1">
+          {!isOwn && (
+            <ReportButton targetType="group_post" targetId={post.id} targetName={post.user?.name} />
+          )}
+          {(isOwn || isCurator) && (
+            <button
+              onClick={() => onDelete(post.id)}
+              className="text-on-surface-variant/40 hover:text-error transition-colors shrink-0"
+            >
+              <span className="material-symbols-outlined text-base">delete</span>
+            </button>
+          )}
+        </div>
       </div>
     </div>
   )

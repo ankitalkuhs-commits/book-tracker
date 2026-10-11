@@ -512,5 +512,42 @@
     "pt": "Português (BR)",
     "de": "Deutsch",
     "fr": "Français"
+  },
+  "safety": {
+    "report": "Signaler",
+    "reportTitle": "Signaler ce contenu",
+    "reportSubtitle": "Un modérateur examine chaque signalement sous 2 jours ouvrés. La personne signalée n'apprend jamais qui l'a signalée.",
+    "reportSubtitleNamed": "Un modérateur examine chaque signalement sous 2 jours ouvrés. {{name}} n'apprendra jamais qui a fait le signalement.",
+    "reasonLabel": "Pourquoi signalez-vous ceci ?",
+    "reason": {
+      "spam": "Spam ou arnaque",
+      "harassment": "Harcèlement ou intimidation",
+      "hate": "Discours haineux",
+      "sexual": "Contenu sexuel",
+      "violence": "Violence ou menaces",
+      "self_harm": "Automutilation ou suicide",
+      "other": "Autre chose"
+    },
+    "detailLabel": "Autre chose ? (facultatif)",
+    "detailPlaceholder": "Dites au modérateur ce qu'il doit regarder.",
+    "alsoBlock": "Bloquer aussi cette personne",
+    "blockEffect": "Le blocage vous rend invisibles l'un pour l'autre au sein de TrackMyRead. Il ne dépublie pas ses publications publiques : toute personne déconnectée peut encore les lire sur le web ouvert.",
+    "submitReport": "Envoyer le signalement",
+    "reported": "Signalement envoyé. Un modérateur va l'examiner.",
+    "reportedAndBlocked": "Signalement envoyé, et vous avez bloqué cette personne.",
+    "reportFailed": "Impossible d'envoyer le signalement.",
+    "block": "Bloquer",
+    "blockConfirm": "Bloquer {{name}} ?\n\nVous cesserez de vous voir au sein de TrackMyRead : ses publications, commentaires et profil disparaîtront de votre vue, et les vôtres de la sienne.\n\nTout abonnement entre vous est supprimé et ne reviendra pas si vous débloquez plus tard.\n\nCela ne dépublie pas ses publications publiques : toute personne déconnectée peut encore les lire sur le web ouvert.",
+    "blocked": "{{name}} est bloqué.",
+    "blockFailed": "Impossible de bloquer cette personne.",
+    "thisReader": "cette personne",
+    "unfollow": "Ne plus suivre",
+    "moreActions": "Plus d'actions",
+    "blockedReaders": "Lecteurs bloqués",
+    "blockedReadersDesc": "Les personnes que vous avez bloquées. Vous ne pouvez pas vous voir au sein de TrackMyRead. Débloquer ne rétablit pas l'abonnement.",
+    "noBlockedReaders": "Vous n'avez bloqué personne.",
+    "unblock": "Débloquer",
+    "unblocked": "Débloqué.",
+    "unblockFailed": "Impossible de débloquer."
   }
 }
