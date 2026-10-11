@@ -22,6 +22,7 @@ import OnboardingPage, { ONBOARDING_KEY } from './pages/OnboardingPage'
 import BookDetailPage from './pages/BookDetailPage'
 import AboutPage from './pages/AboutPage'
 import PrivacyPage from './pages/PrivacyPage'
+import SupportPage from './pages/SupportPage'
 import TermsPage from './pages/TermsPage'
 import BlogListPage from './pages/BlogListPage'
 import BlogPostPage from './pages/BlogPostPage'
@@ -98,6 +99,7 @@ export default function App() {
       <Route path="/insights" element={<PrivateRoute><InsightsPage /></PrivateRoute>} />
       <Route path="/about" element={<AboutPage />} />
       <Route path="/privacy" element={<PrivacyPage />} />
+      <Route path="/support" element={<SupportPage />} />
       <Route path="/terms" element={<TermsPage />} />
       <Route path="/blog" element={<BlogListPage />} />
       <Route path="/blog/:slug" element={<BlogPostPage />} />

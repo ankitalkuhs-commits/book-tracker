@@ -23,7 +23,7 @@ export default function PrivacyPage() {
         <section className="bg-surface-container-lowest rounded-3xl p-6 space-y-3">
           <h2 className="font-sans text-base font-bold text-on-surface uppercase tracking-wider">What we collect</h2>
           <ul className="space-y-2 text-sm text-on-surface-variant leading-relaxed list-disc list-inside">
-            <li><strong className="text-on-surface">Account info</strong> — your name, email, and profile picture from Google Sign-In</li>
+            <li><strong className="text-on-surface">Account info</strong> — your name, email, and profile picture from Google Sign-In (Android and web) or Sign in with Apple (iPhone and iPad). If you use Hide My Email, we only ever see Apple's private relay address.</li>
             <li><strong className="text-on-surface">Reading data</strong> — books you add, progress, notes, and highlights you create</li>
             <li><strong className="text-on-surface">Social data</strong> — followers, following, group memberships, and posts</li>
             <li><strong className="text-on-surface">Device tokens</strong> — for push notifications (Android/web)</li>
