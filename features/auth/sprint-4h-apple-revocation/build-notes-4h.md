@@ -43,7 +43,7 @@ this branch before any of this was written. `requirements.txt` has no diff and i
 
 | Gate | Result |
 |---|---|
-| pytest **before** | `800` collected (`pytest tests -q` at `2c2a48b`, detached, clean tree) — the briefed figure, confirmed |
+| pytest **before** | **800 passed** in 559.21s (`pytest tests -q` at `2c2a48b`, detached HEAD, `git status --porcelain` empty) — the briefed figure, confirmed on a tree nobody was editing |
 | pytest **after** | `814` collected, **814 passed** — 800 + 14 |
 | New collected | **14** from 11 case ids: B-50, B-52..B-60 one each, B-51 x4 |
 | qa/unit | **38 / 38** before and after, untouched (`node --test "qa/unit/*.test.mjs"`) |
@@ -53,6 +53,30 @@ this branch before any of this was written. `requirements.txt` has no diff and i
 | `requirements.txt` | no diff |
 | Removals, counted per file | `auth_router.py` **1** (the old `current_user.apple_sub,` argument line); `apple_keys.py` **7** (all inside `revoke_token`'s own docstring and its two renamed lines); `models.py` **0**; `schema_guard.py` **0**; `api.js` **1**; `LoginScreen.js` **1**; `tests/test_apple_auth.py` **7** |
 | No bare `except` added | every new handler is `except Exception as e` or `except InvalidToken`, and logs a type name |
+
+## Merging this branch — read before you do
+
+This branch is based on **`2c2a48b`, the commit the brief named as deployed**. Local `master` has
+since moved to **`0bda7b0`**, three commits ahead (`f4202ac`, `c0f640a` — iPad layout fixes —
+and `0bda7b0`, "ci: raise the Android floor to 139"). Measured with
+`git merge-tree --write-tree master sprint-4h-apple-revocation`:
+
+| | Value |
+|---|---|
+| Files that conflict | exactly one: **`.github/workflows/ci-tests.yml`**. `appleSignIn.test.mjs` auto-merges — master inserted its new case before `eas_json_has_ios_profiles…` and A-14 is appended at the end of the file |
+| Android count in the merged tree | **140** (master 139 + A-14), counted over the merged tree object, and the same static count agrees with the runtime count at `2c2a48b` (138 both ways) |
+| Android floor to resolve to | **140**, not the 139 this branch sets and not the 139 master sets |
+| pytest in the merged tree | **814** — master's three commits touch no file under `app/`, `tests/` or `qa/` (`git diff --name-only 2c2a48b master` is nine mobile files plus the workflow), so this branch's 814 survives the merge unchanged |
+| qa/unit in the merged tree | **38**, same reason |
+
+The conflict is the Android `EXPECTED_MIN_TESTS` line and the comment above it: master bumped the
+number to 139 and **left Sprint 4G P4's comment in place describing 136**, while this branch
+rewrote that comment to explain the drift. Resolve by keeping this branch's comment, adding one
+line for the merge, and setting the number to **140**.
+
+Why this branch sets 139 and not 140: 139 is what this branch measures. Setting 140 here would
+fail this branch's own CI, and the workflow header already states the rule — "the merged tree is
+measured below rather than computed".
 
 ## Mutation-proof table
 
