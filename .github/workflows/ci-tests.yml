@@ -178,7 +178,24 @@ jobs:
       # drifted in since 4G's P4. 138 is master's measured count; +1 is A-14, the case that
       # asserts the authorization code travels from the credential into the request body.
       # Merged: both sides independently set 139; the merged tree is measured below.
-      EXPECTED_MIN_TESTS: 140
+      # 2026-10-11, Sprint 4I P5 (report and block in the app): re-measured at 152 on
+      # branch builder-4i-mobile - 140 + 12 in the new
+      # book-tracker-mobile-stitch/__tests__/reportAffordance.test.mjs. tests.md §1
+      # predicted 149 for 9 cases; the extra three are
+      #   * unfollow_sits_above_block_in_the_profile_menu - pm-decisions E-1's ordering
+      #     decision had no other proof;
+      #   * every_new_4i_string_is_in_all_six_locales - i18nParity catches a key that is
+      #     in one locale and not another, but not a key that is in none of them;
+      #   * the_version_is_bumped_for_the_one_release_that_carries_both_halves - there is
+      #     no OTA channel, and release/last-released.json is a Play record that does not
+      #     know iOS already shipped build 5.
+      # One existing case was edited in place: appleSignIn.test.mjs's 4G file-ownership
+      # rule gained a named, bounded Sprint 4I file list (see the comment there). No test
+      # id was removed. The merged tree ALSO had one pre-existing RED that this package
+      # fixes: notificationEvents.test.mjs went red when 4I-A added the content_reported
+      # backend event without the mobile EVENT_CONFIG entry, so the measured "before" is
+      # 140 collected / 139 passed.
+      EXPECTED_MIN_TESTS: 152
     steps:
       - uses: actions/checkout@v4
 

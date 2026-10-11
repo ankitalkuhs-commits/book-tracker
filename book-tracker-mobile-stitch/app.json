@@ -3,7 +3,7 @@
     "name": "TrackMyRead",
     "slug": "book-tracker-mobile",
     "owner": "ankitalkuhs",
-    "version": "2.2.4",
+    "version": "2.2.5",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -29,7 +29,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.bookpulse.mobile",
-      "buildNumber": "5",
+      "buildNumber": "6",
       "usesAppleSignIn": true,
       "config": {
         "usesNonExemptEncryption": false
@@ -38,7 +38,7 @@
     "android": {
       "package": "com.bookpulse.mobile",
       "googleServicesFile": "./google-services.json",
-      "versionCode": 63,
+      "versionCode": 64,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#fbf9f4"

@@ -9,7 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { changeLanguage, SUPPORTED_LANGUAGES } from '../i18n';
-import { profileAPI, notificationsAPI, importAPI } from '../services/api';
+import { profileAPI, notificationsAPI, importAPI, userAPI } from '../services/api';
 import { deregisterPushToken } from '../services/NotificationService';
 import { PreloadContext } from '../../App';
 import { colors, radius, shadow, type } from '../theme';
@@ -137,6 +137,13 @@ export default function SettingsScreen({ navigation, onLogout }) {
   const [prefs,           setPrefs]           = useState({});
   const [isPrivate,       setIsPrivate]       = useState(false);
   const [savingPrivacy,   setSavingPrivacy]   = useState(false);
+  // Sprint 4I (R-28): a block the reader cannot see is a block they cannot
+  // undo. `blocked` is the OUTBOUND list — the server never serves the people
+  // who blocked THEM, which is what stops a block being discoverable.
+  const [showBlocked,     setShowBlocked]     = useState(false);
+  const [blocked,         setBlocked]         = useState([]);
+  const [blockedLoading,  setBlockedLoading]  = useState(false);
+  const [unblocking,      setUnblocking]      = useState(null);
   const [uploadingPhoto,  setUploadingPhoto]  = useState(false);
   const [showAvatarPicker,   setShowAvatarPicker]   = useState(false);
   const [importing,          setImporting]          = useState(false);
@@ -219,6 +226,27 @@ export default function SettingsScreen({ navigation, onLogout }) {
     try { await profileAPI.updateMe({ is_private_profile: val }); }
     catch { setIsPrivate(!val); }
     setSavingPrivacy(false);
+  };
+
+  // ── Sprint 4I: the blocked-readers list ─────────────────────────────────
+  const openBlocked = async () => {
+    setShowBlocked(true);
+    setBlockedLoading(true);
+    try { setBlocked(await userAPI.getBlocks() || []); }
+    catch { Alert.alert(t('common.error'), t('safety.blockedLoadFailed')); }
+    setBlockedLoading(false);
+  };
+
+  // Unblocking restores NO follow (pm-decisions E-1) and notifies nobody. The
+  // row simply leaves the list; `safety.unblockHint` says the follow is gone
+  // for good so a reader is not surprised by it afterwards.
+  const handleUnblock = async (userId) => {
+    setUnblocking(userId);
+    try {
+      await userAPI.unblockUser(userId);
+      setBlocked(prev => prev.filter(b => b.user_id !== userId));
+    } catch { Alert.alert(t('common.error'), t('safety.unblockFailed')); }
+    setUnblocking(null);
   };
 
   const togglePref = async (key) => {
@@ -469,6 +497,13 @@ export default function SettingsScreen({ navigation, onLogout }) {
               <Text style={styles.privateNoticeText}>{t('settings.profileIsPrivate')}</Text>
             </View>
           )}
+          <View style={styles.rowSep} />
+          <Row
+            icon="ban-outline"
+            label={t('safety.blockedReaders')}
+            desc={t('safety.blockedReadersDesc')}
+            onPress={openBlocked}
+          />
         </View>
 
         {/* ── Notifications section ── */}
@@ -691,6 +726,56 @@ export default function SettingsScreen({ navigation, onLogout }) {
         onSelect={handleSelectAvatar}
       />
 
+      {/* ── Sprint 4I: Blocked readers (R-28) ── */}
+      <Modal visible={showBlocked} animationType="slide" transparent onRequestClose={() => setShowBlocked(false)}>
+        <View style={styles.pickerOverlay}>
+          <View style={[styles.pickerSheet, { maxHeight: '75%' }]}>
+            <View style={styles.pickerHeader}>
+              <Text style={styles.pickerTitle}>{t('safety.blockedReaders')}</Text>
+              <TouchableOpacity
+                onPress={() => setShowBlocked(false)}
+                style={styles.pickerClose}
+                accessibilityRole="button"
+                accessibilityLabel={t('a11y.close')}
+              >
+                <Ionicons name="close" size={22} color={colors.onSurface} />
+              </TouchableOpacity>
+            </View>
+            {blockedLoading ? (
+              <ActivityIndicator size="large" color={colors.primary} style={{ margin: 32 }} />
+            ) : blocked.length === 0 ? (
+              <Text style={styles.blockedEmpty}>{t('safety.blockedEmpty')}</Text>
+            ) : (
+              <>
+                <FlatList
+                  data={blocked}
+                  keyExtractor={item => String(item.user_id)}
+                  renderItem={({ item }) => (
+                    <View style={styles.blockedRow}>
+                      {item.profile_picture
+                        ? <Image source={{ uri: item.profile_picture }} style={{ width: 40, height: 40, borderRadius: 20 }} />
+                        : <View style={styles.rowIcon}><Ionicons name="person" size={18} color={colors.primary} /></View>}
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.blockedName}>{item.name || item.username}</Text>
+                        {item.username && <Text style={styles.blockedHandle}>@{item.username}</Text>}
+                      </View>
+                      <TouchableOpacity
+                        style={[styles.unblockBtn, unblocking === item.user_id && { opacity: 0.5 }]}
+                        onPress={() => handleUnblock(item.user_id)}
+                        disabled={unblocking === item.user_id}
+                      >
+                        <Text style={styles.unblockText}>{t('safety.unblock')}</Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
+                />
+                <Text style={styles.blockedHint}>{t('safety.unblockHint')}</Text>
+              </>
+            )}
+          </View>
+        </View>
+      </Modal>
+
       {/* ── Language Picker Modal ── */}
       <Modal visible={showLangPicker} animationType="slide" transparent onRequestClose={() => setShowLangPicker(false)}>
         <View style={styles.resultOverlay}>
@@ -775,6 +860,13 @@ const styles = StyleSheet.create({
   buildText:  { fontSize: 11, color: colors.outline, marginTop: 10, fontWeight: '500' },
 
   // Avatar picker modal
+  blockedRow:     { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 18, paddingVertical: 12 },
+  blockedName:    { ...type.body, color: colors.onSurface },
+  blockedHandle:  { ...type.caption, color: colors.onSurfaceVariant },
+  unblockBtn:     { borderWidth: 1, borderColor: colors.primary, borderRadius: radius.full, paddingHorizontal: 16, paddingVertical: 7 },
+  unblockText:    { ...type.caption, color: colors.primary, fontWeight: '600' },
+  blockedEmpty:   { ...type.body, color: colors.onSurfaceVariant, textAlign: 'center', padding: 28 },
+  blockedHint:    { ...type.caption, color: colors.onSurfaceVariant, paddingHorizontal: 18, paddingBottom: 18 },
   pickerOverlay:  { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
   pickerSheet:    { backgroundColor: colors.surfaceContainerLowest, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, paddingBottom: 32 },
   pickerHeader:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 16 },

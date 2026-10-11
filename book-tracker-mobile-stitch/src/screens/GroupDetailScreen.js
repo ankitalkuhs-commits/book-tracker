@@ -10,6 +10,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { groupsAPI, booksAPI, userAPI, userbooksAPI } from '../services/api';
 import BotBadge from '../components/BotBadge';
+import ReportDialog from '../components/ReportDialog';
 import { colors, radius, shadow, type } from '../theme';
 
 const WEB_APP_URL = 'https://www.trackmyread.com';
@@ -296,6 +297,10 @@ export default function GroupDetailScreen({ route, navigation }) {
   const [showBookPicker, setShowBookPicker] = useState(false);
   const [myBooks,     setMyBooks]     = useState([]);
   const [currentUser, setCurrentUser] = useState(null);
+  // Sprint 4I (R-05 site 5). A circle post is another member's content and a
+  // block hides it, but it does NOT eject either of you from the circle
+  // (pm-decisions E-2), so the report affordance has to exist here too.
+  const [reportTarget, setReportTarget] = useState(null);
   const [inviteQuery,   setInviteQuery]   = useState('');
   const [inviteResults, setInviteResults] = useState([]);
   const [inviting,      setInviting]      = useState(null);
@@ -527,6 +532,11 @@ export default function GroupDetailScreen({ route, navigation }) {
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor={colors.primaryContainer} />
       <View style={{ height: insets.top, backgroundColor: colors.primaryContainer }} />
+      <ReportDialog
+        target={reportTarget}
+        onClose={() => setReportTarget(null)}
+        onDone={({ blocked }) => { if (blocked) load(true); }}
+      />
 
       <ScrollView
         ref={scrollRef}
@@ -736,6 +746,16 @@ export default function GroupDetailScreen({ route, navigation }) {
                       accessibilityLabel={t('a11y.deletePost')}
                     >
                       <Ionicons name="trash-outline" size={16} color={colors.error} />
+                    </TouchableOpacity>
+                  )}
+                  {post.user?.id && post.user.id !== currentUser?.id && (
+                    <TouchableOpacity
+                      onPress={() => setReportTarget({ type: 'group_post', id: post.id, userId: post.user.id, name: post.user?.name })}
+                      style={styles.deleteBtn}
+                      accessibilityRole="button"
+                      accessibilityLabel={t('a11y.reportPost')}
+                    >
+                      <Ionicons name="flag-outline" size={16} color={colors.outline} />
                     </TouchableOpacity>
                   )}
                 </View>

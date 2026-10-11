@@ -514,6 +514,40 @@
     "de": "Deutsch",
     "fr": "Français"
   },
+  "safety": {
+    "report": "Report",
+    "block": "Block",
+    "blockAction": "Block",
+    "unfollow": "Unfollow",
+    "unblock": "Unblock",
+    "reportTitle": "Report this content",
+    "reportSubtitle": "Tell us what is wrong. A moderator reads every report.",
+    "reasons": {
+      "spam": "Spam or a scam",
+      "harassment": "Harassment or bullying",
+      "hate": "Hate speech",
+      "sexual": "Sexual content",
+      "violence": "Violence or threats",
+      "self_harm": "Self-harm or suicide",
+      "other": "Something else"
+    },
+    "detailPlaceholder": "Add any detail that would help (optional)",
+    "alsoBlock": "Also block {{name}}",
+    "alsoBlockHint": "You will stop seeing each other, and any follow between you is removed.",
+    "sendReport": "Send report",
+    "reviewPromise": "We review reports within 2 working days.",
+    "reportFailed": "Your report could not be sent. Please try again.",
+    "thisReader": "this reader",
+    "blockTitle": "Block {{name}}?",
+    "blockConfirmBody": "You and {{name}} will no longer see each other anywhere in TrackMyRead, and neither of you can follow, like or comment on the other. Any follow between you is removed now and will not come back if you unblock later. This does not unpublish public posts — anyone who is signed out can still read them on the open web.",
+    "blockFailed": "Could not block this reader. Please try again.",
+    "blockedReaders": "Blocked readers",
+    "blockedReadersDesc": "See who you have blocked, and undo it",
+    "blockedEmpty": "You have not blocked anyone.",
+    "blockedLoadFailed": "Could not load your blocked readers.",
+    "unblockFailed": "Could not unblock this reader. Please try again.",
+    "unblockHint": "Unblocking does not restore a follow — you can follow each other again if you want to."
+  },
   "a11y": {
     "back": "Back",
     "close": "Close",
@@ -539,6 +573,13 @@
     "rateStars": "Rate {{count}} stars",
     "chooseAvatar": "Avatar {{name}}",
     "coverPreset": "Cover {{name}}",
-    "postVisibility": "Post visibility"
+    "postVisibility": "Post visibility",
+    "reportPost": "Report post",
+    "reportComment": "Report comment",
+    "reportReader": "Report reader",
+    "blockReader": "Block reader",
+    "unfollowReader": "Unfollow reader",
+    "readerOptions": "Reader options",
+    "alsoBlock": "Also block this person"
   }
 }
