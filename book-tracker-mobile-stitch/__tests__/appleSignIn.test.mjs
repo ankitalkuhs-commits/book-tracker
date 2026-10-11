@@ -350,13 +350,36 @@ test('availability_false_renders_one_button', () => {
   assert.equal(src(loginSrc, googleGuard.left), `!${stateVar}`,
     `the Google button is not gated on !${stateVar}`);
 
-  // Rule 11: the gate must be the capability, not the platform.
+  // Rule 11: the RENDER gate must be the capability, not the platform.
   // isAvailableAsync() is false on Android AND on an iOS build where the sheet
   // would not work, so it is the only check that can never render a dead button.
-  assert.doesNotMatch(loginCode, /Platform\.OS/, 'LoginScreen.js branches on Platform.OS');
-  const platformImports = loginAst.program.body.filter((n) => n.type === 'ImportDeclaration'
-    && (n.specifiers || []).some((s) => s.local && s.local.name === 'Platform'));
-  assert.deepEqual(platformImports.map((n) => src(loginSrc, n)), [], 'Platform is imported in LoginScreen.js');
+  //
+  // This used to ban `Platform.OS` from the file outright. That was wider than the rule it
+  // enforces, and on 2026-10-11 it blocked a legitimate use: iOS does not link the Google
+  // native module at all (react-native.config.js), so `GoogleSignin.configure()` in the mount
+  // effect must not run there — calling an unlinked module throws. The two assertions above
+  // already pin both render gates by AST, so the ban is narrowed to what it actually means:
+  // Platform.OS may not decide what is rendered.
+  const platformRefs = findAll(loginAst, (n) => n.type === 'MemberExpression'
+    && n.object && n.object.name === 'Platform' && n.property && n.property.name === 'OS');
+  const jsxContainers = findAll(loginAst, (n) => n.type === 'JSXExpressionContainer');
+  const insideJsx = platformRefs.filter(
+    (n) => jsxContainers.some((c) => c.start <= n.start && n.end <= c.end));
+  assert.deepEqual(insideJsx.map((n) => src(loginSrc, n)), [],
+    'Platform.OS decides what is rendered — the gate must be the capability');
+
+  // Exactly one, and it must BE the Google guard. "At most one" was the first version of
+  // this and it passed when the guard was deleted outright — which is the failure that
+  // matters: GoogleSignin.configure() would then run on iOS, where react-native.config.js
+  // does not link the module, and the login screen would throw on mount before it painted.
+  assert.equal(platformRefs.length, 1,
+    `expected exactly one Platform.OS reference — the guard around GoogleSignin.configure, `
+    + `without which iOS calls an unlinked native module — found ${platformRefs.length}`);
+  const guardIf = findAll(loginAst, (n) => n.type === 'IfStatement'
+    && src(loginSrc, n.test).includes('Platform.OS')
+    && src(loginSrc, n.consequent).includes('GoogleSignin.configure'));
+  assert.equal(guardIf.length, 1,
+    'the only Platform.OS branch must be the one guarding GoogleSignin.configure');
 
   // Control (rule 3): the same detector on a synthetic Platform.OS gate must
   // find a left-hand side that is NOT the state variable.
@@ -709,6 +732,10 @@ test('the_mobile_diff_touches_only_the_named_files', () => {
 
   const allowed = new Set([
     'package.json', 'package-lock.json', 'app.json', 'eas.json',
+    // Added 2026-10-11: the first real iOS build failed in `pod install` because GoogleSignin
+    // pulls in AppCheckCore, a Swift pod that cannot be a static library without modular
+    // headers. iOS is Apple-only (E-6), so the module is not autolinked there at all.
+    'react-native.config.js',
     LOGIN, API, '__tests__/appleSignIn.test.mjs',
     ...LOCALE_CODES.map((c) => `src/i18n/locales/${c}.json`),
   ].map((p) => `${PREFIX}${p}`));

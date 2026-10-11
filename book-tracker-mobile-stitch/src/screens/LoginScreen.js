@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, Alert,
-  ActivityIndicator, ScrollView, Image, StatusBar, Dimensions,
+  ActivityIndicator, ScrollView, Image, StatusBar, Dimensions, Platform,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Svg, { Path } from 'react-native-svg';
@@ -31,7 +31,12 @@ export default function LoginScreen({ onLoginSuccess }) {
   const [appleAvailable, setAppleAvailable] = useState(false);
 
   useEffect(() => {
-    GoogleSignin.configure({ webClientId: WEB_CLIENT_ID, offlineAccess: false });
+    // iOS is Apple-only (E-6) and the Google native module is not linked there at all
+    // (react-native.config.js). Calling into an unlinked module throws, and this effect runs
+    // on mount, so the guard is what keeps the iOS login screen from dying before it paints.
+    if (Platform.OS !== 'ios') {
+      GoogleSignin.configure({ webClientId: WEB_CLIENT_ID, offlineAccess: false });
+    }
     warmUp();   // fire-and-forget: wake a sleeping Render instance before the account picker returns (F-31)
     AppleAuthentication.isAvailableAsync().then(setAppleAvailable, () => setAppleAvailable(false));   // Sprint 4G (R-09)
   }, []);
