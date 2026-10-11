@@ -2,6 +2,7 @@
   "expo": {
     "name": "TrackMyRead",
     "slug": "book-tracker-mobile",
+    "owner": "ankitalkuhs",
     "version": "2.2.4",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
