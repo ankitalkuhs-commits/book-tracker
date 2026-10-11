@@ -422,6 +422,16 @@ GUARDED_ROUTES = {
     ("POST", "/notes/{note_id}/like"),
     ("DELETE", "/notes/{note_id}/like"),
     ("POST", "/notes/{note_id}/comments"),
+    # Sprint 4I-A (K-4I-02, and pm-decisions' amendment to spec done-checklist item 7): this
+    # inventory is an EXACT list, so `deny_bot_actor` on `POST /reports` turns the case below
+    # red unless the literal grows in the same commit as the route. A bot does not report.
+    # 4I-B adds ("POST", "/blocks/{user_id}") and the count goes 5 -> 6.
+    ("POST", "/reports"),
+    # Sprint 4I-B (R-27): a bot cannot block. `DELETE /blocks/{user_id}` deliberately does NOT
+    # carry the dependency — a bot can hold no block row to lift, so guarding it would widen
+    # this inventory for a route that cannot be reached with effect. B-04a asserts that from
+    # the other side.
+    ("POST", "/blocks/{user_id}"),
 }
 
 
@@ -563,9 +573,16 @@ class TestDenyBotActor:
                       models.Follow.follower_id == reader.id,
                       models.Follow.followed_id == owner.id) == 1
 
-    def test_dependency_inventory_is_exactly_four_routes(self):
+    def test_dependency_inventory_is_exactly_six_routes(self):
         """B-12a (K-10, rules 2 and 4). MUT-4F-21: add deny_bot_actor to POST /notes/, or
-        remove it from one of the four.
+        remove it from one of the five.
+
+        Sprint 4I-A (K-4I-02): the inventory was four routes and is now five — `POST /reports`
+        carries the same dependency, because a bot does not report. Sprint 4I-B makes it six
+        with `POST /blocks/{user_id}`, because a bot does not block either. The literal above
+        and this count move in the same commit as the route, and
+        `tests/test_reports.py::S-08a` / `tests/test_blocks.py::B-04a` assert the same number
+        from the other side so the two cannot drift apart.
 
         FastAPI resolves route dependencies BEFORE the handler body, so the presence of
         deny_bot_actor in route.dependant IS the "before any row, before any notification"
@@ -580,7 +597,7 @@ class TestDenyBotActor:
                 for method in route.methods:
                     found.add((method, route.path))
 
-        assert len(found) == 4, f"expected 4 guarded routes, found {len(found)}: {sorted(found)}"
+        assert len(found) == 6, f"expected 6 guarded routes, found {len(found)}: {sorted(found)}"
         assert found == GUARDED_ROUTES
         assert ("POST", "/notes/") not in found, "a bot must be able to post (R-07)"
         assert not any(m == "GET" for m, _ in found), "a bot reads the public feed (arch §4)"
@@ -906,7 +923,16 @@ class TestExistingSuite:
             cwd=REPO_ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace",
         )
         assert diff.returncode == 0, f"git diff failed: {diff.stderr[:200]}"
-        assert _diff_violations(diff.stdout, exempt=SCHEMA_GUARD_EXEMPT) == []
+        # Sprint 4I-B: BUDGET_EXEMPT joins the exempt set here, and the omission was a gap
+        # rather than a decision. 4F's own budget bump moved BQ-39 by digits alone, and
+        # digits are not identifier tokens, so the token rule happened to pass. Any sprint
+        # that re-baselines a row OTHER than 39 must also add an inline marker to the line
+        # (test_budget_exemption_lines_name_the_row_they_change demands one once anything is
+        # removed), and that marker introduces new tokens the rule then rejects. The two
+        # rules were mutually unsatisfiable for every such sprint. The budget file is still
+        # bounded, by its own marker rule below — which is why that rule exists.
+        assert _diff_violations(diff.stdout,
+                                exempt=SCHEMA_GUARD_EXEMPT | BUDGET_EXEMPT) == []
 
         # the exemption is bounded: a line that REPLACES something in an exempt file must
         # carry a marker, so the exemption cannot quietly widen into rewriting assertions.

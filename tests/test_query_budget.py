@@ -80,6 +80,7 @@ import app.deps as deps
 from app import auth, models
 from app.database import get_db, get_session
 from app.main import app
+from tests.block_seed import add_block_rows   # Sprint 4I: block rows, see tests/block_seed.py
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -506,6 +507,8 @@ def _seed(db: BudgetDb, scale: int):
         s.add_all(activity)
         s.commit()
 
+        add_block_rows(s, d, scale, password_hash=_PWD)   # Sprint 4I: block rows, see tests/block_seed.py
+
     db.data = d
     return d
 
@@ -572,45 +575,45 @@ BUDGETS = [
         lambda d: "/version", who="anon", scales=False),
     Row("02", "GET /profile/me", "signed in", RATCHET, 5, 5, "5",
         lambda d: "/profile/me"),
-    Row("03", "GET /profile/{id}", "public subject", RATCHET, 7, 7, "7",
+    Row("03", "GET /profile/{id}", "public subject", RATCHET, 8, 8, "7",   # BQ-03 +1 (Sprint 4I block filter, re-measured)
         lambda d: f"/profile/{d.pub}"),
-    Row("03p", "GET /profile/{id}", "private, non-follower (locked 200)", RATCHET, 6, 6, "7",
+    Row("03p", "GET /profile/{id}", "private, non-follower (locked 200)", RATCHET, 7, 7, "7",   # BQ-03p +1 (Sprint 4I block filter, re-measured)
         lambda d: f"/profile/{d.privx}"),
-    Row("03f", "GET /profile/{id}", "private, follower", RATCHET, 7, 7, "7",
+    Row("03f", "GET /profile/{id}", "private, follower", RATCHET, 8, 8, "7",   # BQ-03f +1 (Sprint 4I block filter, re-measured)
         lambda d: f"/profile/{d.priv}"),
     Row("04", "GET /userbooks/", "—", RATCHET, 3, 3, "3",
         lambda d: "/userbooks/"),
     Row("05", "GET /userbooks/{id}", "owner", RATCHET, 3, 3, "3",
         lambda d: f"/userbooks/{d.my_userbook}", scales=False),
-    Row("06", "GET /userbooks/user/{id}", "public subject", RATCHET, 4, 4, "4",
+    Row("06", "GET /userbooks/user/{id}", "public subject", RATCHET, 5, 5, "4",   # BQ-06 +1 (Sprint 4I block filter, re-measured)
         lambda d: f"/userbooks/user/{d.pub}"),
-    Row("06f", "GET /userbooks/user/{id}", "private, follower", RATCHET, 5, 5, "5",
+    Row("06f", "GET /userbooks/user/{id}", "private, follower", RATCHET, 6, 6, "5",   # BQ-06f +1 (Sprint 4I block filter, re-measured)
         lambda d: f"/userbooks/user/{d.priv}"),
-    Row("07", "GET /userbooks/friends/currently-reading", "—", RATCHET, 6, 6, "6",
+    Row("07", "GET /userbooks/friends/currently-reading", "—", RATCHET, 7, 7, "6",   # BQ-07 +1 (Sprint 4I block filter, re-measured)
         lambda d: "/userbooks/friends/currently-reading"),
-    Row("08", "GET /notes/feed", "signed in", RATCHET, 8, 8, "8",
+    Row("08", "GET /notes/feed", "signed in", RATCHET, 9, 9, "8",   # BQ-08 +1 (Sprint 4I block filter, re-measured)
         lambda d: "/notes/feed"),
     Row("08a", "GET /notes/feed", "anonymous (K-10)", RATCHET, 6, 6, "7",
         lambda d: "/notes/feed", who="anon"),
-    Row("08e", "GET /notes/feed", "empty database (K-03)", RATCHET, 2, 2, "2",
+    Row("08e", "GET /notes/feed", "empty database (K-03)", RATCHET, 3, 3, "2",   # BQ-08e 2->3 (Sprint 4I block filter, re-measured) AT the >3 empty-state ceiling, K-4I-09
         lambda d: "/notes/feed", db="empty", scales=False, empty_state=True),
-    Row("09", "GET /notes/friends-feed", "—", RATCHET, 10, 10, "10",
+    Row("09", "GET /notes/friends-feed", "—", RATCHET, 11, 11, "10",   # BQ-09 +1 (Sprint 4I block filter, re-measured)
         lambda d: "/notes/friends-feed"),
     Row("09e", "GET /notes/friends-feed", "follows nobody", RATCHET, 2, 2, "2",
         lambda d: "/notes/friends-feed", who="empty_viewer", scales=False, empty_state=True),
     Row("10", "GET /notes/me", "—", RATCHET, 8, 8, "8",
         lambda d: "/notes/me"),
-    Row("11", "GET /notes/user/{id}", "public author", RATCHET, 9, 9, "9",
+    Row("11", "GET /notes/user/{id}", "public author", RATCHET, 10, 10, "9",   # BQ-11 +1 (Sprint 4I block filter, re-measured)
         lambda d: f"/notes/user/{d.pub}"),
-    Row("11f", "GET /notes/user/{id}", "private author, follower", RATCHET, 10, 10, "10",
+    Row("11f", "GET /notes/user/{id}", "private author, follower", RATCHET, 11, 11, "10",   # BQ-11f +1 (Sprint 4I block filter, re-measured)
         lambda d: f"/notes/user/{d.priv}"),
     Row("12", "GET /notes/userbook/{id}", "owner", RATCHET, 6, 6, "6",
         lambda d: f"/notes/userbook/{d.my_userbook}", scales=False),
-    Row("13", "GET /notes/{id}/comments", "—", RATCHET, 5, 5, "4",
+    Row("13", "GET /notes/{id}/comments", "—", RATCHET, 6, 6, "4",   # BQ-13 +1 (Sprint 4I block filter, re-measured)
         lambda d: f"/notes/{d.friend_note}/comments"),
-    Row("14", "GET /books/recommendations", "—", RATCHET, 12, 12, "12",
+    Row("14", "GET /books/recommendations", "—", RATCHET, 13, 13, "12",   # BQ-14 +1 (Sprint 4I block filter, re-measured)
         lambda d: "/books/recommendations"),
-    Row("14n", "GET /books/recommendations", "follows nobody", RATCHET, 4, 4, "12",
+    Row("14n", "GET /books/recommendations", "follows nobody", RATCHET, 5, 5, "12",   # BQ-14n +1 (Sprint 4I block filter, re-measured)
         lambda d: "/books/recommendations", who="empty_viewer", scales=False),
     Row("15", "GET /books/{id}", "—", RATCHET, 2, 2, "2",
         lambda d: f"/books/{d.book}", scales=False),
@@ -626,25 +629,25 @@ BUDGETS = [
         lambda d: "/follow/followers"),
     Row("21", "GET /follow/following", "—", RATCHET, 2, 2, "2",
         lambda d: "/follow/following"),
-    Row("22", "GET /users/following", "—", RATCHET, 4, 4, "4",
+    Row("22", "GET /users/following", "—", RATCHET, 5, 5, "4",   # BQ-22 +1 (Sprint 4I block filter, re-measured)
         lambda d: "/users/following"),
     Row("22e", "GET /users/following", "follows nobody", RATCHET, 2, 2, "2",
         lambda d: "/users/following", who="empty_viewer", scales=False, empty_state=True),
-    Row("23", "GET /users/search", "q matches several", RATCHET, 4, 4, "4",
+    Row("23", "GET /users/search", "q matches several", RATCHET, 5, 5, "4",   # BQ-23 +1 (Sprint 4I block filter, re-measured)
         lambda d: "/users/search?q=Searchable"),
     Row("23e", "GET /users/search", 'q="" (early return)', RATCHET, 1, 1, "1",
         lambda d: "/users/search?q=", scales=False, empty_state=True),
-    Row("24", "GET /users/{id}/stats", "public subject, 50 finished", TARGET, 3, 3, "3+F",
+    Row("24", "GET /users/{id}/stats", "public subject, 50 finished", TARGET, 4, 4, "3+F",   # BQ-24 3->4 (Sprint 4I block filter, re-measured) a TARGET row moves; the N+1 fix is untouched
         lambda d: f"/users/{d.pub}/stats"),
-    Row("24f", "GET /users/{id}/stats", "private, follower", RATCHET, 4, 4, "4+F",
+    Row("24f", "GET /users/{id}/stats", "private, follower", RATCHET, 5, 5, "4+F",   # BQ-24f +1 (Sprint 4I block filter, re-measured)
         lambda d: f"/users/{d.priv}/stats"),
     Row("25", "GET /reading-activity/daily", "—", RATCHET, 2, 2, "2",
         lambda d: "/reading-activity/daily?days=30"),
     Row("26", "GET /reading-activity/insights", "—", RATCHET, 4, 4, "4",
         lambda d: "/reading-activity/insights"),
-    Row("27", "GET /reading-activity/user/{id}/daily", "public subject", RATCHET, 3, 3, "3",
+    Row("27", "GET /reading-activity/user/{id}/daily", "public subject", RATCHET, 4, 4, "3",   # BQ-27 +1 (Sprint 4I block filter, re-measured)
         lambda d: f"/reading-activity/user/{d.pub}/daily?days=30"),
-    Row("27f", "GET /reading-activity/user/{id}/daily", "private, follower", RATCHET, 4, 4, "4",
+    Row("27f", "GET /reading-activity/user/{id}/daily", "private, follower", RATCHET, 5, 5, "4",   # BQ-27f +1 (Sprint 4I block filter, re-measured)
         lambda d: f"/reading-activity/user/{d.priv}/daily?days=30"),
     Row("28", "GET /groups/my", "4 circles", RATCHET, 6, 6, "6",
         lambda d: "/groups/my"),
@@ -680,13 +683,13 @@ BUDGETS = [
         lambda d: f"/groups/{d.g_pub}/goal"),
     Row("35p", "GET /groups/{id}/goal", "private, member", RATCHET, 5, 5, "5",
         lambda d: f"/groups/{d.g_priv}/goal"),
-    Row("36", "GET /groups/{id}/posts", "with book cards", RATCHET, 6, 6, "7",
+    Row("36", "GET /groups/{id}/posts", "with book cards", RATCHET, 7, 7, "7",   # BQ-36 +1 (Sprint 4I block filter, re-measured)
         lambda d: f"/groups/{d.g_pub}/posts"),
-    Row("36p", "GET /groups/{id}/posts", "private, member", RATCHET, 7, 7, "8",
+    Row("36p", "GET /groups/{id}/posts", "private, member", RATCHET, 8, 8, "8",   # BQ-36p +1 (Sprint 4I block filter, re-measured)
         lambda d: f"/groups/{d.g_priv}/posts"),
-    Row("37", "GET /groups/{id}/activity", "public", RATCHET, 4, 4, "4",
+    Row("37", "GET /groups/{id}/activity", "public", RATCHET, 5, 5, "4",   # BQ-37 +1 (Sprint 4I block filter, re-measured)
         lambda d: f"/groups/{d.g_pub}/activity"),
-    Row("37p", "GET /groups/{id}/activity", "private, member", RATCHET, 5, 5, "5",
+    Row("37p", "GET /groups/{id}/activity", "private, member", RATCHET, 6, 6, "5",   # BQ-37p +1 (Sprint 4I block filter, re-measured)
         lambda d: f"/groups/{d.g_priv}/activity"),
     Row("38", "GET /groups/{id}/pending", "curator", RATCHET, 4, 4, "4",
         lambda d: f"/groups/{d.g_curator}/pending"),

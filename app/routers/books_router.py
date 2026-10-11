@@ -9,6 +9,8 @@ from datetime import datetime
 from pydantic import BaseModel
 from typing import Optional
 from ..notifications.dispatcher import fire_event, get_follower_ids
+# Sprint 4I-B (K-4I-10): the MODULE, never the bound function.
+from .. import blocks
 
 router = APIRouter(prefix="/books", tags=["Books"])
 
@@ -244,6 +246,14 @@ def get_recommendations(limit: int = Query(12, ge=1, le=200), db: Session = Depe
     following_ids = [
         r for r in db.exec(select(Follow.followed_id).where(Follow.follower_id == current_user.id)).all()
     ]
+    # Sprint 4I-B (R-22 row 12). There is NO early return on this endpoint — the two
+    # `if following_ids:` blocks below are guards inside the handler and it continues to author
+    # affinity regardless — so the helper runs on every call and BQ-14n moves 4 -> 5 as well as
+    # BQ-14 12 -> 13. `following_ids` is already a list in memory, so the filter itself costs
+    # nothing beyond this one statement. A recommendation reading "Because <blocked reader> is
+    # reading this" is that reader reaching the one who blocked them.
+    hidden = blocks.hidden_user_ids(db, current_user)
+    following_ids = [i for i in following_ids if i not in hidden]
 
     recs = {}  # book_id -> {"book": Book, "reason": str, "score": int, "friend_name": str|None}
 

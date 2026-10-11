@@ -33,6 +33,7 @@ Moved from `context/*/README.md` on 2026-09-12. Per-screen sub-folders (`spec.md
 | Library | [`../features/library/index.md`](../features/library/index.md) | `books_router.py`, `userbooks_router.py`, `LibraryPage.jsx`, `LibraryScreen.js` |
 | Community | [`../features/community/index.md`](../features/community/index.md) | `notes_router.py`, `follow_router.py`, `likes_comments.py`, `HomePage.jsx`, `FeedScreen.js` |
 | Reading Stats | [`../features/reading-stats/index.md`](../features/reading-stats/index.md) | `InsightsPage.jsx`, `InsightsScreen.js` |
+| Safety | [`../features/safety/index.md`](../features/safety/index.md) | sprint-4i-report-block (design): `report`/`block` tables, `POST /reports` + the admin queue, `POST/DELETE /blocks` at 14 serving paths — App Store Guideline 1.2 |
 | Security | [`../features/security/index.md`](../features/security/index.md) | sprint-1-hardening: `books_router.py`, `push_router.py`, tests, venv untracking |
 | Maintenance | [`../features/maintenance/index.md`](../features/maintenance/index.md) | sprint-2-audit-bugs: feed, notes, insights, notifications, profile fixes |
 | Deployment | [`deployment/README.md`](deployment/README.md) | `eas.json`, `google-services.json`, Render, Supabase |

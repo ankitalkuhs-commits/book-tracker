@@ -7,7 +7,8 @@ This version matches your existing DB which uses `password_hash`.
 from typing import Optional, List
 from datetime import datetime
 from sqlmodel import Field, Relationship, SQLModel
-from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, JSON, UniqueConstraint
+from sqlalchemy import (Column, Integer, String, Text, DateTime, ForeignKey, Index, JSON,
+                        UniqueConstraint)
 from sqlalchemy.sql import func
 from .database import Base
 
@@ -230,6 +231,83 @@ class BotPost(SQLModel, table=True):
     dedup_key: str = Field(nullable=False)                  # ISBN, prompt id, quote id, or ISO week
     note_id: Optional[int] = None
     posted_at: datetime = Field(default_factory=datetime.utcnow, index=True)
+
+
+class Report(SQLModel, table=True):
+    """Sprint 4I-A (R-01, R-07): one reader's report of another reader's content or account.
+
+    A report is a message to a moderator. It changes nothing any serving path reads (R-04) and
+    the reported reader is never told (R-10).
+
+    `uq_report_once` is where the correctness lives: one reader may report a given thing exactly
+    once, enforced by the database and not by the handler, so two concurrent submissions cannot
+    both win. The handler catches the IntegrityError and returns the first report's state, the
+    same shape `follow_router.py:39-44` already uses.
+
+    NO FOREIGN KEYS, deliberately (R-07). A report outlives the content it is about: the admin
+    deletes the note, the report row stays with `status='actioned'`, and `target_id` dangles.
+    `target_snapshot` is why the queue can still show what was reported, and `target_user_id` is
+    denormalised so a pattern across one author's deleted content is still visible. `bot_post`
+    carries `note_id` with no FK for the same reason (`:231`).
+
+    NO `index=True` on any column either: the PM SQL (PM_SQL_QUEUE step 10) creates exactly two
+    indexes, `uq_report_once` and `ix_report_open (status, created_at DESC)`, and a model index
+    that the migration does not create is a dev/prod schema divergence nothing would catch.
+    """
+    __tablename__ = "report"
+    __table_args__ = (UniqueConstraint("reporter_id", "target_type", "target_id",
+                                       name="uq_report_once"),)
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    reporter_id: int = Field(nullable=False)
+    target_type: str = Field(nullable=False, max_length=16)   # note | comment | group_post | user
+    target_id: int = Field(nullable=False)
+    target_user_id: Optional[int] = Field(default=None)       # the author, denormalised at creation
+    reason: str = Field(nullable=False, max_length=32)
+    detail: Optional[str] = Field(default=None, max_length=1000)      # reader's free text, admin-only
+    target_snapshot: Optional[str] = Field(default=None, max_length=2000)  # a copy of the words reported
+    status: str = Field(default="open", max_length=16)        # open | actioned | dismissed
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    resolved_at: Optional[datetime] = Field(default=None)
+    resolved_by: Optional[int] = Field(default=None)
+    resolution: Optional[str] = Field(default=None, max_length=500)
+
+
+class Block(SQLModel, table=True):
+    """Sprint 4I-B (R-20): one reader has blocked another.
+
+    ONE ROW, READ BOTH WAYS. The row records who blocked whom; the symmetry lives in the read
+    (`app/blocks.py`'s two `or_` arms), not in the storage. Two rows per block would double
+    every write and would make "only the blocker can lift it" (R-20's asymmetric control) a
+    convention rather than a fact about the data.
+
+    `uq_block_pair` is what makes a double block idempotent under concurrency — the handler
+    catches the IntegrityError and returns the existing state, the shape
+    `follow_router.py:39-44` already uses.
+
+    `ix_block_blocked` is the one index this design needs at runtime. The helper's query is
+    `WHERE blocker_id = :me OR blocked_id = :me`; `uq_block_pair` covers the first arm, and
+    without an index on `blocked_id` the second arm is a sequential scan on every filtered
+    request. At 131 readers that is free; it is declared so it does not have to be found later.
+
+    NO FOREIGN KEYS, matching `Follow` (`:135-142`) — its `follower_id`/`followed_id` carry
+    FKs, so this is the one place the two tables differ, and deliberately: the account-deletion
+    cascade (`auth_router.py`) deletes both directions itself and a FK would make a missed
+    cascade step a 500 instead of the orphan row the production check (P-4I-08) looks for.
+    Checked by B-50, which asserts the FK set is empty.
+    """
+    __tablename__ = "block"
+    # The index is spelled out rather than taken from `Field(index=True)`, because that would
+    # name it `ix_block_blocked_id` while PM step 11 creates `ix_block_blocked`. A model index
+    # whose name differs from the migration's is a dev/prod divergence nothing catches, so the
+    # two are kept identical here and asserted by B-50 and B-53.
+    __table_args__ = (UniqueConstraint("blocker_id", "blocked_id", name="uq_block_pair"),
+                      Index("ix_block_blocked", "blocked_id"))
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    blocker_id: int = Field(nullable=False)
+    blocked_id: int = Field(nullable=False)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
 
 
 from typing import Optional

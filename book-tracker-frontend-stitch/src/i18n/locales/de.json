@@ -512,5 +512,42 @@
     "pt": "Português (BR)",
     "de": "Deutsch",
     "fr": "Français"
+  },
+  "safety": {
+    "report": "Melden",
+    "reportTitle": "Diesen Inhalt melden",
+    "reportSubtitle": "Ein Moderator prüft jede Meldung innerhalb von 2 Werktagen. Die gemeldete Person erfährt nie, wer sie gemeldet hat.",
+    "reportSubtitleNamed": "Ein Moderator prüft jede Meldung innerhalb von 2 Werktagen. {{name}} erfährt nie, wer die Meldung gemacht hat.",
+    "reasonLabel": "Warum meldest du das?",
+    "reason": {
+      "spam": "Spam oder Betrug",
+      "harassment": "Belästigung oder Mobbing",
+      "hate": "Hassrede",
+      "sexual": "Sexuelle Inhalte",
+      "violence": "Gewalt oder Drohungen",
+      "self_harm": "Selbstverletzung oder Suizid",
+      "other": "Etwas anderes"
+    },
+    "detailLabel": "Noch etwas? (optional)",
+    "detailPlaceholder": "Sag dem Moderator, worauf er achten soll.",
+    "alsoBlock": "Diese Person auch blockieren",
+    "blockEffect": "Blockieren verbirgt euch beide voreinander innerhalb von TrackMyRead. Öffentliche Beiträge werden dadurch nicht zurückgezogen — wer abgemeldet ist, kann sie weiterhin im offenen Web lesen.",
+    "submitReport": "Meldung senden",
+    "reported": "Meldung gesendet. Ein Moderator sieht sie sich an.",
+    "reportedAndBlocked": "Meldung gesendet, und du hast diese Person blockiert.",
+    "reportFailed": "Die Meldung konnte nicht gesendet werden.",
+    "block": "Blockieren",
+    "blockConfirm": "{{name}} blockieren?\n\nIhr seht einander innerhalb von TrackMyRead nicht mehr — ihre Beiträge, Kommentare und ihr Profil verschwinden aus deiner Ansicht und deine aus ihrer.\n\nJede Folge-Beziehung zwischen euch wird entfernt und kommt nicht zurück, wenn du die Blockierung später aufhebst.\n\nÖffentliche Beiträge werden dadurch nicht zurückgezogen: Wer abgemeldet ist, kann sie weiterhin im offenen Web lesen.",
+    "blocked": "{{name}} ist blockiert.",
+    "blockFailed": "Diese Person konnte nicht blockiert werden.",
+    "thisReader": "diese lesende Person",
+    "unfollow": "Nicht mehr folgen",
+    "moreActions": "Weitere Aktionen",
+    "blockedReaders": "Blockierte Lesende",
+    "blockedReadersDesc": "Personen, die du blockiert hast. Ihr seht einander innerhalb von TrackMyRead nicht. Das Aufheben der Blockierung stellt keine Folge-Beziehung wieder her.",
+    "noBlockedReaders": "Du hast niemanden blockiert.",
+    "unblock": "Blockierung aufheben",
+    "unblocked": "Blockierung aufgehoben.",
+    "unblockFailed": "Die Blockierung konnte nicht aufgehoben werden."
   }
 }

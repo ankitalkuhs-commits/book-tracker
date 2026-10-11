@@ -36,6 +36,12 @@ const EVENT_CONFIG = {
   group_join_approved:     { icon: 'checkmark-circle', color: colors.primaryContainer,  bgColor: colors.primaryContainer + '22', navTarget: 'group' },
   group_join_rejected:     { icon: 'close-circle',     color: colors.onSurfaceVariant,  bgColor: colors.surfaceContainerHigh,    navTarget: 'circles' },
   admin_broadcast:         { icon: 'megaphone',        color: colors.primary,           bgColor: colors.primary + '15',          navTarget: null },
+  // Sprint 4I-A. Admin-only: fired to every admin when a reader files a report.
+  // navTarget is null because there is no in-app moderation queue on mobile —
+  // the Reports tab is web (AdminPage.jsx). Without this entry the row falls
+  // back to the generic bell AND notificationEvents.test.mjs goes red, because
+  // it compares EVENT_CONFIG against app/notifications/config.py.
+  content_reported:        { icon: 'flag',            color: colors.error,             bgColor: colors.errorContainer,          navTarget: null },
   milestone:               { icon: 'flag',             color: colors.onSecondaryContainer, bgColor: colors.secondaryContainer,   navTarget: null },
   default:                 { icon: 'notifications',    color: colors.onSurfaceVariant,  bgColor: colors.surfaceContainerHigh,    navTarget: null },
 };

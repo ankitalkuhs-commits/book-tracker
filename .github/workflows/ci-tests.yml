@@ -16,6 +16,23 @@
 # that ran has not dropped. That is the assertion the vanishing-file failure mode needs,
 # because a file that fails to load lowers the count without failing anything.
 #
+# TWO MOBILE SUITES ARE A FUNCTION OF THE *PYTHON* DIFF (2026-10-11)
+# ------------------------------------------------------------------
+# This is not obvious and it cost a red merge. Two files under
+# book-tracker-mobile-stitch/__tests__ read BACKEND source directly:
+#
+#   notificationEvents.test.mjs  greps app/notifications/config.py
+#   apiContract.test.mjs         greps app/routers/*.py
+#
+# So a package that touches only Python can turn a MOBILE suite red - which is precisely the
+# case where nobody thinks to run one. Sprint 4I-A added a `content_reported` event with no
+# matching mobile entry; both API Builders were green on pytest, the merged tree sat red on
+# notificationEvents, and it was only found when a mobile Builder measured its own baseline.
+#
+# The gate worked. Nobody was running it. If you change app/notifications/config.py or
+# app/routers/*.py, run the Android suite too, or let this workflow be the thing that tells
+# you - but then do not merge before it has.
+#
 # THE PINNED COUNTS BELOW ARE A FLOOR, TO BE RAISED AND NEVER LOWERED.
 # They are the numbers measured on the branch that added this file. Adding tests means
 # raising the floor in the same commit. If a number here ever needs to go DOWN, that is
@@ -65,7 +82,20 @@ jobs:
       # 2026-10-11, Sprint 4H (the Apple revocation fix): re-measured at 814 on branch
       # sprint-4h-apple-revocation - 800 + 14 new ids in tests/test_apple_auth.py
       # (B-50, B-51 x4, B-52..B-60). No existing id was removed; five were edited in place.
-      EXPECTED_MIN_TESTS: 814
+      # 2026-10-11, Sprint 4I-A (the report API): re-measured at 855 on branch
+      # builder-4i-report - 814 + 40 in the new tests/test_reports.py + 1 in
+      # tests/test_sql_artifacts.py (S-23). No existing id was removed; three were edited in
+      # place (the deny_bot_actor inventory 4 -> 5, and two literals in test_apple_auth.py
+      # that an appended schema_guard pair and one new GET route move). 4I-B raises this
+      # again. The number is off a run, never typed out of a plan - this floor drifted 86
+      # tests behind once.
+      # 2026-10-11, Sprint 4I-B (the block API): re-measured at 952 on branch
+      # builder-4i-block - 855 + 84 in the new tests/test_blocks.py + 13 in the new
+      # tests/test_route_coverage.py. No existing id was removed; three were edited in place
+      # (the deny_bot_actor inventory 5 -> 6, and two literals in test_apple_auth.py that an
+      # appended schema_guard pair and one new GET route move). The 24 re-measured budget
+      # numbers change no id and no count.
+      EXPECTED_MIN_TESTS: 952
     steps:
       - uses: actions/checkout@v4
         with:
@@ -115,7 +145,11 @@ jobs:
     runs-on: ubuntu-latest
     env:
       # Floor, not a target. See the header.
-      EXPECTED_MIN_TESTS: 38
+      # 2026-10-11, Sprint 4I P4 (report and block on the web): re-measured at 48 on branch
+      # builder-4i-web - 38 + 10 in the new qa/unit/reportAffordance.test.mjs (C-01, C-03,
+      # C-04, C-05, C-06, C-10, C-12, C-13, C-14, C-16). No existing id was removed and no
+      # existing qa/unit file was edited. The number is off a run, never typed out of a plan.
+      EXPECTED_MIN_TESTS: 48
     steps:
       - uses: actions/checkout@v4
 
@@ -165,7 +199,24 @@ jobs:
       # drifted in since 4G's P4. 138 is master's measured count; +1 is A-14, the case that
       # asserts the authorization code travels from the credential into the request body.
       # Merged: both sides independently set 139; the merged tree is measured below.
-      EXPECTED_MIN_TESTS: 140
+      # 2026-10-11, Sprint 4I P5 (report and block in the app): re-measured at 152 on
+      # branch builder-4i-mobile - 140 + 12 in the new
+      # book-tracker-mobile-stitch/__tests__/reportAffordance.test.mjs. tests.md §1
+      # predicted 149 for 9 cases; the extra three are
+      #   * unfollow_sits_above_block_in_the_profile_menu - pm-decisions E-1's ordering
+      #     decision had no other proof;
+      #   * every_new_4i_string_is_in_all_six_locales - i18nParity catches a key that is
+      #     in one locale and not another, but not a key that is in none of them;
+      #   * the_version_is_bumped_for_the_one_release_that_carries_both_halves - there is
+      #     no OTA channel, and release/last-released.json is a Play record that does not
+      #     know iOS already shipped build 5.
+      # One existing case was edited in place: appleSignIn.test.mjs's 4G file-ownership
+      # rule gained a named, bounded Sprint 4I file list (see the comment there). No test
+      # id was removed. The merged tree ALSO had one pre-existing RED that this package
+      # fixes: notificationEvents.test.mjs went red when 4I-A added the content_reported
+      # backend event without the mobile EVENT_CONFIG entry, so the measured "before" is
+      # 140 collected / 139 passed.
+      EXPECTED_MIN_TESTS: 152
     steps:
       - uses: actions/checkout@v4
 

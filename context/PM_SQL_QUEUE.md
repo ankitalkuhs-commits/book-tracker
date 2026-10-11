@@ -239,6 +239,137 @@ Step 9 is additive, re-runnable, and touches no existing row of any table.
 
 ---
 
+## 10. Sprint 4I-A — the `report` table — WRITES, additive, and it gates the 4I-A deploy
+
+> **Applied to production 2026-10-11 and verified: 13 columns, indexes `report_pkey` / `uq_report_once` / `ix_report_open`, 0 rows.**
+> `"user"` row count unchanged at 131. Nothing below needs running again —
+> the statements are `IF NOT EXISTS`, but re-running a done step wastes a
+> round of PM attention, which is the scarce thing here.
+
+Run this **before** the Sprint 4I-A API deploy. `schema_guard` requires `report.reason`, so the
+commit that adds it refuses to start until this has run (that is the guard working: Render fails
+the deploy and the previous version keeps serving).
+
+This is the table behind `POST /reports`. App Store Review Guideline 1.2 item 2 requires a way to
+report offensive content, with timely responses, and there is none in the product today — 131
+readers have no way to flag anything. The report queues for a human and changes nothing anyone
+else sees.
+
+```sql
+CREATE TABLE IF NOT EXISTS report (
+    id              SERIAL PRIMARY KEY,
+    reporter_id     INTEGER      NOT NULL,
+    target_type     VARCHAR(16)  NOT NULL,   -- note | comment | group_post | user
+    target_id       INTEGER      NOT NULL,
+    target_user_id  INTEGER,                 -- the author, denormalised at creation
+    reason          VARCHAR(32)  NOT NULL,
+    detail          VARCHAR(1000),
+    target_snapshot VARCHAR(2000),
+    status          VARCHAR(16)  NOT NULL DEFAULT 'open',
+    created_at      TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    resolved_at     TIMESTAMP,
+    resolved_by     INTEGER,
+    resolution      VARCHAR(500)
+);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_report_once ON report (reporter_id, target_type, target_id);
+CREATE INDEX IF NOT EXISTS ix_report_open ON report (status, created_at DESC);
+```
+
+**No foreign keys, deliberately.** A report has to outlive the content it is about: the admin
+deletes the reported note, the report row stays with `status = 'actioned'`, and `target_id`
+dangles. A moderation record that vanishes with the content cannot show a pattern, and a pattern
+across reports is the only way one abusive reader is visible. `bot_post.note_id` carries audit
+information with no foreign key for the same reason.
+
+**`uq_report_once` is where the correctness lives.** One reader may report a given thing exactly
+once, for ever. It is enforced here and not in the handler, so two concurrent submissions cannot
+both win, and it is what makes the queue's per-target count mean something.
+
+**`target_snapshot` is a copy of a reader's words in a second table**, and that is a privacy cost
+paid on purpose: without it a resolved report is an id and a reason. The controls are the length
+cap, admin-only access on both routes, and deletion with the reporter's account.
+
+**Verify — send the output back.**
+
+```sql
+-- 13 rows: the columns above, with their types and lengths
+SELECT column_name, data_type, character_maximum_length, is_nullable
+  FROM information_schema.columns
+ WHERE table_schema = current_schema() AND table_name = 'report'
+ ORDER BY ordinal_position;
+-- 3 rows: report_pkey, uq_report_once, ix_report_open
+SELECT indexname FROM pg_indexes WHERE tablename = 'report' ORDER BY indexname;
+-- must return 0: nothing has been written yet
+SELECT count(*) FROM report;
+```
+
+Step 10 is additive, re-runnable, and touches no existing row of any table.
+
+---
+
+## 11. Sprint 4I-B — the `block` table — WRITES, additive, and it gates the 4I-B deploy
+
+> **Applied to production 2026-10-11 and verified: 4 columns, indexes `block_pkey` / `uq_block_pair` / `ix_block_blocked`, 0 rows.**
+> `"user"` row count unchanged at 131. Nothing below needs running again —
+> the statements are `IF NOT EXISTS`, but re-running a done step wastes a
+> round of PM attention, which is the scarce thing here.
+
+Run this **after** step 10 has run and the 4I-A API is deployed, and **before** the Sprint 4I-B
+API deploy. These are two separate deploys, not one. `schema_guard` requires `block.blocked_id`,
+so the commit that adds it refuses to start until this has run (that is the guard working: Render
+fails the deploy and the previous version keeps serving).
+
+This is the table behind `POST /blocks/{user_id}`. App Store Review Guideline 1.2 item 3 requires
+the ability to block abusive users, and there is none in the product today. A block is symmetric
+in visibility and interaction, asymmetric in control — only the blocker sees it or can lift it,
+and the blocked reader is never told.
+
+```sql
+CREATE TABLE IF NOT EXISTS block (
+    id          SERIAL PRIMARY KEY,
+    blocker_id  INTEGER   NOT NULL,
+    blocked_id  INTEGER   NOT NULL,
+    created_at  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_block_pair ON block (blocker_id, blocked_id);
+CREATE INDEX IF NOT EXISTS ix_block_blocked ON block (blocked_id);
+```
+
+**One row per block, read both ways.** The row records who blocked whom; the symmetry is in the
+read, not the storage. Two rows per block would double every write and would make "only the
+blocker can lift it" a convention rather than a fact about the data.
+
+**`uq_block_pair` is what makes a double block idempotent** under concurrency: the handler
+catches the unique violation and returns the state the caller asked for, so tapping Block twice
+is never a 500 and never a second row.
+
+**`ix_block_blocked` is the one index this design needs at runtime.** Every filtered request runs
+`WHERE blocker_id = :me OR blocked_id = :me`; `uq_block_pair` covers the first arm, and without
+an index on `blocked_id` the second arm is a sequential scan on every one of them. At 131 readers
+that is free — it is here so it does not have to be found later.
+
+**No foreign keys**, matching `report`. The account-deletion cascade deletes both directions
+itself, and a foreign key would turn a missed cascade step into a 500 instead of the orphan row
+the verification query below looks for.
+
+**Verify — send the output back.**
+
+```sql
+-- 4 rows: id, blocker_id, blocked_id, created_at
+SELECT column_name, data_type, character_maximum_length, is_nullable
+  FROM information_schema.columns
+ WHERE table_schema = current_schema() AND table_name = 'block'
+ ORDER BY ordinal_position;
+-- 3 rows: block_pkey, ix_block_blocked, uq_block_pair
+SELECT indexname FROM pg_indexes WHERE tablename = 'block' ORDER BY indexname;
+-- must return 0: nothing has been written yet
+SELECT count(*) FROM block;
+```
+
+Step 11 is additive, re-runnable, and touches no existing row of any table.
+
+---
+
 ## What Claude does with each answer
 
 | You send | Claude does |
@@ -251,3 +382,5 @@ Step 9 is additive, re-runnable, and touches no existing row of any table.
 | 7. dedup_key + both index names | confirms `schema_guard` will pass, then runs `migrations/add_bot_accounts.py` |
 | 8. column row + index row + 0 | deploys Sprint 4G's API package (the commit carrying `("user","apple_sub")` in `schema_guard`), then checks `/version` |
 | 9. column row + no index + 0 | deploys Sprint 4H's API package (the commit carrying `("user","apple_refresh_token")` in `schema_guard`), then checks `/version` |
+| 10. 13 column rows + 3 index names + 0 | deploys Sprint 4I-A's API package (the commit carrying `("report","reason")` in `schema_guard`), then checks `/version` and files one real report end to end |
+| 11. 4 column rows + 3 index names + 0 | deploys Sprint 4I-B's API package (the commit carrying `("block","blocked_id")` in `schema_guard`), then checks `/version` and runs the two invariant queries: no `follow` row survives for a blocked pair, and no `block` row points at a missing `user.id` |

@@ -514,6 +514,40 @@
     "de": "Deutsch",
     "fr": "Français"
   },
+  "safety": {
+    "report": "Denunciar",
+    "block": "Bloquear",
+    "blockAction": "Bloquear",
+    "unfollow": "Deixar de seguir",
+    "unblock": "Desbloquear",
+    "reportTitle": "Denunciar este conteúdo",
+    "reportSubtitle": "Conte o que está errado. Cada denúncia é lida por uma pessoa.",
+    "reasons": {
+      "spam": "Spam ou golpe",
+      "harassment": "Assédio ou intimidação",
+      "hate": "Discurso de ódio",
+      "sexual": "Conteúdo sexual",
+      "violence": "Violência ou ameaças",
+      "self_harm": "Automutilação ou suicídio",
+      "other": "Outra coisa"
+    },
+    "detailPlaceholder": "Acrescente qualquer detalhe que ajude (opcional)",
+    "alsoBlock": "Bloquear também {{name}}",
+    "alsoBlockHint": "Vocês deixarão de se ver, e qualquer seguimento entre vocês será removido.",
+    "sendReport": "Enviar denúncia",
+    "reviewPromise": "Analisamos denúncias em até 2 dias úteis.",
+    "reportFailed": "Não foi possível enviar sua denúncia. Tente novamente.",
+    "thisReader": "esta pessoa",
+    "blockTitle": "Bloquear {{name}}?",
+    "blockConfirmBody": "Você e {{name}} não verão mais um ao outro em nenhum lugar do TrackMyRead, e nenhum dos dois poderá seguir, curtir ou comentar o outro. Qualquer seguimento entre vocês é removido agora e não volta se você desbloquear depois. Isso não retira publicações públicas — quem estiver desconectado ainda pode lê-las na web aberta.",
+    "blockFailed": "Não foi possível bloquear esta pessoa. Tente novamente.",
+    "blockedReaders": "Pessoas bloqueadas",
+    "blockedReadersDesc": "Veja quem você bloqueou e desfaça",
+    "blockedEmpty": "Você não bloqueou ninguém.",
+    "blockedLoadFailed": "Não foi possível carregar suas pessoas bloqueadas.",
+    "unblockFailed": "Não foi possível desbloquear esta pessoa. Tente novamente.",
+    "unblockHint": "Desbloquear não restaura o seguimento — vocês podem seguir um ao outro de novo se quiserem."
+  },
   "a11y": {
     "back": "Voltar",
     "close": "Fechar",
@@ -539,6 +573,13 @@
     "rateStars": "Avaliar com {{count}} estrelas",
     "chooseAvatar": "Avatar {{name}}",
     "coverPreset": "Capa {{name}}",
-    "postVisibility": "Visibilidade da publicação"
+    "postVisibility": "Visibilidade da publicação",
+    "reportPost": "Denunciar publicação",
+    "reportComment": "Denunciar comentário",
+    "reportReader": "Denunciar esta pessoa",
+    "blockReader": "Bloquear esta pessoa",
+    "unfollowReader": "Deixar de seguir esta pessoa",
+    "readerOptions": "Opções desta pessoa",
+    "alsoBlock": "Bloquear também esta pessoa"
   }
 }

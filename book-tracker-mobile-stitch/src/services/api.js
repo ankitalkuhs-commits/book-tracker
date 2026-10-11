@@ -161,6 +161,33 @@ export const userAPI = {
   getFollowing: async () => (await api.get('/users/following')).data,
   registerPushToken: async (pushToken) => (await api.post('/push-tokens/', { token: pushToken })).data,
   deregisterPushToken: async () => (await api.delete('/push-tokens/', { timeout: 10000, skipAuthExpired: true })).data,
+
+  // ── Sprint 4I — report and block ──────────────────────────────────────────
+  // These live on userAPI rather than a new safetyAPI object on purpose:
+  // apiContract.test.mjs's API_OBJECT_NAMES is a hand-written list, so a new
+  // object would be swept by NOTHING until somebody remembered to add it —
+  // and a detector that matches nothing looks exactly like one that matches
+  // everything. blockUser/unblockUser also sit beside followUser/unfollowUser,
+  // which is the relationship they tear down.
+  //
+  // `also_block` travels on the SAME request as the report (pm-decisions Q-3).
+  // The server writes the report row, the block row and the teardown in one
+  // transaction, so there is no second call, no ordering to get right and no
+  // partial state where the reader is told "report received" while the block
+  // silently failed. Anything that turns this back into two requests has to
+  // answer the question Q-3 removed.
+  reportContent: async ({ targetType, targetId, reason, detail, alsoBlock }) => (await api.post('/reports', {
+    target_type: targetType,
+    target_id: targetId,
+    reason,
+    detail: detail || null,
+    also_block: !!alsoBlock,
+  })).data,
+  blockUser: async (userId) => (await api.post(`/blocks/${userId}`)).data,
+  unblockUser: async (userId) => (await api.delete(`/blocks/${userId}`)).data,
+  // Outbound blocks only — the readers THIS reader blocked. The server never
+  // serves inbound blocks, which is what stops a block being discoverable.
+  getBlocks: async () => (await api.get('/blocks')).data,
 };
 
 // Notifications API
