@@ -79,9 +79,15 @@ export const authAPI = {
   // server falls back to the email prefix (auth_router.py R-07). Sending the string "null",
   // or a name synthesised here, would make that fallback unreachable for ever.
   // `nonce` travels unmodified — the server compares it verbatim against the token's claim.
-  appleLogin: async (identityToken, nonce, fullName) => {
+  // Sprint 4H. `authorizationCode` is Apple's ONE-TIME code and the only way the server can
+  // obtain a refresh token — which is the only thing Apple's auth/revoke accepts, so without
+  // it account deletion cannot unlist us from "Apps Using Apple ID". Conditional for the same
+  // reason full_name is: an older build and a credential without one must still sign in, and
+  // sending the string "null" would be worse than sending nothing.
+  appleLogin: async (identityToken, nonce, fullName, authorizationCode) => {
     const body = { identity_token: identityToken, nonce };
     if (fullName) body.full_name = fullName;
+    if (authorizationCode) body.authorization_code = authorizationCode;
     const response = await api.post('/auth/apple', body);
     return response.data;
   },

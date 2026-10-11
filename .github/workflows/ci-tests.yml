@@ -62,7 +62,10 @@ jobs:
       # book-search query tests); Sprint 4G added 72 on a 715 base, so the merged tree is
       # measured below rather than computed. RAISE THIS EVERY SPRINT - it drifted 86 tests
       # behind in a week once, which defeats the gate entirely.
-      EXPECTED_MIN_TESTS: 800
+      # 2026-10-11, Sprint 4H (the Apple revocation fix): re-measured at 814 on branch
+      # sprint-4h-apple-revocation - 800 + 14 new ids in tests/test_apple_auth.py
+      # (B-50, B-51 x4, B-52..B-60). No existing id was removed; five were edited in place.
+      EXPECTED_MIN_TESTS: 814
     steps:
       - uses: actions/checkout@v4
         with:
@@ -156,7 +159,13 @@ jobs:
       # tests.md predicted 134 for 13 cases; A-02b (iOS is Apple-only, pm-decisions
       # E-6) and A-13 (the eas.json ios profiles, addendum K-10) are additions this
       # package had to make and are written up in build-notes-4g-client.md.
-      EXPECTED_MIN_TESTS: 139
+      # 2026-10-11, master: the iPad responsive-layout sweep added A-15 and A-16.
+      # 2026-10-11, Sprint 4H: re-measured at 139 on branch sprint-4h-apple-revocation.
+      # The floor still said 136 while master already passed 138 - a two-test hole that had
+      # drifted in since 4G's P4. 138 is master's measured count; +1 is A-14, the case that
+      # asserts the authorization code travels from the credential into the request body.
+      # Merged: both sides independently set 139; the merged tree is measured below.
+      EXPECTED_MIN_TESTS: 140
     steps:
       - uses: actions/checkout@v4
 

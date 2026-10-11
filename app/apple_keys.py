@@ -33,6 +33,7 @@ import time
 from typing import Optional
 
 import requests
+from cryptography.fernet import Fernet, InvalidToken   # Sprint 4H: already pinned transitively
 from jose import jwt
 from jose.exceptions import JOSEError, JWTClaimsError
 
@@ -271,12 +272,18 @@ def http_post(url: str, data: dict, timeout: int):
     return requests.post(url, data=data, timeout=timeout)
 
 
-def revoke_token(apple_sub: str, client_id: str) -> Optional[int]:
+def revoke_token(refresh_token: Optional[str], client_id: str) -> Optional[int]:
     """Best-effort revocation of a reader's Apple tokens. **Returns, never raises.**
 
     Returns the HTTP status code when a call completed (including a 4xx/5xx — the status is the
     outcome, not a reason to fail), and None when nothing was sent: not configured, not gated
-    in, or the attempt itself failed or timed out.
+    in, no stored refresh token, or the attempt itself failed or timed out.
+
+    **Sprint 4H changed what the first argument is.** Through Sprint 4G this was the Apple
+    `sub`, and that could never work: Apple's `auth/revoke` takes a refresh or access token in
+    `token=` and rejects a subject with a 400 (build-notes-4g-revoke.md item 1). The caller now
+    passes the refresh token obtained by `exchange_authorization_code` at sign-in. `None` is an
+    accepted argument and means "nothing to revoke" — the inert path, not an error.
 
     Signature note (a deliberate deviation from architecture §P3's `revoke_token(user)`): this
     takes the two strings it needs rather than a `models.User`, which keeps `apple_keys.py`
@@ -284,13 +291,13 @@ def revoke_token(apple_sub: str, client_id: str) -> Optional[int]:
     column it has no business reading. The route owns the `apple_sub IS NOT NULL` gate.
 
     Logging discipline (R-13, architecture §Security review 4): a status code and nothing else.
-    No `client_secret`, no PEM, no `apple_sub`, no email, no response body. A failure logs the
-    exception's TYPE NAME only, because `requests` puts the URL — and therefore sometimes the
-    query it was given — into the exception's own string.
+    No `client_secret`, no PEM, no refresh token, no `apple_sub`, no email, no response body. A
+    failure logs the exception's TYPE NAME only, because `requests` puts the URL — and
+    therefore sometimes the query it was given — into the exception's own string.
     """
     try:
         team_id, key_id, private_key = _revoke_config()
-        if not (apple_sub and client_id and team_id and key_id and private_key):
+        if not (refresh_token and client_id and team_id and key_id and private_key):
             # The shipping state until the PM creates the `.p8` (pm-decisions E-4). Not an
             # error and not a warning: R-13 is knowingly inert and this is the line that says
             # so in the Render log.
@@ -301,7 +308,7 @@ def revoke_token(apple_sub: str, client_id: str) -> Optional[int]:
         resp = http_post(
             APPLE_REVOKE_URL,
             {
-                "token": apple_sub,
+                "token": refresh_token,
                 "token_type_hint": "refresh_token",
                 "client_id": client_id,
                 "client_secret": client_secret,
@@ -315,4 +322,176 @@ def revoke_token(apple_sub: str, client_id: str) -> Optional[int]:
         # 5.1.1(v) outranks revocation. There is no failure here that may reach the caller:
         # the deletion must complete when Apple is down, slow, or misconfigured.
         print(f"apple revoke: failed ({type(e).__name__})", flush=True)
+        return None
+
+
+# ─────────────────────────────────────────────────────────────────────────────────────────────
+# Sprint 4H: the authorization-code exchange, and the refresh token at rest.
+#
+# WHY THIS EXISTS. Sprint 4G's revocation could not work. Apple's `auth/revoke` wants a refresh
+# or access token in `token=`; 4G had only the Apple `sub` to put there, and Apple answers a
+# subject with 400 (build-notes-4g-revoke.md "What I found wrong" item 1). The reader's Apple ID
+# therefore kept listing TrackMyRead under "Apps Using Apple ID" — the one thing R-13 exists to
+# prevent, and the thing App Review checks.
+#
+# A refresh token exists only if someone exchanges the client's ONE-TIME `authorizationCode` at
+# `auth/token`. So the client now sends that code, this module exchanges it, and the result is
+# stored on the reader's row for the deletion to revoke with.
+#
+# TWO RULES, both inherited and both absolute:
+#   * Neither function raises. 5.1.1(v) outranks revocation, and sign-in outranks both: a
+#     reader must be able to sign in when Apple's token endpoint is down, and must be able to
+#     delete their account when its revoke endpoint is. Every failure here is a return value.
+#   * The log carries a status code and nothing else — never the code, the refresh token, the
+#     `client_secret`, the PEM, the encryption key or the response body.
+#
+# STILL INERT WITHOUT CONFIGURATION. `APPLE_PRIVATE_KEY` unset -> no exchange is attempted.
+# `APPLE_TOKEN_KEY` unset -> nothing is written to the column. Either way the behaviour is
+# exactly Sprint 4G's, which is the state tested and deployed today.
+# ─────────────────────────────────────────────────────────────────────────────────────────────
+
+APPLE_TOKEN_URL = "https://appleid.apple.com/auth/token"
+
+TOKEN_TIMEOUT_SECONDS = 5
+
+
+def exchange_authorization_code(code: str, client_id: str) -> Optional[str]:
+    """Exchange Apple's one-time `authorizationCode` for a refresh token. **Never raises.**
+
+    Returns the refresh token, or None for every other outcome: not configured, no code, a
+    non-200 from Apple, a response without a `refresh_token`, a timeout, a transport error.
+
+    The `client_secret` is the SAME ES256 assertion the revocation builds — same `.p8`, same
+    `iss`/`sub`/`aud`, same ten-minute `exp`. One key serves both endpoints, which is why there
+    is no second set of environment variables here.
+
+    `client_id` must be the same value the deletion will later present to `auth/revoke`: Apple
+    binds the code, the refresh token and the client together, and a refresh token obtained for
+    one `client_id` cannot be revoked as another. The route passes the first configured
+    audience for both, so the two can never disagree (see the route's comment).
+
+    No retry. A retry would be wrong twice over: the code is single-use, so a retry after a
+    response Apple did process is guaranteed to fail with `invalid_grant`, and sign-in is a
+    reader waiting on a screen. The reader's next sign-in brings a fresh code.
+    """
+    try:
+        team_id, key_id, private_key = _revoke_config()
+        if not (code and client_id and team_id and key_id and private_key):
+            # The shipping state until the PM creates the `.p8`. Not an error: the column stays
+            # NULL, the deletion sends nothing, and that is exactly Sprint 4G's behaviour.
+            print("apple token: not configured, skipped", flush=True)
+            return None
+
+        client_secret = build_client_secret(team_id, key_id, private_key, client_id)
+        resp = http_post(
+            APPLE_TOKEN_URL,
+            {
+                "grant_type": "authorization_code",
+                "code": code,
+                "client_id": client_id,
+                "client_secret": client_secret,
+            },
+            TOKEN_TIMEOUT_SECONDS,
+        )
+        status = getattr(resp, "status_code", None)
+        if status != 200:
+            # Apple puts `error` and `error_description` in the body. Neither is logged: the
+            # body of a token response is the one place a token can appear.
+            print(f"apple token: status {status}", flush=True)
+            return None
+
+        refresh = (resp.json() or {}).get("refresh_token")
+        if not isinstance(refresh, str) or not refresh:
+            # A 200 with no `refresh_token`. Distinguished from the 200 above in the log,
+            # because "Apple answered fine and we still have nothing" is the confusing case to
+            # debug from a Render log six months from now.
+            print("apple token: status 200, no refresh_token", flush=True)
+            return None
+        print("apple token: status 200, refresh_token stored", flush=True)
+        return refresh
+    except Exception as e:
+        print(f"apple token: failed ({type(e).__name__})", flush=True)
+        return None
+
+
+# ── The refresh token at rest ────────────────────────────────────────────────────────────────
+#
+# THE DECISION: encrypted, with a key that lives only in the Render environment, and NO
+# PLAINTEXT FALLBACK. `APPLE_TOKEN_KEY` unset means nothing is stored at all.
+#
+# WHY ENCRYPT. The attacker this project actually has is read-only on the database: one Supabase
+# instance is shared by dev and production, the repository is public, and backups exist. A key
+# held in the process environment is precisely the control for that attacker and for no other.
+#
+# WHY NO FALLBACK. A security property that depends on whether an environment variable happens
+# to be set is not a property. With the key unset the column stays NULL, the deletion sends
+# nothing, and the system behaves exactly as the deployed Sprint 4G does.
+#
+# WHAT IT IS NOT. This is not protection against someone who has the Render environment: they
+# hold `APPLE_TOKEN_KEY` and `APPLE_PRIVATE_KEY` both, and encryption buys nothing against them.
+# What the token grants even then is bounded — a refresh or a revocation of THIS app's Sign in
+# with Apple relationship, and nothing else of the reader's Apple ID. It is also not a way back
+# into TrackMyRead: an `id_token` minted from a refresh grant carries no `nonce` claim, and
+# `verify_identity_token` above rejects a token whose `nonce` is absent.
+#
+# Fernet, not a hand-rolled AES: authenticated (AES-128-CBC + HMAC-SHA256), versioned, and
+# `cryptography` is already installed through `python-jose[cryptography]`. No new dependency.
+
+
+def _token_key() -> Optional[Fernet]:
+    """`APPLE_TOKEN_KEY` as a Fernet, or None. Read per call, like every other Apple variable.
+
+    A malformed key is None rather than an exception: it must degrade to "nothing stored", the
+    same as an unset one, and never to a 500 on sign-in.
+    """
+    raw = (os.getenv("APPLE_TOKEN_KEY") or "").strip()
+    if not raw:
+        return None
+    try:
+        return Fernet(raw.encode("utf-8"))
+    except Exception as e:
+        print(f"apple token key: unusable ({type(e).__name__})", flush=True)
+        return None
+
+
+def seal_token(plaintext: Optional[str]) -> Optional[str]:
+    """The value to put in `user.apple_refresh_token`, or None to leave the column alone.
+
+    None for every reason the token cannot be protected: no key, an unusable key, no plaintext,
+    or a failure in the primitive. A caller that gets None writes nothing — it must never fall
+    back to storing the plaintext.
+    """
+    fernet = _token_key()
+    if fernet is None or not plaintext:
+        return None
+    try:
+        return fernet.encrypt(plaintext.encode("utf-8")).decode("ascii")
+    except Exception as e:                       # pragma: no cover - Fernet.encrypt is total
+        print(f"apple token seal: failed ({type(e).__name__})", flush=True)
+        return None
+
+
+def unseal_token(sealed: Optional[str]) -> Optional[str]:
+    """The stored value back as a refresh token, or None. **Never raises.**
+
+    None covers the cases a deletion has to survive: the column is NULL, the key was rotated
+    without re-sealing, the ciphertext is corrupt.
+
+    `InvalidToken` is caught by name only to give the rotated-key case its own log line.
+    MEASURED, because the obvious guess is wrong: Fernet raises `InvalidToken` for EVERY
+    malformed input, including an empty string, a non-base64 string and a non-ASCII one — there
+    is no separate decode error to catch. The bare `except Exception` after it is therefore a
+    backstop, not a second code path: this runs on the deletion route, where Guideline 5.1.1(v)
+    means nothing may raise, and "no exception has ever been seen here" is not a guarantee.
+    """
+    fernet = _token_key()
+    if fernet is None or not sealed:
+        return None
+    try:
+        return fernet.decrypt(sealed.encode("utf-8")).decode("utf-8")
+    except InvalidToken:
+        print("apple token unseal: wrong key or corrupt value", flush=True)
+        return None
+    except Exception as e:
+        print(f"apple token unseal: failed ({type(e).__name__})", flush=True)
         return None

@@ -101,7 +101,11 @@ export default function LoginScreen({ onLoginSuccess }) {
       // Apple gives fullName on the first authorization only. Nothing is invented here: when
       // both parts are absent this is '' and api.js omits the field (R-07, A-06).
       const fullName = [credential.fullName?.givenName, credential.fullName?.familyName].filter(Boolean).join(' ');
-      const data = await authAPI.appleLogin(credential.identityToken, nonce, fullName);
+      // Sprint 4H: the one-time authorization code travels with the identity token. The server
+      // exchanges it for a refresh token, which is the only value Apple's auth/revoke accepts
+      // on account deletion. Read straight off the credential, never stored on this device.
+      const data = await authAPI.appleLogin(
+        credential.identityToken, nonce, fullName, credential.authorizationCode);
       await authAPI.saveToken(data.access_token);
       if (data.is_new) {
         // E-5, after the fact. `private_relay` (pm-decisions addendum Q-1) is the one case the

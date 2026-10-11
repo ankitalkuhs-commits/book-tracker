@@ -31,6 +31,12 @@ class AppleAuthIn(BaseModel):
     identity_token: str
     nonce: str
     full_name: Optional[str] = None
+    # Sprint 4H. Apple's ONE-TIME `authorizationCode` from the same credential object. It is
+    # the only way to obtain a refresh token, and a refresh token is the only thing
+    # `auth/revoke` accepts — see apple_keys.py §"Sprint 4H".
+    # Optional, and it has to stay optional: the iOS build in TestFlight today does not send
+    # it, and a required field would 422 every one of those readers out of the app.
+    authorization_code: Optional[str] = None
 
 class ReviewLoginIn(BaseModel):
     email: str
@@ -406,6 +412,39 @@ def apple_auth(payload: AppleAuthIn, db: Session = Depends(get_session)):
         raise HTTPException(status_code=409, detail="Apple account already linked")
     db.refresh(user)
 
+    # ── Sprint 4H (R-13, the fix) ────────────────────────────────────────────────────────────
+    # Exchange Apple's one-time `authorizationCode` for a refresh token and store it sealed, so
+    # the deletion has something `auth/revoke` will actually accept. Sprint 4G had only the
+    # `sub` to send and Apple answers a subject with 400.
+    #
+    # DELIBERATELY AFTER the commit above, never inside it. That commit carries R-03's
+    # `apple_sub` write, and if that write is lost every later sign-in creates another account
+    # for ever (F4). An outbound call to Apple must not be able to take it down with it. This
+    # second commit failing is survivable by comparison: the reader has no refresh token, their
+    # next sign-in brings a fresh code, and their deletion completes either way.
+    #
+    # `client_id` is `audiences[0]` HERE and at deletion, deliberately the same expression.
+    # Apple binds a refresh token to the client that obtained it, so a token fetched as the
+    # verified `aud` and revoked as `audiences[0]` would be a silent mismatch the moment
+    # APPLE_AUDIENCES holds more than one entry. Today it holds exactly one — the bundle id,
+    # `com.bookpulse.mobile` (architecture E-2 item 5).
+    #
+    # Every sign-in carrying a code re-exchanges, not only the first: a reader who revoked us
+    # from Apple's own Settings and came back has a dead token stored, and the freshly issued
+    # one replaces it. Sign-in happens about once per install, so the call is cheap.
+    #
+    # A failed exchange or an unset `APPLE_TOKEN_KEY` writes NOTHING and never clears what is
+    # already there — an old token that might still work beats no token at all, and storing the
+    # plaintext as a fallback is the one thing `seal_token` must never be talked into.
+    if payload.authorization_code:
+        sealed = apple_keys.seal_token(
+            apple_keys.exchange_authorization_code(payload.authorization_code, audiences[0])
+        )
+        if sealed:
+            user.apple_refresh_token = sealed
+            db.add(user)
+            db.commit()
+
     # The ordinary 30-day reader token, carrying NO provider claim: get_current_user resolves
     # the row on every request (deps.py:76), so the row is the single authority.
     token = auth.create_access_token({"sub": user.email})
@@ -458,10 +497,19 @@ def delete_own_account(
     # `client_id` is the first configured audience, i.e. the bundle id (architecture E-2
     # item 5). With `APPLE_AUDIENCES` unset there is no client id to present and nothing is
     # sent, which is the same inert state an unset `APPLE_PRIVATE_KEY` produces.
+    #
+    # Sprint 4H: what gets REVOKED is the stored refresh token, unsealed here, and no longer
+    # the Apple `sub`. Apple's `auth/revoke` takes a refresh or access token and answers a
+    # subject with 400, so 4G's call could only ever fail (build-notes-4g-revoke.md item 1).
+    # `unseal_token` returns None for a NULL column, a rotated key or a corrupt value, and
+    # `revoke_token` treats None as "nothing to revoke" and sends nothing — the deletion below
+    # is unaffected in every one of those cases, which is the rule that outranks this whole
+    # block.
     if current_user.apple_sub:
         _apple_audiences = _apple_config()
         apple_keys.revoke_token(
-            current_user.apple_sub, _apple_audiences[0] if _apple_audiences else ""
+            apple_keys.unseal_token(current_user.apple_refresh_token),
+            _apple_audiences[0] if _apple_audiences else "",
         )
 
     uid = current_user.id
