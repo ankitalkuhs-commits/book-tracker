@@ -92,3 +92,68 @@ hides them from each other inside TrackMyRead, it does not unpublish public post
 Also carried: the large seed must gain `block` rows, or `test_no_endpoint_scales_with_row_count`
 never exercises the filter — and blocks shorten response bodies, so its `len(bigger) >= 5`
 assertion is a trap the test plan has to handle deliberately.
+
+---
+
+# Addendum, 2026-10-11 — decisions on the QA plan's open questions
+
+## Q-1 — The two unclassified circle endpoints: **delete the rows, then neither needs filtering**
+
+`GET /groups/{id}/pending` and `GET /groups/invites/pending` both serve names, so the
+classification rule says "filter". But filtering a **pending join request** hides a decision from
+the only person who can take it: the curator would see a request they cannot action, and it would
+sit there for ever. That is a worse outcome than the name being visible.
+
+The answer is the one already taken for follows. **A block deletes any pending join request and
+any pending invite between the two readers, in the same transaction**, and refuses new ones. Then
+the row cannot exist, and "not filtered" is true for the same reason the Architect gave for
+`/follow/followers` — *the row cannot exist*, rather than *we chose not to look*.
+
+Both endpoints are classified **not-filtered, with that reason**, and the deletion is a new
+requirement under the block transaction alongside the follow rows.
+
+## Q-2 — Who may be reported: **any existing user, including bots**
+
+R-02's visibility rule is note-shaped and taking it literally means a reader cannot report a
+private profile — which would delete the affordance R-05 commissions on the profile page.
+
+The rule is instead: **a report may name any existing user id.** A report is a message to a
+moderator, not an action against the target, so visibility is the wrong gate. The response is
+**identical whether or not the reporter could see that person**, so the endpoint leaks nothing
+about private profiles — that sameness is a test, not a note.
+
+Bots are reportable too. If `@TMRQuotes` posts something wrong, a reader must be able to say so.
+
+**Rate limit: 20 reports per reporter per 24 hours**, server-enforced, same shape as Sprint 4F's
+bot cap. Without it "report anyone" is a spam channel into the admin queue.
+
+## Q-3 — "Also block" as two requests: **make it one**
+
+The QA is right that two requests leaves "what if the block half fails" unanswered. Rather than
+specify failure handling, remove the failure: `POST /reports` takes **`also_block: bool`**, and
+the server writes the report and the block **in one transaction**. Either both happen or neither
+does, and there is no partial state to describe.
+
+Sequencing, which falls out cleanly: `also_block` belongs to **4I-B**, because it cannot exist
+before blocking does. 4I-A ships the report API without it. The clients ship once, after both,
+so no reader ever sees a checkbox that does nothing.
+
+## R-24 — The unlike refusal: **dropped**
+
+`unlike_note` never loads the note and never calls `_assert_can_view_note`, so the requirement has
+no call site. It is also not worth creating one: unliking **removes** a row the reader themselves
+created. Letting someone withdraw a like they left before the block is correct, not a leak. The
+requirement is struck, with this reason recorded rather than quietly dropped.
+
+## Spec done-checklist item 7 — **amended**
+
+"No edits to any existing test except the budget numbers" becomes false the moment the report
+routes gain `deny_bot_actor`, because Sprint 4F's four-route inventory in
+`tests/test_bots.py::GUARDED_ROUTES` is an exact list. The item now names that file and that
+constant as the one permitted edit, so it is a bounded exception rather than a broken claim.
+
+## One correction to my earlier note
+
+I wrote that `BQ-24` is the project's only `TARGET` row. The QA measured it: **`29` and `29e` are
+targets too**. The substantive point stands — a `TARGET` moving is a bigger deal than a ratchet
+moving — but the count was wrong and the plan carries the measured version.
