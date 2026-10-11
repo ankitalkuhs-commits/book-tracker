@@ -747,6 +747,10 @@ test('the_mobile_diff_touches_only_the_named_files', () => {
     // pulls in AppCheckCore, a Swift pod that cannot be a static library without modular
     // headers. iOS is Apple-only (E-6), so the module is not autolinked there at all.
     'react-native.config.js',
+    // Added 2026-10-11: the frozen-Dimensions bug (A-15) was not unique to LoginScreen -
+    // AppTour.js had it too, and its tooltip's Continue button fell off the right edge in
+    // portrait on a real iPad.
+    'src/components/AppTour.js',
     // Added 2026-10-11: release/last-released.json recorded 2.2.1/60 while Play had 2.2.3/62,
     // so the guard protecting the next release was comparing against the wrong baseline.
     'release/last-released.json', '__tests__/botBadge.test.mjs',
@@ -982,13 +986,54 @@ test('layout_width_is_not_frozen_at_module_scope', () => {
   // iPad the scene is sized afterwards - and changes again on rotation and in Split View -
   // so any layout derived from it is wrong there. Build 2 cut the third feature card off the
   // right edge of an iPad because CARD_W was computed that way.
-  const frozen = findAll(loginAst, (n) => n.type === 'CallExpression'
-    && /Dimensions\s*\.\s*get/.test(src(loginSrc, n.callee)));
-  const atModuleScope = frozen.filter((n) => !ancestors(n, parentsOf(loginAst))
-    .some((a) => a.type === 'FunctionDeclaration' || a.type === 'ArrowFunctionExpression'
-      || a.type === 'FunctionExpression'));
-  assert.deepEqual(atModuleScope.map((n) => src(loginSrc, n)), [],
-    'Dimensions.get() at module scope - frozen width, wrong on iPad and after rotation');
+  // Swept across EVERY source file, not just this screen. The first version of this case
+  // only looked at LoginScreen, and passed while AppTour.js carried the identical bug — its
+  // tour tooltip pushed Continue off the right edge in portrait on a real iPad. A rule about
+  // a PATTERN has to be applied everywhere the pattern can occur.
+  // Known offenders, 2026-10-11. LoginScreen and AppTour are FIXED (the two that were
+  // actually seen broken on an iPad). These five carry the same bug and are queued for the
+  // same treatment — they are listed by name so the rule still catches a SIXTH, and so this
+  // list is visibly a debt rather than a silent exception. Removing a name here without
+  // fixing the file turns this case red, which is the point.
+  const KNOWN_FROZEN = [
+    'src/screens/InsightsScreen.js',
+    'src/screens/LibraryScreen.js',
+    'src/screens/OnboardingScreen.js',
+    'src/screens/ProfileScreen.js',
+    'src/screens/UserProfileScreen.js',
+  ];
+  const offenders = [];
+  let swept = 0;
+  const srcFiles = [];
+  (function collect(dir) {
+    for (const entry of fs.readdirSync(path.join(MOBILE_ROOT, dir), { withFileTypes: true })) {
+      const rel = `${dir}/${entry.name}`;
+      if (entry.isDirectory()) collect(rel);
+      else if (/\.jsx?$/.test(entry.name)) srcFiles.push(rel);
+    }
+  })('src');
+  for (const rel of srcFiles) {
+    swept += 1;
+    const code = readMobile(rel);
+    if (!code.includes('Dimensions')) continue;
+    const ast = parseMobileFile(rel);
+    const calls = findAll(ast, (n) => n.type === 'CallExpression'
+      && /Dimensions\s*\.\s*get/.test(src(code, n.callee)));
+    const parents = parentsOf(ast);
+    const moduleScope = calls.filter((n) => !ancestors(n, parents)
+      .some((a) => a.type === 'FunctionDeclaration' || a.type === 'ArrowFunctionExpression'
+        || a.type === 'FunctionExpression'));
+    if (moduleScope.length && !KNOWN_FROZEN.includes(rel)) offenders.push(rel);
+  }
+  assert.ok(swept > 20, `the sweep only looked at ${swept} files — it cannot be finding anything`);
+  assert.deepEqual(offenders, [],
+    `Dimensions.get() at module scope freezes the width — wrong on iPad and after rotation: ${offenders.join(', ')}`);
+
+  // Every exempted file must still HAVE the bug; once fixed its name must leave the list,
+  // so the debt cannot quietly outlive the problem.
+  const stale = KNOWN_FROZEN.filter((rel) => !readMobile(rel).includes('Dimensions.get'));
+  assert.deepEqual(stale, [],
+    `fixed but still exempted — remove from KNOWN_FROZEN: ${stale.join(', ')}`);
 
   // and the responsive hook is what replaced it
   const hook = findAll(loginAst, (n) => n.type === 'CallExpression'

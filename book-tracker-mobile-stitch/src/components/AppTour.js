@@ -14,8 +14,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  View, Text, StyleSheet, Modal, TouchableOpacity, Animated,
-  Dimensions, Image, ScrollView, TextInput, ActivityIndicator, Alert,
+  View, Text, StyleSheet, Modal, TouchableOpacity, Animated, Image, ScrollView, TextInput, ActivityIndicator, Alert, useWindowDimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -26,7 +25,11 @@ import { userAPI, profileAPI, booksAPI } from '../services/api';
 
 export const TOUR_KEY = 'bt_tour_v1';   // bump to reset for all users
 
-const { width: SW, height: SH } = Dimensions.get('window');
+// NO module-scope Dimensions.get: it freezes to whatever the window was when the bundle
+// loaded, which on an iPad is the wrong size and never updates on rotation. The tour's
+// tooltip was then laid out for the other orientation and its Continue button fell off the
+// right edge in portrait (seen on a real iPad, 2026-10-11). The geometry helpers below take
+// the live width/height instead, from useWindowDimensions() in the component.
 const TAB_H    = 60;   // matches AppNavigator tabBarStyle.height
 const PAD      = 10;   // spotlight padding
 
@@ -43,7 +46,7 @@ const GOAL_PRESETS = [6, 12, 24, 36, 52];
 
 // ── Spotlight geometry helpers ────────────────────────────────────────────────
 
-function tabSpot(insets, index) {
+function tabSpot(insets, index, SW, SH) {
   const tabBarTop = SH - TAB_H - insets.bottom;
   const tabW = SW / 4;
   const cx = tabW * index + tabW / 2;
@@ -56,7 +59,7 @@ function tabSpot(insets, index) {
   };
 }
 
-function avatarSpot(insets) {
+function avatarSpot(insets, SW) {
   // AppHeader: paddingTop = insets.top + 10, height ~56 total
   // Avatar is at right edge: x = SW - 16 - 36 = SW - 52
   const headerMid = insets.top + 10 + 18;  // rough center of avatar
@@ -72,39 +75,39 @@ function avatarSpot(insets) {
 // ── Step definitions ──────────────────────────────────────────────────────────
 // type: 'spotlight' | 'avatar' | 'goal' | 'done'
 
-function buildSteps(insets, t) {
+function buildSteps(insets, t, SW, SH) {
   return [
     {
       type: 'spotlight',
-      spot: tabSpot(insets, 0),
+      spot: tabSpot(insets, 0, SW, SH),
       title: t('onboarding.feedTabTitle'),
       body:  t('onboarding.feedTabDesc'),
       placement: 'above',
     },
     {
       type: 'spotlight',
-      spot: tabSpot(insets, 1),
+      spot: tabSpot(insets, 1, SW, SH),
       title: t('onboarding.libraryTabTitle'),
       body:  t('onboarding.libraryTabDesc'),
       placement: 'above',
     },
     {
       type: 'spotlight',
-      spot: tabSpot(insets, 2),
+      spot: tabSpot(insets, 2, SW, SH),
       title: t('onboarding.circlesTabTitle'),
       body:  t('onboarding.circlesTabDesc'),
       placement: 'above',
     },
     {
       type: 'spotlight',
-      spot: tabSpot(insets, 3),
+      spot: tabSpot(insets, 3, SW, SH),
       title: t('onboarding.insightsTabTitle'),
       body:  t('onboarding.insightsTabDesc'),
       placement: 'above',
     },
     {
       type: 'avatar',
-      spot: avatarSpot(insets),
+      spot: avatarSpot(insets, SW),
       title: t('onboarding.addBookTitle'),
       body:  t('onboarding.addBookDesc'),
       placement: 'below',
@@ -132,7 +135,8 @@ function buildSteps(insets, t) {
 export default function AppTour({ onDone }) {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
-  const steps  = buildSteps(insets, t);
+  const { width: SW, height: SH } = useWindowDimensions();
+  const steps  = buildSteps(insets, t, SW, SH);
 
   const [step,       setStep]       = useState(0);
   const fadeAnim                    = useRef(new Animated.Value(0)).current;
