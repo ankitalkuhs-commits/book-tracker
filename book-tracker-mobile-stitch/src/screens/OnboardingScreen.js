@@ -1,8 +1,6 @@
 import React, { useState, useRef } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, ScrollView,
-  Animated, Dimensions, TextInput, ActivityIndicator,
-  StatusBar, FlatList, Image,
+  View, Text, StyleSheet, TouchableOpacity, ScrollView, Animated, TextInput, ActivityIndicator, StatusBar, FlatList, Image, useWindowDimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -10,7 +8,6 @@ import { useTranslation } from 'react-i18next';
 import { colors, radius, shadow } from '../theme';
 import { userAPI, booksAPI, userbooksAPI } from '../services/api';
 
-const { width: SW } = Dimensions.get('window');
 
 // ── Tab tour cards ────────────────────────────────────────────────────────────
 const TABS = [
@@ -209,6 +206,10 @@ function WelcomeStep() {
 
 // ── Step: App Tour ────────────────────────────────────────────────────────────
 function TourStep() {
+  // width per render, never frozen at import: a module-scope Dimensions.get() is a
+  // phone-shaped value that never updates, and is wrong on iPad and after rotation.
+  const { width: SW } = useWindowDimensions();
+  const tourCardW = (SW - 48 - 10) / 2;
   const { t } = useTranslation();
   const tourTabs = [
     {
@@ -250,7 +251,7 @@ function TourStep() {
       <Text style={styles.stepDescSm}>{t('onboarding.whatsInsideDesc')}</Text>
       <View style={styles.tourGrid}>
         {tourTabs.map(tab => (
-          <View key={tab.label} style={[styles.tourCard, { backgroundColor: tab.bg }]}>
+          <View key={tab.label} style={[styles.tourCard, { width: tourCardW, backgroundColor: tab.bg }]}>
             <View style={[styles.tourIconBox, { backgroundColor: tab.color + '18' }]}>
               <MaterialCommunityIcons name={tab.icon} size={26} color={tab.color} />
             </View>
@@ -546,7 +547,6 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   tourCard: {
-    width: (SW - 48 - 10) / 2,
     borderRadius: radius.lg,
     padding: 14,
     gap: 4,

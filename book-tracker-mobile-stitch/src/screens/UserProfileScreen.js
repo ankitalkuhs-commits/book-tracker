@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef, useContext } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  ActivityIndicator, Alert, RefreshControl, Image, Dimensions, Modal, Share,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert, RefreshControl, Image, Modal, Share, useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -11,8 +10,6 @@ import { PreloadContext } from '../../App';
 import BotBadge from '../components/BotBadge';
 import { colors, radius, shadow, type } from '../theme';
 
-const SCREEN_W   = Dimensions.get('window').width;
-const BOOK_TILE_W = (SCREEN_W - 32 - 16) / 3;
 
 function getInitials(name) {
   if (!name) return 'U';
@@ -33,6 +30,9 @@ function formatDate(ts) {
 
 // ── Velocity / activity chart ─────────────────────────────────────────────────
 function VelocityChart({ data, period, onPeriodChange }) {
+  // width per render, never frozen at import: a module-scope Dimensions.get() is a
+  // phone-shaped value that never updates, and is wrong on iPad and after rotation.
+  const { width: SCREEN_W } = useWindowDimensions();
   const { t } = useTranslation();
   if (!data || data.length === 0) return null;
   const max  = Math.max(...data.map(d => d.pages_read || 0), 1);
@@ -81,6 +81,10 @@ function VelocityChart({ data, period, onPeriodChange }) {
 
 // ── Main screen ───────────────────────────────────────────────────────────────
 export default function UserProfileScreen({ route, navigation }) {
+  // width per render, never frozen at import: a module-scope Dimensions.get() is a
+  // phone-shaped value that never updates, and is wrong on iPad and after rotation.
+  const { width: screenW } = useWindowDimensions();
+  const bookTileW = (screenW - 32 - 16) / 3;
   const { t } = useTranslation();
   const { userId } = route.params;
   const insets = useSafeAreaInsets();
@@ -419,14 +423,14 @@ export default function UserProfileScreen({ route, navigation }) {
                   {displayedBooks.map(ub => (
                     <TouchableOpacity
                       key={ub.id}
-                      style={styles.bookTile}
+                      style={[styles.bookTile, { width: bookTileW }]}
                       activeOpacity={0.8}
                       onPress={() => navigation.navigate('BookPreview', { book: ub.book || ub })}
                     >
                       {ub.book?.cover_url ? (
-                        <Image source={{ uri: ub.book.cover_url }} style={styles.bookCover} />
+                        <Image source={{ uri: ub.book.cover_url }} style={[styles.bookCover, { width: bookTileW, height: bookTileW * 1.5 }]} />
                       ) : (
-                        <View style={[styles.bookCover, styles.bookCoverFallback]}>
+                        <View style={[styles.bookCover, styles.bookCoverFallback, { width: bookTileW, height: bookTileW * 1.5 }]}>
                           <Ionicons name="book-outline" size={22} color={colors.outline} />
                         </View>
                       )}
@@ -645,8 +649,8 @@ const styles = StyleSheet.create({
   viewAllLink:     { fontSize: 13, color: colors.primary, fontWeight: '600' },
 
   bookGrid:        { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  bookTile:        { width: BOOK_TILE_W },
-  bookCover:       { width: BOOK_TILE_W, height: BOOK_TILE_W * 1.5, borderRadius: radius.md, marginBottom: 4 },
+  bookTile:        {},
+  bookCover:       { borderRadius: radius.md, marginBottom: 4 },
   bookCoverFallback: { backgroundColor: colors.surfaceContainerHigh, justifyContent: 'center', alignItems: 'center' },
   bookTileTitle:   { fontSize: 11, fontWeight: '700', color: colors.onSurface, lineHeight: 15 },
   bookTileAuthor:  { fontSize: 10, color: colors.onSurfaceVariant },

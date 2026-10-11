@@ -751,6 +751,10 @@ test('the_mobile_diff_touches_only_the_named_files', () => {
     // AppTour.js had it too, and its tooltip's Continue button fell off the right edge in
     // portrait on a real iPad.
     'src/components/AppTour.js',
+    // 2026-10-11: the frozen-Dimensions sweep found seven files, not one. All converted.
+    'src/screens/InsightsScreen.js', 'src/screens/LibraryScreen.js',
+    'src/screens/OnboardingScreen.js', 'src/screens/ProfileScreen.js',
+    'src/screens/UserProfileScreen.js',
     // Added 2026-10-11: release/last-released.json recorded 2.2.1/60 while Play had 2.2.3/62,
     // so the guard protecting the next release was comparing against the wrong baseline.
     'release/last-released.json', '__tests__/botBadge.test.mjs',
@@ -995,13 +999,7 @@ test('layout_width_is_not_frozen_at_module_scope', () => {
   // same treatment — they are listed by name so the rule still catches a SIXTH, and so this
   // list is visibly a debt rather than a silent exception. Removing a name here without
   // fixing the file turns this case red, which is the point.
-  const KNOWN_FROZEN = [
-    'src/screens/InsightsScreen.js',
-    'src/screens/LibraryScreen.js',
-    'src/screens/OnboardingScreen.js',
-    'src/screens/ProfileScreen.js',
-    'src/screens/UserProfileScreen.js',
-  ];
+  const KNOWN_FROZEN = [];   // emptied 2026-10-11: all seven converted to useWindowDimensions
   const offenders = [];
   let swept = 0;
   const srcFiles = [];
@@ -1051,6 +1049,30 @@ test('layout_width_is_not_frozen_at_module_scope', () => {
         || a.type === 'FunctionExpression'));
   assert.equal(synFrozen.length, 1,
     'the detector cannot see a module-scope Dimensions.get, so its pass proves nothing');
+});
+
+// ── A-16 (added after one book filled an entire iPad page) ─────────────────
+test('library_grid_column_count_is_not_hardcoded', () => {
+  // Unfreezing the width was not enough: numColumns={2} meant an iPad still drew two
+  // tiles, each about 500pt, so a single book took most of the screen. The column count
+  // has to come from the measured width. A literal here is the bug.
+  const rel = 'src/screens/LibraryScreen.js';
+  const code = readMobile(rel);
+  const ast = parseMobileFile(rel);
+  const attrs = findAll(ast, (n) => n.type === 'JSXAttribute'
+    && n.name && n.name.name === 'numColumns');
+  assert.equal(attrs.length, 1, `expected exactly one numColumns, found ${attrs.length}`);
+  const expr = attrs[0].value && attrs[0].value.expression;
+  assert.ok(expr, 'numColumns has no expression');
+  assert.notEqual(expr.type, 'NumericLiteral',
+    `numColumns is hardcoded to ${src(code, expr)} — an iPad gets two giant tiles`);
+
+  // FlatList does not re-layout when numColumns changes unless the key changes with it.
+  const keyAttr = findAll(ast, (n) => n.type === 'JSXAttribute'
+    && n.name && n.name.name === 'key'
+    && /cols/.test(src(code, n)));
+  assert.equal(keyAttr.length, 1,
+    'the FlatList needs a key that changes with the column count, or rotation will not re-lay out');
 });
 
 // ── A-13 (pm-decisions addendum K-10 — new in this package) ─────────────────

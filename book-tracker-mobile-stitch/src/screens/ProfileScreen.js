@@ -1,8 +1,6 @@
 import React, { useState, useEffect, useContext, useCallback, useRef } from 'react';
 import {
-  View, Text, ScrollView, StyleSheet, RefreshControl, TouchableOpacity,
-  ActivityIndicator, TextInput, Alert, Image, Modal, KeyboardAvoidingView,
-  Platform, Dimensions,
+  View, Text, ScrollView, StyleSheet, RefreshControl, TouchableOpacity, ActivityIndicator, TextInput, Alert, Image, Modal, KeyboardAvoidingView, Platform, useWindowDimensions,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -15,7 +13,6 @@ import { PreloadContext } from '../../App';
 import { formatTimeAgo } from '../utils/bookUtils';
 import { colors, radius, shadow, type } from '../theme';
 
-const SCREEN_W = Dimensions.get('window').width;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function getInitials(name) {
@@ -25,6 +22,9 @@ function getInitials(name) {
 
 // ── Activity bar chart ────────────────────────────────────────────────────────
 function ActivityChart({ data, streak }) {
+  // width per render, never frozen at import: a module-scope Dimensions.get() is a
+  // phone-shaped value that never updates, and is wrong on iPad and after rotation.
+  const { width: SCREEN_W } = useWindowDimensions();
   const { t } = useTranslation();
   if (!data || data.length === 0) return (
     <Text style={{ fontSize: 13, color: colors.onSurfaceVariant, marginTop: 8 }}>

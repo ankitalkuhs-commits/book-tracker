@@ -1,8 +1,6 @@
 import React, { useState, useEffect, useContext, useCallback, useRef } from 'react';
 import {
-  View, Text, FlatList, StyleSheet, Image, TouchableOpacity,
-  RefreshControl, ActivityIndicator, TextInput, Modal, ScrollView,
-  Dimensions, Alert, KeyboardAvoidingView, Platform,
+  View, Text, FlatList, StyleSheet, Image, TouchableOpacity, RefreshControl, ActivityIndicator, TextInput, Modal, ScrollView, Alert, KeyboardAvoidingView, Platform, useWindowDimensions,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -13,13 +11,22 @@ import { PreloadContext } from '../../App';
 import { colors, radius, shadow, type } from '../theme';
 import AppHeader from '../components/AppHeader';
 
-const { width: SCREEN_W } = Dimensions.get('window');
 const GRID_PAD = 14;
 const GRID_GAP  = 12;
-const TILE_W    = (SCREEN_W - GRID_PAD * 2 - GRID_GAP) / 2;
-const TILE_H    = TILE_W * (4 / 3);
-const COVER_W   = TILE_W * 0.52;
-const COVER_H   = COVER_W * 1.5;
+
+// Grid metrics are computed per render, never frozen at module scope. Dimensions.get() at
+// import time gave a phone-shaped width that never updated, so on an iPad a single book
+// filled most of the page. TARGET_TILE keeps a tile roughly phone-sized on every device:
+// 2 columns on a phone (unchanged), 4 on an iPad in portrait, 6 in landscape.
+const TARGET_TILE = 180;
+
+function useGrid() {
+  const { width } = useWindowDimensions();
+  const cols  = Math.max(2, Math.floor((width - GRID_PAD * 2 + GRID_GAP) / (TARGET_TILE + GRID_GAP)));
+  const tileW = (width - GRID_PAD * 2 - GRID_GAP * (cols - 1)) / cols;
+  const coverW = tileW * 0.52;
+  return { cols, tileW, tileH: tileW * (4 / 3), coverW, coverH: coverW * 1.5 };
+}
 const SPINE_W   = 3;
 
 // Colour palettes for book tiles
@@ -40,6 +47,7 @@ function getPalette(id) {
 
 // ── 3D Book Cover ─────────────────────────────────────────────────────────────
 function Book3D({ coverUrl, title, palette }) {
+  const { coverW: COVER_W, coverH: COVER_H } = useGrid();
   const [failed, setFailed] = useState(false);
   return (
     <View style={{ alignItems: 'flex-start' }}>
@@ -137,6 +145,7 @@ function ProgressBar({ current, total }) {
 
 // ── Book Tile (grid cell) ─────────────────────────────────────────────────────
 function BookTile({ userbook, onPress }) {
+  const { tileW: TILE_W, tileH: TILE_H } = useGrid();
   const { t } = useTranslation();
   const palette = getPalette(userbook.id);
   const book    = userbook.book;
@@ -482,6 +491,7 @@ function AddBookModal({ visible, onClose, onAdded }) {
 
 // ── Library Screen ─────────────────────────────────────────────────────────────
 export default function LibraryScreen({ navigation }) {
+  const { cols } = useGrid();
   const { t } = useTranslation();
   const preloaded  = useContext(PreloadContext);
   const currentUser = preloaded?.profile || null;
@@ -614,7 +624,8 @@ export default function LibraryScreen({ navigation }) {
         <FlatList
           data={filtered}
           keyExtractor={item => item.id.toString()}
-          numColumns={2}
+          numColumns={cols}
+          key={`cols-${cols}`}
           columnWrapperStyle={styles.gridRow}
           contentContainerStyle={styles.grid}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}

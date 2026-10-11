@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback, useContext } from 'react';
 import {
-  View, Text, ScrollView, StyleSheet, RefreshControl,
-  ActivityIndicator, TouchableOpacity, Image, Dimensions,
+  View, Text, ScrollView, StyleSheet, RefreshControl, ActivityIndicator, TouchableOpacity, Image, useWindowDimensions,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -12,7 +11,6 @@ import { PreloadContext } from '../../App';
 import { colors, radius, shadow, type } from '../theme';
 import AppHeader from '../components/AppHeader';
 
-const SCREEN_W = Dimensions.get('window').width;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function fmt(n) {
@@ -96,6 +94,9 @@ function GoalRing({ pct = 0, size = 80, stroke = 9, color = colors.primary, chil
 
 // ── Bar chart ─────────────────────────────────────────────────────────────────
 function BarChart({ data, height = 100, barColor = colors.primary, highlightColor = colors.primaryContainer, highlightIndex }) {
+  // width per render, never frozen at import: a module-scope Dimensions.get() is a
+  // phone-shaped value that never updates, and is wrong on iPad and after rotation.
+  const { width: SCREEN_W } = useWindowDimensions();
   if (!data || data.length === 0) return null;
   const max   = Math.max(...data.map(d => d.value || 0), 1);
   const barW  = Math.max(3, Math.floor((SCREEN_W - 48) / data.length) - 2);
