@@ -296,16 +296,31 @@ test('group_avatar_takes_an_isBot_prop', () => {
 });
 
 // ── A-05 ────────────────────────────────────────────────────────────────────
-test('app_json_is_2_2_4_63', () => {
+// Was `app_json_is_2_2_4_63`, pinning 2.2.4/63 as literals. That made every future release
+// a two-file change and a red suite until someone found this line — the same brittleness
+// localDate.test.mjs already hit once. The invariant is not "the version is 2.2.4", it is
+// "the tree is ahead of what Play last accepted", so that is what it asserts now.
+test('app_json_is_ahead_of_the_last_release', () => {
   const appJson = JSON.parse(readMobile('app.json'));
-  assert.equal(appJson.expo.version, '2.2.4');
-  assert.equal(appJson.expo.android.versionCode, 63);
+  const released = JSON.parse(readMobile('release/last-released.json'));
+
+  const code = appJson.expo.android.versionCode;
+  assert.equal(typeof code, 'number', 'android.versionCode must be a number');
+  assert.ok(code > released.versionCode,
+    `versionCode ${code} must be greater than the last released ${released.versionCode}`);
+
+  const parts = (v) => String(v).split('.').map(Number);
+  const [a, b, c] = parts(appJson.expo.version);
+  const [x, y, z] = parts(released.version);
+  assert.ok([a, b, c].every(Number.isFinite), `version ${appJson.expo.version} is not x.y.z`);
+  assert.ok(a * 1e6 + b * 1e3 + c > x * 1e6 + y * 1e3 + z,
+    `version ${appJson.expo.version} must be greater than the last released ${released.version}`);
 });
 
 // ── A-06 ────────────────────────────────────────────────────────────────────
 // The defence against the "imported a symbol that does not exist" defect:
 // every BotBadge import must resolve to a real file with a real default export,
-// and the committed tree must still pass the strict version guard at 2.2.4/63.
+// and the committed tree must still pass the strict version guard.
 test('versionGuard_and_apiContract_still_green', () => {
   const importers = [];
   for (const rel of listMobileFiles('src')) {
@@ -327,5 +342,8 @@ test('versionGuard_and_apiContract_still_green', () => {
 
   const r = spawnSync(process.execPath, ['scripts/check-version-bump.js', '--strict'], { cwd: MOBILE_ROOT, encoding: 'utf8' });
   assert.equal(r.status, 0, r.stdout + r.stderr);
-  assert.match(r.stdout, /versionCode=63/);
+  // The guard must have read THIS tree's versionCode, not a number frozen into this test.
+  const current = JSON.parse(readMobile('app.json')).expo.android.versionCode;
+  assert.match(r.stdout, new RegExp(`versionCode=${current}\\b`),
+    `the version guard did not report the tree's own versionCode (${current})`);
 });

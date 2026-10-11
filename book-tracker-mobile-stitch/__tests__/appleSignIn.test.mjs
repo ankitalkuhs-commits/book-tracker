@@ -736,6 +736,9 @@ test('the_mobile_diff_touches_only_the_named_files', () => {
     // pulls in AppCheckCore, a Swift pod that cannot be a static library without modular
     // headers. iOS is Apple-only (E-6), so the module is not autolinked there at all.
     'react-native.config.js',
+    // Added 2026-10-11: release/last-released.json recorded 2.2.1/60 while Play had 2.2.3/62,
+    // so the guard protecting the next release was comparing against the wrong baseline.
+    'release/last-released.json', '__tests__/botBadge.test.mjs',
     LOGIN, API, '__tests__/appleSignIn.test.mjs',
     ...LOCALE_CODES.map((c) => `src/i18n/locales/${c}.json`),
   ].map((p) => `${PREFIX}${p}`));
