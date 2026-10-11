@@ -161,12 +161,30 @@ def fire_event(
     data  = {"type": event_type, "actor_id": actor_id, **(extra or {})}
 
     now = localday.utcnow()
-    sent = skipped_cap = skipped_self = 0
+    sent = skipped_cap = skipped_self = skipped_blocked = 0
+
+    # Sprint 4I-B (R-25, R-22 row 19): a push is contact, and it bypasses every filter in
+    # R-22's table. The set is fetched ONCE — one statement, never one per recipient — but the
+    # SKIP DECISION is per recipient, inside the loop beside the self-skip and the bot-recipient
+    # skip. That matters: a mixed recipient list containing one blocked reader and one unrelated
+    # reader must deliver to the second, which a decision taken above the loop cannot do
+    # (B-29, MUT-4I-54). actor_id 0 is the scheduler's "TrackMyRead", not a user row.
+    from .. import blocks
+    blocked_recipients = blocks.hidden_user_ids(db, actor_id) if actor_id else set()
 
     for user_id in recipient_ids:
         # Never notify someone about their own action
         if user_id == actor_id:
             skipped_self += 1
+            continue
+
+        # Sprint 4I-B (R-25): no NotificationLog row and no push for a blocked pair, in either
+        # direction. Counted into the summary under its own key so a suppressed delivery is
+        # visible rather than indistinguishable from "nothing happened". Ids only in the log
+        # line — never a name (architecture §Security review 3).
+        if user_id in blocked_recipients:
+            print(f"[Notify] Actor {actor_id} and user {user_id} are a blocked pair — no delivery")
+            skipped_blocked += 1
             continue
 
         # Check user's personal notification preferences
@@ -208,7 +226,9 @@ def fire_event(
         "sent": sent,
         "skipped_self": skipped_self,
         "skipped_cap": skipped_cap,
+        "skipped_blocked": skipped_blocked,      # Sprint 4I-B (R-25)
         "dry_run": dry_run,
     }
-    print(f"[Notify] {event_type}: sent={sent}, skipped_cap={skipped_cap}, dry_run={dry_run}")
+    print(f"[Notify] {event_type}: sent={sent}, skipped_cap={skipped_cap}, "
+          f"skipped_blocked={skipped_blocked}, dry_run={dry_run}")
     return summary

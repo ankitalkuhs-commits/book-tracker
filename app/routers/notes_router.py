@@ -6,7 +6,9 @@ from sqlmodel import Session
 from sqlalchemy.exc import IntegrityError
 from datetime import timedelta
 from ..deps import get_db, get_current_user, get_current_user_optional
-from .. import crud, models, localday
+# Sprint 4I-B (K-4I-10): the MODULE, never the bound function. One module attribute is one
+# monkeypatch seam for all fourteen call sites; a bound name is fourteen.
+from .. import blocks, crud, models, localday
 from ..group_activity import fire_group_activity_for_user
 import os
 import uuid
@@ -329,7 +331,17 @@ def get_feed(
     current_user: Optional[models.User] = Depends(get_current_user_optional)
 ):
     from sqlmodel import select, func
-    notes = crud.get_notes_feed(db, limit=limit)
+    # Sprint 4I-B (R-22 row 1). The ONE path where the helper cannot sit after the early return:
+    # the `if not notes` below is downstream of the query, and the hidden set is an argument to
+    # it. That is why BQ-08e goes 2 -> 3 and lands exactly on the `> 3` ceiling of
+    # `test_empty_accounts_keep_their_early_returns` — structural, not an oversight. Nobody may
+    # "optimise" it by hoisting an early return above this line: that would quietly unfilter the
+    # empty case.
+    # `current_user` is Optional here (`get_current_user_optional`), and an anonymous caller has
+    # no block set to apply — a limit of the design, not an accident, so B-11 asserts the helper
+    # is not called at all on that branch.
+    hidden = blocks.hidden_user_ids(db, current_user) if current_user is not None else frozenset()
+    notes = crud.get_notes_feed(db, limit=limit, hidden=hidden)
     if not notes:
         return []
 
@@ -470,9 +482,23 @@ def get_public_notes_for_user(
     """Get public notes for a specific user (for their public profile)"""
     from sqlmodel import select, func
 
-    # Enforce private profile — non-followers cannot see notes
     target_user = db.get(models.User, user_id)
-    if target_user and getattr(target_user, "is_private_profile", False) and current_user.id != user_id:
+    # Sprint 4I-B (R-22 row 3): the missing-subject 404 this endpoint never had. Without it a
+    # blocked pair's 404 below would be distinguishable from a deleted account's response — this
+    # route answered a user id that has never existed with `200 []`, so the block would have been
+    # the only 404 and R-20's asymmetric-control clause would be false on this one path. Recorded
+    # in the build notes as a deliberate contract change; no existing test asserted the 200.
+    if not target_user:
+        raise HTTPException(status_code=404, detail="User not found")
+    # The block check is BEFORE the private gate below, and that order is the requirement, not an
+    # accident: a blocked pair must be 404'd rather than reach a gate that could answer 403 and
+    # say which of the two refusals applied (R-22 rows 3/6/7/10/13, B-16). The body is the same
+    # "User not found" every other single-subject path gives for a deleted account (B-13a).
+    if blocks.is_blocked_pair(db, current_user, user_id):
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Enforce private profile — non-followers cannot see notes
+    if getattr(target_user, "is_private_profile", False) and current_user.id != user_id:
         is_following = bool(db.exec(
             select(models.Follow).where(models.Follow.follower_id == current_user.id, models.Follow.followed_id == user_id)
         ).first())
@@ -598,6 +624,12 @@ def get_friends_feed(
     if not following:
         return []
 
+    # Sprint 4I-B (R-22 row 2). AFTER the early return above, so BQ-09e keeps its count of 2.
+    # R-21 already deletes both follow rows at block time, so this filter is defence in depth
+    # over an invariant maintained by two separate pieces of code — and B-12 plants a `follow`
+    # row directly to defeat that invariant and prove this line is what holds.
+    hidden = blocks.hidden_user_ids(db, current_user)
+
     following_ids = list(following)
 
     # Get mutual follows (users who follow you back)
@@ -617,7 +649,8 @@ def get_friends_feed(
         select(models.Note).where(
             and_(
                 models.Note.user_id.in_(following_ids),
-                models.Note.is_public == True
+                models.Note.is_public == True,
+                models.Note.user_id.notin_(hidden),          # Sprint 4I-B (R-22 row 2)
             )
         ).order_by(models.Note.created_at.desc()).limit(limit)
     ).all()

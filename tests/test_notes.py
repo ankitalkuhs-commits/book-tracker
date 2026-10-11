@@ -964,7 +964,8 @@ class TestNoteQueryCount:
         assert len(items_b) >= 5
 
         assert n_a == n_b
-        assert n_b <= 8
+        # Sprint 4I-B: +1 for the block filter's one statement (app/blocks.py), re-measured.
+        assert n_b <= 9
 
     def test_friends_feed_query_count_constant(self, client, db, query_counter):
         viewer = _make_user(db, email="f08_ff_viewer@example.com")
@@ -984,7 +985,8 @@ class TestNoteQueryCount:
         assert len(items_b) == 50
 
         assert n_a == n_b
-        assert n_b <= 10
+        # Sprint 4I-B: +1 for the block filter's one statement (app/blocks.py), re-measured.
+        assert n_b <= 11
 
     def test_my_notes_query_count_constant(self, client, db, query_counter):
         owner = _make_user(db, email="f08_me_owner@example.com")
@@ -1015,7 +1017,8 @@ class TestNoteQueryCount:
         assert len(items_b) == 20  # route cap
 
         assert n_a == n_b
-        assert n_b <= 9
+        # Sprint 4I-B: +1 for the block filter's one statement (app/blocks.py), re-measured.
+        assert n_b <= 10
 
     def test_userbook_notes_query_count_constant(self, client, db, query_counter):
         owner = _make_user(db, email="f08_ub_owner@example.com")

@@ -195,7 +195,9 @@ class TestReportTable:
         then 500ing on every report.
         """
         assert ("report", "reason") in schema_guard.REQUIRED_COLUMNS
-        assert len(schema_guard.REQUIRED_COLUMNS) == 7, schema_guard.REQUIRED_COLUMNS
+        # 7 in the 4I-A tree; 8 once 4I-B appends ("block","blocked_id") in the deploy that
+        # follows PM SQL step 11. The literal moves with the entry, in the same commit.
+        assert len(schema_guard.REQUIRED_COLUMNS) == 8, schema_guard.REQUIRED_COLUMNS
 
         # every pair resolves to a real column, which is what catches ("report","reasons")
         from sqlmodel import SQLModel
@@ -488,7 +490,8 @@ class TestCreateReport:
 
         assert ("POST", "/reports") in found, sorted(found)     # MUT-4I-15
         # 5 in the 4I-A tree; 6 once 4I-B adds POST /blocks/{user_id}
-        assert len(found) == 5, sorted(found)
+        assert ("POST", "/blocks/{user_id}") in found, sorted(found)   # Sprint 4I-B
+        assert len(found) == 6, sorted(found)
 
     @pytest.mark.parametrize("reason", REASONS)
     def test_every_reason_is_accepted(self, client, db, reason):
@@ -764,7 +767,8 @@ class TestReportEffects:
                 assert "target_snapshot" not in r.text, real_path
                 assert "reporter_id" not in r.text, real_path
             swept += 1
-        assert swept == 51, swept   # measured. Rule 4: a sweep that reaches nothing would
+        # 51 in the 4I-A tree; 52 once 4I-B adds GET /blocks.
+        assert swept == 52, swept   # measured. Rule 4: a sweep that reaches nothing would
         #                            otherwise pass every content assertion above it.
 
     def test_no_reported_text_is_logged(self, client, db, capsys):

@@ -9,7 +9,8 @@ from datetime import datetime, timedelta
 from pydantic import BaseModel
 
 from ..deps import get_db, get_current_user
-from .. import models
+# Sprint 4I-B (K-4I-10): the MODULE, never the bound function.
+from .. import blocks, models
 from ..group_activity import fire_group_activity
 from ..notifications.dispatcher import fire_event
 
@@ -38,6 +39,33 @@ def _member_count(db, group_id: int) -> int:
             models.GroupMember.status == "active",
         )
     ).one()
+
+def _blocked_curator(db, group_id: int, user_id: int) -> bool:
+    """Sprint 4I-B (pm-decisions Q-1): is ANY active curator of this circle in a blocked pair
+    with `user_id`?
+
+    This is what makes `GET /groups/{id}/pending` safe to leave unfiltered. A pending self-join
+    request is a decision only a curator can take, so filtering it would hide that decision from
+    the one person who can act on it and the row would sit there for ever. Refusing the request
+    instead means the row cannot exist — the same reason R-21 gives for `/follow/followers`.
+
+    ANY curator, not just the one who happens to read the queue, because every curator reads the
+    same endpoint. The residual, stated: while a reader they blocked is a curator, that circle is
+    closed to them. A block is already destructive to a relationship; this is the narrowest rule
+    that does not leave a leak behind it.
+    """
+    curators = db.exec(
+        select(models.GroupMember.user_id).where(
+            models.GroupMember.group_id == group_id,
+            models.GroupMember.role == "curator",
+            models.GroupMember.status == "active",
+        )
+    ).all()
+    if not curators:
+        return False
+    hidden = blocks.hidden_user_ids(db, user_id)
+    return any(c in hidden for c in curators)
+
 
 def _group_or_404(db, group_id: int) -> models.ReadingGroup:
     g = db.get(models.ReadingGroup, group_id)
@@ -539,6 +567,12 @@ def join_group(
         return {"status": existing.status, "message": "Already a member or pending"}
 
     member_status = "pending" if g.is_private else "active"
+    # Sprint 4I-B (pm-decisions Q-1): a PENDING request to a circle curated by somebody in a
+    # blocked pair with this reader is refused, so the row `GET /groups/{id}/pending` serves
+    # cannot exist. A PUBLIC circle joins instantly and is NOT refused — E-2 says a block does
+    # not control circle membership, and there is no pending row to leak.
+    if member_status == "pending" and _blocked_curator(db, group_id, me.id):
+        raise HTTPException(status_code=403, detail="Cannot join this circle")
     db.add(models.GroupMember(group_id=group_id, user_id=me.id, role="member", status=member_status))
     db.commit()
     if member_status == "active":
@@ -737,6 +771,11 @@ def invite_user(
     _group_or_404(db, group_id)
     if not _is_curator(db, group_id, me.id):
         raise HTTPException(status_code=403, detail="Curator only")
+    # Sprint 4I-B (R-22 row 18, R-24): BEFORE the row at the bottom of this handler and before
+    # `add_task(fire_event, ...)`. Inviting is contact, and an invite notification bypasses every
+    # filter in R-22's table. The ordering is the requirement (B-27, MUT-4I-52).
+    if blocks.is_blocked_pair(db, me, user_id):
+        raise HTTPException(status_code=403, detail="Cannot invite this user")
     if _is_member(db, group_id, user_id, require_active=False):
         return {"message": "Already invited or a member"}
     target = db.get(models.User, user_id)
@@ -777,6 +816,10 @@ def join_by_invite_code(
         return {"group_id": g.id, "status": existing.status}
     # Private: pending for curator approval; public: instant
     member_status = "pending" if g.is_private else "active"
+    # Sprint 4I-B (pm-decisions Q-1): the same refusal as `POST /{group_id}/join`, because the
+    # invite code is a second door into the same pending row.
+    if member_status == "pending" and _blocked_curator(db, g.id, me.id):
+        raise HTTPException(status_code=403, detail="Cannot join this circle")
     db.add(models.GroupMember(group_id=g.id, user_id=me.id, role="member", status=member_status))
     db.commit()
     return {"group_id": g.id, "status": member_status}
@@ -826,9 +869,14 @@ def get_group_posts(
     g = _group_or_404(db, group_id)
     if g.is_private and not _is_member(db, group_id, me.id):
         raise HTTPException(status_code=403, detail="Members only")
+    # Sprint 4I-B (R-22 row 14, E-2): inside a circle both readers belong to, a block hides the
+    # CONTENT and leaves the STRUCTURE. Posts go; the Members list, `member_count` and the
+    # leaderboard do not, and B-26 asserts that residual so a future "fix" has to be a decision.
+    hidden = blocks.hidden_user_ids(db, me)
     posts = db.exec(
         select(models.GroupPost)
         .where(models.GroupPost.group_id == group_id)
+        .where(models.GroupPost.user_id.notin_(hidden))     # Sprint 4I-B (R-22 row 14)
         .order_by(models.GroupPost.created_at.desc())
         .limit(50)
     ).all()
@@ -1121,9 +1169,12 @@ def get_group_activity(
     if g.is_private and not _is_member(db, group_id, me.id):
         raise HTTPException(status_code=403, detail="Members only")
 
+    # Sprint 4I-B (R-22 row 15, E-2): the activity feed carries `user.name` at every row.
+    hidden = blocks.hidden_user_ids(db, me)
     events = db.exec(
         select(models.GroupActivity)
         .where(models.GroupActivity.group_id == group_id)
+        .where(models.GroupActivity.user_id.notin_(hidden))  # Sprint 4I-B (R-22 row 15)
         .order_by(models.GroupActivity.created_at.desc())
         .limit(limit)
     ).all()

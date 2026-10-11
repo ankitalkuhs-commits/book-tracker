@@ -4,18 +4,37 @@ from pydantic import BaseModel
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, select
 from ..deps import get_db, get_current_user, deny_bot_actor
-from .. import models
+# Sprint 4I-B (K-4I-10): the MODULE, never the bound function. One seam for every call site.
+from .. import blocks, models
 from ..utils.push import send_push_notification_to_user
 from ..notifications.dispatcher import fire_event
 
 router = APIRouter(prefix="/notes", tags=["likes-comments"])
 
 
-def _assert_can_view_note(db: Session, note: models.Note, user: models.User) -> None:
+def _assert_can_view_note(db: Session, note: models.Note, user: models.User,
+                          hidden=None) -> None:
     """Same rule as the feeds: owner always; otherwise the note must be public and a
-    private-profile author must be followed. 404 hides a private note's existence."""
+    private-profile author must be followed. 404 hides a private note's existence.
+
+    Sprint 4I-B (R-22 rows 4 and 5) adds the blocked-pair branch, FIRST, so one edit covers
+    like (`:46`), comment (`:135`) and comment-read (`:177`) — and `POST /reports`, which calls
+    this through `reports_router._can_view_note`.
+
+    `hidden` is the caller's already-computed block set. `get_comments` needs the set anyway to
+    filter the comment authors, so passing it keeps that endpoint at ONE helper call and BQ-13
+    at +1 rather than +2. When it is None the function fetches its own, which is what the three
+    POST/DELETE call sites do; none of them is in a query budget.
+    """
     if note.user_id == user.id:
         return
+    if hidden is None:
+        hidden = blocks.hidden_user_ids(db, user)
+    if note.user_id in hidden:
+        # 404 and not 403, and not an empty 200: a block must be indistinguishable from a
+        # deleted note, which is the same reason the line below already uses 404. A 403 here
+        # would tell the blocked reader exactly what had happened.
+        raise HTTPException(status_code=404, detail="Note not found")
     if not note.is_public:
         raise HTTPException(status_code=404, detail="Note not found")
     author = db.get(models.User, note.user_id)
@@ -88,7 +107,20 @@ def unlike_note(
     current_user: models.User = Depends(get_current_user),
     _: None = Depends(deny_bot_actor),          # R-05: before any row, before any notification
 ):
-    """Unlike a note"""
+    """Unlike a note.
+
+    Sprint 4I-B: DELIBERATELY NOT BLOCK-GUARDED (pm-decisions, "R-24 — the unlike refusal:
+    dropped"). This handler never loads the note, and unliking removes a row the reader
+    themselves created; letting someone withdraw a like they left before a block is correct, not
+    a leak. spec R-24, R-22 row 5, architecture §"Call sites" and tests.md's B-15u/MUT-4I-49 all
+    still list unlike among the refusals — pm-decisions is binding and overrides them, and the
+    build notes record it rather than leaving it to look like an omission.
+
+    The PRE-EXISTING hole this leaves untouched: a stranger unliking a private note they cannot
+    see gets 200 `{"message": "Not liked"}` rather than a 404, because there is no visibility
+    check here at all while like, comment and comment-read all have one. Logged as a triage
+    finding by the test plan (K-4I-04); not this sprint's to fix.
+    """
     # Find and delete like
     like = db.exec(
         select(models.Like)
@@ -173,12 +205,23 @@ def get_comments(
     if not note:
         raise HTTPException(status_code=404, detail="Note not found")
 
+    # Sprint 4I-B (R-22 row 4): one helper call, used twice — for the note's own author below
+    # and for the comment authors further down. Two calls would put BQ-13 at +2.
+    hidden = blocks.hidden_user_ids(db, current_user)
+
     # Visibility: strangers cannot read comments on a private note or a private profile's note (F-02)
-    _assert_can_view_note(db, note, current_user)
+    _assert_can_view_note(db, note, current_user, hidden=hidden)
 
     comments = db.exec(
         select(models.Comment)
         .where(models.Comment.note_id == note_id)
+        # Sprint 4I-B (R-22 row 4, K-4I-06). The filter is on the COMMENT, not on the
+        # `users_map` below. Filtering the map would drop the blocked reader's NAME and leave
+        # their WORDS in the response with `"user": null`, through the pre-existing null-author
+        # branch at the bottom of this function — the single most likely way this path ships
+        # broken. B-14 asserts the text is gone and B-14a asserts no element is ever served
+        # with a null author.
+        .where(models.Comment.user_id.notin_(hidden))
         .order_by(models.Comment.created_at.asc())
     ).all()
 

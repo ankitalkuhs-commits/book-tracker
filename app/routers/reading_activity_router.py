@@ -3,7 +3,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlmodel import Session, select, func
 from ..deps import get_db, get_current_user
 from ..models import ReadingActivity, UserBook, Book, User, Follow
-from .. import localday
+# Sprint 4I-B (K-4I-10): the MODULE, never the bound function.
+from .. import blocks, localday
 from datetime import datetime, timedelta, date as date_type
 from typing import List
 
@@ -233,6 +234,11 @@ def get_user_daily_reading_stats(
     # Verify user exists
     user = db.get(User, user_id)
     if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Sprint 4I-B (R-22 row 13): before the private gate below, same 404 body as a deleted
+    # account. A day-by-day reading graph is the subject's own activity.
+    if blocks.is_blocked_pair(db, current_user, user_id):
         raise HTTPException(status_code=404, detail="User not found")
 
     # Enforce private profile

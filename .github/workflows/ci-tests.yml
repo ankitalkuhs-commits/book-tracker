@@ -72,7 +72,13 @@ jobs:
       # that an appended schema_guard pair and one new GET route move). 4I-B raises this
       # again. The number is off a run, never typed out of a plan - this floor drifted 86
       # tests behind once.
-      EXPECTED_MIN_TESTS: 855
+      # 2026-10-11, Sprint 4I-B (the block API): re-measured at 952 on branch
+      # builder-4i-block - 855 + 84 in the new tests/test_blocks.py + 13 in the new
+      # tests/test_route_coverage.py. No existing id was removed; three were edited in place
+      # (the deny_bot_actor inventory 5 -> 6, and two literals in test_apple_auth.py that an
+      # appended schema_guard pair and one new GET route move). The 24 re-measured budget
+      # numbers change no id and no count.
+      EXPECTED_MIN_TESTS: 952
     steps:
       - uses: actions/checkout@v4
         with:
