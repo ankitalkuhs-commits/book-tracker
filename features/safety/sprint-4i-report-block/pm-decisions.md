@@ -157,3 +157,33 @@ constant as the one permitted edit, so it is a bounded exception rather than a b
 I wrote that `BQ-24` is the project's only `TARGET` row. The QA measured it: **`29` and `29e` are
 targets too**. The substantive point stands — a `TARGET` moving is a bigger deal than a ratchet
 moving — but the count was wrong and the plan carries the measured version.
+
+---
+
+# Carried findings, 2026-10-11 — not this sprint's work
+
+Two things the 4I-A Builder surfaced that are real and are deliberately **not** being fixed here.
+
+## Test-order fragility, pre-existing
+
+Six cases across `tests/test_bots.py` and `tests/test_notes.py` fail when `test_notes.py` runs
+**before** `test_bots.py` ("the note did not surface"). Reproduced by the Builder with no 4I file
+loaded, so it predates this sprint. The default alphabetical collection order happens to hide it.
+
+Why it matters beyond tidiness: it means part of the suite depends on collection order, and a
+green run is therefore conditional on something nobody chose. Any tool that shards, randomises or
+reorders tests — including `pytest -p xdist` or a future CI change — turns it red for reasons
+that have nothing to do with the change under test.
+
+Not fixed now because it touches two other sprints' files mid-build. **Triage it.**
+
+## The admin queue has no UI until the clients ship
+
+`GET /admin/reports` exists and every admin gets a push the moment a report is filed, so nothing
+sits unseen. But until `AdminPage.jsx` gains its Reports tab in P4, "a human looks at it" means
+the PM making an authenticated request by hand.
+
+That is acceptable for the gap between the API deploy and the client release — the notification
+is the part that makes the 2-working-day commitment real — but **the Reports tab is a requirement
+of the client package, not a nicety.** If it slips, the commitment published on
+trackmyread.com/support stops being true.

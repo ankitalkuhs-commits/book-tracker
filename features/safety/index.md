@@ -18,15 +18,15 @@ Guideline 1.2 asks for four things of an app that shows user-generated content. 
 | # | Requirement | State |
 |---|---|---|
 | 1 | A method for filtering objectionable material | **Partial** — admin hard-delete of a note (`app/routers/admin_router.py:538-554`) or a comment (`:557-568`) |
-| 2 | A mechanism to report offensive content, with timely responses | **Missing** |
-| 3 | The ability to block abusive users | **Missing** |
+| 2 | A mechanism to report offensive content, with timely responses | **Built 2026-10-11** (4I-A, merged, not yet deployed). `POST /reports` from every surface, a push to the admin, `GET /admin/reports`. Commitment: 2 working days, matching trackmyread.com/support. |
+| 3 | The ability to block abusive users | **4I-B in build.** Symmetric, deletes the follow rows and any pending circle request or invite, honoured at fourteen serving paths. |
 | 4 | Published contact information | **Done** — `trackmyread.com/support` |
 
 ## Screens / Work Items
 
 | Item | Status | Node |
 |---|---|---|
-| Sprint 4I — Report and Block (Guideline 1.2 items 2 and 3; `report` and `block` tables, `POST /reports` + an admin queue with a push to the admin, `POST`/`DELETE /blocks` honoured at **fourteen** serving paths, both clients) | **design draft, eight escalations open — E-1 the block symmetry, E-2 circles, E-3 what a report does before review and the response-time commitment, and E-5 the sprint split all block the build.** Two PM SQL steps (10, 11) gate the two deploys. Honestly 8–12 days; the recommended shape is **two sprints of API work behind one store release**. 24 of the query-budget guard's 67 rows move by +1 and are re-measured, not relaxed. | [sprint-4i-report-block/](sprint-4i-report-block/) |
+| Sprint 4I — Report and Block (Guideline 1.2 items 2 and 3) | **4I-A merged** (855 tests, zero query budgets moved, PM SQL step 10 outstanding). **4I-B in build** — symmetric block at fourteen serving paths, PM SQL step 11, 24 of the 67 budget rows move +1 and are re-measured. All eight escalations answered in `pm-decisions.md` (2026-10-11): symmetric block, report changes nothing globally, one client release for both halves. Clients (P4/P5) and the admin Reports tab still to build. | [sprint-4i-report-block/](sprint-4i-report-block/) |
 
 ## Cross-Feature Dependencies
 
