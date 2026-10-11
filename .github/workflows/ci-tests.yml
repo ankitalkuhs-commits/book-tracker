@@ -58,7 +58,11 @@ jobs:
       # measured 714 locally and set the floor to it. If CI reports fewer than 714, that is
       # the gap this floor exists to expose; find the file that stopped loading rather than
       # lowering the number.
-      EXPECTED_MIN_TESTS: 728
+      # 2026-10-11, merge of Sprint 4G into master. Master carried 728 (715 + 13 from the
+      # book-search query tests); Sprint 4G added 72 on a 715 base, so the merged tree is
+      # measured below rather than computed. RAISE THIS EVERY SPRINT - it drifted 86 tests
+      # behind in a week once, which defeats the gate entirely.
+      EXPECTED_MIN_TESTS: 800
     steps:
       - uses: actions/checkout@v4
         with:
@@ -147,7 +151,12 @@ jobs:
     runs-on: ubuntu-latest
     env:
       # Floor, not a target. See the header.
-      EXPECTED_MIN_TESTS: 121
+      # 2026-10-07, Sprint 4G P4: re-measured at 136 on branch builder-4g-client2
+      # (121 + 15: appleSignIn.test.mjs's A-01..A-13, two of which are A-02a/A-02b).
+      # tests.md predicted 134 for 13 cases; A-02b (iOS is Apple-only, pm-decisions
+      # E-6) and A-13 (the eas.json ios profiles, addendum K-10) are additions this
+      # package had to make and are written up in build-notes-4g-client.md.
+      EXPECTED_MIN_TESTS: 136
     steps:
       - uses: actions/checkout@v4
 

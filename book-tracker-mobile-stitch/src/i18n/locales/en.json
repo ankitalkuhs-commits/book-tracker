@@ -83,7 +83,11 @@
     "errorGooglePlayServices": "Google Play Services not available",
     "errorSignInFailed": "Sign In Failed",
     "sessionExpiredTitle": "Session expired",
-    "sessionExpiredBody": "Please sign in again."
+    "sessionExpiredBody": "Please sign in again.",
+    "appleNoticeBeforeTap": "Signing in with Apple creates a separate account if your Apple ID uses a different email address, or if you choose Hide My Email. Your existing library stays on the account you signed up with.",
+    "appleNewAccountTitle": "New account created",
+    "appleNewAccountBody": "We created a new TrackMyRead account for this Apple ID. If you already use TrackMyRead with a different email address, that account is separate and still holds your books — open trackmyread.com in your browser and sign in with the address you used before, or contact support and we will help.",
+    "appleNewAccountRelayBody": "You chose Hide My Email, so Apple gave us a private relay address and we created a new, empty account for it. Your books are still on the account under your own email address — open trackmyread.com in your browser and sign in with that address, or contact support and we will help."
   },
   "feed": {
     "thoughtsPlaceholder": "What are your thoughts on your current read?",

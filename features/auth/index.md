@@ -134,3 +134,4 @@ To force re-onboarding for all web users: bump `ONBOARDING_KEY` from `'bt_onboar
 | Item | Status | Node |
 |---|---|---|
 | Review login + GET /version (QA/reviewer accounts, deploy verification) | tested | [review-login/](review-login/) |
+| Sprint 4G — Sign in with Apple (App Store Guideline 4.8; `POST /auth/apple`, `user.apple_sub`, the linking rule, Apple token revocation on deletion, iOS-only button) | **design draft, six escalations open — E-1 the linking rule, E-2 the bundle id and E-4 the Apple signing key all block the build.** Blocked outside this repo too: no iOS build exists, no bundle id is registered with Apple, `eas.json` has no iOS profile, and Google Sign-In is unconfigured for iOS (E-6). **Account deletion is already real end to end** (`auth_router.py:253-351`, reached from `SettingsScreen.js:625`) and is *not* a 5.1.1(v) blocker — only Apple's token revocation is new. | [sprint-4g-apple-signin/](sprint-4g-apple-signin/) |

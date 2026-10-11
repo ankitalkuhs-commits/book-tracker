@@ -17,6 +17,11 @@ REQUIRED_COLUMNS = (
     # the previous version keeps serving.
     ("user", "is_bot"),                # Sprint 4F
     ("bot_post", "dedup_key"),         # Sprint 4F
+    # Sprint 4G. SAME NON-NEGOTIABLE ORDER: the PM runs PM_SQL_QUEUE step 8 (the column and
+    # uq_user_apple_sub) FIRST, and only the deploy AFTER that output arrives may carry this
+    # line. Deployed early it raises below, Render fails the deploy and the previous version
+    # keeps serving — the guard working, and still a failed deploy somebody has to explain.
+    ("user", "apple_sub"),             # Sprint 4G
 )
 
 

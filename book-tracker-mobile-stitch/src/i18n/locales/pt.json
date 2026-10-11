@@ -83,7 +83,11 @@
     "errorGooglePlayServices": "Google Play Services indisponível",
     "errorSignInFailed": "Falha no login",
     "sessionExpiredTitle": "Sessão expirada",
-    "sessionExpiredBody": "Faça login novamente."
+    "sessionExpiredBody": "Faça login novamente.",
+    "appleNoticeBeforeTap": "Entrar com a Apple cria uma conta separada se o seu ID Apple usar outro endereço de e-mail ou se você escolher «Ocultar meu e-mail». A sua biblioteca atual continua na conta com que você se cadastrou.",
+    "appleNewAccountTitle": "Nova conta criada",
+    "appleNewAccountBody": "Criamos uma nova conta do TrackMyRead para este ID Apple. Se você já usa o TrackMyRead com outro endereço de e-mail, aquela conta é separada e continua com os seus livros — abra trackmyread.com no navegador e entre com o endereço que você usava, ou fale com o suporte, que vamos ajudar.",
+    "appleNewAccountRelayBody": "Você escolheu «Ocultar meu e-mail», então a Apple nos deu um endereço de encaminhamento privado e criamos uma conta nova e vazia para ele. Os seus livros continuam na conta do seu próprio e-mail — abra trackmyread.com no navegador e entre com esse endereço, ou fale com o suporte, que vamos ajudar."
   },
   "feed": {
     "thoughtsPlaceholder": "O que você pensa sobre sua leitura atual?",
