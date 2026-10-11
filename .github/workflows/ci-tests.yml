@@ -16,6 +16,23 @@
 # that ran has not dropped. That is the assertion the vanishing-file failure mode needs,
 # because a file that fails to load lowers the count without failing anything.
 #
+# TWO MOBILE SUITES ARE A FUNCTION OF THE *PYTHON* DIFF (2026-10-11)
+# ------------------------------------------------------------------
+# This is not obvious and it cost a red merge. Two files under
+# book-tracker-mobile-stitch/__tests__ read BACKEND source directly:
+#
+#   notificationEvents.test.mjs  greps app/notifications/config.py
+#   apiContract.test.mjs         greps app/routers/*.py
+#
+# So a package that touches only Python can turn a MOBILE suite red - which is precisely the
+# case where nobody thinks to run one. Sprint 4I-A added a `content_reported` event with no
+# matching mobile entry; both API Builders were green on pytest, the merged tree sat red on
+# notificationEvents, and it was only found when a mobile Builder measured its own baseline.
+#
+# The gate worked. Nobody was running it. If you change app/notifications/config.py or
+# app/routers/*.py, run the Android suite too, or let this workflow be the thing that tells
+# you - but then do not merge before it has.
+#
 # THE PINNED COUNTS BELOW ARE A FLOOR, TO BE RAISED AND NEVER LOWERED.
 # They are the numbers measured on the branch that added this file. Adding tests means
 # raising the floor in the same commit. If a number here ever needs to go DOWN, that is

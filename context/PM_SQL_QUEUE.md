@@ -239,7 +239,12 @@ Step 9 is additive, re-runnable, and touches no existing row of any table.
 
 ---
 
-## 10. Sprint 4I-A — the `report` table — WRITES, additive, and it gates the 4I-A deploy
+## 10. [RUN 2026-10-11] Sprint 4I-A — the `report` table — WRITES, additive, and it gates the 4I-A deploy
+
+> **Applied to production 2026-10-11 and verified: 13 columns, indexes `report_pkey` / `uq_report_once` / `ix_report_open`, 0 rows.**
+> `"user"` row count unchanged at 131. Nothing below needs running again —
+> the statements are `IF NOT EXISTS`, but re-running a done step wastes a
+> round of PM attention, which is the scarce thing here.
 
 Run this **before** the Sprint 4I-A API deploy. `schema_guard` requires `report.reason`, so the
 commit that adds it refuses to start until this has run (that is the guard working: Render fails
@@ -302,7 +307,12 @@ Step 10 is additive, re-runnable, and touches no existing row of any table.
 
 ---
 
-## 11. Sprint 4I-B — the `block` table — WRITES, additive, and it gates the 4I-B deploy
+## 11. [RUN 2026-10-11] Sprint 4I-B — the `block` table — WRITES, additive, and it gates the 4I-B deploy
+
+> **Applied to production 2026-10-11 and verified: 4 columns, indexes `block_pkey` / `uq_block_pair` / `ix_block_blocked`, 0 rows.**
+> `"user"` row count unchanged at 131. Nothing below needs running again —
+> the statements are `IF NOT EXISTS`, but re-running a done step wastes a
+> round of PM attention, which is the scarce thing here.
 
 Run this **after** step 10 has run and the 4I-A API is deployed, and **before** the Sprint 4I-B
 API deploy. These are two separate deploys, not one. `schema_guard` requires `block.blocked_id`,
