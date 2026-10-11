@@ -77,3 +77,7 @@ play-service-account*.json
 
 # built app bundles (large binaries)
 builds/
+
+# Apple App Store Connect API key for `eas submit` - never committed
+.credentials/
+**/.credentials/

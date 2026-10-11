@@ -967,12 +967,27 @@ test('eas_json_has_ios_profiles_and_leaves_android_alone', () => {
   assert.equal(eas.submit.production.ios.ascAppId, '6821514742',
     'submit.production.ios.ascAppId must be the real App Store Connect app id');
 
-  // What must NOT be here: this repository is public, so the ASC API key, its issuer and the
-  // team id are supplied by EXPO_ASC_* environment variables at submit time, never committed.
-  const forbidden = ['ascApiKeyPath', 'ascApiKeyIssuerId', 'ascApiKey', 'appleId', 'appleIdPassword'];
-  const present = forbidden.filter((k) => k in eas.submit.production.ios);
-  assert.deepEqual(present, [],
-    `credentials must not live in eas.json - this repo is public: ${present.join(', ')}`);
-  assert.deepEqual(Object.keys(eas.submit.production.ios), ['ascAppId'],
-    'the submit ios block carries the app id and nothing else');
+  // This repository is public, so what may live here needs stating precisely rather than
+  // banning the lot. `eas submit` reads the ASC key ONLY from this file — the EXPO_ASC_*
+  // environment variables are for credentials operations, not submission (measured: submit
+  // prompted "Generate a new App Store Connect API Key?" with all four of them set). So the
+  // path, key id and issuer id are configuration and belong here; the SECRET is the .p8, and
+  // it must never be in the repo.
+  const ios = eas.submit.production.ios;
+  const inlineKey = ['ascApiKey', 'appleId', 'appleIdPassword', 'appleAppSpecificPassword']
+    .filter((k) => k in ios);
+  assert.deepEqual(inlineKey, [],
+    `a credential VALUE must never be in eas.json - this repo is public: ${inlineKey.join(', ')}`);
+
+  // The path must be project-relative (an absolute C:\\Users\\... path breaks every other
+  // machine and CI) and must point somewhere git ignores.
+  assert.ok(ios.ascApiKeyPath.startsWith('./'),
+    `ascApiKeyPath must be project-relative, got ${ios.ascApiKeyPath}`);
+  const keyPath = path.join(MOBILE_ROOT, ios.ascApiKeyPath);
+  const ignored = spawnSync('git', ['check-ignore', keyPath], { cwd: MOBILE_ROOT, encoding: 'utf8' });
+  assert.equal(ignored.status, 0,
+    `${ios.ascApiKeyPath} is NOT gitignored - the Apple private key would be published`);
+  assert.equal(spawnSync('git', ['ls-files', '--error-unmatch', keyPath],
+    { cwd: MOBILE_ROOT, encoding: 'utf8' }).status !== 0, true,
+    'the .p8 is tracked by git');
 });
