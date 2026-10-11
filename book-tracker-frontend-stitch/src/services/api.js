@@ -318,6 +318,27 @@ export const getMyGroupInvites = () => apiFetch('/groups/invites/pending');
 export const getMyPendingGroups = () => apiFetch('/groups/my/pending');
 export const searchUsersForInvite = (q) => apiFetch(`/users/search?q=${encodeURIComponent(q)}`);
 
+// Safety — report & block (Sprint 4I)
+// `also_block` is a field on THIS request, not a second call: the server writes the report and the
+// block in one transaction (pm-decisions Q-3), so there is no partial state for the client to
+// describe when "Also block this person" is left checked.
+export const reportContent = ({ target_type, target_id, reason, detail, also_block }) =>
+  apiFetch('/reports', {
+    method: 'POST',
+    body: JSON.stringify({ target_type, target_id, reason, detail: detail || null, also_block: !!also_block }),
+  }).then(r => { if (also_block) invalidateBlocks(); return r; });
+// A block severs follows and hides both readers from each other on fourteen serving paths, so every
+// cached list that could still hold them has to go — the 60 s GET cache would otherwise keep the
+// blocked reader on screen until it expired.
+function invalidateBlocks() { cacheClear('/blocks'); invalidateSocial(); invalidateGroups(); }
+export const blockUser = (userId) =>
+  apiFetch(`/blocks/${userId}`, { method: 'POST' })
+    .then(r => { invalidateBlocks(); return r; });
+export const unblockUser = (userId) =>
+  apiFetch(`/blocks/${userId}`, { method: 'DELETE' })
+    .then(r => { invalidateBlocks(); return r; });
+export const getBlocks = () => apiFetch('/blocks');
+
 // Account
 export const deleteAccount = () => apiFetch('/auth/delete-account/me', { method: 'POST' });
 
@@ -361,3 +382,9 @@ export const adminDeleteNote = (id) => apiFetch(`/admin/content/note/${id}`, { m
   .then(r => { cacheClear('/admin'); invalidateFeed(); return r; });
 export const adminDeleteComment = (id) => apiFetch(`/admin/content/comment/${id}`, { method: 'DELETE' })
   .then(r => { cacheClear('/admin'); invalidateFeed(); return r; });
+// Sprint 4I: the moderation queue. trackmyread.com/support promises a report is reviewed within two
+// working days; until this tab existed that promise depended on somebody making this GET by hand.
+export const getAdminReports = (status = 'open') => apiFetch(`/admin/reports?status=${status}`);
+export const resolveReport = (reportId, { status, resolution }) =>
+  apiFetch(`/admin/reports/${reportId}`, { method: 'PATCH', body: JSON.stringify({ status, resolution: resolution || null }) })
+    .then(r => { cacheClear('/admin'); return r; });

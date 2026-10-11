@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext'
 import { useToast } from '../components/Toast'
 import { useTranslation } from 'react-i18next'
 import { changeLanguage, SUPPORTED_LANGUAGES } from '../i18n'
-import { getMyProfile, updateMyProfile, uploadProfilePicture, deleteAccount, getNotificationPrefs, updateNotificationPrefs, importGoodreads, getCoversStatus, fixCoversBatch } from '../services/api'
+import { getMyProfile, updateMyProfile, uploadProfilePicture, deleteAccount, getNotificationPrefs, updateNotificationPrefs, importGoodreads, getCoversStatus, fixCoversBatch, getBlocks, unblockUser } from '../services/api'
 
 // Illustrated preset avatars via DiceBear adventurer style — synced with mobile
 const AVATAR_SEEDS = ['Aneka','Buster','Callie','Destiny','Emery','Felix','Gracie','Harley','Iris','Jasper','Kali','Lexi']
@@ -103,6 +103,10 @@ export default function SettingsPage() {
   const [deleting, setDeleting] = useState(false)
   const [isPrivate, setIsPrivate] = useState(false)
   const [savingPrivacy, setSavingPrivacy] = useState(false)
+  // Sprint 4I (R-28)
+  const [blocks, setBlocks] = useState([])
+  const [blocksLoading, setBlocksLoading] = useState(true)
+  const [unblocking, setUnblocking] = useState(null)
   const [notifPrefs, setNotifPrefs] = useState({
     new_follower: true,
     post_liked: true,
@@ -165,7 +169,20 @@ export default function SettingsPage() {
       setProfileLoaded(true)
     }).catch(() => {})
     getNotificationPrefs().then(p => setNotifPrefs(prev => ({ ...prev, ...p }))).catch(() => {})
+    getBlocks().then(b => setBlocks(b || [])).catch(() => {}).finally(() => setBlocksLoading(false))
   }, [])
+
+  const handleUnblock = async (userId) => {
+    setUnblocking(userId)
+    try {
+      await unblockUser(userId)
+      setBlocks(prev => prev.filter(b => b.user_id !== userId))
+      toast(t('safety.unblocked'), 'success')
+    } catch (e) {
+      toast(e.message || t('safety.unblockFailed'), 'error')
+    }
+    setUnblocking(null)
+  }
 
   const handlePresetSelect = async (url) => {
     setUploadingAvatar(true)
@@ -453,6 +470,35 @@ export default function SettingsPage() {
             {t('settings.profileIsPrivate')}
           </div>
         )}
+
+        {/* Sprint 4I (R-28): the reader can see and undo what they have done. This list is the
+            viewer's OUTBOUND blocks only — GET /blocks never serves who blocked them. */}
+        <div className="pt-2 border-t border-outline-variant/15 space-y-3">
+          <div>
+            <p className="text-sm font-medium text-on-surface">{t('safety.blockedReaders')}</p>
+            <p className="text-sm text-on-surface-variant mt-0.5 leading-relaxed">{t('safety.blockedReadersDesc')}</p>
+          </div>
+          {blocksLoading && <p className="text-xs text-on-surface-variant">{t('common.loading')}</p>}
+          {!blocksLoading && blocks.length === 0 && (
+            <p className="text-xs text-on-surface-variant">{t('safety.noBlockedReaders')}</p>
+          )}
+          {blocks.map(b => (
+            <div key={b.user_id} className="flex items-center gap-3 bg-surface-container-low rounded-xl px-4 py-2.5">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-on-surface truncate">{b.name || `@${b.username}`}</p>
+                {b.username && <p className="text-xs text-on-surface-variant truncate">@{b.username}</p>}
+              </div>
+              <button
+                type="button"
+                disabled={unblocking === b.user_id}
+                onClick={() => handleUnblock(b.user_id)}
+                className="shrink-0 text-xs font-bold text-primary hover:underline disabled:opacity-50"
+              >
+                {unblocking === b.user_id ? '…' : t('safety.unblock')}
+              </button>
+            </div>
+          ))}
+        </div>
       </section>
 
       {/* Notifications section */}

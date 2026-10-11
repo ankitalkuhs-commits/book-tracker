@@ -544,5 +544,42 @@
     "pt": "Português (BR)",
     "de": "Deutsch",
     "fr": "Français"
+  },
+  "safety": {
+    "report": "Report",
+    "reportTitle": "Report this content",
+    "reportSubtitle": "A moderator reviews every report within 2 working days. The person you report is never told who reported them.",
+    "reportSubtitleNamed": "A moderator reviews every report within 2 working days. {{name}} is never told who reported them.",
+    "reasonLabel": "Why are you reporting this?",
+    "reason": {
+      "spam": "Spam or a scam",
+      "harassment": "Harassment or bullying",
+      "hate": "Hate speech",
+      "sexual": "Sexual content",
+      "violence": "Violence or threats",
+      "self_harm": "Self-harm or suicide",
+      "other": "Something else"
+    },
+    "detailLabel": "Anything else? (optional)",
+    "detailPlaceholder": "Tell the moderator what to look at.",
+    "alsoBlock": "Also block this person",
+    "blockEffect": "Blocking hides the two of you from each other inside TrackMyRead. It does not unpublish their public posts — anyone who is signed out can still read those on the open web.",
+    "submitReport": "Send report",
+    "reported": "Report sent. A moderator will look at it.",
+    "reportedAndBlocked": "Report sent, and you have blocked this person.",
+    "reportFailed": "Could not send the report.",
+    "block": "Block",
+    "blockConfirm": "Block {{name}}?\n\nYou will stop seeing each other inside TrackMyRead — their posts, comments and profile disappear from your view, and yours from theirs.\n\nAny follow between you is removed and will not come back if you unblock later.\n\nThis does not unpublish their public posts: anyone who is signed out can still read them on the open web.",
+    "blocked": "{{name}} is blocked.",
+    "blockFailed": "Could not block this person.",
+    "thisReader": "this reader",
+    "unfollow": "Unfollow",
+    "moreActions": "More actions",
+    "blockedReaders": "Blocked readers",
+    "blockedReadersDesc": "People you have blocked. You and they cannot see each other inside TrackMyRead. Unblocking does not restore a follow.",
+    "noBlockedReaders": "You have not blocked anyone.",
+    "unblock": "Unblock",
+    "unblocked": "Unblocked.",
+    "unblockFailed": "Could not unblock."
   }
 }

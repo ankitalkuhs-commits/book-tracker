@@ -5,6 +5,8 @@ import { useAuth } from '../context/AuthContext'
 import { useToast } from '../components/Toast'
 import BookPreviewModal from '../components/BookPreviewModal'
 import BotBadge from '../components/BotBadge'
+import ReportButton from '../components/ReportButton'
+import BlockButton from '../components/BlockButton'
 import {
   getPublicProfile, getUserBooks, getUserActivity, getUserNotes, getUserStats,
   followUser, unfollowUser, adminDeleteNote, likeNote, unlikeNote,
@@ -114,7 +116,7 @@ function BookCover({ book }) {
 
 // ─── Public Note Card ─────────────────────────────────────────────────────────
 
-function PublicNoteCard({ note, profileUrl, isAdmin, onDelete, onLike }) {
+function PublicNoteCard({ note, profileUrl, isAdmin, authorName, onDelete, onLike }) {
   const toast = useToast()
 
   const handleShare = async () => {
@@ -139,6 +141,7 @@ function PublicNoteCard({ note, profileUrl, isAdmin, onDelete, onLike }) {
     <article className="bg-surface-container-low rounded-2xl p-5 space-y-3 relative">
       {/* Top-right actions */}
       <div className="absolute top-4 right-4 flex items-center gap-1">
+        <ReportButton targetType="note" targetId={note.id} targetName={authorName} />
         {isAdmin && (
           <button
             onClick={() => onDelete(note.id)}
@@ -226,6 +229,7 @@ export default function UserProfilePage() {
   const [followLoading, setFollowLoading] = useState(false)
   const [showAllBooks, setShowAllBooks] = useState(false)
   const [previewBook, setPreviewBook] = useState(null)
+  const [showUserMenu, setShowUserMenu] = useState(false)
   const likingInFlight = useRef(new Set())
 
   const isOwnProfile = me?.id?.toString() === userId?.toString()
@@ -420,20 +424,63 @@ export default function UserProfilePage() {
             {profile.follows_you && !isFollowing && (
               <span className="text-xs font-bold uppercase tracking-wider text-on-surface-faint">{t('profile.followsYou')}</span>
             )}
-            <button
-              onClick={toggleFollow}
-              disabled={followLoading}
-              className={`flex items-center gap-2 px-6 py-3 rounded-2xl text-sm font-bold transition-all ${
-                isFollowing
-                  ? 'bg-surface-container border border-outline-variant text-on-surface hover:bg-error-container/20 hover:text-error hover:border-error/30'
-                  : 'btn-primary'
-              }`}
-            >
-              <span className="material-symbols-outlined text-base">
-                {isFollowing ? 'person_check' : 'person_add'}
-              </span>
-              {followLoading ? '...' : isFollowing ? t('profile.following_btn') : profile.follows_you ? t('profile.followBack') : t('profile.follow')}
-            </button>
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={toggleFollow}
+                disabled={followLoading}
+                className={`flex items-center gap-2 px-6 py-3 rounded-2xl text-sm font-bold transition-all ${
+                  isFollowing
+                    ? 'bg-surface-container border border-outline-variant text-on-surface hover:bg-error-container/20 hover:text-error hover:border-error/30'
+                    : 'btn-primary'
+                }`}
+              >
+                <span className="material-symbols-outlined text-base">
+                  {isFollowing ? 'person_check' : 'person_add'}
+                </span>
+                {followLoading ? '...' : isFollowing ? t('profile.following_btn') : profile.follows_you ? t('profile.followBack') : t('profile.follow')}
+              </button>
+              <div className="relative">
+                <button
+                  onClick={() => setShowUserMenu(v => !v)}
+                  aria-label={t('safety.moreActions')}
+                  title={t('safety.moreActions')}
+                  className="text-on-surface-variant hover:text-on-surface transition-colors p-2 rounded-xl hover:bg-surface-container"
+                >
+                  <span className="material-symbols-outlined text-lg">more_horiz</span>
+                </button>
+                {showUserMenu && (
+                  <div className="absolute right-0 top-11 bg-surface-container-lowest rounded-2xl shadow-float border border-outline-variant/15 z-20 min-w-[180px] overflow-hidden">
+                    {/* pm-decisions E-1: Unfollow is the FIRST item, above Block. A menu whose only
+                        option is the nuclear one pushes people into choosing it. */}
+                    {isFollowing && (
+                      <button
+                        onClick={() => { setShowUserMenu(false); toggleFollow() }}
+                        disabled={followLoading}
+                        className="flex items-center gap-2 w-full px-4 py-2.5 text-sm text-on-surface hover:bg-surface-container transition-colors disabled:opacity-50"
+                      >
+                        <span className="material-symbols-outlined text-sm">person_remove</span>
+                        {t('safety.unfollow')}
+                      </button>
+                    )}
+                    <ReportButton
+                      targetType="user"
+                      targetId={Number(userId)}
+                      targetName={profile.name}
+                      variant="menu-item"
+                      onDone={() => setShowUserMenu(false)}
+                      onReported={({ blocked }) => { if (blocked) navigate('/') }}
+                    />
+                    <BlockButton
+                      userId={Number(userId)}
+                      name={profile.name}
+                      variant="menu-item"
+                      onBlocked={() => navigate('/')}
+                      onDone={() => setShowUserMenu(false)}
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -601,7 +648,7 @@ export default function UserProfilePage() {
           ) : (
             <div className="space-y-4">
               {notes.map(note => (
-                <PublicNoteCard key={note.id} note={note} profileUrl={`${window.location.origin}/profile/${userId}`} isAdmin={me?.is_admin} onDelete={handleAdminDeleteNote} onLike={handleLike} />
+                <PublicNoteCard key={note.id} note={note} profileUrl={`${window.location.origin}/profile/${userId}`} isAdmin={me?.is_admin} authorName={profile.name} onDelete={handleAdminDeleteNote} onLike={handleLike} />
               ))}
             </div>
           )}

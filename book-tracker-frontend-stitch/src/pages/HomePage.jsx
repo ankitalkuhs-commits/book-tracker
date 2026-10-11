@@ -6,6 +6,8 @@ import { useTranslation } from 'react-i18next'
 import BookPreviewModal from '../components/BookPreviewModal'
 import VisibilityToggle from '../components/VisibilityToggle'
 import BotBadge from '../components/BotBadge'
+import ReportButton from '../components/ReportButton'
+import BlockButton from '../components/BlockButton'
 import { readNoteVisibility } from '../utils/noteVisibility'
 import {
   getCommunityFeed, getFriendsFeed, createNote, uploadNoteImage,
@@ -181,25 +183,50 @@ function PostCard({ post, currentUserId, isAdmin, onLikeToggle, onDelete, onEdit
             </div>
           </button>
 
-          {(isOwn || isAdmin) && (
-            <div className="relative">
-              <button
-                onClick={() => setShowMenu(v => !v)}
-                className="text-on-surface-variant hover:text-on-surface transition-colors p-1 rounded-lg hover:bg-surface-container"
-              >
-                <span className="material-symbols-outlined text-lg">more_horiz</span>
-              </button>
-              {showMenu && (
-                <div className="absolute right-0 top-8 bg-surface-container-lowest rounded-2xl shadow-float border border-outline-variant/15 z-10 min-w-[130px] overflow-hidden">
-                  {isOwn && (
-                    <button
-                      onClick={() => { setShowMenu(false); setEditing(true) }}
-                      className="flex items-center gap-2 w-full px-4 py-2.5 text-sm text-on-surface hover:bg-surface-container transition-colors"
-                    >
-                      <span className="material-symbols-outlined text-sm">edit</span>
-                      {t('common.edit')}
-                    </button>
-                  )}
+          {/* Sprint 4I: the menu is open to everyone. It used to be wrapped in (isOwn || isAdmin),
+              which left a non-owner with no menu at all and so no Report. Opening it means every
+              owner-or-admin item below has to carry its OWN condition — the outer gate is gone and
+              nothing else was guarding Delete. qa/unit/reportAffordance.test.mjs C-04 asserts both
+              halves: that this container is unconditional, and that each destructive item's nearest
+              enclosing conditional names isOwn or isAdmin. */}
+          <div className="relative">
+            <button
+              onClick={() => setShowMenu(v => !v)}
+              className="text-on-surface-variant hover:text-on-surface transition-colors p-1 rounded-lg hover:bg-surface-container"
+            >
+              <span className="material-symbols-outlined text-lg">more_horiz</span>
+            </button>
+            {showMenu && (
+              <div className="absolute right-0 top-8 bg-surface-container-lowest rounded-2xl shadow-float border border-outline-variant/15 z-10 min-w-[130px] overflow-hidden">
+                {!isOwn && (
+                  <ReportButton
+                    targetType="note"
+                    targetId={post.id}
+                    targetName={post.user?.name}
+                    variant="menu-item"
+                    onDone={() => setShowMenu(false)}
+                    onReported={({ blocked }) => { if (blocked) onDelete(post.id) }}
+                  />
+                )}
+                {!isOwn && (post.user?.id || post.user_id) && (
+                  <BlockButton
+                    userId={post.user?.id || post.user_id}
+                    name={post.user?.name}
+                    variant="menu-item"
+                    onBlocked={() => onDelete(post.id)}
+                    onDone={() => setShowMenu(false)}
+                  />
+                )}
+                {isOwn && (
+                  <button
+                    onClick={() => { setShowMenu(false); setEditing(true) }}
+                    className="flex items-center gap-2 w-full px-4 py-2.5 text-sm text-on-surface hover:bg-surface-container transition-colors"
+                  >
+                    <span className="material-symbols-outlined text-sm">edit</span>
+                    {t('common.edit')}
+                  </button>
+                )}
+                {(isOwn || isAdmin) && (
                   <button
                     onClick={handleDelete}
                     className="flex items-center gap-2 w-full px-4 py-2.5 text-sm text-error hover:bg-error/5 transition-colors"
@@ -207,10 +234,10 @@ function PostCard({ post, currentUserId, isAdmin, onLikeToggle, onDelete, onEdit
                     <span className="material-symbols-outlined text-sm">delete</span>
                     {t('common.delete')}
                   </button>
-                </div>
-              )}
-            </div>
-          )}
+                )}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Book title */}
@@ -292,6 +319,11 @@ function PostCard({ post, currentUserId, isAdmin, onLikeToggle, onDelete, onEdit
                   <span className="font-bold text-on-surface text-xs">{c.user?.name}<BotBadge user={c.user} /> </span>
                   <span className="text-on-surface-variant">{c.text}</span>
                 </div>
+                {/* F-69's shape: an authorless comment must not compare undefined === undefined
+                    as "own" and so lose its Report item. */}
+                {(c.user?.id ?? null) !== currentUserId && (
+                  <ReportButton targetType="comment" targetId={c.id} targetName={c.user?.name} />
+                )}
                 {isAdmin && (
                   <button
                     onClick={() => handleDeleteComment(c.id)}
@@ -632,17 +664,32 @@ function Sidebar() {
         {searchResults.length > 0 && (
           <div className="space-y-2">
             {searchResults.slice(0, 5).map(u => (
-              <button
+              /* Sprint 4I: the row was one <button>; Report and Block cannot nest inside it, so the
+                 row is a flex container and the navigate target is the button it holds. */
+              <div
                 key={u.id}
-                onClick={() => navigate(`/profile/${u.id}`)}
-                className="w-full flex items-center gap-3 p-2 rounded-xl hover:bg-surface-container transition-colors text-left"
+                className="w-full flex items-center gap-3 p-2 rounded-xl hover:bg-surface-container transition-colors"
               >
-                <Avatar user={u} size={8} />
-                <div>
-                  <p className="text-sm font-bold text-on-surface">{u.name}<BotBadge user={u} /></p>
-                  <p className="text-xs text-on-surface-variant">@{u.username}</p>
+                <button
+                  onClick={() => navigate(`/profile/${u.id}`)}
+                  className="flex items-center gap-3 flex-1 min-w-0 text-left"
+                >
+                  <Avatar user={u} size={8} />
+                  <div>
+                    <p className="text-sm font-bold text-on-surface">{u.name}<BotBadge user={u} /></p>
+                    <p className="text-xs text-on-surface-variant">@{u.username}</p>
+                  </div>
+                </button>
+                <div className="shrink-0 flex items-center gap-1">
+                  <ReportButton targetType="user" targetId={u.id} targetName={u.name} />
+                  <BlockButton
+                    userId={u.id}
+                    name={u.name}
+                    variant="icon"
+                    onBlocked={id => setSearchResults(prev => prev.filter(r => r.id !== id))}
+                  />
                 </div>
-              </button>
+              </div>
             ))}
           </div>
         )}

@@ -512,5 +512,42 @@
     "pt": "Português (BR)",
     "de": "Deutsch",
     "fr": "Français"
+  },
+  "safety": {
+    "report": "Denunciar",
+    "reportTitle": "Denunciar este conteúdo",
+    "reportSubtitle": "Um moderador analisa cada denúncia em até 2 dias úteis. A pessoa denunciada nunca sabe quem a denunciou.",
+    "reportSubtitleNamed": "Um moderador analisa cada denúncia em até 2 dias úteis. {{name}} nunca saberá quem fez a denúncia.",
+    "reasonLabel": "Por que você está denunciando isto?",
+    "reason": {
+      "spam": "Spam ou golpe",
+      "harassment": "Assédio ou bullying",
+      "hate": "Discurso de ódio",
+      "sexual": "Conteúdo sexual",
+      "violence": "Violência ou ameaças",
+      "self_harm": "Automutilação ou suicídio",
+      "other": "Outra coisa"
+    },
+    "detailLabel": "Mais alguma coisa? (opcional)",
+    "detailPlaceholder": "Diga ao moderador o que ele deve olhar.",
+    "alsoBlock": "Bloquear também esta pessoa",
+    "blockEffect": "Bloquear esconde vocês dois um do outro dentro do TrackMyRead. Não despublica as publicações públicas dela: quem estiver desconectado ainda pode lê-las na web aberta.",
+    "submitReport": "Enviar denúncia",
+    "reported": "Denúncia enviada. Um moderador vai analisá-la.",
+    "reportedAndBlocked": "Denúncia enviada, e você bloqueou esta pessoa.",
+    "reportFailed": "Não foi possível enviar a denúncia.",
+    "block": "Bloquear",
+    "blockConfirm": "Bloquear {{name}}?\n\nVocês deixarão de se ver dentro do TrackMyRead: as publicações, comentários e o perfil dela somem da sua visão, e os seus da dela.\n\nQualquer relacionamento de seguir entre vocês é removido e não volta se você desbloquear depois.\n\nIsto não despublica as publicações públicas dela: quem estiver desconectado ainda pode lê-las na web aberta.",
+    "blocked": "{{name}} está bloqueado.",
+    "blockFailed": "Não foi possível bloquear esta pessoa.",
+    "thisReader": "esta pessoa",
+    "unfollow": "Deixar de seguir",
+    "moreActions": "Mais ações",
+    "blockedReaders": "Leitores bloqueados",
+    "blockedReadersDesc": "Pessoas que você bloqueou. Vocês não podem se ver dentro do TrackMyRead. Desbloquear não restaura o seguir.",
+    "noBlockedReaders": "Você não bloqueou ninguém.",
+    "unblock": "Desbloquear",
+    "unblocked": "Desbloqueado.",
+    "unblockFailed": "Não foi possível desbloquear."
   }
 }
