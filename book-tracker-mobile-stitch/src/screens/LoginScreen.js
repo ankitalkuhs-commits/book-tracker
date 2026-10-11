@@ -5,12 +5,22 @@ import {
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Svg, { Path } from 'react-native-svg';
-import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import * as Crypto from 'expo-crypto';
 import { useTranslation } from 'react-i18next';
 import { authAPI, warmUp } from '../services/api';
 import { colors, radius, shadow, type } from '../theme';
+
+// NOT a static import. iOS does not link this native module (react-native.config.js and the
+// expo.autolinking.ios.exclude in package.json), and the package runs
+//   TurboModuleRegistry.getEnforcing('RNGoogleSignin')
+// at module scope — getEnforcing THROWS when the module is absent. A static import therefore
+// crashes the app on launch before anything renders, which is exactly what the first
+// TestFlight build did. Requiring it only off-iOS keeps the module out of the iOS bundle's
+// execution path entirely.
+const GoogleSignin = Platform.OS === 'ios'
+  ? null
+  : require('@react-native-google-signin/google-signin').GoogleSignin;
 
 
 const SCREEN_W = Dimensions.get('window').width;

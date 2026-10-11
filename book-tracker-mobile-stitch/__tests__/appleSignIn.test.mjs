@@ -368,18 +368,29 @@ test('availability_false_renders_one_button', () => {
   assert.deepEqual(insideJsx.map((n) => src(loginSrc, n)), [],
     'Platform.OS decides what is rendered — the gate must be the capability');
 
-  // Exactly one, and it must BE the Google guard. "At most one" was the first version of
-  // this and it passed when the guard was deleted outright — which is the failure that
-  // matters: GoogleSignin.configure() would then run on iOS, where react-native.config.js
-  // does not link the module, and the login screen would throw on mount before it painted.
-  assert.equal(platformRefs.length, 1,
-    `expected exactly one Platform.OS reference — the guard around GoogleSignin.configure, `
-    + `without which iOS calls an unlinked native module — found ${platformRefs.length}`);
-  const guardIf = findAll(loginAst, (n) => n.type === 'IfStatement'
+  // There are exactly two legitimate uses, and both must be present. Counting alone is not
+  // enough: an earlier version said "at most one" and passed when the guard was deleted
+  // outright, which is the failure that matters.
+  //
+  //   1. the conditional require of google-signin  — without it iOS CRASHES ON LAUNCH,
+  //      because the package calls TurboModuleRegistry.getEnforcing at module scope (A-14)
+  //   2. the guard around GoogleSignin.configure() — without it iOS calls a null module
+  const requireGuard = findAll(loginAst, (n) => n.type === 'ConditionalExpression'
+    && src(loginSrc, n.test).includes('Platform.OS')
+    && /google-signin/.test(src(loginSrc, n)));
+  assert.equal(requireGuard.length, 1,
+    'the google-signin require is not behind a Platform.OS conditional — iOS would crash on launch');
+
+  const configureGuard = findAll(loginAst, (n) => n.type === 'IfStatement'
     && src(loginSrc, n.test).includes('Platform.OS')
     && src(loginSrc, n.consequent).includes('GoogleSignin.configure'));
-  assert.equal(guardIf.length, 1,
-    'the only Platform.OS branch must be the one guarding GoogleSignin.configure');
+  assert.equal(configureGuard.length, 1,
+    'GoogleSignin.configure() is not behind a Platform.OS guard');
+
+  // Nothing else may use it, so a third one cannot drift in unnoticed.
+  assert.equal(platformRefs.length, 2,
+    `expected exactly two Platform.OS references (the require guard and the configure `
+    + `guard), found ${platformRefs.length}`);
 
   // Control (rule 3): the same detector on a synthetic Platform.OS gate must
   // find a left-hand side that is NOT the state variable.
@@ -931,6 +942,38 @@ test('the_new_i18n_keys_exist_in_all_six_locales', () => {
   for (const key of APPLE_KEYS) {
     assert.ok(loginCode.includes(`'${key}'`), `${key} is in the locales but not used in ${LOGIN}`);
   }
+});
+
+// ── A-14 (added after the first TestFlight build crashed on launch) ─────────
+test('google_signin_is_not_statically_imported', () => {
+  // iOS does not link RNGoogleSignin. The package runs
+  //   TurboModuleRegistry.getEnforcing('RNGoogleSignin')
+  // at module scope (node_modules/@react-native-google-signin/google-signin/lib/module/
+  // spec/NativeGoogleSignin.js), and getEnforcing THROWS when the module is absent. A
+  // static `import` therefore executes on launch and kills the app before anything renders
+  // — which is what build 1a931494 did on a real iPhone. Nothing in the suite caught it,
+  // because every other assertion was about what the screen renders, not what it loads.
+  const statics = loginAst.program.body.filter(
+    (n) => n.type === 'ImportDeclaration' && /google-signin/.test(n.source.value));
+  assert.deepEqual(statics.map((n) => src(loginSrc, n)), [],
+    'LoginScreen statically imports google-signin — this crashes iOS on launch');
+
+  // And it must still be reachable off-iOS, behind a platform check.
+  const reqs = findAll(loginAst, (n) => n.type === 'CallExpression'
+    && n.callee.name === 'require'
+    && /google-signin/.test(String((n.arguments[0] || {}).value || '')));
+  assert.equal(reqs.length, 1,
+    `expected exactly one require() of google-signin, found ${reqs.length}`);
+  const guarded = ancestors(reqs[0], parentsOf(loginAst))
+    .some((a) => a.type === 'ConditionalExpression' || a.type === 'IfStatement');
+  assert.ok(guarded, 'the google-signin require() is not behind a platform check');
+
+  // CONTROL (rule 3): the detector must see a static import when there is one.
+  const synthetic = parseJS("import { GoogleSignin } from '@react-native-google-signin/google-signin';");
+  assert.equal(
+    synthetic.program.body.filter(
+      (n) => n.type === 'ImportDeclaration' && /google-signin/.test(n.source.value)).length,
+    1, 'the detector cannot see a static import, so its pass proves nothing');
 });
 
 // ── A-13 (pm-decisions addendum K-10 — new in this package) ─────────────────
