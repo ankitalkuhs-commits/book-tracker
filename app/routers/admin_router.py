@@ -535,6 +535,145 @@ def list_recent_comments(
     return result
 
 
+# ─── Reports queue (Sprint 4I-A, R-03) ───────────────────────────────────────
+#
+# This extends the existing admin surface rather than adding a new one, and not merely because
+# it is already here: the two actions a resolution needs — DELETE /admin/content/note/{id} and
+# DELETE /admin/content/comment/{id}, immediately below — already live behind the same
+# `get_admin_user` dependency. A second surface would duplicate both plus the auth and give the
+# PM two places to look.
+#
+# Guideline 1.2 item 2 asks for a mechanism WITH timely responses. A table nobody queries and a
+# tab nobody opens are the same thing as no mechanism, which is why these two routes are a
+# requirement of 4I-A and not a later nicety.
+
+REPORT_STATUSES = ("open", "actioned", "dismissed")
+
+
+class ReportAdminView(BaseModel):
+    id: int
+    target_type: str
+    target_id: int
+    target_user_id: int | None
+    target_user_name: str | None
+    target_user_is_bot: bool = False
+    reporter_id: int
+    reporter_name: str | None
+    reason: str
+    detail: str | None
+    target_snapshot: str | None
+    status: str
+    created_at: datetime
+    resolved_at: datetime | None
+    resolved_by: int | None
+    resolution: str | None
+    # Every report on this same target, this one included. The PM needs it to tell one
+    # complaint from a pattern, and needs it without a second request.
+    reports_on_target: int
+
+
+class ReportResolve(BaseModel):
+    status: str
+    resolution: str | None = None
+
+
+@router.get("/reports", response_model=List[ReportAdminView])
+def list_reports(
+    status: str = Query("open", pattern="^(open|actioned|dismissed|all)$"),
+    limit: int = Query(100, ge=1, le=200),
+    db: Session = Depends(get_session),
+    admin_user=Depends(get_admin_user),
+):
+    """Open reports, newest first, with everything a resolution needs inline.
+
+    Three statements whatever the row count is (`stmt_counter` pins it): the reports, the
+    readers named by them, and one grouped count of reports per target. An N+1 here would make
+    the queue the one unwatched endpoint in the product, since E-7 leaves these routes out of
+    Sprint 4E's budget table.
+    """
+    q = select(models.Report)
+    if status != "all":
+        q = q.where(models.Report.status == status)
+    reports = db.exec(q.order_by(models.Report.created_at.desc()).limit(limit)).all()
+    if not reports:
+        return []
+
+    user_ids = {r.reporter_id for r in reports} | {r.target_user_id for r in reports if r.target_user_id}
+    users_map = {u.id: u for u in db.exec(
+        select(models.User).where(models.User.id.in_(list(user_ids)))
+    ).all()} if user_ids else {}
+
+    # One grouped count for every target, not one query per row. It groups over the whole
+    # `report` table rather than just this page's targets: that is one statement either way,
+    # and at this size the scan is free. If the table ever grows enough to matter, narrow it
+    # with `.where(models.Report.target_id.in_(ids))` — the counts stay identical, because
+    # they are per target and not per page.
+    counts = {(t, i): n for t, i, n in db.exec(
+        select(models.Report.target_type, models.Report.target_id, func.count(models.Report.id))
+        .group_by(models.Report.target_type, models.Report.target_id)
+    ).all()}
+
+    def _name(u):
+        if not u:
+            return None
+        return u.name or u.username or u.email.split('@')[0]
+
+    result = []
+    for r in reports:
+        target_user = users_map.get(r.target_user_id) if r.target_user_id else None
+        result.append(ReportAdminView(
+            id=r.id,
+            target_type=r.target_type,
+            target_id=r.target_id,
+            target_user_id=r.target_user_id,
+            target_user_name=_name(target_user),
+            target_user_is_bot=bool(target_user.is_bot) if target_user else False,
+            reporter_id=r.reporter_id,
+            reporter_name=_name(users_map.get(r.reporter_id)),
+            reason=r.reason,
+            detail=r.detail,
+            target_snapshot=r.target_snapshot,
+            status=r.status,
+            created_at=r.created_at,
+            resolved_at=r.resolved_at,
+            resolved_by=r.resolved_by,
+            resolution=r.resolution,
+            reports_on_target=counts.get((r.target_type, r.target_id), 1),
+        ))
+    return result
+
+
+@router.patch("/reports/{report_id}")
+def resolve_report(
+    report_id: int,
+    payload: ReportResolve,
+    db: Session = Depends(get_session),
+    admin_user=Depends(get_admin_user),
+):
+    """Resolving is NOT deleting (R-07): the row stays, stamped.
+
+    A moderation record that disappears with the content it describes cannot show a pattern,
+    and a pattern across reports is the only way one abusive reader is visible.
+    """
+    if payload.status not in REPORT_STATUSES:
+        raise HTTPException(status_code=422,
+                            detail="status must be one of " + ", ".join(REPORT_STATUSES))
+    report = db.get(models.Report, report_id)
+    if not report:
+        raise HTTPException(status_code=404, detail="Report not found")
+    report.status = payload.status
+    report.resolution = payload.resolution
+    if payload.status == "open":
+        report.resolved_at = None
+        report.resolved_by = None
+    else:
+        report.resolved_at = datetime.utcnow()
+        report.resolved_by = admin_user.id
+    db.add(report)
+    db.commit()
+    return {"id": report_id, "status": report.status}
+
+
 @router.delete("/content/note/{note_id}")
 def delete_note(
     note_id: int,

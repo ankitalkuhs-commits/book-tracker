@@ -422,6 +422,11 @@ GUARDED_ROUTES = {
     ("POST", "/notes/{note_id}/like"),
     ("DELETE", "/notes/{note_id}/like"),
     ("POST", "/notes/{note_id}/comments"),
+    # Sprint 4I-A (K-4I-02, and pm-decisions' amendment to spec done-checklist item 7): this
+    # inventory is an EXACT list, so `deny_bot_actor` on `POST /reports` turns the case below
+    # red unless the literal grows in the same commit as the route. A bot does not report.
+    # 4I-B adds ("POST", "/blocks/{user_id}") and the count goes 5 -> 6.
+    ("POST", "/reports"),
 }
 
 
@@ -563,9 +568,14 @@ class TestDenyBotActor:
                       models.Follow.follower_id == reader.id,
                       models.Follow.followed_id == owner.id) == 1
 
-    def test_dependency_inventory_is_exactly_four_routes(self):
+    def test_dependency_inventory_is_exactly_five_routes(self):
         """B-12a (K-10, rules 2 and 4). MUT-4F-21: add deny_bot_actor to POST /notes/, or
-        remove it from one of the four.
+        remove it from one of the five.
+
+        Sprint 4I-A (K-4I-02): the inventory was four routes and is now five — `POST /reports`
+        carries the same dependency, because a bot does not report. The literal above and this
+        count move in the same commit as the route, and `tests/test_reports.py::S-08a` asserts
+        the same number from the other side so the two cannot drift apart.
 
         FastAPI resolves route dependencies BEFORE the handler body, so the presence of
         deny_bot_actor in route.dependant IS the "before any row, before any notification"
@@ -580,7 +590,7 @@ class TestDenyBotActor:
                 for method in route.methods:
                     found.add((method, route.path))
 
-        assert len(found) == 4, f"expected 4 guarded routes, found {len(found)}: {sorted(found)}"
+        assert len(found) == 5, f"expected 5 guarded routes, found {len(found)}: {sorted(found)}"
         assert found == GUARDED_ROUTES
         assert ("POST", "/notes/") not in found, "a bot must be able to post (R-07)"
         assert not any(m == "GET" for m, _ in found), "a bot reads the public feed (arch §4)"

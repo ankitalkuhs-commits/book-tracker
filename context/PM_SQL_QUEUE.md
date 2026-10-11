@@ -239,6 +239,69 @@ Step 9 is additive, re-runnable, and touches no existing row of any table.
 
 ---
 
+## 10. Sprint 4I-A — the `report` table — WRITES, additive, and it gates the 4I-A deploy
+
+Run this **before** the Sprint 4I-A API deploy. `schema_guard` requires `report.reason`, so the
+commit that adds it refuses to start until this has run (that is the guard working: Render fails
+the deploy and the previous version keeps serving).
+
+This is the table behind `POST /reports`. App Store Review Guideline 1.2 item 2 requires a way to
+report offensive content, with timely responses, and there is none in the product today — 131
+readers have no way to flag anything. The report queues for a human and changes nothing anyone
+else sees.
+
+```sql
+CREATE TABLE IF NOT EXISTS report (
+    id              SERIAL PRIMARY KEY,
+    reporter_id     INTEGER      NOT NULL,
+    target_type     VARCHAR(16)  NOT NULL,   -- note | comment | group_post | user
+    target_id       INTEGER      NOT NULL,
+    target_user_id  INTEGER,                 -- the author, denormalised at creation
+    reason          VARCHAR(32)  NOT NULL,
+    detail          VARCHAR(1000),
+    target_snapshot VARCHAR(2000),
+    status          VARCHAR(16)  NOT NULL DEFAULT 'open',
+    created_at      TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    resolved_at     TIMESTAMP,
+    resolved_by     INTEGER,
+    resolution      VARCHAR(500)
+);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_report_once ON report (reporter_id, target_type, target_id);
+CREATE INDEX IF NOT EXISTS ix_report_open ON report (status, created_at DESC);
+```
+
+**No foreign keys, deliberately.** A report has to outlive the content it is about: the admin
+deletes the reported note, the report row stays with `status = 'actioned'`, and `target_id`
+dangles. A moderation record that vanishes with the content cannot show a pattern, and a pattern
+across reports is the only way one abusive reader is visible. `bot_post.note_id` carries audit
+information with no foreign key for the same reason.
+
+**`uq_report_once` is where the correctness lives.** One reader may report a given thing exactly
+once, for ever. It is enforced here and not in the handler, so two concurrent submissions cannot
+both win, and it is what makes the queue's per-target count mean something.
+
+**`target_snapshot` is a copy of a reader's words in a second table**, and that is a privacy cost
+paid on purpose: without it a resolved report is an id and a reason. The controls are the length
+cap, admin-only access on both routes, and deletion with the reporter's account.
+
+**Verify — send the output back.**
+
+```sql
+-- 13 rows: the columns above, with their types and lengths
+SELECT column_name, data_type, character_maximum_length, is_nullable
+  FROM information_schema.columns
+ WHERE table_schema = current_schema() AND table_name = 'report'
+ ORDER BY ordinal_position;
+-- 3 rows: report_pkey, uq_report_once, ix_report_open
+SELECT indexname FROM pg_indexes WHERE tablename = 'report' ORDER BY indexname;
+-- must return 0: nothing has been written yet
+SELECT count(*) FROM report;
+```
+
+Step 10 is additive, re-runnable, and touches no existing row of any table.
+
+---
+
 ## What Claude does with each answer
 
 | You send | Claude does |
@@ -251,3 +314,4 @@ Step 9 is additive, re-runnable, and touches no existing row of any table.
 | 7. dedup_key + both index names | confirms `schema_guard` will pass, then runs `migrations/add_bot_accounts.py` |
 | 8. column row + index row + 0 | deploys Sprint 4G's API package (the commit carrying `("user","apple_sub")` in `schema_guard`), then checks `/version` |
 | 9. column row + no index + 0 | deploys Sprint 4H's API package (the commit carrying `("user","apple_refresh_token")` in `schema_guard`), then checks `/version` |
+| 10. 13 column rows + 3 index names + 0 | deploys Sprint 4I-A's API package (the commit carrying `("report","reason")` in `schema_guard`), then checks `/version` and files one real report end to end |

@@ -120,6 +120,19 @@ NOTIFICATION_EVENTS: dict[str, dict] = {
     #     "daily_cap": False,
     # },
 
+    # ── Moderation ────────────────────────────────────────────────────────────
+    # Sprint 4I-A (R-03): a new report tells every admin that one exists. The recipients are
+    # the admin ids and nothing else, and the title and body carry NO reported text, NO
+    # `detail` and NO reader's name — a push notification is a lock-screen surface, and the
+    # reason string is all of it that belongs there. The reported reader is never a recipient
+    # (R-10). `{reason}` comes from fire_event's `extra`.
+    "content_reported": {
+        "title": "New content report",
+        "body": "A reader reported content. Reason: {reason}",
+        "is_active": True,
+        "daily_cap": False,             # every report must be seen; a cap would hide one
+    },
+
     # ── Operational ───────────────────────────────────────────────────────────
     # Sent by POST /admin/push/broadcast. This event does NOT go through
     # fire_event(): the admin supplies title/body at call time, and it is

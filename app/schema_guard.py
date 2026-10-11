@@ -29,6 +29,13 @@ REQUIRED_COLUMNS = (
     # query); a guard entry without the SQL is a failed deploy and the previous version keeps
     # serving, which is the outcome this file exists to produce.
     ("user", "apple_refresh_token"),   # Sprint 4H
+    # Sprint 4I-A. SAME NON-NEGOTIABLE ORDER: the PM runs PM_SQL_QUEUE step 10 (the `report`
+    # table, uq_report_once and ix_report_open) FIRST and sends the verify output back, and
+    # only the deploy AFTER that may carry this line. A missing table produces no
+    # information_schema row either, so ("report","reason") covers the whole table — the
+    # reasoning already written at :14-16 for `bot_post`. Deployed ahead of the SQL this
+    # raises below, Render fails the deploy and the previous version keeps serving.
+    ("report", "reason"),              # Sprint 4I-A
 )
 
 
