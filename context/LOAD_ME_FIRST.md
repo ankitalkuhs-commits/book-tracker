@@ -136,6 +136,20 @@ The correct key names (backend + frontend must match):
 
 ## Recently Shipped (September 22–23, 2026 — Singapore, Sprint 4E, Sprint 4F in flight)
 
+### iOS shipped to TestFlight — 2026-10-11
+
+TrackMyRead 2.2.4 is on TestFlight (`com.bookpulse.mobile`, ASC app id 6821514742), under the
+**`ankitalkuhs`** Expo account and the Medhark Apple team `U99PR4A2XB`. Sign in with Apple is
+live; iOS is Apple-only, so there is no Google button there.
+
+**Read `context/IOS_RELEASE_PLAYBOOK.md` before touching anything iOS.** It records what actually
+happened across five builds, measured rather than remembered: the Expo account mismatch, the two
+separate Google Sign-In native modules (one of which crashes the app at import if unlinked),
+`Dimensions.get()` at module scope breaking seven screens on iPad, `eas submit` ignoring the
+`EXPO_ASC_*` variables, and the Apple revocation flow needing a refresh token nobody was
+collecting. The Medhark playbook stops at TestFlight because **no app on this account has ever
+been through App Store review** — that part has no precedent.
+
 ### The API moved to Singapore (F-68) — 2026-09-22
 
 The API ran in Oregon while the database sat in Singapore, so every query crossed the Pacific.
