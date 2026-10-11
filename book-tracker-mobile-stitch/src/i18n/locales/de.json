@@ -514,6 +514,40 @@
     "de": "Deutsch",
     "fr": "Français"
   },
+  "safety": {
+    "report": "Melden",
+    "block": "Blockieren",
+    "blockAction": "Blockieren",
+    "unfollow": "Nicht mehr folgen",
+    "unblock": "Entsperren",
+    "reportTitle": "Diesen Inhalt melden",
+    "reportSubtitle": "Sag uns, was nicht stimmt. Jede Meldung wird von einem Menschen gelesen.",
+    "reasons": {
+      "spam": "Spam oder Betrug",
+      "harassment": "Belästigung oder Mobbing",
+      "hate": "Hassrede",
+      "sexual": "Sexuelle Inhalte",
+      "violence": "Gewalt oder Drohungen",
+      "self_harm": "Selbstverletzung oder Suizid",
+      "other": "Etwas anderes"
+    },
+    "detailPlaceholder": "Ergänze Details, die helfen (optional)",
+    "alsoBlock": "{{name}} auch blockieren",
+    "alsoBlockHint": "Ihr seht einander nicht mehr, und jede Folge-Verbindung zwischen euch wird entfernt.",
+    "sendReport": "Meldung senden",
+    "reviewPromise": "Wir prüfen Meldungen innerhalb von 2 Werktagen.",
+    "reportFailed": "Deine Meldung konnte nicht gesendet werden. Bitte versuche es erneut.",
+    "thisReader": "diese Person",
+    "blockTitle": "{{name}} blockieren?",
+    "blockConfirmBody": "Du und {{name}} seht einander nirgends mehr in TrackMyRead, und ihr könnt einander nicht mehr folgen, liken oder kommentieren. Jede Folge-Verbindung zwischen euch wird jetzt entfernt und kommt nicht zurück, wenn du später entsperrst. Öffentliche Beiträge werden dadurch nicht zurückgezogen — wer abgemeldet ist, kann sie im offenen Web weiterhin lesen.",
+    "blockFailed": "Blockieren fehlgeschlagen. Bitte versuche es erneut.",
+    "blockedReaders": "Blockierte Personen",
+    "blockedReadersDesc": "Sieh, wen du blockiert hast, und mach es rückgängig",
+    "blockedEmpty": "Du hast niemanden blockiert.",
+    "blockedLoadFailed": "Deine blockierten Personen konnten nicht geladen werden.",
+    "unblockFailed": "Entsperren fehlgeschlagen. Bitte versuche es erneut.",
+    "unblockHint": "Entsperren stellt keine Folge-Verbindung wieder her — ihr könnt einander erneut folgen, wenn ihr wollt."
+  },
   "a11y": {
     "back": "Zurück",
     "close": "Schließen",
@@ -539,6 +573,13 @@
     "rateStars": "Mit {{count}} Sternen bewerten",
     "chooseAvatar": "Avatar {{name}}",
     "coverPreset": "Cover {{name}}",
-    "postVisibility": "Sichtbarkeit des Beitrags"
+    "postVisibility": "Sichtbarkeit des Beitrags",
+    "reportPost": "Beitrag melden",
+    "reportComment": "Kommentar melden",
+    "reportReader": "Person melden",
+    "blockReader": "Person blockieren",
+    "unfollowReader": "Person nicht mehr folgen",
+    "readerOptions": "Optionen für diese Person",
+    "alsoBlock": "Diese Person auch blockieren"
   }
 }

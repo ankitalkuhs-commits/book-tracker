@@ -762,6 +762,33 @@ test('the_mobile_diff_touches_only_the_named_files', () => {
     ...LOCALE_CODES.map((c) => `src/i18n/locales/${c}.json`),
   ].map((p) => `${PREFIX}${p}`));
 
+  // Sprint 4I P5. BASE is a FIXED commit, so this rule — written to bound
+  // Sprint 4G's own package — now bounds every later sprint that touches this
+  // tree as well, for ever. That is the same shape of problem Sprint 4I-B
+  // reported for the 4G rule `test_no_existing_test_file_was_edited`, and it
+  // gets the same answer: a NAMED, REASONED set bounded by its own literal
+  // count, rather than widening `allowed` (which would read as a claim that
+  // Sprint 4G owned these files) or deleting the rule.
+  //
+  // Every file below is one Sprint 4I P5 has to touch to put Report and Block
+  // on the six surfaces of spec R-05 and a blocked list in Settings. Anything
+  // outside BOTH lists is still an offender, which is what MUT-4I-P5-07
+  // exercises. A later sprint adds its own block here with its own reason —
+  // it does not quietly extend this one.
+  const SPRINT_4I_FILES = [
+    'src/screens/FeedScreen.js',          // R-05 sites 1, 2, 6 + the menu gate (K-4I-11)
+    'src/screens/UserProfileScreen.js',   // R-05 sites 3, 4 — already allowed above, listed for completeness
+    'src/screens/GroupDetailScreen.js',   // R-05 site 5
+    'src/screens/SettingsScreen.js',      // R-28 the blocked list
+    'src/screens/NotificationsScreen.js', // 4I-A's content_reported event
+    'src/components/ReportDialog.js',     // new
+    'src/utils/safety.js',                // new
+    '__tests__/reportAffordance.test.mjs',// new
+  ];
+  assert.equal(SPRINT_4I_FILES.length, 8,
+    'the Sprint 4I file list changed size — say why in the comment above before moving this number');
+  for (const p of SPRINT_4I_FILES) allowed.add(`${PREFIX}${p}`);
+
   const unexpected = touched.filter((p) => !allowed.has(p));
   assert.deepEqual(unexpected, [], `P4 touched files it does not own: ${unexpected.join(', ')}`);
 });

@@ -514,6 +514,40 @@
     "de": "Deutsch",
     "fr": "Français"
   },
+  "safety": {
+    "report": "Signaler",
+    "block": "Bloquer",
+    "blockAction": "Bloquer",
+    "unfollow": "Ne plus suivre",
+    "unblock": "Débloquer",
+    "reportTitle": "Signaler ce contenu",
+    "reportSubtitle": "Dites-nous ce qui ne va pas. Chaque signalement est lu par une personne.",
+    "reasons": {
+      "spam": "Spam ou arnaque",
+      "harassment": "Harcèlement ou intimidation",
+      "hate": "Discours haineux",
+      "sexual": "Contenu sexuel",
+      "violence": "Violence ou menaces",
+      "self_harm": "Automutilation ou suicide",
+      "other": "Autre chose"
+    },
+    "detailPlaceholder": "Ajoutez tout détail utile (facultatif)",
+    "alsoBlock": "Bloquer aussi {{name}}",
+    "alsoBlockHint": "Vous ne vous verrez plus, et tout abonnement entre vous est supprimé.",
+    "sendReport": "Envoyer le signalement",
+    "reviewPromise": "Nous examinons les signalements sous 2 jours ouvrés.",
+    "reportFailed": "Votre signalement n'a pas pu être envoyé. Veuillez réessayer.",
+    "thisReader": "cette personne",
+    "blockTitle": "Bloquer {{name}} ?",
+    "blockConfirmBody": "Vous et {{name}} ne vous verrez plus nulle part dans TrackMyRead, et aucun de vous ne pourra suivre, aimer ou commenter l'autre. Tout abonnement entre vous est supprimé maintenant et ne reviendra pas si vous débloquez plus tard. Cela ne retire pas les publications publiques — toute personne déconnectée peut encore les lire sur le web ouvert.",
+    "blockFailed": "Impossible de bloquer cette personne. Veuillez réessayer.",
+    "blockedReaders": "Personnes bloquées",
+    "blockedReadersDesc": "Voyez qui vous avez bloqué, et annulez-le",
+    "blockedEmpty": "Vous n'avez bloqué personne.",
+    "blockedLoadFailed": "Impossible de charger vos personnes bloquées.",
+    "unblockFailed": "Impossible de débloquer cette personne. Veuillez réessayer.",
+    "unblockHint": "Le déblocage ne rétablit aucun abonnement — vous pouvez vous suivre à nouveau si vous le souhaitez."
+  },
   "a11y": {
     "back": "Retour",
     "close": "Fermer",
@@ -539,6 +573,13 @@
     "rateStars": "Noter {{count}} étoiles",
     "chooseAvatar": "Avatar {{name}}",
     "coverPreset": "Couverture {{name}}",
-    "postVisibility": "Visibilité de la publication"
+    "postVisibility": "Visibilité de la publication",
+    "reportPost": "Signaler la publication",
+    "reportComment": "Signaler le commentaire",
+    "reportReader": "Signaler cette personne",
+    "blockReader": "Bloquer cette personne",
+    "unfollowReader": "Ne plus suivre cette personne",
+    "readerOptions": "Options de cette personne",
+    "alsoBlock": "Bloquer aussi cette personne"
   }
 }

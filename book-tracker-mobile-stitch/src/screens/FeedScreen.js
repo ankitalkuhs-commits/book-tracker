@@ -12,6 +12,8 @@ import { notesAPI, userbooksAPI, userAPI, booksAPI } from '../services/api';
 import AppHeader from '../components/AppHeader';
 import VisibilityToggle, { useNoteVisibility } from '../components/VisibilityToggle';
 import BotBadge, { userBadge, userBadgeText } from '../components/BotBadge';
+import ReportDialog from '../components/ReportDialog';
+import { confirmBlock } from '../utils/safety';
 import { PreloadContext } from '../../App';
 import { formatTimeAgo } from '../utils/bookUtils';
 import { colors, radius, shadow, type } from '../theme';
@@ -75,6 +77,11 @@ const FeedScreen = ({ navigation }) => {
 
   const [currentUser, setCurrentUser] = useState(null);
   const [menuPostId, setMenuPostId] = useState(null);
+  // Sprint 4I (R-05). One dialog for the whole screen; `reportTarget` names
+  // what is being reported, so the feed post, the comment row and the search
+  // result all reuse it instead of each carrying a modal.
+  const [menuUserId, setMenuUserId] = useState(null);
+  const [reportTarget, setReportTarget] = useState(null);
   const likingInFlight = useRef(new Set());
   const followInFlight = useRef(new Set());
 
@@ -269,6 +276,26 @@ const FeedScreen = ({ navigation }) => {
         } catch { Alert.alert(t('common.error'), t('feed.failedToDeleteComment')); }
       }},
     ]);
+  };
+
+  // ── Sprint 4I: report and block ──────────────────────────────────────────
+  // Both close whatever menu opened them first, so the dropdown is never left
+  // hanging over the Alert or the sheet.
+  const openReport = (target) => {
+    setMenuPostId(null);
+    setMenuUserId(null);
+    setReportTarget(target);
+  };
+
+  // A block severs the follow graph on the server, so the feed and the search
+  // results are both stale afterwards: reload rather than patch, because the
+  // block removed rows this screen does not track.
+  const afterBlock = () => { loadFeed(); setSearchResults([]); setSearchQuery(''); };
+
+  const handleBlock = (userId, name) => {
+    setMenuPostId(null);
+    setMenuUserId(null);
+    confirmBlock(t, { userId, name }, afterBlock);
   };
 
   const handleLike = async (postId, isLiked) => {
@@ -611,6 +638,44 @@ const FeedScreen = ({ navigation }) => {
               </Text>
           }
         </TouchableOpacity>
+        {/* Sprint 4I (R-05 site 6, and the second of C-05m's two Block sites).
+            The Follow/Following button beside this menu is the softer option
+            (pm-decisions E-1): a reader who only wants out of someone's feed
+            taps that, and never has to open this at all. */}
+        {user.id !== currentUser?.id && (
+          <View>
+            <TouchableOpacity
+              onPress={() => setMenuUserId(menuUserId === user.id ? null : user.id)}
+              style={styles.menuButton}
+              accessibilityRole="button"
+              accessibilityLabel={t('a11y.readerOptions')}
+            >
+              <Text style={styles.menuDots}>···</Text>
+            </TouchableOpacity>
+            {menuUserId === user.id && (
+              <View style={styles.menuDropdown}>
+                <TouchableOpacity
+                  style={styles.menuItem}
+                  onPress={() => handleBlock(user.id, displayName)}
+                  accessibilityRole="button"
+                  accessibilityLabel={t('a11y.blockReader')}
+                >
+                  <Ionicons name="ban-outline" size={14} color={colors.error} />
+                  <Text style={styles.menuItemTextDanger}>{t('safety.block')}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.menuItem}
+                  onPress={() => openReport({ type: 'user', id: user.id, userId: user.id, name: displayName })}
+                  accessibilityRole="button"
+                  accessibilityLabel={t('a11y.reportReader')}
+                >
+                  <Ionicons name="flag-outline" size={14} color={colors.onSurfaceVariant} />
+                  <Text style={styles.menuItemText}>{t('safety.report')}</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+        )}
       </View>
     );
   };
@@ -666,18 +731,26 @@ const FeedScreen = ({ navigation }) => {
               <Text style={styles.timeAgo}>{timeAgo}</Text>
             </View>
           </TouchableOpacity>
-          {(isOwnPost || isAdmin) && (
-            <View>
-              <TouchableOpacity
-                onPress={() => setMenuPostId(showMenu ? null : post.id)}
-                style={styles.menuButton}
-                accessibilityRole="button"
-                accessibilityLabel={t('a11y.postOptions')}
-              >
-                <Text style={styles.menuDots}>···</Text>
-              </TouchableOpacity>
-              {showMenu && (
-                <View style={styles.menuDropdown}>
+          {/* Sprint 4I (R-05 site 1). This menu used to be wrapped in
+              `(isOwnPost || isAdmin)`, so a non-owner saw no menu at all and
+              Report had nowhere to live. The OUTER gate is gone — every reader
+              opens the menu — and each owner-or-admin action now carries its
+              OWN gate inside it. Opening the outer gate without that hands
+              every reader a Delete button on every post (K-4I-11); C-04m in
+              __tests__/reportAffordance.test.mjs is the test, and it checks
+              both halves. */}
+          <View>
+            <TouchableOpacity
+              onPress={() => setMenuPostId(showMenu ? null : post.id)}
+              style={styles.menuButton}
+              accessibilityRole="button"
+              accessibilityLabel={t('a11y.postOptions')}
+            >
+              <Text style={styles.menuDots}>···</Text>
+            </TouchableOpacity>
+            {showMenu && (
+              <View style={styles.menuDropdown}>
+                {(isOwnPost || isAdmin) && (
                   <TouchableOpacity
                     style={styles.menuItem}
                     onPress={() => handleDeletePost(post)}
@@ -687,10 +760,21 @@ const FeedScreen = ({ navigation }) => {
                     <Ionicons name="trash-outline" size={14} color={colors.error} />
                     <Text style={styles.menuItemTextDanger}>{t('common.delete')}</Text>
                   </TouchableOpacity>
-                </View>
-              )}
-            </View>
-          )}
+                )}
+                {!isOwnPost && (
+                  <TouchableOpacity
+                    style={styles.menuItem}
+                    onPress={() => openReport({ type: 'note', id: post.id, userId: post.user?.id, name: userName })}
+                    accessibilityRole="button"
+                    accessibilityLabel={t('a11y.reportPost')}
+                  >
+                    <Ionicons name="flag-outline" size={14} color={colors.onSurfaceVariant} />
+                    <Text style={styles.menuItemText}>{t('safety.report')}</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            )}
+          </View>
         </View>
         {/* Emotion sentence */}
         {post.emotion && (() => {
@@ -770,6 +854,19 @@ const FeedScreen = ({ navigation }) => {
                       <Ionicons name="trash-outline" size={14} color={colors.error} />
                     </TouchableOpacity>
                   )}
+                  {/* Sprint 4I (R-05 site 2): a comment is somebody else's
+                      words and needs its own report affordance — the post's
+                      menu reports the post, not the thread under it. */}
+                  {c.id && c.user?.id && c.user.id !== currentUser?.id && (
+                    <TouchableOpacity
+                      onPress={() => openReport({ type: 'comment', id: c.id, userId: c.user.id, name: c.user?.name || c.user?.username })}
+                      style={{ padding: 6, marginLeft: 2 }}
+                      accessibilityRole="button"
+                      accessibilityLabel={t('a11y.reportComment')}
+                    >
+                      <Ionicons name="flag-outline" size={14} color={colors.outline} />
+                    </TouchableOpacity>
+                  )}
                 </View>
               ))
             )}
@@ -845,6 +942,11 @@ const FeedScreen = ({ navigation }) => {
   return (
     <View style={styles.container}>
       {renderShelfModal()}
+      <ReportDialog
+        target={reportTarget}
+        onClose={() => setReportTarget(null)}
+        onDone={({ blocked }) => { if (blocked) afterBlock(); }}
+      />
       <AppHeader
         user={currentUser}
         onBellPress={() => navigation.navigate('Notifications')}
@@ -987,6 +1089,7 @@ const styles = StyleSheet.create({
   menuDropdown: { position: 'absolute', right: 0, top: 28, backgroundColor: colors.surfaceContainerLowest, borderRadius: radius.md, paddingVertical: 4, minWidth: 120, zIndex: 100, ...shadow.float, borderWidth: 1, borderColor: colors.outlineVariant + '40' },
   menuItem: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 14, paddingVertical: 10 },
   menuItemTextDanger: { ...type.body, color: colors.error },
+  menuItemText: { ...type.body, color: colors.onSurface },
   // Emotion chip picker (composer)
   emotionSection: { marginTop: 8, marginBottom: 4 },
   emotionLabel: { ...type.caption, color: colors.onSurfaceVariant, marginBottom: 6, paddingLeft: 2 },

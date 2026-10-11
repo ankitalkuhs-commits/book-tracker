@@ -8,6 +8,8 @@ import { useTranslation } from 'react-i18next';
 import { userAPI, userbooksAPI, activityAPI, notesAPI, booksAPI, profileAPI } from '../services/api';
 import { PreloadContext } from '../../App';
 import BotBadge from '../components/BotBadge';
+import ReportDialog from '../components/ReportDialog';
+import { confirmBlock } from '../utils/safety';
 import { colors, radius, shadow, type } from '../theme';
 
 
@@ -103,6 +105,9 @@ export default function UserProfileScreen({ route, navigation }) {
   const [showAllBooks,  setShowAllBooks]  = useState(false);
   const [shelfModal,    setShelfModal]    = useState(null); // { book } | null
   const [shelving,      setShelving]      = useState(false);
+  // Sprint 4I (R-05 sites 3 and 4, C-05m Block site 1).
+  const [safetyMenu,    setSafetyMenu]    = useState(false);
+  const [reportTarget,  setReportTarget]  = useState(null);
   const likingInFlight = useRef(new Set());
 
   const load = useCallback(async (isRefresh = false, days = 30) => {
@@ -139,6 +144,19 @@ export default function UserProfileScreen({ route, navigation }) {
       else           { await userAPI.followUser(userId);   setFollowing(true);  }
     } catch (e) { Alert.alert(t('common.error'), e?.response?.data?.detail || 'Could not update follow'); }
     setFollowLoading(false);
+  };
+
+  // ── Sprint 4I: report and block ──────────────────────────────────────────
+  const openReport = (target) => { setSafetyMenu(false); setReportTarget(target); };
+
+  // After a block this profile is 404 for the viewer — the server answers the
+  // blocked pair with the body of a deleted account — so there is nothing left
+  // to re-render. Go back rather than reload into an error state.
+  const afterBlock = () => navigation.goBack();
+
+  const handleBlock = () => {
+    setSafetyMenu(false);
+    confirmBlock(t, { userId, name }, afterBlock);
   };
 
   const handleShelfBook = async (status) => {
@@ -205,6 +223,10 @@ export default function UserProfileScreen({ route, navigation }) {
   if (loading) return <View style={styles.center}><ActivityIndicator size="large" color={colors.primary} /></View>;
 
   const name             = user?.name || user?.email?.split('@')[0] || 'Reader';
+  // route.params.userId can arrive as a string from a deep link, so compare as
+  // numbers: `'7' !== 7` would offer a reader Block and Report on themselves,
+  // which the server then refuses with a 400 nobody can act on.
+  const isSelf           = currentUser?.id != null && Number(userId) === Number(currentUser.id);
   const isPrivate        = user?.is_private && !following;
   const currentlyReading = books.filter(b => b.status === 'reading');
   const finished         = books.filter(b => b.status === 'finished');
@@ -278,6 +300,11 @@ export default function UserProfileScreen({ route, navigation }) {
   return (
     <View style={styles.container}>
       {renderShelfModal()}
+      <ReportDialog
+        target={reportTarget}
+        onClose={() => setReportTarget(null)}
+        onDone={({ blocked }) => { if (blocked) afterBlock(); }}
+      />
       {/* Back bar */}
       <View style={[styles.topBar, { paddingTop: insets.top + 10 }]}>
         <TouchableOpacity
@@ -340,21 +367,73 @@ export default function UserProfileScreen({ route, navigation }) {
           {user?.follows_you && !following && (
             <Text style={styles.followsYouLabel}>{t('profile.followsYou')}</Text>
           )}
-          <TouchableOpacity
-            style={[styles.followBtn, following && styles.followBtnActive]}
-            onPress={toggleFollow}
-            disabled={followLoading}
-          >
-            {followLoading
-              ? <ActivityIndicator size="small" color={following ? colors.primary : colors.onPrimary} />
-              : <>
-                  {following && <Ionicons name="checkmark" size={14} color={colors.primary} style={{ marginRight: 4 }} />}
-                  <Text style={[styles.followBtnText, following && styles.followBtnTextActive]}>
-                    {following ? t('profile.following_btn') : user?.follows_you ? t('profile.followBack') : t('profile.follow')}
-                  </Text>
-                </>
-            }
-          </TouchableOpacity>
+          <View style={styles.actionCluster}>
+            <TouchableOpacity
+              style={[styles.followBtn, following && styles.followBtnActive]}
+              onPress={toggleFollow}
+              disabled={followLoading}
+            >
+              {followLoading
+                ? <ActivityIndicator size="small" color={following ? colors.primary : colors.onPrimary} />
+                : <>
+                    {following && <Ionicons name="checkmark" size={14} color={colors.primary} style={{ marginRight: 4 }} />}
+                    <Text style={[styles.followBtnText, following && styles.followBtnTextActive]}>
+                      {following ? t('profile.following_btn') : user?.follows_you ? t('profile.followBack') : t('profile.follow')}
+                    </Text>
+                  </>
+              }
+            </TouchableOpacity>
+            {/* Sprint 4I (R-05 site 4, C-05m Block site 1).
+                UNFOLLOW IS FIRST, ABOVE BLOCK, and that is a decision
+                (pm-decisions E-1): a menu whose only exit is the nuclear
+                option pushes people into it. Most readers who open this want
+                somebody out of their feed, not out of their life. */}
+            {!isSelf && (
+              <View>
+                <TouchableOpacity
+                  onPress={() => setSafetyMenu(!safetyMenu)}
+                  style={styles.safetyMenuBtn}
+                  accessibilityRole="button"
+                  accessibilityLabel={t('a11y.readerOptions')}
+                >
+                  <Ionicons name="ellipsis-horizontal" size={18} color={colors.onSurfaceVariant} />
+                </TouchableOpacity>
+                {safetyMenu && (
+                  <View style={styles.safetyMenu}>
+                    {following && (
+                      <TouchableOpacity
+                        style={styles.safetyMenuItem}
+                        onPress={() => { setSafetyMenu(false); toggleFollow(); }}
+                        accessibilityRole="button"
+                        accessibilityLabel={t('a11y.unfollowReader')}
+                      >
+                        <Ionicons name="person-remove-outline" size={15} color={colors.onSurface} />
+                        <Text style={styles.safetyMenuText}>{t('safety.unfollow')}</Text>
+                      </TouchableOpacity>
+                    )}
+                    <TouchableOpacity
+                      style={styles.safetyMenuItem}
+                      onPress={handleBlock}
+                      accessibilityRole="button"
+                      accessibilityLabel={t('a11y.blockReader')}
+                    >
+                      <Ionicons name="ban-outline" size={15} color={colors.error} />
+                      <Text style={styles.safetyMenuTextDanger}>{t('safety.block')}</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.safetyMenuItem}
+                      onPress={() => openReport({ type: 'user', id: userId, userId, name })}
+                      accessibilityRole="button"
+                      accessibilityLabel={t('a11y.reportReader')}
+                    >
+                      <Ionicons name="flag-outline" size={15} color={colors.onSurfaceVariant} />
+                      <Text style={styles.safetyMenuText}>{t('safety.report')}</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+              </View>
+            )}
+          </View>
         </View>
 
         {/* Locked profile */}
@@ -526,6 +605,18 @@ export default function UserProfileScreen({ route, navigation }) {
                               <Ionicons name="trash-outline" size={15} color="#e53935" />
                             </TouchableOpacity>
                           )}
+                          {/* Sprint 4I (R-05 site 3): a note on somebody
+                              else's profile is their content and is reported
+                              from here, not from the feed. */}
+                          {!isSelf && (
+                            <TouchableOpacity
+                              onPress={() => openReport({ type: 'note', id: note.id, userId, name })}
+                              accessibilityRole="button"
+                              accessibilityLabel={t('a11y.reportPost')}
+                            >
+                              <Ionicons name="flag-outline" size={15} color={colors.outline} />
+                            </TouchableOpacity>
+                          )}
                           <TouchableOpacity
                             style={styles.shareBtn}
                             onPress={() => handleShare(note)}
@@ -612,6 +703,12 @@ const styles = StyleSheet.create({
   statPillDivider: { width: 1, height: 28, backgroundColor: colors.outlineVariant + '60' },
 
   followsYouLabel:     { fontSize: 10, fontWeight: '700', letterSpacing: 0.8, color: colors.onSurfaceVariant, textTransform: 'uppercase', marginBottom: 4 },
+  actionCluster:       { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  safetyMenuBtn:       { padding: 8, borderRadius: radius.full, borderWidth: 1, borderColor: colors.outlineVariant },
+  safetyMenu:          { position: 'absolute', right: 0, top: 40, backgroundColor: colors.surfaceContainerLowest, borderRadius: radius.md, paddingVertical: 4, minWidth: 150, zIndex: 100, ...shadow.float, borderWidth: 1, borderColor: colors.outlineVariant + '40' },
+  safetyMenuItem:      { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 14, paddingVertical: 10 },
+  safetyMenuText:      { ...type.body, color: colors.onSurface },
+  safetyMenuTextDanger:{ ...type.body, color: colors.error },
   followBtn:           { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.primary, borderRadius: radius.full, paddingHorizontal: 28, paddingVertical: 10, minWidth: 120, justifyContent: 'center' },
   followBtnActive:     { backgroundColor: colors.surface, borderWidth: 1.5, borderColor: colors.primary },
   followBtnText:       { ...type.body, fontFamily: 'Manrope_700Bold', fontWeight: '700', color: colors.onPrimary },
