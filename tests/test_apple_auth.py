@@ -1224,12 +1224,29 @@ class TestAppleLinking:
 
         additions_only = {"tests/test_sql_artifacts.py"}
         wholly_new = {"tests/test_apple_auth.py", "tests/fixtures/apple_jwks_snapshot.json"}
+
+        def existed_at_base(path):
+            """Did this file exist before the sprint started?
+
+            The rule is 'no EXISTING test file was edited'. A file created after `base` by
+            some other piece of work is not this sprint's business, and listing such files in
+            `wholly_new` would mean growing that set for ever as master moves. Merging 4G on
+            2026-10-11 made this case red on tests/test_book_search_query.py, which belongs to
+            the book-search hotfix. Pinning BOTH ends of the diff would also fix it, and is
+            wrong: it freezes the rule so nothing can ever fail it again (measured — the
+            MUT-4G-37 probe passed under it).
+            """
+            return subprocess.run(["git", "cat-file", "-e", f"{base}:{path}"],
+                                  cwd=REPO_ROOT, capture_output=True, text=True).returncode == 0
+
         offenders = []
         for added, removed, path in rows:
             path = path.replace("\\", "/")
+            if path in wholly_new or not existed_at_base(path):
+                continue
             if removed not in ("0", "-"):
                 offenders.append(f"{path}: {removed} line(s) removed")
-            elif path not in additions_only | wholly_new:
+            elif path not in additions_only:
                 offenders.append(f"{path}: changed and is not one of this sprint's files")
         assert offenders == [], offenders
         assert "tests/conftest.py" not in {r[2].replace("\\", "/") for r in rows}
