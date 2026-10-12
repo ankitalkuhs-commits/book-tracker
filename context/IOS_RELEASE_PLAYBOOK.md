@@ -250,3 +250,64 @@ tree is **ahead of** what the store last accepted.
 **It took five builds.** 1 crashed on launch, 2 and 3 fixed that and the login, 4 and 5 fixed
 iPad layout. Each round trip is about 6 minutes to build and 3 to appear in TestFlight, so the
 expensive part is noticing — not building.
+
+---
+
+## 11. Verifying iPad layout without a Mac
+
+There is no iOS Simulator on Windows — it ships inside Xcode only, and Expo offers no hosted
+simulator. But the iPad bugs this project actually shipped (§4) were all in **shared JS reading
+dp**, so an Android tablet AVD set to the iPad's own logical viewport exercises the same code
+with the same numbers:
+
+```
+hw.lcd.width=1668      # iPad 11" at @2x
+hw.lcd.height=2388
+hw.lcd.density=320     # => 1668/2 x 2388/2 = 834 x 1194 dp, the iPad's logical size
+skin.path=_no_skin
+```
+
+in `~/.android/avd/<name>.avd/config.ini`, created with
+
+```
+avdmanager create avd -n iPad11_Geom -k "system-images;android-34;google_apis;x86_64" -f
+```
+
+`adb -s emulator-<port> shell wm size` / `wm density` confirm it. **Pipe `printf 'no\n'`, not
+PowerShell's `echo`, into `avdmanager`** — PowerShell prepends a BOM and avdmanager answers
+`Error: ﻿no is not a valid reply`.
+
+What this CANNOT find, and therefore what a device pass is still for: anything behind
+`Platform.OS === 'ios'`, native modules that throw at import (§3), Sign in with Apple,
+safe-area insets, iPad Split View and Slide Over, and iOS font metrics.
+
+Not worth doing: `expo start --web`. It needs `react-native-web` + `react-dom` added as
+dependencies to the binary being submitted, and RN-web's flex behaviour diverges enough to give
+false confidence about exactly the measurements in question.
+
+## 12. Four ways a check can pass while proving nothing
+
+Each of these was hit on this project, and all four are silent.
+
+**`eas build:view <id> --non-interactive` is not a valid invocation.** It yields an empty status
+and exit 0, so a poller built on it reports nothing for ever while looking healthy. Use
+`eas build:list --platform <p> --limit 1 --json --non-interactive` and read `[0].status`. This
+one bit twice — once on the iOS submit poller, then again in a poller written *after* writing
+it down, which is the argument for a shared helper rather than a remembered fact.
+
+**`node --test "qa/unit/*.test.mjs"` expands to nothing in Git Bash on Windows.** Output is
+`# tests 0 / # pass 0` and **exit code 0** — a green run that ran no tests. CI is Ubuntu, where
+node expands the glob, so the floor check (`$PASS -lt $EXPECTED_MIN_TESTS`) is the only thing
+standing between this and a merge. Locally, pass the files explicitly. A pass count of 0 is
+never a pass.
+
+**Whether `eas build` uploads committed or working-copy state is not worth knowing.** With
+`requireCommit` unset, `--json` suppresses the line that would tell you, and `gitCommitHash` in
+the result is just `HEAD` either way — it is *not* evidence the build matches that commit.
+**Commit, push, then build**, and verify the build's `gitCommitHash` equals the pushed SHA.
+
+**Reading a file with Python text mode and writing it back with `newline=''` converts CRLF to
+LF** across the whole file. Here it was invisible because git normalises on commit, so
+`git diff --stat` showed only the real change — but `git status` listing a file you believe you
+reverted is the tell. Confirm with `git diff --ignore-cr-at-eol --stat <file>`; empty means the
+content is genuinely unchanged.

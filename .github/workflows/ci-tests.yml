@@ -216,7 +216,9 @@ jobs:
       # fixes: notificationEvents.test.mjs went red when 4I-A added the content_reported
       # backend event without the mobile EVENT_CONFIG entry, so the measured "before" is
       # 140 collected / 139 passed.
-      EXPECTED_MIN_TESTS: 152
+      # 2026-10-12, Sprint 4J: re-measured at 153 on master - 152 + 1 in sourceRules.test.mjs
+      # (the_tab_bar_height_and_padding_are_safe_area_aware). The number is off a run.
+      EXPECTED_MIN_TESTS: 153
     steps:
       - uses: actions/checkout@v4
 

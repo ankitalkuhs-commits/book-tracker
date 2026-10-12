@@ -503,3 +503,41 @@ test('preload_keys_unchanged', () => {
 
   assert.match(readMobile('App.js'), /count\.value\?\.unread \?\? 0/);
 });
+
+// ── the tab bar is the one place safe-area insets were missing ───────────────
+// Found on an Android tablet driven at the iPad's 834x1194dp: the tab labels
+// rendered at y 2417-2465 of a 2508px screen whose app frame ended at 2388 —
+// entirely inside the system-bar inset — and they followed the SCREEN bottom,
+// not the app frame, when the display was resized. `edgeToEdgeEnabled: true`
+// plus an explicit `tabBarStyle.height` opts out of React Navigation's own
+// `49 + insets.bottom`, so the inset has to be added back by hand.
+test('the_tab_bar_height_and_padding_are_safe_area_aware', () => {
+  const code = readMobile('src/navigation/AppNavigator.js');
+
+  // The hook is imported and actually called, not merely imported.
+  assert.match(code, /import \{ useSafeAreaInsets \} from 'react-native-safe-area-context';/,
+    'AppNavigator does not import useSafeAreaInsets');
+  assert.match(code, /const insets = useSafeAreaInsets\(\);/,
+    'useSafeAreaInsets is imported but never called');
+
+  // Both numbers carry the inset. A height that grows while the padding does not
+  // leaves the labels in the same place and only makes the bar taller.
+  const style = code.match(/tabBarStyle:\s*\{([\s\S]*?)\}/);
+  assert.ok(style, 'tabBarStyle was not found — this check is stale');
+  assert.match(style[1], /height:\s*\d+\s*\+\s*insets\.bottom/,
+    'tabBarStyle.height is a bare number, so it opts out of the safe area and never grows for it');
+  assert.match(style[1], /paddingBottom:\s*\d+\s*\+\s*insets\.bottom/,
+    'tabBarStyle.paddingBottom does not add insets.bottom — the labels still sit in the inset');
+
+  // Non-vacuity: the detector must reject the shape that actually shipped.
+  const shipped = 'tabBarStyle: {\n  height: 60,\n  paddingBottom: 8,\n}';
+  const shippedStyle = shipped.match(/tabBarStyle:\s*\{([\s\S]*?)\}/);
+  assert.doesNotMatch(shippedStyle[1], /height:\s*\d+\s*\+\s*insets\.bottom/,
+    'the detector passes the pre-fix source, so it proves nothing');
+
+  // `edgeToEdgeEnabled` is WHY this is needed; if it were ever turned off the
+  // reasoning in AppNavigator's comment would be wrong and should be revisited.
+  const appJson = JSON.parse(readMobile('app.json'));
+  assert.equal(appJson.expo.android.edgeToEdgeEnabled, true,
+    'edgeToEdgeEnabled is no longer true — re-read the tab bar inset comment before trusting it');
+});

@@ -789,6 +789,25 @@ test('the_mobile_diff_touches_only_the_named_files', () => {
     'the Sprint 4I file list changed size — say why in the comment above before moving this number');
   for (const p of SPRINT_4I_FILES) allowed.add(`${PREFIX}${p}`);
 
+  // Sprint 4J, its own block with its own reason, per the note above.
+  //
+  // The tab bar was the one place in this tree that was not safe-area aware (25 call sites of
+  // useSafeAreaInsets across 10 other files were). Driving the real build on an Android tablet
+  // at the iPad's 834x1194dp showed the tab labels at y 2417-2465 of a 2508px screen whose app
+  // frame ended at 2388 - fully inside the system-bar inset - and following the SCREEN bottom,
+  // not the app frame, when the display was resized. `edgeToEdgeEnabled: true` plus an explicit
+  // `tabBarStyle.height` opts out of React Navigation's own `49 + insets.bottom`.
+  //
+  // This is the same family as A-15's frozen Dimensions, and it is in the iPad's path, which is
+  // why it is not deferred: it is a device-dependent measurement replaced by a fixed number.
+  const SPRINT_4J_FILES = [
+    'src/navigation/AppNavigator.js',   // the inset-aware tab bar
+    '__tests__/sourceRules.test.mjs',   // the case that pins it, + MUT-4J-09..12
+  ];
+  assert.equal(SPRINT_4J_FILES.length, 2,
+    'the Sprint 4J file list changed size - say why in the comment above before moving this number');
+  for (const p of SPRINT_4J_FILES) allowed.add(`${PREFIX}${p}`);
+
   const unexpected = touched.filter((p) => !allowed.has(p));
   assert.deepEqual(unexpected, [], `P4 touched files it does not own: ${unexpected.join(', ')}`);
 });
