@@ -108,8 +108,13 @@ function TabsNavigator() {
           backgroundColor: colors.surface,
           borderTopColor: colors.outlineVariant + '60',
           borderTopWidth: 1,
-          height: 60 + insets.bottom,
-          paddingBottom: 8 + insets.bottom,
+          // max(), never a sum. The original `paddingBottom: 8` was there to lift the labels
+          // off the bottom edge on a device with NO inset; where there IS one the inset already
+          // does that, so `8 + insets.bottom` padded twice and left a visibly deep gap on iPad.
+          // The icon/label area stays a constant 52 either way, and at inset 0 this is exactly
+          // the 60/8 that shipped.
+          height: 52 + Math.max(insets.bottom, 8),
+          paddingBottom: Math.max(insets.bottom, 8),
         },
         tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
         tabBarIcon: ({ color, size, focused }) => {

@@ -524,17 +524,33 @@ test('the_tab_bar_height_and_padding_are_safe_area_aware', () => {
   // leaves the labels in the same place and only makes the bar taller.
   const style = code.match(/tabBarStyle:\s*\{([\s\S]*?)\}/);
   assert.ok(style, 'tabBarStyle was not found — this check is stale');
-  assert.match(style[1], /height:\s*\d+\s*\+\s*insets\.bottom/,
-    'tabBarStyle.height is a bare number, so it opts out of the safe area and never grows for it');
-  assert.match(style[1], /paddingBottom:\s*\d+\s*\+\s*insets\.bottom/,
-    'tabBarStyle.paddingBottom does not add insets.bottom — the labels still sit in the inset');
+  assert.match(style[1], /height:\s*52\s*\+\s*Math\.max\(insets\.bottom,\s*8\)/,
+    'tabBarStyle.height does not reserve max(inset, 8) on top of a constant 52pt label area');
+  assert.match(style[1], /paddingBottom:\s*Math\.max\(insets\.bottom,\s*8\)/,
+    'tabBarStyle.paddingBottom is not max(inset, 8)');
 
-  // Non-vacuity: the detector must reject the shape that actually shipped.
-  const shipped = 'tabBarStyle: {\n  height: 60,\n  paddingBottom: 8,\n}';
-  const shippedStyle = shipped.match(/tabBarStyle:\s*\{([\s\S]*?)\}/);
-  assert.doesNotMatch(shippedStyle[1], /height:\s*\d+\s*\+\s*insets\.bottom/,
-    'the detector passes the pre-fix source, so it proves nothing');
+  // The SUM is its own defect, seen on a real iPad running build 7: `8 + insets.bottom` pads
+  // TWICE, because the literal 8 exists only to lift the labels where there is no inset. It
+  // left a visibly deep gap under the tab bar. max() is the fix; a sum must not come back.
+  assert.doesNotMatch(style[1], /paddingBottom:\s*\d+\s*\+\s*insets\.bottom/,
+    'paddingBottom adds a literal to the inset - that double-pads any device that has one');
 
+  // Non-vacuity: the detector must reject BOTH earlier shapes - the one that shipped before the
+  // inset existed at all, and build 7's double-padded sum.
+  for (const [label, past] of [
+    ['pre-fix', 'height: 60,\n  paddingBottom: 8,'],
+    ['build 7', 'height: 60 + insets.bottom,\n  paddingBottom: 8 + insets.bottom,'],
+  ]) {
+    assert.doesNotMatch(past, /height:\s*52\s*\+\s*Math\.max\(insets\.bottom,\s*8\)/,
+      `the detector passes the ${label} source, so it proves nothing`);
+  }
+
+  // At inset 0 this must still be exactly what shipped, or the "fix" moves the tab bar on every
+  // device that was already correct. Asserted by evaluating the expression, not by eye.
+  assert.deepEqual(
+    { height: 52 + Math.max(0, 8), paddingBottom: Math.max(0, 8) },
+    { height: 60, paddingBottom: 8 },
+    'with no bottom inset the tab bar is no longer the 60/8 that shipped');
   // `edgeToEdgeEnabled` is WHY this is needed; if it were ever turned off the
   // reasoning in AppNavigator's comment would be wrong and should be revisited.
   const appJson = JSON.parse(readMobile('app.json'));
