@@ -531,6 +531,7 @@
     "detailLabel": "Autre chose ? (facultatif)",
     "detailPlaceholder": "Dites au modérateur ce qu'il doit regarder.",
     "alsoBlock": "Bloquer aussi cette personne",
+    "alsoBlockHint": "Vous ne vous verrez plus, tout abonnement entre vous est supprimé, et il ne revient pas si vous débloquez plus tard.",
     "blockEffect": "Le blocage vous rend invisibles l'un pour l'autre au sein de TrackMyRead. Il ne dépublie pas ses publications publiques : toute personne déconnectée peut encore les lire sur le web ouvert.",
     "submitReport": "Envoyer le signalement",
     "reported": "Signalement envoyé. Un modérateur va l'examiner.",

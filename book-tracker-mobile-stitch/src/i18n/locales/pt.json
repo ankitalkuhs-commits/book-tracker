@@ -533,7 +533,7 @@
     },
     "detailPlaceholder": "Acrescente qualquer detalhe que ajude (opcional)",
     "alsoBlock": "Bloquear também {{name}}",
-    "alsoBlockHint": "Vocês deixarão de se ver, e qualquer seguimento entre vocês será removido.",
+    "alsoBlockHint": "Vocês deixarão de se ver, qualquer seguimento entre vocês será removido e não voltará se você desbloquear mais tarde.",
     "sendReport": "Enviar denúncia",
     "reviewPromise": "Analisamos denúncias em até 2 dias úteis.",
     "reportFailed": "Não foi possível enviar sua denúncia. Tente novamente.",

@@ -9,12 +9,22 @@
 //      `app/routers/reports_router.py`'s own REASONS tuple at test time and
 //      compares — the list is never re-typed from memory on either side.
 //
-//   2. "Also block this person" starts CHECKED (pm-decisions E-3). A report
-//      queues for a human and changes nothing anyone else sees, so without the
-//      block the reader gets no relief in the moment. The wire default is
-//      False (an old client that does not know the field must not start
-//      blocking people); checked-by-default is this client's decision and it
-//      is `useState(true)` below.
+//   2. "Also block this person" starts checked ONLY when the thing reported IS
+//      a person (`target.type === 'user'`). This SUPERSEDES pm-decisions E-3,
+//      which started it checked everywhere.
+//
+//      E-3's reasoning still holds for an account report: a report queues for
+//      a human and changes nothing anyone else sees, so the block is the
+//      reader's only relief in the moment. It does not hold for a note or a
+//      comment. "spam", "hate" and "violence" judge a piece of CONTENT, while
+//      a block is irreversible against the follow graph — `blocks_router.py`
+//      deletes the follow both ways and unblocking restores none of it
+//      (R-21). Pre-checking it there meant a reader who wanted one note
+//      looked at silently and permanently lost a follow they valued.
+//
+//      The wire default stays False (an old client that does not know the
+//      field must not start blocking people); the per-target default is this
+//      client's decision and it is `blockDefault` below.
 //
 //   3. There is exactly ONE request (pm-decisions Q-3). `also_block` is a
 //      field on POST /reports, and the server writes the report, the block row
@@ -44,7 +54,13 @@ export default function ReportDialog({ target, onClose, onDone }) {
   const { width } = useWindowDimensions();
   const [reason, setReason] = useState(null);
   const [detail, setDetail] = useState('');
-  const [alsoBlock, setAlsoBlock] = useState(true);
+  // DERIVED below, not stored. A per-target default cannot live in `useState`:
+  // this sheet is ONE instance reused for every target (see `close`), and a
+  // useState initial value is read once, at first mount. It cannot live in
+  // `close` either, which runs while `target` is still the OLD one.
+  // `blockOverride` therefore holds only what the reader actually tapped, and
+  // null means untouched.
+  const [blockOverride, setBlockOverride] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
 
@@ -54,13 +70,16 @@ export default function ReportDialog({ target, onClose, onDone }) {
   // author is unknown the checkbox has nothing to act on, so it is not shown
   // and no `also_block: true` is sent for it.
   const canBlock = !!target?.userId;
+  // Checked for an account report, unchecked for content — see header note 2.
+  const blockDefault = target?.type === 'user';
+  const alsoBlock = blockOverride ?? blockDefault;
 
   // `submitting` is reset HERE and not only in the error path. The sheet is one
   // instance reused for every target, so a successful report that left
   // `submitting` true would open the next one with the Send button disabled and
   // a spinner on it, for ever.
   const close = () => {
-    setReason(null); setDetail(''); setAlsoBlock(true); setError(null); setSubmitting(false);
+    setReason(null); setDetail(''); setBlockOverride(null); setError(null); setSubmitting(false);
     onClose?.();
   };
 
@@ -132,7 +151,7 @@ export default function ReportDialog({ target, onClose, onDone }) {
             {canBlock && (
               <TouchableOpacity
                 style={styles.checkRow}
-                onPress={() => setAlsoBlock(!alsoBlock)}
+                onPress={() => setBlockOverride(!alsoBlock)}
                 accessibilityRole="checkbox"
                 accessibilityState={{ checked: alsoBlock }}
                 accessibilityLabel={t('a11y.alsoBlock')}

@@ -441,11 +441,45 @@ test('C-12 settings_has_a_blocked_list_with_unblock', () => {
   assert.match(SOURCES.api, /export const getBlocks = \(\) => apiFetch\('\/blocks'\)/);
 });
 
-test('C-13 also_block_is_checked_by_default', () => {
-  // pm-decisions E-3. Read from the state initialiser, never from a comment.
-  const init = SOURCES.report.match(/const \[alsoBlock, setAlsoBlock\] = useState\((\w+)\)/);
+test('C-13 also_block_defaults_to_checked_only_for_an_account_report', () => {
+  // SUPERSEDES pm-decisions E-3, which started this checked at every surface. Read from the
+  // state initialiser, never from a comment.
+  const init = SOURCES.report.match(/const \[alsoBlock, setAlsoBlock\] = useState\(([^)]*)\)/);
   assert.ok(init, 'ReportButton.jsx has no alsoBlock state');
-  assert.equal(init[1], 'true', `"Also block this person" initialises to ${init[1]}, not true`);
+  assert.equal(init[1].replace(/\s/g, ''), "targetType==='user'",
+    `"Also block this person" initialises to \`${init[1]}\`. It must start checked for an ACCOUNT `
+    + 'report and unchecked for a note or a comment: a block deletes the follow in both '
+    + 'directions and unblocking restores none of it (blocks_router.py, R-21), so a reader who '
+    + 'reports one spam note must not silently lose a follow they never chose to give up.');
+
+  // (c) counts against literals BEFORE any per-site assertion. A default that reads `targetType`
+  // proves nothing unless BOTH branches are actually reached from the real pages — an app that
+  // only ever reports content would make the checked branch dead code and this case vacuous.
+  const SITE_RE = /<ReportButton[\s\S]{0,240}?targetType="(\w+)"/g;
+  const pages = [SOURCES.home, SOURCES.profile, SOURCES.group];
+  const sites = pages.flatMap((src) => [...src.matchAll(SITE_RE)].map((m) => m[1]));
+  assert.equal(sites.length, 6,
+    `expected 6 <ReportButton> sites across Home/Profile/Group, found ${sites.length}: ${sites}`);
+  assert.equal(sites.filter((t) => t === 'user').length, 2,
+    `expected 2 account-report sites (the checked branch), found ${sites.filter((t) => t === 'user').length}`);
+  assert.equal(sites.filter((t) => t !== 'user').length, 4,
+    `expected 4 content-report sites (the unchecked branch), found ${sites.filter((t) => t !== 'user').length}`);
+
+  // (d) the same detector over a stripped copy must report 0, in this same test.
+  const blind = pages
+    .map((src) => src.replace(/<ReportButton/g, '<Placeholder'))
+    .flatMap((src) => [...src.matchAll(SITE_RE)]);
+  assert.equal(blind.length, 0, 'the site detector matches sources that carry no <ReportButton>');
+
+  // The copy that makes the unchecked default honest. A pre-checked box that never named its
+  // cost was the defect; an unchecked box that still never names it is a half-fix.
+  assert.match(SOURCES.report, /\{t\('safety\.alsoBlockHint'\)\}/,
+    'what a block costs is never shown beside the checkbox');
+  const enSafety = JSON.parse(fs.readFileSync(path.join(LOCALES, 'en.json'), 'utf8')).safety;
+  assert.match(enSafety.alsoBlockHint, /follow/i,
+    'safety.alsoBlockHint does not mention the follow — the only thing a block destroys');
+  assert.match(enSafety.alsoBlockHint, /does not come back|will not come back|not restored/i,
+    'safety.alsoBlockHint does not say the follow never returns, which is the irreversible part');
 
   // the control is rendered and bound to that state
   assert.match(SOURCES.report, /type="checkbox"[\s\S]{0,120}checked=\{alsoBlock\}/,
@@ -499,6 +533,7 @@ test('C-14 the_reason_picker_offers_exactly_the_apis_closed_set', () => {
 // client and English-only safety copy.
 const NEW_KEYS = [
   'safety.alsoBlock',
+  'safety.alsoBlockHint',
   'safety.block',
   'safety.blockConfirm',
   'safety.blockEffect',
@@ -535,7 +570,7 @@ const NEW_KEYS = [
 const LOCALE_NAMES = ['de', 'en', 'es', 'fr', 'pt', 'ru'];
 
 test('C-16 every_new_web_string_is_in_all_six_locales', () => {
-  assert.equal(NEW_KEYS.length, 33, `NEW_KEYS lists ${NEW_KEYS.length} keys, expected 33`);
+  assert.equal(NEW_KEYS.length, 34, `NEW_KEYS lists ${NEW_KEYS.length} keys, expected 34`);
   assert.equal(LOCALE_NAMES.length, 6);
 
   const read = (loc) => JSON.parse(fs.readFileSync(path.join(LOCALES, `${loc}.json`), 'utf8'));

@@ -533,7 +533,7 @@
     },
     "detailPlaceholder": "Añade cualquier detalle que ayude (opcional)",
     "alsoBlock": "Bloquear también a {{name}}",
-    "alsoBlockHint": "Dejarán de verse y se eliminará cualquier seguimiento entre ustedes.",
+    "alsoBlockHint": "Dejarán de verse, se eliminará cualquier seguimiento entre ustedes y no volverá si lo desbloqueas más adelante.",
     "sendReport": "Enviar denuncia",
     "reviewPromise": "Revisamos las denuncias en un plazo de 2 días hábiles.",
     "reportFailed": "No se pudo enviar tu denuncia. Inténtalo de nuevo.",

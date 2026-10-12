@@ -531,6 +531,7 @@
     "detailLabel": "¿Algo más? (opcional)",
     "detailPlaceholder": "Dile al moderador qué debe mirar.",
     "alsoBlock": "Bloquear también a esta persona",
+    "alsoBlockHint": "Dejarán de verse, se eliminará cualquier seguimiento entre ustedes y no volverá si lo desbloqueas más adelante.",
     "blockEffect": "Bloquear hace que ambos dejen de verse dentro de TrackMyRead. No despublica sus publicaciones públicas: cualquiera que no haya iniciado sesión aún puede leerlas en la web abierta.",
     "submitReport": "Enviar denuncia",
     "reported": "Denuncia enviada. Un moderador la revisará.",

@@ -533,7 +533,7 @@
     },
     "detailPlaceholder": "Ajoutez tout détail utile (facultatif)",
     "alsoBlock": "Bloquer aussi {{name}}",
-    "alsoBlockHint": "Vous ne vous verrez plus, et tout abonnement entre vous est supprimé.",
+    "alsoBlockHint": "Vous ne vous verrez plus, tout abonnement entre vous est supprimé, et il ne revient pas si vous débloquez plus tard.",
     "sendReport": "Envoyer le signalement",
     "reviewPromise": "Nous examinons les signalements sous 2 jours ouvrés.",
     "reportFailed": "Votre signalement n'a pas pu être envoyé. Veuillez réessayer.",

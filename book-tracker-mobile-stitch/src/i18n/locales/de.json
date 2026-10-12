@@ -533,7 +533,7 @@
     },
     "detailPlaceholder": "Ergänze Details, die helfen (optional)",
     "alsoBlock": "{{name}} auch blockieren",
-    "alsoBlockHint": "Ihr seht einander nicht mehr, und jede Folge-Verbindung zwischen euch wird entfernt.",
+    "alsoBlockHint": "Ihr seht einander nicht mehr, jede Folge-Verbindung zwischen euch wird entfernt, und sie kehrt nicht zurück, wenn du die Blockierung später aufhebst.",
     "sendReport": "Meldung senden",
     "reviewPromise": "Wir prüfen Meldungen innerhalb von 2 Werktagen.",
     "reportFailed": "Deine Meldung konnte nicht gesendet werden. Bitte versuche es erneut.",

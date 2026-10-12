@@ -533,7 +533,7 @@
     },
     "detailPlaceholder": "Add any detail that would help (optional)",
     "alsoBlock": "Also block {{name}}",
-    "alsoBlockHint": "You will stop seeing each other, and any follow between you is removed.",
+    "alsoBlockHint": "You will stop seeing each other, any follow between you is removed, and it does not come back if you unblock later.",
     "sendReport": "Send report",
     "reviewPromise": "We review reports within 2 working days.",
     "reportFailed": "Your report could not be sent. Please try again.",

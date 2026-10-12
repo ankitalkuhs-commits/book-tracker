@@ -478,24 +478,91 @@ test('settings_has_a_blocked_list_with_unblock', () => {
   assert.match(code, /userAPI\.unblockUser\(/, 'handleUnblock does not call userAPI.unblockUser');
 });
 
-// ── C-13m (pm-decisions E-3) ────────────────────────────────────────────────
-test('also_block_is_checked_by_default', () => {
-  const ast = parseMobileFile(DIALOG);
-  const decls = findAll(ast, (n) => n.type === 'VariableDeclarator'
+// ── C-13m (supersedes pm-decisions E-3) ───────────────────────────────────
+test('also_block_defaults_to_checked_only_for_an_account_report', () => {
+  const code = readMobile(DIALOG);
+  const ast = parseJS(code);
+
+  // E-3 started this checked at EVERY surface. It is now checked only when the thing reported
+  // IS a person, because a block deletes the follow in both directions and unblocking restores
+  // none of it (`blocks_router.py`, R-21) — so a reader who reports one spam note must not
+  // silently and permanently lose a follow they never chose to give up.
+  //
+  // The old shape (`useState(true)`) must be GONE, not merely joined by the new one: this sheet
+  // is one instance reused for every target, so a stored default would be read once at first
+  // mount and then be wrong for every later target.
+  assert.doesNotMatch(code, /useState\(true\)/,
+    'something in the report sheet still initialises to `true` — a per-target default cannot be '
+    + 'frozen in useState, which is read once at first mount');
+
+  // `blockOverride` holds ONLY what the reader tapped; null means untouched.
+  const overrides = findAll(ast, (n) => n.type === 'VariableDeclarator'
     && n.id.type === 'ArrayPattern'
-    && n.id.elements[0] && n.id.elements[0].name === 'alsoBlock');
-  assert.equal(decls.length, 1, `expected exactly one \`const [alsoBlock, …] = useState(…)\`, found ${decls.length}`);
-
-  const init = decls[0].init;
-  assert.equal(init.type, 'CallExpression');
-  assert.equal(init.callee.name, 'useState', 'alsoBlock must come from useState');
+    && n.id.elements[0] && n.id.elements[0].name === 'blockOverride');
+  assert.equal(overrides.length, 1,
+    `expected exactly one \`const [blockOverride, …] = useState(…)\`, found ${overrides.length}`);
+  const init = overrides[0].init;
+  assert.equal(init.callee && init.callee.name, 'useState', 'blockOverride must come from useState');
   assert.equal(init.arguments.length, 1, 'useState must be given an explicit initial value');
-  assert.equal(init.arguments[0].type, 'BooleanLiteral');
-  assert.equal(init.arguments[0].value, true,
-    'the "Also block this person" checkbox must start CHECKED (pm-decisions E-3) — a report changes nothing anyone else sees, so the block is the reader\'s only relief in the moment');
+  assert.equal(init.arguments[0].type, 'NullLiteral',
+    'blockOverride must start null — null is "the reader has not touched it", which is what lets '
+    + 'the default follow the target');
 
-  // Asserted from the AST, never from a comment: the wire default stays false
-  // so an old client that does not know the field cannot start blocking people.
+  // The default itself, read from the AST and not from a comment: `target?.type === 'user'`.
+  const defaults = findAll(ast, (n) => n.type === 'VariableDeclarator'
+    && n.id.type === 'Identifier' && n.id.name === 'blockDefault');
+  assert.equal(defaults.length, 1, `expected exactly one \`blockDefault\`, found ${defaults.length}`);
+  const cmp = defaults[0].init;
+  assert.equal(cmp.type, 'BinaryExpression', 'blockDefault must be a comparison on the target');
+  assert.equal(cmp.operator, '===');
+  assert.equal(cmp.right.type, 'StringLiteral');
+  assert.equal(cmp.right.value, 'user',
+    `blockDefault compares against "${cmp.right.value}" — the checked branch is for an account report`);
+  assert.match(code.slice(cmp.left.start, cmp.left.end).replace(/\s/g, ''), /^target(\?)?\.type$/,
+    'blockDefault does not read the type off the target');
+
+  // …and the rendered value is the override falling back to that default.
+  assert.match(code, /const alsoBlock = blockOverride \?\? blockDefault;/,
+    'alsoBlock is not `blockOverride ?? blockDefault` — either the tap or the default is ignored');
+
+  // The reset matters as much as the default. `close` runs while `target` is still the OLD one,
+  // so it must clear the override to null and NOT write a boolean, or the next report inherits
+  // the last reader's tap.
+  const closeSrc = code.slice(code.indexOf('const close = ()'), code.indexOf('const submit = '));
+  assert.ok(closeSrc.length > 20, 'the `close` handler moved — this positional read is stale');
+  assert.match(closeSrc, /setBlockOverride\(null\)/, '`close` does not clear blockOverride to null');
+  assert.doesNotMatch(closeSrc, /setBlockOverride\((true|false)\)/,
+    '`close` writes a boolean default, which freezes it for the next target');
+
+  // (c) BOTH branches must be reachable from the real screens, counted against literals first.
+  // A target-dependent default asserts nothing if every call site passes the same type.
+  const SITE_RE = /openReport\s*\(\s*\{\s*type:\s*'(\w+)'|setReportTarget\s*\(\s*\{\s*type:\s*'(\w+)'/g;
+  const screens = [readMobile(FEED), readMobile(PROFILE), readMobile(GROUP)];
+  const sites = screens.flatMap((src) => [...src.matchAll(SITE_RE)].map((m) => m[1] || m[2]));
+  assert.equal(sites.length, 6,
+    `expected 6 report sites across Feed/Profile/Group, found ${sites.length}: ${sites}`);
+  assert.equal(sites.filter((t) => t === 'user').length, 2,
+    `expected 2 account-report sites (the checked branch), found ${sites.filter((t) => t === 'user').length}`);
+  assert.equal(sites.filter((t) => t !== 'user').length, 4,
+    `expected 4 content-report sites (the unchecked branch), found ${sites.filter((t) => t !== 'user').length}`);
+
+  // (d) the same detector over a stripped copy must report 0, in this same test.
+  const blind = screens
+    .map((src) => src.replace(/openReport|setReportTarget/g, 'noop'))
+    .flatMap((src) => [...src.matchAll(SITE_RE)]);
+  assert.equal(blind.length, 0, 'the site detector matches screens that open no report');
+
+  // The copy that makes the unchecked default honest. The checkbox hint used to stop at "any
+  // follow between you is removed" while `blockConfirmBody`, on the standalone block, said it
+  // does not come back — the weaker warning sat on the path that was PRE-CHECKED.
+  const en = JSON.parse(fs.readFileSync(path.join(LOCALES_DIR, 'en.json'), 'utf8')).safety;
+  assert.match(en.alsoBlockHint, /follow/i,
+    'safety.alsoBlockHint does not mention the follow — the only thing a block destroys');
+  assert.match(en.alsoBlockHint, /does not come back|will not come back|not restored/i,
+    'safety.alsoBlockHint does not say the follow never returns, which is the irreversible part');
+
+  // Asserted from the source, never from a comment: the wire default stays false so an old
+  // client that does not know the field cannot start blocking people.
   assert.match(readMobile('src/services/api.js'), /also_block:\s*!!alsoBlock/);
   assert.match(readRepo('app/routers/reports_router.py'), /also_block:\s*bool\s*=\s*False/,
     'the server default for also_block is no longer False — an old client would start blocking people');

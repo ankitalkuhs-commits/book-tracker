@@ -563,6 +563,7 @@
     "detailLabel": "Anything else? (optional)",
     "detailPlaceholder": "Tell the moderator what to look at.",
     "alsoBlock": "Also block this person",
+    "alsoBlockHint": "You will stop seeing each other, any follow between you is removed, and it does not come back if you unblock later.",
     "blockEffect": "Blocking hides the two of you from each other inside TrackMyRead. It does not unpublish their public posts — anyone who is signed out can still read those on the open web.",
     "submitReport": "Send report",
     "reported": "Report sent. A moderator will look at it.",

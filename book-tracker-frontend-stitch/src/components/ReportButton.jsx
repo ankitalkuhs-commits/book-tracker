@@ -20,9 +20,15 @@ function ReportDialog({ targetType, targetId, targetName, onClose, onReported })
   const toast = useToast()
   const [reason, setReason] = useState('')
   const [detail, setDetail] = useState('')
-  // pm-decisions E-3: checked by default. What matters in the moment is relief by the reader's own
-  // hand — the queue is reviewed within two working days, and that is not "now".
-  const [alsoBlock, setAlsoBlock] = useState(true)
+  // Checked by default ONLY when the thing reported IS a person. This supersedes pm-decisions
+  // E-3, which started it checked everywhere. E-3's reasoning holds for an account report —
+  // relief by the reader's own hand, because the queue is reviewed within two working days and
+  // that is not "now". It does not hold for a note or a comment: "spam", "hate" and "violence"
+  // judge a piece of CONTENT, while a block deletes the follow both ways and unblocking restores
+  // none of it (blocks_router.py, R-21). A `useState` initial value is right here and wrong in
+  // the mobile sheet because THIS dialog is mounted per open (`{open && <ReportDialog …>}`) with
+  // `targetType` fixed for the life of the mount.
+  const [alsoBlock, setAlsoBlock] = useState(targetType === 'user')
   const [submitting, setSubmitting] = useState(false)
 
   const submit = async (e) => {
@@ -115,6 +121,10 @@ function ReportDialog({ targetType, targetId, targetName, onClose, onReported })
             />
             <span className="text-sm font-medium text-on-surface">{t('safety.alsoBlock')}</span>
           </label>
+          {/* Two different warnings, and both are load-bearing. This one is what the block COSTS
+              the reader: the follow goes both ways and does not come back. It was missing here
+              while the box was pre-checked, which is the whole reason this default changed. */}
+          <p className="text-xs text-on-surface-variant leading-relaxed pl-7">{t('safety.alsoBlockHint')}</p>
           {/* E-8: a block is a tool between two accounts, not a privacy wall against the open web.
               Saying nothing here would let a reader believe they are hidden from the internet. */}
           <p className="text-xs text-on-surface-variant leading-relaxed pl-7">{t('safety.blockEffect')}</p>

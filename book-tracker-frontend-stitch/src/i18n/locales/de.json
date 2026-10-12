@@ -531,6 +531,7 @@
     "detailLabel": "Noch etwas? (optional)",
     "detailPlaceholder": "Sag dem Moderator, worauf er achten soll.",
     "alsoBlock": "Diese Person auch blockieren",
+    "alsoBlockHint": "Ihr seht einander nicht mehr, jede Folge-Verbindung zwischen euch wird entfernt, und sie kehrt nicht zurück, wenn du die Blockierung später aufhebst.",
     "blockEffect": "Blockieren verbirgt euch beide voreinander innerhalb von TrackMyRead. Öffentliche Beiträge werden dadurch nicht zurückgezogen — wer abgemeldet ist, kann sie weiterhin im offenen Web lesen.",
     "submitReport": "Meldung senden",
     "reported": "Meldung gesendet. Ein Moderator sieht sie sich an.",

@@ -46,6 +46,27 @@ reversible by the person it happens to.
 
 ## E-3 — What a report does before a human looks: **nothing globally. Plus "also block", checked.**
 
+> **Amended 2026-10-12 (Sprint 4J).** "Checked" now means **checked for an account report only**.
+> Reporting a note, a comment or a circle post starts the box **unchecked**.
+>
+> Everything below still holds for a report *about a person*. It does not hold for a report about
+> a piece of content. A block is the one irreversible act in the product: `blocks_router.py`
+> deletes the follow in both directions and unblocking restores none of it (R-21). "spam", "hate"
+> and "violence" are judgements about content, so a reader flagging one spam note was silently
+> and permanently losing a follow they had chosen to keep — something they never asked for and
+> cannot undo.
+>
+> The copy was wrong in the same direction. The checkbox hint named the follow removal but not
+> that it never comes back, while `blockConfirmBody` on the *standalone* block said so plainly:
+> the weaker warning sat on the path that was pre-checked. The web dialog was worse — its only
+> hint was the open-web caveat (E-8) and it never mentioned the follow at all.
+>
+> Corrected in both clients and all twelve locale files. Measured by MUT-4J-01..08, each of which
+> turns C-13/C-13m red. **The wire default was and remains `False`** — E-3's reasoning for that
+> is untouched, and `tests/test_blocks.py::test_also_block_defaults_to_false_on_the_wire` still
+> pins it (that case's docstring now reads slightly stale; it was left alone because 4G's
+> `test_no_existing_test_file_was_edited` treats any removed line under `tests/` as an offence).
+
 No auto-hide. With 131 readers an automatic threshold would have to be two or three reports,
 which is a brigading weapon, not a safety feature. A report queues for review and changes
 nothing that anyone else sees.
