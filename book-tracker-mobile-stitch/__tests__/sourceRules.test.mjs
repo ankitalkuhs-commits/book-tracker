@@ -6,7 +6,10 @@
 // build-notes-A.md.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseMobileFile, readMobile, walk, findAll, listMobileFiles } from './_ast.mjs';
+import zlib from 'node:zlib';
+import fs from 'node:fs';
+import path from 'node:path';
+import { parseMobileFile, readMobile, walk, findAll, listMobileFiles, MOBILE_ROOT } from './_ast.mjs';
 
 function findApiCalls(ast, objName, methodName) {
   return findAll(ast, (n) => n.type === 'CallExpression' && n.callee.type === 'MemberExpression'
@@ -556,4 +559,88 @@ test('the_tab_bar_height_and_padding_are_safe_area_aware', () => {
   const appJson = JSON.parse(readMobile('app.json'));
   assert.equal(appJson.expo.android.edgeToEdgeEnabled, true,
     'edgeToEdgeEnabled is no longer true — re-read the tab bar inset comment before trusting it');
+});
+
+// ── the app icon's EXPORT, not its design (Sprint 4K) ───────────────────────
+// Three supplied brand packs failed here, never on the drawing. Measured on the
+// first pack: 6 distinct corner colours and a top-edge brightness std-dev of 6.6,
+// i.e. a photographic wallpaper composited into the icon, plus pre-rounded corners
+// that iOS would round a second time. These assertions read actual pixels.
+function pngIHDR(buf) {
+  assert.equal(buf.readUInt32BE(0), 0x89504e47, 'not a PNG');
+  return { width: buf.readUInt32BE(16), height: buf.readUInt32BE(20),
+           bitDepth: buf[24], colourType: buf[25] };
+}
+
+// Row 0 only. Unfiltering is sequential from the top, so the first scanline is the
+// cheapest pixel data obtainable - and the top edge is exactly where a baked-in
+// background shows up.
+function pngFirstRow(buf) {
+  const { width, colourType, bitDepth } = pngIHDR(buf);
+  assert.equal(bitDepth, 8, 'this reader only handles 8-bit PNGs');
+  const bpp = { 0: 1, 2: 3, 4: 2, 6: 4 }[colourType];
+  assert.ok(bpp, `unsupported colour type ${colourType}`);
+  const chunks = [];
+  let off = 8;
+  while (off < buf.length) {
+    const len = buf.readUInt32BE(off);
+    const type = buf.toString('ascii', off + 4, off + 8);
+    if (type === 'IDAT') chunks.push(buf.subarray(off + 8, off + 8 + len));
+    if (type === 'IEND') break;
+    off += 12 + len;
+  }
+  const raw = zlib.inflateSync(Buffer.concat(chunks));
+  const stride = width * bpp;
+  const filter = raw[0];
+  const line = Buffer.from(raw.subarray(1, 1 + stride));
+  for (let i = 0; i < stride; i++) {           // prior row is all zeroes on row 0
+    const left = i >= bpp ? line[i - bpp] : 0;
+    if (filter === 1) line[i] = (line[i] + left) & 0xff;
+    else if (filter === 3) line[i] = (line[i] + (left >> 1)) & 0xff;
+    else if (filter === 4) line[i] = (line[i] + left) & 0xff;   // Paeth, prior = 0
+  }
+  const px = [];
+  for (let x = 0; x < width; x++) px.push([...line.subarray(x * bpp, x * bpp + bpp)]);
+  return { px, colourType };
+}
+
+test('the_app_icon_is_exported_correctly_for_the_stores', () => {
+  const read = (p) => fs.readFileSync(path.join(MOBILE_ROOT, p));
+
+  // iOS: square, 1024, and NO alpha. Apple rejects a transparent app icon.
+  const icon = read('assets/icon.png');
+  const h = pngIHDR(icon);
+  assert.deepEqual([h.width, h.height], [1024, 1024], 'assets/icon.png is not 1024x1024');
+  assert.ok(h.colourType === 2 || h.colourType === 0 || h.colourType === 3,
+    `assets/icon.png carries an alpha channel (colour type ${h.colourType}); Apple requires an opaque icon`);
+
+  // The top edge must be ONE colour. A photographic backdrop fails this, and so do
+  // pre-rounded corners, because the corner pixels then differ from the edge.
+  const { px } = pngFirstRow(icon);
+  const uniq = new Set(px.map((p) => p.join(',')));
+  assert.equal(uniq.size, 1,
+    `the icon's top edge has ${uniq.size} distinct colours - a background image or rounded `
+    + 'corners are baked in. iOS applies its own mask, so the source must be flat and full-bleed.');
+
+  // Android foreground: alpha REQUIRED, or the launcher mask has nothing to cut.
+  const ad = pngIHDR(read('assets/adaptive-icon.png'));
+  assert.deepEqual([ad.width, ad.height], [1024, 1024]);
+  assert.ok(ad.colourType === 6 || ad.colourType === 4,
+    'assets/adaptive-icon.png has no alpha channel - it must be the artwork alone, not the whole icon');
+
+  // The notification icon is a SEPARATE asset. Android flattens it to a silhouette,
+  // so pointing this at the colour icon renders a white blob on every push.
+  const appJson = JSON.parse(readMobile('app.json'));
+  const notif = appJson.expo.plugins.find((p) => Array.isArray(p) && p[0] === 'expo-notifications');
+  assert.ok(notif, 'the expo-notifications plugin entry is gone');
+  assert.notEqual(notif[1].icon, './assets/icon.png',
+    'expo-notifications points at the full-colour icon - Android will render it as a white blob');
+  assert.match(notif[1].icon, /notification-icon\.png$/);
+  const sil = pngIHDR(read('assets/notification-icon.png'));
+  assert.ok(sil.colourType === 6 || sil.colourType === 4,
+    'the notification icon has no alpha - a silhouette needs transparency');
+
+  // And the Android background colour is the icon's plum, not the old near-white.
+  assert.equal(appJson.expo.android.adaptiveIcon.backgroundColor, '#5B4A5F',
+    'adaptiveIcon.backgroundColor does not match the icon artwork');
 });

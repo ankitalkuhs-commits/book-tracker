@@ -808,6 +808,27 @@ test('the_mobile_diff_touches_only_the_named_files', () => {
     'the Sprint 4J file list changed size - say why in the comment above before moving this number');
   for (const p of SPRINT_4J_FILES) allowed.add(`${PREFIX}${p}`);
 
+  // Sprint 4K - the app icon. Its own block with its own reason, per the note above.
+  //
+  // The brand pack's artwork is kept exactly; what changed is how it is exported. The supplied
+  // icon had a photographic wallpaper composited into it (measured: 6 distinct corner colours,
+  // top-edge brightness std-dev 6.6) plus pre-rounded corners, which iOS would round a second
+  // time. The replacement is full-bleed on a flat #5B4A5F - std-dev 0.00 at the same probe.
+  //
+  // notification-icon.png is NEW and is not decoration: app.json pointed expo-notifications at
+  // the full-colour icon.png, and Android flattens a notification icon to a silhouette, so it
+  // was rendering as a white blob on every push.
+  const SPRINT_4K_FILES = [
+    'assets/icon.png',                 // full-bleed, no wallpaper, no pre-rounding
+    'assets/adaptive-icon.png',        // artwork only on transparency, inside the 66% safe zone
+    'assets/splash-icon.png',          // same artwork, transparent
+    'assets/notification-icon.png',    // NEW - white silhouette, fixes the blob
+    'assets/favicon.png',              // expo web favicon, regenerated from the same source
+  ];
+  assert.equal(SPRINT_4K_FILES.length, 5,
+    'the Sprint 4K file list changed size - say why in the comment above before moving this number');
+  for (const p of SPRINT_4K_FILES) allowed.add(`${PREFIX}${p}`);
+
   const unexpected = touched.filter((p) => !allowed.has(p));
   assert.deepEqual(unexpected, [], `P4 touched files it does not own: ${unexpected.join(', ')}`);
 });

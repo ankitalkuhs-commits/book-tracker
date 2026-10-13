@@ -13,7 +13,7 @@
       [
         "expo-notifications",
         {
-          "icon": "./assets/icon.png",
+          "icon": "./assets/notification-icon.png",
           "color": "#00464a",
           "sounds": []
         }
@@ -29,7 +29,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.bookpulse.mobile",
-      "buildNumber": "8",
+      "buildNumber": "9",
       "usesAppleSignIn": true,
       "config": {
         "usesNonExemptEncryption": false
@@ -41,7 +41,7 @@
       "versionCode": 64,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#fbf9f4"
+        "backgroundColor": "#5B4A5F"
       },
       "edgeToEdgeEnabled": true,
       "permissions": [
