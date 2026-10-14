@@ -580,6 +580,7 @@
     "blockReader": "Person blockieren",
     "unfollowReader": "Person nicht mehr folgen",
     "readerOptions": "Optionen für diese Person",
-    "alsoBlock": "Diese Person auch blockieren"
+    "alsoBlock": "Diese Person auch blockieren",
+    "changeLanguage": "Sprache ändern"
   }
 }

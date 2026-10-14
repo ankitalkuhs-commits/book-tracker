@@ -10,6 +10,7 @@ import * as Crypto from 'expo-crypto';
 import { useTranslation } from 'react-i18next';
 import { authAPI, warmUp } from '../services/api';
 import { colors, radius, shadow, type } from '../theme';
+import LanguagePicker from '../components/LanguagePicker';
 
 // NOT a static import. iOS does not link this native module (react-native.config.js and the
 // expo.autolinking.ios.exclude in package.json), and the package runs
@@ -137,10 +138,13 @@ export default function LoginScreen({ onLoginSuccess }) {
       <StatusBar barStyle="dark-content" backgroundColor={colors.surface} />
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
 
-        {/* Logo */}
+        {/* Logo. The language picker sits here because this is the only screen a reader
+            who cannot read the current language can reach - SettingsScreen is behind auth. */}
         <View style={styles.logoRow}>
           <MaterialCommunityIcons name="book-open-variant" size={26} color={colors.primary} />
           <Text style={styles.logoText}>{t('auth.appName')}</Text>
+          <View style={{ flex: 1 }} />
+          <LanguagePicker />
         </View>
 
         {/* Hero image card */}

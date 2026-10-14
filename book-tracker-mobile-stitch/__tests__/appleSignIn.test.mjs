@@ -829,6 +829,25 @@ test('the_mobile_diff_touches_only_the_named_files', () => {
     'the Sprint 4K file list changed size - say why in the comment above before moving this number');
   for (const p of SPRINT_4K_FILES) allowed.add(`${PREFIX}${p}`);
 
+  // Sprint 4L - the pre-auth language picker. Its own block with its own reason.
+  //
+  // src/i18n/index.js chooses with `savedLang || detectLanguage()`, and detectLanguage reads the
+  // device locale. The only switcher was in SettingsScreen, behind the auth gate, so a reader
+  // whose phone is in a language they cannot read had to sign in - in that language - to find
+  // it. Reported from production on the web (trackmyread.com rendered in Russian for an English
+  // speaker with no way back); 4725863 fixed the web, this is the mobile half.
+  //
+  // The locale files are already in `allowed` above; they gain one key, a11y.changeLanguage,
+  // because icon_labels_use_i18n_not_literals correctly refuses a hardcoded screen-reader label.
+  const SPRINT_4L_FILES = [
+    'src/components/LanguagePicker.js',   // new
+    'src/screens/LoginScreen.js',         // renders it in the logo row
+    '__tests__/languagePicker.test.mjs',  // new
+  ];
+  assert.equal(SPRINT_4L_FILES.length, 3,
+    'the Sprint 4L file list changed size - say why in the comment above before moving this number');
+  for (const p of SPRINT_4L_FILES) allowed.add(`${PREFIX}${p}`);
+
   const unexpected = touched.filter((p) => !allowed.has(p));
   assert.deepEqual(unexpected, [], `P4 touched files it does not own: ${unexpected.join(', ')}`);
 });

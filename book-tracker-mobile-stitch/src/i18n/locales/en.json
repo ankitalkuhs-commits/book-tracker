@@ -580,6 +580,7 @@
     "blockReader": "Block reader",
     "unfollowReader": "Unfollow reader",
     "readerOptions": "Reader options",
-    "alsoBlock": "Also block this person"
+    "alsoBlock": "Also block this person",
+    "changeLanguage": "Change language"
   }
 }

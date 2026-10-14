@@ -222,7 +222,9 @@ jobs:
       # (the_tab_bar_height_and_padding_are_safe_area_aware). The number is off a run.
       # 2026-10-13, Sprint 4K (app icon): re-measured at 154 on master - 153 + 1 in
       # sourceRules.test.mjs (the_app_icon_is_exported_correctly_for_the_stores). Off a run.
-      EXPECTED_MIN_TESTS: 154
+      # 2026-10-14, Sprint 4L (pre-auth language picker): re-measured at 157 on master -
+      # 154 + 3 in __tests__/languagePicker.test.mjs. The number is off a run.
+      EXPECTED_MIN_TESTS: 157
     steps:
       - uses: actions/checkout@v4
 
