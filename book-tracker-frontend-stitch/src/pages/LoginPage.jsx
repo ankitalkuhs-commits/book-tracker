@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import LanguagePicker from '../components/LanguagePicker'
 import { useNavigate } from 'react-router-dom'
 import { Helmet } from 'react-helmet-async'
 import { useAuth } from '../context/AuthContext'
@@ -94,6 +95,8 @@ export default function LoginPage() {
           <div className="text-xl font-bold font-serif text-primary tracking-tight">
             TrackMyRead
           </div>
+          {/* The only language control a signed-out visitor can reach. See LanguagePicker. */}
+          <LanguagePicker />
         </div>
       </header>
 

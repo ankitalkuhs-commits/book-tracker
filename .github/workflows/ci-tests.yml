@@ -149,7 +149,9 @@ jobs:
       # builder-4i-web - 38 + 10 in the new qa/unit/reportAffordance.test.mjs (C-01, C-03,
       # C-04, C-05, C-06, C-10, C-12, C-13, C-14, C-16). No existing id was removed and no
       # existing qa/unit file was edited. The number is off a run, never typed out of a plan.
-      EXPECTED_MIN_TESTS: 48
+      # 2026-10-14, Sprint 4L (public language picker): re-measured at 51 on master - 48 + 3 in
+      # qa/unit/languagePicker.test.mjs. The number is off a run.
+      EXPECTED_MIN_TESTS: 51
     steps:
       - uses: actions/checkout@v4
 
