@@ -31,14 +31,31 @@ router = APIRouter(prefix="/import", tags=["import"])
 
 GOOGLE_BOOKS_API_KEY = os.getenv("GOOGLE_BOOKS_API_KEY")
 
+# There was no cap of any kind on this endpoint: `await file.read()` pulled the whole body into
+# memory and every row was processed. Measured cost is ~2 SELECT + 2 INSERT per book in ONE
+# transaction that commits only at the end, so a very large file is both a memory risk and a
+# request that cannot finish - and a timeout loses the entire import, since nothing is committed
+# until the last row. These two caps bound the damage; they do not make a huge import fast.
+MAX_IMPORT_BYTES = 10 * 1024 * 1024     # 10 MB - a 20k-book Goodreads export is well under 4 MB
+MAX_IMPORT_ROWS = 20_000
+
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 def _clean_isbn(raw: str) -> Optional[str]:
-    """Strip Goodreads/Excel quoting: =""1234567890"" → 1234567890"""
+    r"""Strip Goodreads/Excel quoting and separators, keeping only what an ISBN can contain.
+
+    Goodreads writes ISBNs as ="9780140449136" so Excel does not mangle them, and some
+    exports carry hyphens. The previous cleaner used the character class [="'\s], which
+    READS as "quotes and whitespace" but is actually the five characters = " ' \ and a
+    LITERAL 's'. Measured consequences: "978 014 044 9136" kept its spaces, hyphenated
+    ISBNs were untouched, and the letter s was eaten out of any value ("notanisbn" came
+    back as "notanibn"). A malformed ISBN matches no existing book and builds a broken
+    Open Library cover URL, so the row silently creates a duplicate Book with no cover.
+    """
     if not raw:
         return None
-    cleaned = re.sub(r'[="\'\\s]', '', raw).strip()
+    cleaned = re.sub(r'[^0-9Xx]', '', raw).upper()
     return cleaned if cleaned else None
 
 
@@ -119,7 +136,16 @@ async def import_goodreads_csv(
     if not looks_ok:
         raise HTTPException(status_code=400, detail="File must be a .csv export from Goodreads")
 
-    raw_bytes = await file.read()
+    # Read one byte past the cap: if it comes back longer, the upload is over the limit and
+    # we have still only held MAX_IMPORT_BYTES + 1 in memory.
+    raw_bytes = await file.read(MAX_IMPORT_BYTES + 1)
+    if len(raw_bytes) > MAX_IMPORT_BYTES:
+        raise HTTPException(
+            status_code=413,
+            detail=f"That file is larger than {MAX_IMPORT_BYTES // (1024 * 1024)} MB. "
+                   "A Goodreads export of a very large library is still only a few MB - "
+                   "if yours is bigger, it is probably not a Goodreads export.",
+        )
 
     # ── Decode — try UTF-8 first, fall back to latin-1 ───────────────────────
     try:
@@ -153,6 +179,10 @@ async def import_goodreads_csv(
     # (avoid creating duplicate Book records)
 
     for row_num, row in enumerate(reader, start=2):  # start=2 because row 1 is header
+        if imported + skipped + len(failed) >= MAX_IMPORT_ROWS:
+            failed.append({"row": row_num,
+                           "reason": f"Stopped at {MAX_IMPORT_ROWS} rows - split the file and import the rest"})
+            break
         title  = (row.get('Title') or '').strip()
         author = (row.get('Author') or row.get('Author l-f') or '').strip()
 

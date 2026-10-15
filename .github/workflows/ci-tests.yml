@@ -95,7 +95,9 @@ jobs:
       # (the deny_bot_actor inventory 5 -> 6, and two literals in test_apple_auth.py that an
       # appended schema_guard pair and one new GET route move). The 24 re-measured budget
       # numbers change no id and no count.
-      EXPECTED_MIN_TESTS: 952
+      # 2026-10-15, Sprint 4M (Goodreads import audit): re-measured at 961 on master -
+      # 952 + 9 in tests/test_import_hardening.py. The number is off a run.
+      EXPECTED_MIN_TESTS: 961
     steps:
       - uses: actions/checkout@v4
         with:
