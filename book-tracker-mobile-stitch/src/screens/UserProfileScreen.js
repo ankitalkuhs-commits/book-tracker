@@ -9,6 +9,7 @@ import { userAPI, userbooksAPI, activityAPI, notesAPI, booksAPI, profileAPI } fr
 import { PreloadContext } from '../../App';
 import BotBadge from '../components/BotBadge';
 import ReportDialog from '../components/ReportDialog';
+import ActionSheet from '../components/ActionSheet';
 import { confirmBlock } from '../utils/safety';
 import { colors, radius, shadow, type } from '../theme';
 
@@ -398,7 +399,10 @@ export default function UserProfileScreen({ route, navigation }) {
                 >
                   <Ionicons name="ellipsis-horizontal" size={18} color={colors.onSurfaceVariant} />
                 </TouchableOpacity>
-                {safetyMenu && (
+                {/* Sprint 4M: rendered through a Modal. The absolute-positioned
+                    dropdown this replaced was painted over by the next card and
+                    could not be tapped on iOS — App Review, Guideline 4. */}
+                <ActionSheet visible={safetyMenu} onClose={() => setSafetyMenu(false)}>
                   <View style={styles.safetyMenu}>
                     {following && (
                       <TouchableOpacity
@@ -430,7 +434,7 @@ export default function UserProfileScreen({ route, navigation }) {
                       <Text style={styles.safetyMenuText}>{t('safety.report')}</Text>
                     </TouchableOpacity>
                   </View>
-                )}
+                </ActionSheet>
               </View>
             )}
           </View>
@@ -705,8 +709,8 @@ const styles = StyleSheet.create({
   followsYouLabel:     { fontSize: 10, fontWeight: '700', letterSpacing: 0.8, color: colors.onSurfaceVariant, textTransform: 'uppercase', marginBottom: 4 },
   actionCluster:       { flexDirection: 'row', alignItems: 'center', gap: 8 },
   safetyMenuBtn:       { padding: 8, borderRadius: radius.full, borderWidth: 1, borderColor: colors.outlineVariant },
-  safetyMenu:          { position: 'absolute', right: 0, top: 40, backgroundColor: colors.surfaceContainerLowest, borderRadius: radius.md, paddingVertical: 4, minWidth: 150, zIndex: 100, ...shadow.float, borderWidth: 1, borderColor: colors.outlineVariant + '40' },
-  safetyMenuItem:      { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 14, paddingVertical: 10 },
+  safetyMenu:          { paddingVertical: 4 },
+  safetyMenuItem:      { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 14, minHeight: 48, borderRadius: radius.md },
   safetyMenuText:      { ...type.body, color: colors.onSurface },
   safetyMenuTextDanger:{ ...type.body, color: colors.error },
   followBtn:           { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.primary, borderRadius: radius.full, paddingHorizontal: 28, paddingVertical: 10, minWidth: 120, justifyContent: 'center' },

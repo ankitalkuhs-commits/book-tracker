@@ -848,6 +848,32 @@ test('the_mobile_diff_touches_only_the_named_files', () => {
     'the Sprint 4L file list changed size - say why in the comment above before moving this number');
   for (const p of SPRINT_4L_FILES) allowed.add(`${PREFIX}${p}`);
 
+  // Sprint 4M - the App Store rejection of 2.2.5 (9), 2026-11-04. Its own block with its own
+  // reason (context/IOS_RELEASE_PLAYBOOK.md §13).
+  //
+  // Guideline 1.2 (UGC): terms/EULA must be visible before sign-in. LoginScreen.js gains a
+  // "By signing in you agree to our Terms of Service and Privacy Policy" line above the buttons.
+  // LoginScreen.js is already in `allowed` via Sprint 4L.
+  //
+  // Guideline 5.1.1(ii): the photo-library prompt showed Expo's default "Allow TrackMyRead to
+  // access your photos", because app.json carried no NSPhotoLibraryUsageDescription. app.json
+  // is already in `allowed`. Apple's guideline page also requires the purpose string to be
+  // localised when the app is, and this app ships six locales - so five one-key InfoPlist
+  // files under locales/ (NOT src/i18n/locales/, which is the runtime i18n tree). The bare
+  // directory entry is what `git status --porcelain` reports while they are untracked.
+  //
+  // Guideline 4: the profile `···` menu was an absolute-positioned View that a later card
+  // painted over, and iOS delivered no touches to it. Every overflow menu now renders through
+  // ActionSheet, a Modal container. FeedScreen and UserProfileScreen are already allowed.
+  const SPRINT_4M_FILES = [
+    'locales/',
+    'locales/ru.json', 'locales/es.json', 'locales/pt.json', 'locales/de.json', 'locales/fr.json',
+    'src/components/ActionSheet.js',
+  ];
+  assert.equal(SPRINT_4M_FILES.length, 7,
+    'the Sprint 4M file list changed size - say why in the comment above before moving this number');
+  for (const p of SPRINT_4M_FILES) allowed.add(`${PREFIX}${p}`);
+
   const unexpected = touched.filter((p) => !allowed.has(p));
   assert.deepEqual(unexpected, [], `P4 touched files it does not own: ${unexpected.join(', ')}`);
 });

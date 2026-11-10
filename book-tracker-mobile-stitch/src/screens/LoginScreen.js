@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, Alert,
-  ActivityIndicator, ScrollView, Image, StatusBar, Platform, useWindowDimensions,
+  ActivityIndicator, ScrollView, Image, StatusBar, Platform, useWindowDimensions, Linking,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Svg, { Path } from 'react-native-svg';
@@ -177,6 +177,20 @@ export default function LoginScreen({ onLoginSuccess }) {
           ))}
         </View>
 
+        {/* Guideline 1.2 — EULA must appear before the sign-in tap. This line is shown on
+            both Apple (iOS) and Google (Android) paths because it sits outside both guards. */}
+        <Text style={styles.termsConsent}>
+          {'By signing in you agree to our '}
+          <Text style={styles.termsLink} onPress={() => Linking.openURL('https://trackmyread.com/terms')}>
+            {'Terms of Service'}
+          </Text>
+          {' and '}
+          <Text style={styles.termsLink} onPress={() => Linking.openURL('https://trackmyread.com/privacy')}>
+            {'Privacy Policy'}
+          </Text>
+          {'.'}
+        </Text>
+
         {/* Apple sign-in (Sprint 4G). The gate is isAvailableAsync(), never Platform.OS:
             it is false on Android AND on an iOS build where the sheet would not work, so it
             is the only check that can never render a dead button. The notice above the button
@@ -320,6 +334,9 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   appleNotice: { ...type.caption, color: colors.onSurfaceVariant, textAlign: 'center', marginBottom: 12 },
+
+  termsConsent: { ...type.caption, color: colors.onSurfaceVariant, textAlign: 'center', marginBottom: 16 },
+  termsLink:    { ...type.caption, color: colors.primary, textDecorationLine: 'underline' },
 
   // Trust badge
   trustRow:       { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },

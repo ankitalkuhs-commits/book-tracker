@@ -61,13 +61,14 @@ Private by default where it matters
 Every note is private unless you share it. You can make your whole profile private, block
 anyone, and delete your account — with everything in it — from inside the app.
 
-TrackMyRead works on iPhone, iPad, Android and the web, and your library is the same
-everywhere.
+TrackMyRead works on iPhone, iPad and the web, and your library is the same everywhere.
 ```
 
-Honest about what it is, no superlatives, no claims about other apps. Apple rejects
-descriptions that mention other platforms *as a comparison*; naming Android as a place your
-library also lives is fine and is a genuine selling point here.
+Honest about what it is, no superlatives, no claims about other apps. **Do not name Android
+anywhere in the description.** The first draft said "iPhone, iPad, Android and the web" on the
+theory that naming Android as a place the library also lives was a selling point rather than
+a comparison; the 2026-11-04 review rejected it under 2.3.10 regardless ("remove Android
+references"). Corrected in ASC on 2026-11-11.
 
 **Note:** the "block anyone" line is true only once Sprint 4I-B ships. Remove it if the listing
 goes up first.

@@ -311,3 +311,58 @@ LF** across the whole file. Here it was invisible because git normalises on comm
 `git diff --stat` showed only the real change — but `git status` listing a file you believe you
 reverted is the tell. Confirm with `git diff --ignore-cr-at-eol --stat <file>`; empty means the
 content is genuinely unchanged.
+
+## 13. The first App Store review: 2.2.5 (9) was rejected on 2026-11-04
+
+Submitted 2026-10-14, reviewed three weeks later on an iPhone 17 Pro Max. Submission
+`cef83941-29d2-4d2b-94c3-d7de70e28176`, state `UNRESOLVED_ISSUES`. Nobody looked for a month
+because nothing polled it — `python scripts/asc_status.py` (reads `.env.asc`, gitignored) now
+prints versions, builds and submission state in one call; run it after every submit. The
+rejection *text* is not in the API; it lives only on the submission's page in the ASC web UI.
+
+### The reviewer's session, reconstructed from their three screenshots and the code
+
+The screenshots (`Screenshot-1104-152654/152735/152755.png`, 11:26–11:27 device time) are
+one minute of one path, and that path is the whole story:
+
+1. **11:26, Feed.** Tapped the image icon in the composer (`FeedScreen.js:202`,
+   `requestMediaLibraryPermissionsAsync`). iOS showed *"Allow TrackMyRead to access your
+   photos"* — Expo's default, because `app.json` has no `ios.infoPlist` and all four
+   call sites (`FeedScreen.js:202`, `SettingsScreen.js:207`, `ProfileScreen.js:377`,
+   `GroupDetailScreen.js:397`) inherit it. **→ 5.1.1(ii).**
+2. **11:27, Feed.** Tapped `···` on a post by **The Reading Prompt**, a bot. The menu
+   opened and showed **Report only** — correct per `FeedScreen.js:751-776`: the post menu
+   carries Delete (owner/admin) and Report; **Block has never been on the post menu.** Block
+   lives on the user-search card (`:645-678`) and on the profile. So the reviewer saw a
+   working report affordance and no block, and tapped through to the profile.
+3. **11:27, The Reading Prompt's profile.** Tapped `···` (`UserProfileScreen.js:393`). The
+   menu **did open** — the screenshot shows a ~30 px white sliver under the Follow button —
+   and nothing in it could be seen or tapped. `safetyMenu` (`:708`) is `position: 'absolute',
+   top: 40` inside a bare `<View>` (`:392`) inside `actionCluster` (`:370`, a flex row) inside
+   `heroSection` (`:327`). The next child of the `ScrollView` is the yearly-progress or
+   velocity card (`:453`, `:485`), a later sibling of `heroSection`, so it paints over the menu;
+   `zIndex: 100` only orders the menu against its own siblings. iOS also drops touches that
+   fall outside the ancestor's bounds. The feed's `menuDropdown` (`FeedScreen.js:1089`) is
+   built the same way and survives only because its post card is taller than the menu.
+   Android renders and hit-tests both menus, which is why 4I's device checks were green.
+   **→ Guideline 4**, and the reviewer never reached Block.
+
+Four guidelines, in the order they are cheapest to fix:
+
+| # | Guideline | What Apple said | What is true in the repo |
+|---|---|---|---|
+| 1 | **2.3.10** metadata | "Revise the app's description to remove Android references" | **Fixed 2026-11-11** — the live description's last line was *"…iPhone, iPad, Android and the web…"*; patched via `PATCH /appStoreVersionLocalizations` to drop "Android" and verified by re-reading it. `APP_STORE_LISTING.md` corrected to match. No screenshot: metadata, not app |
+| 2 | **5.1.1(ii)** purpose string | Photo-library string must say what the photos are for, with an example | **Fixed 2026-11-11, needs a build.** Screenshot 1 showed Expo's default because `app.json` had no `NSPhotoLibraryUsageDescription`. Now `ios.infoPlist` carries one active-voice sentence naming both uses (profile picture, a photo of a book or passage on a post), per Apple's guideline page — which also says purpose strings **must be localised when the app is**, so `locales/{ru,es,pt,de,fr}.json` (one key each) are wired through `expo.locales`. The sprint-bounded `the_mobile_diff_touches_only_the_named_files` guard gained a 4M block for them |
+| 3 | **4** design | The profile `···` menu "was inaccessible" | **Fixed 2026-11-11, needs a build; not yet seen on an iPhone.** Screenshot 2, step 3 above — a rendering bug, not a missing feature. All three overflow menus (profile; feed post; feed user-search card) now render through `src/components/ActionSheet.js`, a `Modal` bottom sheet with a dismiss backdrop, so nothing can paint over them and every touch reaches them. Items are 48 pt tall. The feed post menu had the same construction and floated over the post's own text; same reviewer, one card shorter, and it would have been cited. The menu *items* stayed inline in each screen so `reportAffordance.test.mjs`'s guards (item order, owner gates, block sites) still see them; 157/157 |
+| 4 | **1.2** UGC | (a) terms/EULA **before** registering or logging in, stating no tolerance for objectionable content or abusive users; (b) a block that "should also notify the developer of the inappropriate content and should remove it from the user's feed instantly"; (c) a device screen recording of EULA, report, block | **(a) Fixed 2026-11-11, needs a build.** `LoginScreen.js` now shows "By signing in you agree to our Terms of Service and Privacy Policy" (tappable links via `Linking.openURL`) above both sign-in paths. `TermsPage.jsx` strengthened: now says "zero tolerance for objectionable content or abusive users" and "permanently ban accounts". **(b) present on the report path; standalone block PM decision still open.** `POST /reports` with `also_block` fires `content_reported` at admins; standalone `POST /blocks/{id}` fires nothing (design rule B-07 in `blocks_router.py:11-13`); adding admin notification there is compatible with B-07 but requires PM decision. **(c)** cannot be recorded until a device build with issues 2 & 3 is available |
+
+The review notes submitted with 2.2.5 said *"Content can be reported from the menu on any
+post, comment or profile, and readers can block each other"* — true, but the one block path
+the reviewer reached was the broken one, so from their seat the app had report and no block.
+
+What the resubmission needs, all on one build: a terms line with links on the login screen
+(both sign-in buttons); a Terms page that says objectionable content and abusive users are not
+tolerated; `ios.infoPlist.NSPhotoLibraryUsageDescription` written as a purpose plus example;
+the menu rendered through a `Modal` or hoisted out of the row; the ASC description edited in
+place (no build needed for that); a reply on the submission with the recording attached and the
+same link pasted into the Review Notes field.

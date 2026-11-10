@@ -45,7 +45,8 @@ export default function TermsPage() {
           </p>
           <p className="text-sm text-on-surface-variant leading-relaxed">
             You agree not to post content that is illegal, abusive, harassing, or infringes on anyone's rights.
-            We may remove content that violates these terms.
+            We have zero tolerance for objectionable content or abusive users. We may remove content and
+            permanently ban accounts that violate these terms without prior notice.
           </p>
         </section>
 

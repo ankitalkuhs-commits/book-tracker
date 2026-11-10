@@ -149,6 +149,8 @@ separate Google Sign-In native modules (one of which crashes the app at import i
 `EXPO_ASC_*` variables, and the Apple revocation flow needing a refresh token nobody was
 collecting. The Medhark playbook stops at TestFlight because **no app on this account has ever
 been through App Store review** — that part has no precedent.
+> **Update 2026-11-11:** it has now. 2.2.5 (9) was submitted 2026-10-14 and **rejected 2026-11-04**
+> on four guidelines — see Known Issues below and playbook §13.
 
 ### The API moved to Singapore (F-68) — 2026-09-22
 
@@ -416,6 +418,12 @@ the deploy that declares it, never in the same push.
 ## Known Issues / Next Priorities
 
 **BLOCKED (PM action pending):**
+- **iOS 2.2.5 (9) is REJECTED by App Store review (2026-11-04), found 2026-11-11.** Four guidelines:
+  2.3.10 (Android in description), 5.1.1(ii) (photo-library purpose string), 4 (the `...` menu on
+  a reader's profile cannot be tapped on iOS — absolute-positioned outside its parent), 1.2 (no
+  terms agreement before login; Apple wants a device recording of EULA + report + block). Full
+  text and fix list: `context/IOS_RELEASE_PLAYBOOK.md` §13. Check state with
+  `python scripts/asc_status.py`.
 - `REVIEW_LOGIN_SECRET` and `REVIEW_LOGIN_EMAILS` not yet set on Render → the two live checks (T47, T74–T77) cannot run; no production screenshots or sprint-2 live verifications until these are set. See "Recently Shipped (September 13 — Review login)" above.
 
 **HIGH:** None — all critical/auth/security items closed.

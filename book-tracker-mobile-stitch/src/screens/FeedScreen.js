@@ -13,6 +13,7 @@ import AppHeader from '../components/AppHeader';
 import VisibilityToggle, { useNoteVisibility } from '../components/VisibilityToggle';
 import BotBadge, { userBadge, userBadgeText } from '../components/BotBadge';
 import ReportDialog from '../components/ReportDialog';
+import ActionSheet from '../components/ActionSheet';
 import { confirmBlock } from '../utils/safety';
 import { PreloadContext } from '../../App';
 import { formatTimeAgo } from '../utils/bookUtils';
@@ -652,7 +653,7 @@ const FeedScreen = ({ navigation }) => {
             >
               <Text style={styles.menuDots}>···</Text>
             </TouchableOpacity>
-            {menuUserId === user.id && (
+            <ActionSheet visible={menuUserId === user.id} onClose={() => setMenuUserId(null)}>
               <View style={styles.menuDropdown}>
                 <TouchableOpacity
                   style={styles.menuItem}
@@ -673,7 +674,7 @@ const FeedScreen = ({ navigation }) => {
                   <Text style={styles.menuItemText}>{t('safety.report')}</Text>
                 </TouchableOpacity>
               </View>
-            )}
+            </ActionSheet>
           </View>
         )}
       </View>
@@ -748,7 +749,10 @@ const FeedScreen = ({ navigation }) => {
             >
               <Text style={styles.menuDots}>···</Text>
             </TouchableOpacity>
-            {showMenu && (
+            {/* Sprint 4M: rendered through a Modal, like the profile menu
+                App Review cited under Guideline 4. The floating dropdown this
+                replaced sat on top of the post's own text. */}
+            <ActionSheet visible={showMenu} onClose={() => setMenuPostId(null)}>
               <View style={styles.menuDropdown}>
                 {(isOwnPost || isAdmin) && (
                   <TouchableOpacity
@@ -773,7 +777,7 @@ const FeedScreen = ({ navigation }) => {
                   </TouchableOpacity>
                 )}
               </View>
-            )}
+            </ActionSheet>
           </View>
         </View>
         {/* Emotion sentence */}
@@ -1086,8 +1090,8 @@ const styles = StyleSheet.create({
   timeAgo: { ...type.caption, color: colors.outline, marginTop: 1 },
   menuButton: { padding: 4, paddingHorizontal: 8 },
   menuDots: { ...type.titleLg, color: colors.onSurfaceVariant, letterSpacing: 2 },
-  menuDropdown: { position: 'absolute', right: 0, top: 28, backgroundColor: colors.surfaceContainerLowest, borderRadius: radius.md, paddingVertical: 4, minWidth: 120, zIndex: 100, ...shadow.float, borderWidth: 1, borderColor: colors.outlineVariant + '40' },
-  menuItem: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 14, paddingVertical: 10 },
+  menuDropdown: { paddingVertical: 4 },
+  menuItem: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 14, minHeight: 48, borderRadius: radius.md },
   menuItemTextDanger: { ...type.body, color: colors.error },
   menuItemText: { ...type.body, color: colors.onSurface },
   // Emotion chip picker (composer)

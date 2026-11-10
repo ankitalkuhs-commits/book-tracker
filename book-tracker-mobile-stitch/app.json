@@ -33,7 +33,17 @@
       "usesAppleSignIn": true,
       "config": {
         "usesNonExemptEncryption": false
+      },
+      "infoPlist": {
+        "NSPhotoLibraryUsageDescription": "TrackMyRead uses your photo library to let you pick a profile picture or attach a photo of a book or passage to a post."
       }
+    },
+    "locales": {
+      "ru": "./locales/ru.json",
+      "es": "./locales/es.json",
+      "pt": "./locales/pt.json",
+      "de": "./locales/de.json",
+      "fr": "./locales/fr.json"
     },
     "android": {
       "package": "com.bookpulse.mobile",
