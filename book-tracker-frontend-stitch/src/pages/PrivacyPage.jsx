@@ -17,7 +17,7 @@ export default function PrivacyPage() {
       </button>
 
       <h1 className="font-serif text-3xl font-bold text-on-surface mb-2">Privacy Policy</h1>
-      <p className="text-sm text-on-surface-variant mb-8">Last updated: September 2026</p>
+      <p className="text-sm text-on-surface-variant mb-8">Last updated: November 2026</p>
 
       <div className="space-y-6">
         <section className="bg-surface-container-lowest rounded-3xl p-6 space-y-3">
