@@ -55,6 +55,15 @@ export default function PrivacyPage() {
         </section>
 
         <section className="bg-surface-container-lowest rounded-3xl p-6 space-y-3">
+          <h2 className="font-sans text-base font-bold text-on-surface uppercase tracking-wider">User safety</h2>
+          <p className="text-sm text-on-surface-variant leading-relaxed">
+            TrackMyRead allows users to report content or other users they find objectionable, and to block other
+            users. Reports are reviewed by our team. We remove content and accounts that violate our Terms of
+            Service. Blocking a user prevents them from seeing your content and you from seeing theirs.
+          </p>
+        </section>
+
+        <section className="bg-surface-container-lowest rounded-3xl p-6 space-y-3">
           <h2 className="font-sans text-base font-bold text-on-surface uppercase tracking-wider">Data storage</h2>
           <p className="text-sm text-on-surface-variant leading-relaxed">
             Your data is stored on secure servers (Supabase PostgreSQL). We retain your data for as long as your
